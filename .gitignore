@@ -2,3 +2,13 @@
 .DS_Store
 Thumbs.db
 *.log
+
+# Local build/tool outputs
+package.json
+package-lock.json
+.tools/
+
+# Original (uncompressed) source assets — kept locally as backup, not deployed
+*.original.glb
+*.original.svg
+*.original.png

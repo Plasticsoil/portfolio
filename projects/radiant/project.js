@@ -31,7 +31,7 @@ window.__PROJECTS__['radiant'] = {
       //    paths starting at M358.667 / M538.667 / M718.667 for the 3 columns,
       //    and y = 104.667 / 151.333 / 198 / 244.667 for the 4 rows). ──
       { type: 'solution-nav-bar',
-        src: 'projects/radiant/assets/Solution nav bar/the frame.svg',
+        src: 'projects/radiant/assets/Solution nav bar/the frame.webp',
         viewBox: [960, 474],
         icons: (function () {
           const NAV = 'projects/radiant/assets/Solution nav bar/';

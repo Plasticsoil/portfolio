@@ -227,7 +227,10 @@
     .hero {
       position: relative;
       isolation: isolate;
-      height: 100vh;
+      /* Slightly shorter than full viewport so the "/ my work" label peeks
+         above the fold — a soft hint that there's more below to scroll to. */
+      height: calc(100vh - 160px);
+      min-height: 600px;
       display: flex;
       align-items: center;
       justify-content: center;
