@@ -99,6 +99,7 @@
     html, body {
       width: 100%;
       background: var(--color-bg);
+      overflow-x: hidden;
     }
 
 
@@ -2624,8 +2625,20 @@
         pointer-events: auto;
       }
       .hero-headline {
-        font-size: clamp(40px, 12vw, 56px);
-        line-height: 1.05;
+        font-size: 44px;
+        line-height: 1.0;
+        letter-spacing: -0.02em;
+      }
+      /* Force the headline onto 3 lines per Figma:
+         "Welcome / to my / exhibition".
+         Letter-spaces are inline spans inserted by the letter-wrap JS;
+         we promote spaces #1 and #3 to display:block so they act as
+         line breaks after "Welcome" and after "my". */
+      .hero-headline .letter-space:nth-of-type(1),
+      .hero-headline .letter-space:nth-of-type(3) {
+        display: block;
+        height: 0;
+        width: 0;
       }
       /* Hide the secondary labels on mobile — they don't earn the real estate. */
       .hero-labels {
@@ -2636,27 +2649,28 @@
         inset: 0;
         pointer-events: none;
       }
-      /* Override the desktop inline absolute positioning. The two ring-cards
-         (SHLTR + Radiant per HERO_CONFIG) get tucked in opposite corners
-         around the headline, smaller than desktop. */
+      /* Override the desktop inline absolute positioning. Two ring-cards
+         (SHLTR + Radiant per HERO_CONFIG) flank the centered 3-line headline. */
       .hero-cards .ring-card {
         position: absolute !important;
-        width: 140px !important;
-        height: 140px !important;
+        width: 130px !important;
+        height: 130px !important;
         margin: 0 !important;
         transform: none !important;
         pointer-events: auto;
       }
+      /* SHLTR — top-right of the headline */
       .hero-cards .ring-card:nth-child(1) {
-        left: 12px !important;
-        top: 100px !important;
-        right: auto !important;
+        right: 8px !important;
+        top: 90px !important;
+        left: auto !important;
         bottom: auto !important;
       }
+      /* Radiant — bottom-left of the headline */
       .hero-cards .ring-card:nth-child(2) {
-        right: 12px !important;
-        bottom: 40px !important;
-        left: auto !important;
+        left: 8px !important;
+        bottom: 60px !important;
+        right: auto !important;
         top: auto !important;
       }
       .ring-card-hit {
@@ -2668,19 +2682,31 @@
         height: 100% !important;
       }
 
-      /* ── Auto-cycle highlight for hero cards (replaces hover) ── */
+      /* ── Auto-cycle highlight for hero cards ──
+         Mirrors the desktop :hover state: the silhouette mask brightens
+         and gets a soft blur, and the model swaps from grey to gradient
+         tint. .is-pulsing is added/removed by the cycle JS, and the
+         existing CSS transitions on opacity/filter handle the in/out
+         fade — no separate keyframes needed for the glow. */
+      .ring-card.is-pulsing .ring-card-mask {
+        opacity: 1;
+        filter: blur(3px);
+      }
+      .ring-card.is-pulsing .ring-card-model {
+        filter: url(#mv-gradient-tint);
+      }
       .ring-card.is-pulsing .ring-card-stage {
         animation: hero-card-pulse 2.6s ease-in-out;
       }
       @keyframes hero-card-pulse {
-        0%   { transform: scale(1);    filter: brightness(1)   drop-shadow(0 0 0 rgba(255, 80, 200, 0)); }
-        45%  { transform: scale(1.04); filter: brightness(1.06) drop-shadow(0 8px 28px rgba(255, 80, 200, 0.35)); }
-        100% { transform: scale(1);    filter: brightness(1)   drop-shadow(0 0 0 rgba(255, 80, 200, 0)); }
+        0%   { transform: scale(1); }
+        45%  { transform: scale(1.06); }
+        100% { transform: scale(1); }
       }
 
       /* ── Cards section — single column, 36px side padding per Figma ── */
       .cards-section {
-        padding: 60px 0 100px;
+        padding: 40px 0 80px;
       }
       .cards-inner {
         flex-direction: column;
@@ -2693,16 +2719,14 @@
       .cards-col {
         display: contents;
       }
-      .cards-col-header,
       .card-b {
         order: var(--card-order, 0);
       }
+      /* The two desktop column headers ("/ my work" labels) get hidden
+         on mobile — one centered label is added by the cycle/init code,
+         and two duplicated headers in a single column read as a bug. */
       .cards-col-header {
-        height: auto;
-        margin: 0 0 16px;
-      }
-      .cards-col-label {
-        font-size: 22px;
+        display: none;
       }
       :root {
         --card-w: 100%;
@@ -2757,7 +2781,7 @@
          is dissolved with display:contents so the three blocks become
          direct children of contact-section and can be re-ordered freely. */
       .contact-section {
-        padding: 60px 20px 80px;
+        padding: 60px 36px 80px;
         gap: 64px;
         min-height: auto;
       }
@@ -2767,10 +2791,13 @@
       .contact-col-left,
       .contact-bottom,
       .contact-col-right {
-        width: 100%;
+        /* Override the desktop fixed width on .contact-bottom (434px),
+           which was wider than a 360px screen and forced horizontal scroll. */
+        width: 100% !important;
         max-width: 100%;
         align-items: center;
         text-align: center;
+        box-sizing: border-box;
       }
       .contact-col-left   { order: 0; }
       .contact-bottom     { order: 1; }
