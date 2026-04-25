@@ -2705,47 +2705,63 @@
         100% { transform: scale(1); }
       }
 
-      /* ── Cards section — single column, 36px side padding per Figma ── */
+      /* ── Cards section — single column, 36px side padding, 120px gap
+         between items (matches Figma "Frame 408" auto-layout). ── */
       .cards-section {
         padding: 40px 0 80px;
       }
       .cards-inner {
         flex-direction: column;
         padding: 0 36px;
-        gap: 0;
+        gap: 120px;
         align-items: stretch;
       }
-      /* `display: contents` lets cards-col vanish so each card is a direct
-         flex child of cards-inner and we can `order` them into PROJECTS_ORDER. */
+      /* `display: contents` lets cards-col vanish so cards become direct
+         flex children of cards-inner and gap+order apply uniformly. */
       .cards-col {
         display: contents;
       }
       .card-b {
         order: var(--card-order, 0);
       }
-      /* The two desktop column headers ("/ my work" labels) get hidden
-         on mobile — one centered label is added by the cycle/init code,
-         and two duplicated headers in a single column read as a bug. */
+      /* Two ".cards-col-header" labels exist (one per desktop column).
+         Show only the first as the single "/ my work" header on mobile;
+         hide the duplicate from the second column. */
       .cards-col-header {
+        order: -1;
+        height: auto;
+        width: auto;
+        margin: 0;
+      }
+      .cards-col:nth-of-type(2) .cards-col-header {
         display: none;
+      }
+      .cards-col-label {
+        font-size: 20px;
       }
       :root {
         --card-w: 100%;
       }
+      /* Card B per Figma: 288×373 inside 360 with 36 padding.
+         Card image: 288×346 (aspect 144/173 ≈ 5:6) on a white background
+         with a 1px hairline border in the muted tone. Footer 11px tall,
+         16px gap from image. */
       .card-b {
         width: 100%;
         height: auto;
-        margin-bottom: 40px;
+        margin: 0;
+        gap: 16px;
       }
-      .card-b:last-child {
-        margin-bottom: 0;
-      }
-      /* Thumbnail media: full container width, height proportional to
-         desktop's 400×480 (5:6) ratio so visuals stay consistent. */
       .card-b-body {
         width: 100%;
         height: auto;
-        aspect-ratio: 5 / 6;
+        aspect-ratio: 144 / 173;
+        background: #FFFFFF;
+        border: 1px solid rgba(163, 160, 155, 0.15);
+        box-sizing: border-box;
+      }
+      .card-b-body.card-b-body--thumb {
+        background: #FFFFFF;
       }
       .card-b .card-media,
       .card-b .card-media-wrap,
@@ -2753,13 +2769,14 @@
         height: 100%;
         width: 100%;
       }
-      /* Footer: title left, tags right, single line.
-         8px side padding inside the card width. */
+      /* Footer: title left, tags right, 8px side padding, 16px gap
+         between title and tag-group. Inside tag-group: 24px between tags. */
       .card-b-footer {
         width: 100%;
+        height: 11px;
         flex-wrap: nowrap;
         padding: 0 8px;
-        gap: 12px;
+        gap: 16px;
         min-width: 0;
         box-sizing: border-box;
       }
@@ -2772,7 +2789,7 @@
       }
       .card-b-tags {
         flex-wrap: nowrap;
-        gap: 12px;
+        gap: 24px;
         flex-shrink: 0;
       }
       .card-b-tag {
