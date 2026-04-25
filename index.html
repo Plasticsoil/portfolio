@@ -2659,19 +2659,20 @@
         transform: none !important;
         pointer-events: auto;
       }
-      /* SHLTR — top-right of the headline */
+      /* SHLTR — left, vertically centered with the headline */
       .hero-cards .ring-card:nth-child(1) {
-        right: 8px !important;
-        top: 90px !important;
+        left: 6px !important;
+        top: 50% !important;
+        right: auto !important;
+        bottom: auto !important;
+        transform: translateY(-50%) !important;
+      }
+      /* Radiant — top-right, above the headline */
+      .hero-cards .ring-card:nth-child(2) {
+        right: 14px !important;
+        top: 70px !important;
         left: auto !important;
         bottom: auto !important;
-      }
-      /* Radiant — bottom-left of the headline */
-      .hero-cards .ring-card:nth-child(2) {
-        left: 8px !important;
-        bottom: 60px !important;
-        right: auto !important;
-        top: auto !important;
       }
       .ring-card-hit {
         left: 0 !important;
