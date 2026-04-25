@@ -1,0 +1,3882 @@
+/* Nav bar /  Solutions | Desktop |  2026-03 */
+
+position: relative;
+width: 1440px;
+height: 710px;
+left: 100.33px;
+top: 960px;
+
+background: #F3F3F3;
+
+
+/* nav */
+
+position: absolute;
+width: 1440px;
+height: 100px;
+left: 0px;
+top: 0px;
+
+background: #F9F9F9;
+
+
+/* Frame 1410189430 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: space-between;
+align-items: center;
+padding: 0px;
+gap: 96px;
+
+position: absolute;
+width: 1160px;
+height: 40px;
+left: calc(50% - 1160px/2);
+top: calc(50% - 40px/2);
+
+
+
+/* radiant-logo */
+
+margin: 0 auto;
+width: 187px;
+height: 24px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Vector */
+
+position: absolute;
+left: 32.76%;
+right: 54.36%;
+top: 1.45%;
+bottom: 1.94%;
+
+background: #0F1935;
+
+
+/* Vector */
+
+position: absolute;
+left: 49.7%;
+right: 48.32%;
+top: 1.4%;
+bottom: 1.34%;
+
+background: #0F1935;
+
+
+/* Vector */
+
+position: absolute;
+left: 54.67%;
+right: 31.02%;
+top: 0%;
+bottom: 1.34%;
+
+background: #0F1935;
+
+
+/* Vector */
+
+position: absolute;
+left: 71.98%;
+right: 15.52%;
+top: 0%;
+bottom: 0%;
+
+background: #0F1935;
+
+
+/* Vector */
+
+position: absolute;
+left: 87.48%;
+right: 0%;
+top: 1.47%;
+bottom: 1.34%;
+
+background: #0F1935;
+
+
+/* Vector */
+
+position: absolute;
+left: 0%;
+right: 87.12%;
+top: 1.45%;
+bottom: 1.34%;
+
+background: #0F1935;
+
+
+/* bug */
+
+position: absolute;
+height: 23.91px;
+left: 15.7%;
+right: 69.87%;
+top: calc(50% - 23.91px/2);
+
+
+
+/* bug */
+
+position: absolute;
+height: 23.97px;
+left: 0%;
+right: 0%;
+top: calc(50% - 23.97px/2 + 0.05px);
+
+background: linear-gradient(180deg, #FD3A76 -2.79%, #FF719E 52.67%, rgba(255, 255, 255, 0) 102.8%);
+
+
+/* Frame 1410189429 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 20px;
+
+margin: 0 auto;
+width: 517px;
+height: 25px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* top-level-nav */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 0px;
+gap: 5px;
+
+width: 84px;
+height: 25px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Platform */
+
+width: 59px;
+height: 25px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 25px;
+/* identical to box height, or 179% */
+display: flex;
+align-items: center;
+text-align: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Frame 1410189427 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 20px;
+height: 20px;
+
+transform: rotate(90deg);
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Vector 3 */
+
+width: 3.17px;
+height: 6.34px;
+
+border: 1px solid #898EA3;
+transform: rotate(90deg);
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* top-level-nav */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 0px;
+gap: 5px;
+
+width: 89px;
+height: 25px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Platform */
+
+width: 64px;
+height: 25px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 25px;
+/* identical to box height, or 179% */
+display: flex;
+align-items: center;
+text-align: center;
+
+/* gradient radiant */
+background: linear-gradient(287.21deg, #FF719E 34.69%, #FD3A76 75.36%);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+text-fill-color: transparent;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Frame 1410189427 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 20px;
+height: 20px;
+
+transform: rotate(90deg);
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Vector 3 */
+
+width: 3.17px;
+height: 6.34px;
+
+border: 1px solid #898EA3;
+transform: rotate(90deg);
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* top-level-nav */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 0px;
+gap: 5px;
+
+width: 75px;
+height: 25px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 2;
+flex-grow: 0;
+
+
+/* Platform */
+
+width: 75px;
+height: 25px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 25px;
+/* identical to box height, or 179% */
+display: flex;
+align-items: center;
+text-align: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Frame 1410189427 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+display: none;
+width: 20px;
+height: 20px;
+
+transform: rotate(90deg);
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* top-level-nav */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 0px;
+gap: 5px;
+
+width: 92px;
+height: 25px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 3;
+flex-grow: 0;
+
+
+/* Platform */
+
+width: 67px;
+height: 25px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 25px;
+/* identical to box height, or 179% */
+display: flex;
+align-items: center;
+text-align: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Frame 1410189427 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 20px;
+height: 20px;
+
+transform: rotate(90deg);
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Vector 3 */
+
+width: 3.17px;
+height: 6.34px;
+
+border: 1px solid #898EA3;
+transform: rotate(90deg);
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* top-level-nav */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 0px;
+gap: 5px;
+
+width: 97px;
+height: 25px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 4;
+flex-grow: 0;
+
+
+/* Platform */
+
+width: 72px;
+height: 25px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 25px;
+/* identical to box height, or 179% */
+display: flex;
+align-items: center;
+text-align: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Frame 1410189427 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 0px;
+gap: 8px;
+
+width: 20px;
+height: 20px;
+
+transform: rotate(90deg);
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Vector 3 */
+
+width: 3.17px;
+height: 6.34px;
+
+border: 1px solid #898EA3;
+transform: rotate(90deg);
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Frame 1410189428 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px;
+gap: 15px;
+
+margin: 0 auto;
+width: 243px;
+height: 40px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 2;
+flex-grow: 0;
+
+
+/* demo-button */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 8px 12px;
+gap: 10px;
+
+width: 140px;
+height: 40px;
+
+/* gradient radiant */
+background: linear-gradient(287.21deg, #FF719E 34.69%, #FD3A76 75.36%);
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* icon */
+
+width: 16px;
+height: 16px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* icon-source */
+
+position: absolute;
+width: 16px;
+height: 16px;
+left: calc(50% - 16px/2);
+top: calc(50% - 16px/2);
+
+
+
+/* Vector (Stroke) */
+
+position: absolute;
+left: 8.33%;
+right: 8.34%;
+top: 4.17%;
+bottom: 4.16%;
+
+background: #FFFFFF;
+
+
+/* Book a Demo */
+
+width: 90px;
+height: 14px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 14px;
+/* identical to box height, or 100% */
+display: flex;
+align-items: center;
+text-align: center;
+
+color: #FFFFFF;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* login-button */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 8px 12px;
+gap: 10px;
+
+width: 88px;
+height: 40px;
+
+background: #111933;
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* Login */
+
+width: 38px;
+height: 14px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 14px;
+/* identical to box height, or 100% */
+display: flex;
+align-items: center;
+text-align: center;
+
+color: #FFFFFF;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* icon */
+
+width: 16px;
+height: 16px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* icon-source */
+
+position: absolute;
+width: 16px;
+height: 16px;
+left: calc(50% - 16px/2);
+top: calc(50% - 16px/2);
+
+
+
+/* Vector (Stroke) */
+
+position: absolute;
+left: 8.33%;
+right: 8.34%;
+top: 8.33%;
+bottom: 8.34%;
+
+background: #FFFFFF;
+
+
+/* Frame 1410189433 */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 40px;
+
+position: absolute;
+width: 475px;
+height: 261px;
+left: 140px;
+top: 252px;
+
+
+
+/* The new way of doing SOC */
+
+width: 475px;
+height: 105px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 700;
+font-size: 60px;
+line-height: 60px;
+/* or 100% */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+letter-spacing: -0.02em;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Shift your focus from countless alerts to strategic security challenges */
+
+width: 280px;
+height: 36px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 400;
+font-size: 16px;
+line-height: 24px;
+/* or 150% */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* demo-button */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 8px 12px;
+gap: 10px;
+
+width: 140px;
+height: 40px;
+
+/* gradient radiant */
+background: linear-gradient(287.21deg, #FF719E 34.69%, #FD3A76 75.36%);
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 2;
+flex-grow: 0;
+
+
+/* icon */
+
+width: 16px;
+height: 16px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* icon-source */
+
+position: absolute;
+width: 16px;
+height: 16px;
+left: calc(50% - 16px/2);
+top: calc(50% - 16px/2);
+
+
+
+/* Vector (Stroke) */
+
+position: absolute;
+left: 8.33%;
+right: 8.34%;
+top: 4.17%;
+bottom: 4.16%;
+
+background: #FFFFFF;
+
+
+/* Book a Demo */
+
+width: 90px;
+height: 14px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 14px;
+/* identical to box height, or 100% */
+display: flex;
+align-items: center;
+text-align: center;
+
+color: #FFFFFF;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* image 678 */
+
+position: absolute;
+width: 1025.17px;
+height: 610px;
+left: 349.53px;
+top: 100px;
+
+background: url(10.png);
+transform: matrix(-1, 0, 0, 1, 0, 0);
+
+
+/* subnav */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: flex-start;
+padding: 10px;
+gap: 30px;
+
+position: absolute;
+width: 830px;
+height: 337px;
+left: 518px;
+top: 100px;
+
+background: #F9F9F9;
+border-radius: 0px 0px 10px 10px;
+
+
+/* Frame 1410189639 */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 0px;
+gap: 4px;
+
+width: 810px;
+height: 317px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* NavBar Card */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 12px 12px 12px 20px;
+gap: 10px;
+isolation: isolate;
+
+width: 810px;
+height: 33px;
+
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Alert Triage and Response */
+
+width: 778px;
+height: 9px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 500;
+font-size: 12px;
+line-height: 16px;
+/* or 133% */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+color: #3F4353;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 1;
+z-index: 0;
+
+
+/* Arrow */
+
+position: absolute;
+width: 8.72px;
+height: 9px;
+left: 160.28px;
+top: 12px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+z-index: 1;
+
+
+/* Vector 1 */
+
+position: absolute;
+width: 4.5px;
+right: 641px;
+top: 36.36%;
+bottom: 36.36%;
+
+
+
+/* Vector 2 */
+
+position: absolute;
+width: 8.67px;
+right: 641.05px;
+top: 50.17%;
+bottom: 49.83%;
+
+
+
+/* Frame 1410189637 */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+flex-wrap: wrap;
+align-items: flex-start;
+align-content: flex-start;
+padding: 0px;
+row-gap: 0px;
+
+width: 810px;
+height: 280px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* NavBar Card */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 10px;
+gap: 16px;
+
+width: 270px;
+height: 70px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* NavBar Icon */
+
+width: 50px;
+height: 50px;
+
+background: #FFFFFF;
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Group 1410189569 */
+
+position: absolute;
+width: 33px;
+height: 22px;
+left: 9px;
+top: calc(50% - 22px/2);
+
+
+
+/* Icon */
+
+position: absolute;
+width: 19px;
+height: 22px;
+left: calc(50% - 19px/2 + 0.5px);
+top: calc(50% - 22px/2);
+
+background: linear-gradient(124.8deg, #FFE291 6.63%, #FF90B2 118.98%);
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Group 1410189566 */
+
+position: absolute;
+width: 9px;
+height: 10px;
+left: calc(50% - 9px/2 + 0.5px);
+top: calc(50% - 10px/2 - 1px);
+
+
+
+/* Rectangle 34625273 */
+
+position: absolute;
+width: 9px;
+height: 6px;
+left: 21px;
+top: 23px;
+
+background: #F9F9F9;
+border: 0.6px solid #FE3D6C;
+
+
+/* Rectangle 34625274 */
+
+position: absolute;
+width: 5px;
+height: 4px;
+left: 23px;
+top: 19px;
+
+border: 0.6px solid #FE3D6C;
+
+
+/* Vector 1133 */
+
+position: absolute;
+width: 3px;
+height: 2px;
+left: 24px;
+top: 25px;
+
+border: 0.6px solid #FE3D6C;
+
+
+/* Vector 1136 */
+
+position: absolute;
+width: 5px;
+height: 2px;
+left: 37px;
+top: 23px;
+
+border: 0.6px solid #FE3D6C;
+
+
+/* Vector 1138 */
+
+position: absolute;
+width: 3px;
+height: 0px;
+left: 11px;
+top: 19px;
+
+border: 0.6px solid #FE3D6C;
+
+
+/* Vector 1139 */
+
+position: absolute;
+width: 3px;
+height: 0px;
+left: 11px;
+top: 24px;
+
+border: 0.6px solid #FE3D6C;
+
+
+/* Vector 1140 */
+
+position: absolute;
+width: 3px;
+height: 0px;
+left: 11px;
+top: 29px;
+
+border: 0.6px solid #FE3D6C;
+
+
+/* Ellipse 720 */
+
+position: absolute;
+width: 2px;
+height: 2px;
+left: 9px;
+top: 18px;
+
+background: #FE3D6C;
+
+
+/* Ellipse 721 */
+
+position: absolute;
+width: 2px;
+height: 2px;
+left: 9px;
+top: 23px;
+
+background: #FE3D6C;
+
+
+/* Ellipse 722 */
+
+position: absolute;
+width: 2px;
+height: 2px;
+left: 9px;
+top: 28px;
+
+background: #FE3D6C;
+
+
+/* Text Container */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: flex-start;
+padding: 0px;
+gap: 10px;
+
+width: 184px;
+height: 10px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 1;
+
+
+/* Title */
+
+width: 184px;
+height: 10px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 130%;
+/* or 18px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Description */
+
+display: none;
+width: 234px;
+height: 24px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 124%;
+/* or 15px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+color: #3F4353;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* NavBar Card */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 10px;
+gap: 16px;
+
+width: 270px;
+height: 70px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 0;
+
+
+/* NavBar Icon */
+
+width: 50px;
+height: 50px;
+
+background: #FFFFFF;
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Group 1410189587 */
+
+position: absolute;
+width: 28px;
+height: 25px;
+left: calc(50% - 28px/2);
+top: calc(50% - 25px/2 - 0.5px);
+
+
+
+/* Rectangle 34625275 */
+
+position: absolute;
+width: 28px;
+height: 16px;
+left: calc(50% - 28px/2);
+top: calc(50% - 16px/2 + 4px);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Vector 1150 */
+
+position: absolute;
+width: 0px;
+height: 4px;
+left: 25px;
+top: 33px;
+
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Icon */
+
+position: absolute;
+width: 16px;
+height: 18px;
+left: calc(50% - 16px/2);
+bottom: 20px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+
+
+/* Rectangle 34625276 */
+
+position: absolute;
+height: 8px;
+left: 43%;
+right: 43%;
+top: calc(50% - 8px/2 - 5px);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Text Container */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: flex-start;
+padding: 0px;
+gap: 10px;
+
+width: 184px;
+height: 10px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 1;
+
+
+/* Title */
+
+width: 184px;
+height: 10px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 130%;
+/* or 18px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Description */
+
+display: none;
+width: 234px;
+height: 24px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 124%;
+/* or 15px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+color: #3F4353;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* NavBar Card */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 10px;
+gap: 16px;
+
+width: 270px;
+height: 70px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 2;
+flex-grow: 0;
+
+
+/* NavBar Icon */
+
+width: 50px;
+height: 50px;
+
+background: #FFFFFF;
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Group 1410189584 */
+
+position: absolute;
+width: 30.95px;
+height: 27px;
+left: calc(50% - 30.95px/2 + 0.47px);
+top: calc(50% - 27px/2 - 0.5px);
+
+
+
+/* Group 1410189568 */
+
+position: absolute;
+width: 30.95px;
+height: 21px;
+left: calc(50% - 30.95px/2 + 0.47px);
+top: calc(50% - 21px/2 - 3.5px);
+
+
+
+/* Union */
+
+position: absolute;
+width: 30.95px;
+height: 21px;
+left: calc(50% - 30.95px/2 + 0.47px);
+top: calc(50% - 21px/2 - 3.5px);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Rectangle 34625298 */
+
+position: absolute;
+width: 30.95px;
+height: 12.16px;
+left: 10px;
+top: 19.84px;
+
+background: #D9D9D9;
+border-radius: 500px;
+
+
+/* Ellipse 723 */
+
+position: absolute;
+width: 13.26px;
+height: 13.26px;
+left: 14.86px;
+top: 11px;
+
+background: #D9D9D9;
+
+
+/* Ellipse 724 */
+
+position: absolute;
+width: 8.84px;
+height: 8.84px;
+left: 25.91px;
+top: 15.42px;
+
+background: #D9D9D9;
+
+
+/* Group 1410189572 */
+
+position: absolute;
+width: 14px;
+height: 13px;
+left: calc(50% - 14px/2);
+top: 25px;
+
+
+
+/* Vector 1141 */
+
+position: absolute;
+width: 0px;
+height: 13px;
+left: 19px;
+top: 25px;
+
+border: 0.6px solid #FE3D6C;
+
+
+/* Vector 1142 */
+
+position: absolute;
+width: 0px;
+height: 13px;
+left: 25px;
+top: 25px;
+
+border: 0.6px solid #FE3D6C;
+
+
+/* Vector 1143 */
+
+position: absolute;
+width: 0px;
+height: 13px;
+left: 31px;
+top: 25px;
+
+border: 0.6px solid #FE3D6C;
+
+
+/* Rectangle 34625299 */
+
+position: absolute;
+width: 2px;
+height: 4px;
+left: 24px;
+top: 30px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Rectangle 34625300 */
+
+position: absolute;
+width: 2px;
+height: 4px;
+left: 18px;
+top: 33px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Rectangle 34625301 */
+
+position: absolute;
+width: 2px;
+height: 4px;
+left: 30px;
+top: 26px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Text Container */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: flex-start;
+padding: 0px;
+gap: 10px;
+
+width: 184px;
+height: 10px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 1;
+
+
+/* Title */
+
+width: 184px;
+height: 10px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 130%;
+/* or 18px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Description */
+
+display: none;
+width: 234px;
+height: 24px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 124%;
+/* or 15px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+color: #3F4353;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* NavBar Card */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 10px;
+gap: 16px;
+
+width: 270px;
+height: 70px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 3;
+flex-grow: 0;
+
+
+/* NavBar Icon */
+
+width: 50px;
+height: 50px;
+
+background: #FFFFFF;
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Group 1410189568 */
+
+position: absolute;
+width: 28px;
+height: 26px;
+left: calc(50% - 28px/2);
+top: calc(50% - 26px/2);
+
+
+
+/* Union */
+
+position: absolute;
+width: 28px;
+height: 19px;
+left: calc(50% - 28px/2);
+top: calc(50% - 19px/2 - 3.5px);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Rectangle 34625298 */
+
+position: absolute;
+width: 28px;
+height: 11px;
+left: 11px;
+top: 20px;
+
+background: #D9D9D9;
+border-radius: 500px;
+
+
+/* Ellipse 723 */
+
+position: absolute;
+width: 12px;
+height: 12px;
+left: 15.4px;
+top: 12px;
+
+background: #D9D9D9;
+
+
+/* Ellipse 724 */
+
+position: absolute;
+width: 8px;
+height: 8px;
+left: 25.4px;
+top: 16px;
+
+background: #D9D9D9;
+
+
+/* Group 1410189577 */
+
+position: absolute;
+width: 14px;
+height: 16px;
+left: 18.4px;
+top: 22px;
+
+
+
+/* Icon */
+
+position: absolute;
+width: 14px;
+height: 16px;
+left: calc(50% - 14px/2 + 0.4px);
+top: calc(50% - 16px/2 + 5px);
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Rectangle 34625273 */
+
+position: absolute;
+width: 6px;
+height: 4px;
+left: 22.4px;
+top: 29px;
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Rectangle 34625274 */
+
+position: absolute;
+width: 4px;
+height: 3px;
+left: 23.4px;
+top: 26px;
+
+border: 0.6px solid #FE3D6C;
+
+
+/* Text Container */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: flex-start;
+padding: 0px;
+gap: 10px;
+
+width: 184px;
+height: 10px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 1;
+
+
+/* Title */
+
+width: 184px;
+height: 10px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 130%;
+/* or 18px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Description */
+
+display: none;
+width: 234px;
+height: 24px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 124%;
+/* or 15px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+color: #3F4353;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* NavBar Card */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 10px;
+gap: 16px;
+
+width: 270px;
+height: 70px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 4;
+flex-grow: 0;
+
+
+/* NavBar Icon */
+
+width: 50px;
+height: 50px;
+
+background: #FFFFFF;
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Group 1410189586 */
+
+position: absolute;
+width: 26px;
+height: 26px;
+left: calc(50% - 26px/2);
+top: calc(50% - 26px/2);
+
+
+
+/* Rectangle 34625302 */
+
+position: absolute;
+width: 26px;
+height: 26px;
+left: calc(50% - 26px/2);
+top: calc(50% - 26px/2);
+
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Frame 1707483849 */
+
+position: absolute;
+width: 20px;
+height: 20px;
+left: calc(50% - 20px/2);
+top: calc(50% - 20px/2);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+border-radius: 500px;
+
+
+/* Ellipse 712 */
+
+position: absolute;
+width: 6px;
+height: 6px;
+left: calc(50% - 6px/2);
+top: 6px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 500px;
+
+
+/* Rectangle 34625285 */
+
+position: absolute;
+width: 12px;
+height: 17px;
+left: calc(50% - 12px/2);
+top: 12px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 500px;
+
+
+/* Frame 1707483850 */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+padding: 10px;
+gap: 10px;
+
+position: absolute;
+width: 9px;
+height: 9px;
+left: 29px;
+top: 29px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 500px;
+
+
+/* Vector 1133 */
+
+width: 3px;
+height: 2px;
+
+border: 0.6px solid #FE3D6C;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Text Container */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: flex-start;
+padding: 0px;
+gap: 10px;
+
+width: 184px;
+height: 10px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 1;
+
+
+/* Title */
+
+width: 184px;
+height: 10px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 130%;
+/* or 18px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Description */
+
+display: none;
+width: 234px;
+height: 24px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 124%;
+/* or 15px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+color: #3F4353;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* NavBar Card */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 10px;
+gap: 16px;
+
+width: 270px;
+height: 70px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 5;
+flex-grow: 0;
+
+
+/* NavBar Icon */
+
+width: 50px;
+height: 50px;
+
+background: #FFFFFF;
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Group 1410189583 */
+
+position: absolute;
+width: 24px;
+height: 32px;
+left: calc(50% - 24px/2);
+top: calc(50% - 32px/2);
+
+
+
+/* Group 1410189576 */
+
+position: absolute;
+width: 20px;
+height: 30px;
+left: calc(50% - 20px/2 + 2px);
+top: calc(50% - 30px/2 + 1px);
+
+
+
+/* Vector 1144 */
+
+position: absolute;
+width: 0px;
+height: 3px;
+left: calc(50% - 0px/2 + 2px);
+top: 31px;
+
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Frame 1707483849 */
+
+position: absolute;
+width: 20px;
+height: 20px;
+left: calc(50% - 20px/2 + 2px);
+top: calc(50% - 20px/2 - 4px);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+border-radius: 500px;
+
+
+/* Ellipse 712 */
+
+position: absolute;
+width: 6px;
+height: 6px;
+left: calc(50% - 6px/2 - 0px);
+top: 6px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 500px;
+
+
+/* Rectangle 34625285 */
+
+position: absolute;
+width: 10px;
+height: 17px;
+left: calc(50% - 10px/2 - 0px);
+top: 13px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 500px;
+
+
+/* Union */
+
+position: absolute;
+width: 2px;
+height: 7px;
+left: calc(50% - 2px/2 + 2px);
+top: calc(50% - 7px/2 + 12.5px);
+
+background: linear-gradient(355.06deg, #FFE291 4.13%, #FF90B2 99.84%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Rectangle 34625309 */
+
+position: absolute;
+width: 2px;
+height: 7px;
+left: 26px;
+top: 34px;
+
+background: #D9D9D9;
+
+
+/* Group 1410189575 */
+
+position: absolute;
+width: 10px;
+height: 8px;
+left: 13px;
+top: 9px;
+
+
+
+/* Rectangle 34625279 */
+
+position: absolute;
+width: 10px;
+height: 8px;
+left: calc(50% - 10px/2 - 7px);
+top: calc(50% - 8px/2 - 12px);
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 0.5px;
+
+
+/* Rectangle 34625280 */
+
+position: absolute;
+width: 0px;
+height: 2px;
+left: 18px;
+top: 12px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+
+
+/* Rectangle 34625281 */
+
+position: absolute;
+width: 0px;
+height: 0px;
+left: 18px;
+top: 15px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+transform: rotate(90deg);
+
+
+/* Text Container */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: flex-start;
+padding: 0px;
+gap: 10px;
+
+width: 184px;
+height: 10px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 1;
+
+
+/* Title */
+
+width: 184px;
+height: 10px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 130%;
+/* or 18px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Description */
+
+display: none;
+width: 234px;
+height: 24px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 124%;
+/* or 15px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+color: #3F4353;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* NavBar Card */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 10px;
+gap: 16px;
+
+width: 270px;
+height: 70px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 6;
+flex-grow: 0;
+
+
+/* NavBar Icon */
+
+width: 50px;
+height: 50px;
+
+background: #FFFFFF;
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Group 1410189567 */
+
+position: absolute;
+width: 28px;
+height: 26px;
+left: calc(50% - 28px/2);
+top: calc(50% - 26px/2 - 2px);
+
+
+
+/* Vector */
+
+position: absolute;
+width: 28px;
+height: 18px;
+left: calc(50% - 28px/2);
+top: calc(50% - 18px/2 + 2px);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Icon */
+
+position: absolute;
+width: 16px;
+height: 19px;
+left: calc(50% - 16px/2);
+top: calc(50% - 19px/2 - 5.5px);
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+
+
+/* Vector */
+
+position: absolute;
+left: 40%;
+right: 40.73%;
+top: 28%;
+bottom: 52.99%;
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Text Container */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: flex-start;
+padding: 0px;
+gap: 10px;
+
+width: 184px;
+height: 10px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 1;
+
+
+/* Title */
+
+width: 184px;
+height: 10px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 130%;
+/* or 18px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Description */
+
+display: none;
+width: 234px;
+height: 24px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 124%;
+/* or 15px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+color: #3F4353;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* NavBar Card */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 10px;
+gap: 16px;
+
+width: 270px;
+height: 70px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 7;
+flex-grow: 0;
+
+
+/* NavBar Icon */
+
+width: 50px;
+height: 50px;
+
+background: #FFFFFF;
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Group 1410189585 */
+
+position: absolute;
+width: 24px;
+height: 24px;
+left: calc(50% - 24px/2);
+top: calc(50% - 24px/2);
+
+
+
+/* Group 1410189574 */
+
+position: absolute;
+width: 24px;
+height: 24px;
+left: calc(50% - 24px/2);
+top: calc(50% - 24px/2);
+
+
+
+/* Ellipse 713 */
+
+position: absolute;
+width: 24px;
+height: 24px;
+left: calc(50% - 24px/2);
+top: calc(50% - 24px/2);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.514286px solid #FE3D6C;
+border-radius: 0.6px;
+
+
+/* Ellipse 714 */
+
+position: absolute;
+width: 10.29px;
+height: 24px;
+left: calc(50% - 10.29px/2 - 0px);
+top: calc(50% - 24px/2);
+
+border: 0.514286px solid #FE3D6C;
+border-radius: 0.6px;
+
+
+/* Rectangle 34625303 */
+
+position: absolute;
+width: 24px;
+height: 0px;
+left: calc(50% - 24px/2);
+top: calc(50% - 0px/2 + 0px);
+
+border: 0.514286px solid #FE3D6C;
+border-radius: 0.6px;
+
+
+/* Rectangle 34625304 */
+
+position: absolute;
+width: 20.57px;
+height: 0px;
+left: calc(50% - 20.57px/2 + 0px);
+top: calc(50% - 0px/2 - 6px);
+
+border: 0.514286px solid #FE3D6C;
+border-radius: 0.6px;
+
+
+/* Rectangle 34625305 */
+
+position: absolute;
+width: 20.57px;
+height: 0px;
+left: calc(50% - 20.57px/2 + 0px);
+top: calc(50% - 0px/2 + 6px);
+
+border: 0.514286px solid #FE3D6C;
+border-radius: 0.6px;
+
+
+/* Ellipse 726 */
+
+position: absolute;
+width: 3px;
+height: 3px;
+left: 19px;
+top: 18px;
+
+background: #FFFFFF;
+border: 0.514286px solid #FE3D6C;
+border-radius: 0.6px;
+
+
+/* Ellipse 727 */
+
+position: absolute;
+width: 3px;
+height: 3px;
+left: 29px;
+top: 23.5px;
+
+background: #FFFFFF;
+border: 0.514286px solid #FE3D6C;
+border-radius: 0.6px;
+
+
+/* Ellipse 728 */
+
+position: absolute;
+width: 3px;
+height: 3px;
+left: 19px;
+top: 29px;
+
+background: #FFFFFF;
+border: 0.514286px solid #FE3D6C;
+border-radius: 0.6px;
+
+
+/* Text Container */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: flex-start;
+padding: 0px;
+gap: 10px;
+
+width: 184px;
+height: 10px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 1;
+
+
+/* Title */
+
+width: 184px;
+height: 10px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 130%;
+/* or 18px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Description */
+
+display: none;
+width: 234px;
+height: 24px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 124%;
+/* or 15px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+color: #3F4353;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* NavBar Card */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 10px;
+gap: 16px;
+
+width: 270px;
+height: 70px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 8;
+flex-grow: 0;
+
+
+/* NavBar Icon */
+
+width: 50px;
+height: 50px;
+
+background: #FFFFFF;
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Group 1410189582 */
+
+position: absolute;
+width: 28px;
+height: 30px;
+left: calc(50% - 28px/2);
+top: calc(50% - 30px/2);
+
+
+
+/* Union */
+
+position: absolute;
+width: 28px;
+height: 18.43px;
+left: calc(50% - 28px/2);
+top: calc(50% - 18.43px/2 - 1.79px);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Rectangle 34625298 */
+
+position: absolute;
+width: 28px;
+height: 10px;
+left: 11px;
+top: 22.43px;
+
+background: #D9D9D9;
+border-radius: 500px;
+
+
+/* Ellipse 723 */
+
+position: absolute;
+width: 18.29px;
+height: 18.29px;
+left: 15.86px;
+top: 14px;
+
+background: #D9D9D9;
+
+
+/* Group 1410189579 */
+
+position: absolute;
+width: 14px;
+height: 17px;
+left: calc(50% - 14px/2);
+top: 23px;
+
+
+
+/* Vector 1146 */
+
+position: absolute;
+width: 0px;
+height: 13px;
+left: calc(50% - 0px/2 - 2px);
+top: 26px;
+
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Vector 1148 */
+
+position: absolute;
+width: 0px;
+height: 16px;
+left: calc(50% - 0px/2 - 6px);
+top: 23px;
+
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Vector 1147 */
+
+position: absolute;
+width: 0px;
+height: 13px;
+left: calc(50% - 0px/2 + 2px);
+top: 26px;
+
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Vector 1149 */
+
+position: absolute;
+width: 0px;
+height: 16px;
+left: calc(50% - 0px/2 + 6px);
+top: 23px;
+
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Ellipse 730 */
+
+position: absolute;
+width: 2px;
+height: 2px;
+left: 18px;
+top: 38px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Ellipse 731 */
+
+position: absolute;
+width: 2px;
+height: 2px;
+left: 22px;
+top: 38px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Ellipse 733 */
+
+position: absolute;
+width: 2px;
+height: 2px;
+left: 26px;
+top: 38px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Ellipse 734 */
+
+position: absolute;
+width: 2px;
+height: 2px;
+left: 30px;
+top: 38px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Icon */
+
+position: absolute;
+width: 14.4px;
+height: 18px;
+left: calc(50% - 14.4px/2 + 0.2px);
+top: calc(50% - 18px/2 - 6px);
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Group 1410189563 */
+
+position: absolute;
+width: 8px;
+height: 4px;
+left: calc(50% - 8px/2 + 0px);
+top: calc(50% - 4px/2 - 7px);
+
+
+
+/* Ellipse 716 */
+
+position: absolute;
+width: 8px;
+height: 1.68px;
+left: calc(50% - 8px/2 + 0px);
+top: calc(50% - 1.68px/2 - 8.16px);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Ellipse 713 */
+
+position: absolute;
+width: 5.71px;
+height: 1.2px;
+left: calc(50% - 5.71px/2 - 0px);
+top: calc(50% - 1.2px/2 - 6.76px);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Ellipse 714 */
+
+position: absolute;
+width: 3.43px;
+height: 0.72px;
+left: calc(50% - 3.43px/2 - 0px);
+top: calc(50% - 0.72px/2 - 5.36px);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Text Container */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: flex-start;
+padding: 0px;
+gap: 10px;
+
+width: 184px;
+height: 10px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 1;
+
+
+/* Title */
+
+width: 184px;
+height: 10px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 130%;
+/* or 18px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Description */
+
+display: none;
+width: 234px;
+height: 24px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 124%;
+/* or 15px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+color: #3F4353;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* NavBar Card */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 10px;
+gap: 16px;
+
+width: 270px;
+height: 70px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 9;
+flex-grow: 0;
+
+
+/* NavBar Icon */
+
+width: 50px;
+height: 50px;
+
+background: #FFFFFF;
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Group 1410189588 */
+
+position: absolute;
+width: 28px;
+height: 19px;
+left: calc(50% - 28px/2);
+top: calc(50% - 19px/2 - 0.5px);
+
+
+
+/* Rectangle 34625310 */
+
+position: absolute;
+width: 28px;
+height: 19px;
+left: calc(50% - 28px/2);
+top: calc(50% - 19px/2 - 0.5px);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Group 1410189592 */
+
+position: absolute;
+width: 11.82px;
+height: 13px;
+left: 19px;
+top: 19px;
+
+
+
+/* Group 1410189581 */
+
+position: absolute;
+width: 11.82px;
+height: 13px;
+left: 19px;
+top: 19px;
+
+
+
+/* Subtract */
+
+position: absolute;
+width: 11.82px;
+height: 13px;
+left: 19px;
+top: 19px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 0.5px;
+
+
+/* Union */
+
+position: absolute;
+width: 11.82px;
+height: 13px;
+left: 19px;
+top: 19px;
+
+background: #FFFFFF;
+border-radius: 0.5px;
+
+
+/* Ellipse 735 */
+
+position: absolute;
+width: 11.82px;
+height: 11.82px;
+left: 19px;
+top: 19px;
+
+background: #ADADAD;
+
+
+/* Rectangle 34625311 */
+
+position: absolute;
+width: 6px;
+height: 3px;
+left: 21.91px;
+top: 29px;
+
+background: #D9D9D9;
+
+
+/* Vector 1151 */
+
+position: absolute;
+width: 0px;
+height: 1px;
+left: 24px;
+top: 31px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 0.5px;
+
+
+/* Vector 1152 */
+
+position: absolute;
+width: 0px;
+height: 1px;
+left: 26px;
+top: 31px;
+
+border: 0.6px solid #FE3D6C;
+border-radius: 0.5px;
+
+
+/* Ellipse 738 */
+
+position: absolute;
+width: 2px;
+height: 2px;
+left: 22px;
+top: 25px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 0.5px;
+
+
+/* Ellipse 739 */
+
+position: absolute;
+width: 2px;
+height: 2px;
+left: 26px;
+top: 25px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 0.5px;
+
+
+/* Ellipse 740 */
+
+position: absolute;
+width: 1px;
+height: 1px;
+left: 36.5px;
+top: 16px;
+
+background: #FE3D6C;
+border-radius: 0.5px;
+
+
+/* Ellipse 741 */
+
+position: absolute;
+width: 1px;
+height: 1px;
+left: 35px;
+top: 16px;
+
+background: #FE3D6C;
+border-radius: 0.5px;
+
+
+/* Text Container */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: flex-start;
+padding: 0px;
+gap: 10px;
+
+width: 184px;
+height: 10px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 1;
+
+
+/* Title */
+
+width: 184px;
+height: 10px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 130%;
+/* or 18px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Description */
+
+display: none;
+width: 234px;
+height: 24px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 124%;
+/* or 15px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+color: #3F4353;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* NavBar Card */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 10px;
+gap: 16px;
+
+width: 270px;
+height: 70px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 10;
+flex-grow: 0;
+
+
+/* NavBar Icon */
+
+width: 50px;
+height: 50px;
+
+background: #FFFFFF;
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Group 1410189571 */
+
+position: absolute;
+width: 28px;
+height: 25px;
+left: calc(50% - 28px/2 - 1px);
+top: calc(50% - 25px/2 - 2.5px);
+
+
+
+/* Group 1410189573 */
+
+position: absolute;
+width: 24px;
+height: 16px;
+left: 14px;
+top: 19px;
+
+
+
+/* Rectangle 34625276 */
+
+position: absolute;
+width: 24px;
+height: 16px;
+left: calc(50% - 24px/2 + 1px);
+top: calc(50% - 16px/2 + 2px);
+
+background: linear-gradient(124.8deg, #FFE291 6.63%, #FF90B2 118.98%);
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Rectangle 34625275 */
+
+position: absolute;
+width: 22.15px;
+height: 9.41px;
+left: calc(50% - 22.15px/2 + 1px);
+top: calc(50% - 9.41px/2 - 1.29px);
+
+border: 0.6px solid #FE3D6C;
+
+
+/* Group 1410189566 */
+
+position: absolute;
+width: 12px;
+height: 13px;
+left: calc(50% - 12px/2 - 9px);
+top: calc(50% - 13px/2 - 8.5px);
+
+
+
+/* Rectangle 34625273 */
+
+position: absolute;
+width: 12px;
+height: 8px;
+left: 10px;
+top: 15px;
+
+background: #F9F9F9;
+border: 0.6px solid #FE3D6C;
+border-radius: 1px;
+
+
+/* Rectangle 34625274 */
+
+position: absolute;
+width: 6px;
+height: 5px;
+left: 13px;
+top: 10px;
+
+border: 0.6px solid #FE3D6C;
+
+
+/* Ellipse 725 */
+
+position: absolute;
+width: 2px;
+height: 2px;
+left: calc(50% - 2px/2 - 9px);
+top: calc(50% - 2px/2 - 6px);
+
+border: 0.6px solid #FE3D6C;
+
+
+/* Text Container */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: flex-start;
+padding: 0px;
+gap: 10px;
+
+width: 184px;
+height: 10px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 1;
+
+
+/* Title */
+
+width: 184px;
+height: 10px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 130%;
+/* or 18px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Description */
+
+display: none;
+width: 234px;
+height: 24px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 124%;
+/* or 15px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+color: #3F4353;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* NavBar Card */
+
+/* Auto layout */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 10px;
+gap: 16px;
+
+width: 270px;
+height: 70px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 11;
+flex-grow: 0;
+
+
+/* NavBar Icon */
+
+width: 50px;
+height: 50px;
+
+background: #FFFFFF;
+border-radius: 10px;
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+flex-grow: 0;
+
+
+/* Group 1410189591 */
+
+position: absolute;
+width: 34px;
+height: 28px;
+left: calc(50% - 34px/2);
+top: calc(50% - 28px/2);
+
+
+
+/* Ellipse 744 */
+
+position: absolute;
+width: 24px;
+height: 24px;
+left: calc(50% - 24px/2);
+top: calc(50% - 24px/2 + 2px);
+
+border: 0.6px solid #FE3D6C;
+border-radius: 250px;
+
+
+/* Vector 1153 */
+
+position: absolute;
+width: 12px;
+height: 12px;
+left: calc(50% - 12px/2 + 11px);
+top: calc(50% - 12px/2 + 7px);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Frame 1707483849 */
+
+position: absolute;
+width: 12px;
+height: 12px;
+left: calc(50% - 12px/2 - 11px);
+top: calc(50% - 12px/2 + 7px);
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+border-radius: 250px;
+
+
+/* Ellipse 712 */
+
+position: absolute;
+width: 4px;
+height: 4px;
+left: calc(50% - 4px/2);
+top: 3px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 250px;
+
+
+/* Rectangle 34625285 */
+
+position: absolute;
+width: 8px;
+height: 11px;
+left: calc(50% - 8px/2);
+top: 7px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+border-radius: 250px;
+
+
+/* Group 1410189590 */
+
+position: absolute;
+width: 16px;
+height: 10px;
+left: calc(50% - 16px/2);
+top: 11px;
+
+
+
+/* Vector */
+
+position: absolute;
+width: 16px;
+height: 8px;
+left: 17px;
+top: 11px;
+
+/* Gradient 2 */
+background: linear-gradient(301.67deg, #FFE291 20.21%, #FF90B2 80.92%);
+border: 0.6px solid #FE3D6C;
+
+
+/* Ellipse 742 */
+
+position: absolute;
+width: 3px;
+height: 3px;
+left: 28px;
+top: 18px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+
+
+/* Ellipse 743 */
+
+position: absolute;
+width: 3px;
+height: 3px;
+left: 19px;
+top: 18px;
+
+background: #FFFFFF;
+border: 0.6px solid #FE3D6C;
+
+
+/* Text Container */
+
+/* Auto layout */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: flex-start;
+padding: 0px;
+gap: 10px;
+
+width: 184px;
+height: 10px;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+flex-grow: 1;
+
+
+/* Title */
+
+width: 184px;
+height: 10px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 600;
+font-size: 14px;
+line-height: 130%;
+/* or 18px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+/* Radiant Blue */
+color: #111933;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+
+
+/* Description */
+
+display: none;
+width: 234px;
+height: 24px;
+
+font-family: 'Plus Jakarta Sans';
+font-style: normal;
+font-weight: 400;
+font-size: 12px;
+line-height: 124%;
+/* or 15px */
+/* leading-trim and text-edge are draft CSS properties.
+
+Read more: https://drafts.csswg.org/css-inline-3/#leading-trim
+*/
+leading-trim: both;
+text-edge: cap;
+display: flex;
+align-items: center;
+
+color: #3F4353;
+
+
+/* Inside auto layout */
+flex: none;
+order: 1;
+align-self: stretch;
+flex-grow: 0;

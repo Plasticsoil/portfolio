@@ -1,0 +1,4820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yam Livnat</title>
+  <!-- Social share preview — uses the Radiant project thumbnail -->
+  <meta property="og:title" content="Yam Livnat — Portfolio">
+  <meta property="og:description" content="Motion · Brand · Web · 3D">
+  <meta property="og:image" content="projects/radiant/assets/Project cover/Share.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Yam Livnat — Portfolio">
+  <meta name="twitter:description" content="Motion · Brand · Web · 3D">
+  <meta name="twitter:image" content="projects/radiant/assets/Project cover/Share.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400&family=Instrument+Serif&display=swap" rel="stylesheet">
+  <!-- model-viewer: renders .glb / .gltf in the browser -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+  <!-- Lottie player web component — enables <lottie-player src="..."> for case-study animations -->
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+
+  <style>
+
+    /* ══════════════════════════════════════════════════════
+       DESIGN TOKENS
+       All raw values are defined once here and referenced
+       via var() throughout. Changing a token updates the
+       whole file — no hunting for magic numbers.
+    ══════════════════════════════════════════════════════ */
+    :root {
+      /* ── Colors ─────────────────────────────────────── */
+      --color-bg:        #F8F6F3;   /* page background */
+      --color-surface:   #FBFAF9;   /* overlay / card surface */
+      --color-muted:     #A3A09B;   /* primary text in muted palette */
+      --color-muted-50:  rgba(163, 160, 155, 0.50); /* half-opacity muted */
+      --color-muted-15:  rgba(163, 160, 155, 0.15); /* border / light fill */
+      --color-ink:       #26251E;   /* near-black for emphasis */
+      --color-ink-muted: #68645E;   /* case study headings / title */
+      --color-white:     #FFFFFF;
+
+      /* ── Gradient ────────────────────────────────────── */
+      /* Pink → Yellow → Cyan accent used on nav glows, btn glows, smoke */
+      --gradient-accent: linear-gradient(90deg, #FF6EFD -0.24%, #F8FF7B 55.18%, #60FBFF 88.92%);
+
+      /* ── Fonts ───────────────────────────────────────── */
+      --font-serif: 'Instrument Serif', serif;
+      /* Nimbus Sans: add @font-face under /fonts when you have files; stack approximates Figma */
+      --font-sans:  'Nimbus Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+      /* ── Spacing scale ───────────────────────────────── */
+      --space-xs:   8px;
+      --space-sm:   16px;
+      --space-md:   24px;
+      --space-lg:   40px;
+      --space-xl:   80px;
+      --space-2xl:  120px;
+      --space-3xl:  180px;
+      --space-4xl:  240px;
+
+      /* ── Layout ──────────────────────────────────────── */
+      --content-width: 1200px;
+      --card-w:        400px;
+      --card-h:        480px;
+      --navbar-h:      60px;
+      --overlay-w:       1320px; /* max width; panel uses min() for narrow viewports */
+      --overlay-gallery-h: 600px; /* fixed shell height for gallery overlay (Figma “Project overlay”) */
+      /* Fixed gap: overlay top edge sits 60px below the navbar */
+      --overlay-gap-below-navbar: 60px;
+      --overlay-panel-top:        calc(var(--navbar-h) + var(--overlay-gap-below-navbar));
+      --overlay-foot-h:           91px; /* bottom gradient strip — title + tags */
+
+      /* ── Easing ──────────────────────────────────────── */
+      --ease-spring: cubic-bezier(0.34, 1.2, 0.64, 1); /* overshoot spring */
+      --dur-sm:      0.15s;
+      --dur-md:      0.35s;
+      --dur-lg:      0.45s;
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       RESET & BASE
+    ══════════════════════════════════════════════════════ */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      /* Hide the OS cursor globally — the custom #cursor div takes over */
+      cursor: none !important;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    html, body {
+      width: 100%;
+      background: var(--color-bg);
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       CURSOR
+       The #cursor div follows the mouse via JS transform.
+       mix-blend-mode: difference on the canvas smoke trail
+       means the colorful particles visually invert whatever
+       they overlap, creating a "burn-through" effect without
+       needing to know the background color at paint time.
+    ══════════════════════════════════════════════════════ */
+    #cursor {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 99999;
+      will-change: transform;
+      opacity: 0; /* hidden until first mousemove */
+    }
+
+    /* JS sets transform on this inner wrapper to shift the visual anchor
+       point between modes (see CURSOR SYSTEM). */
+    #cursor-inner {
+      display: block;
+    }
+
+
+    /* Plain paragraph tooltips (case-study QR): same type stack as default tooltip (Inter 16 / #26251E) + card + shadow */
+    #cursor-tooltip.cursor-tooltip--plain {
+      filter: drop-shadow(0 6px 24px rgba(38, 37, 30, 0.1));
+    }
+
+    #cursor-tooltip.cursor-tooltip--plain svg {
+      overflow: visible;
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       NAVBAR
+    ══════════════════════════════════════════════════════ */
+    .navbar {
+      width: 100%;
+      height: var(--navbar-h);
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 10000;
+    }
+
+    .navbar-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--lg, 40px);
+    }
+
+    /* ── Shared pill style for logo + nav links ──────── */
+    .nav-logo,
+    .nav-link {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      text-decoration: none;
+      padding: 6px 14px;
+      border-radius: 100px;
+      overflow: visible;
+      color: var(--color-muted);
+      transition: background var(--dur-sm) ease, color var(--dur-sm) ease;
+    }
+
+    /* Blurred gradient glow that fades in on hover */
+    .nav-logo::before,
+    .nav-link::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--gradient-accent);
+      filter: blur(11px);
+      border-radius: 100px;
+      opacity: 0;
+      transition: opacity var(--dur-sm) ease;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .nav-logo:hover,
+    .nav-link:hover,
+    .nav-link.proximity-hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #000;
+    }
+
+    .nav-logo:hover::before,
+    .nav-link:hover::before,
+    .nav-link.proximity-hover::before {
+      opacity: 1;
+    }
+
+    /* Slash separators are present in HTML for screen-reader
+       context but hidden visually */
+    .nav-link .slash,
+    .nav-logo .slash {
+      display: none;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 37px;
+    }
+
+    /* Navbar background changes when overlay is open */
+    body.overlay-open .navbar {
+      background: var(--color-surface);
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       HERO
+    ══════════════════════════════════════════════════════ */
+    .hero {
+      position: relative;
+      isolation: isolate;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Hero cards layer ──────────────────────────────
+       Houses the floating project cards around the hero.
+       Currently: single SHLTR model card in idle state.
+       Future: collection layout (not ellipse).
+    ──────────────────────────────────────────────────── */
+    .hero-cards {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Base card shell */
+    .ring-card {
+      position: absolute;
+      width: 266.67px;
+      height: 176.47px;
+      pointer-events: all;
+      overflow: visible;
+    }
+
+    /* Invisible hit target — model extends past card shell; keeps hover/tooltip reliable */
+    .ring-card-hit {
+      position: absolute;
+      left: calc(50% - 180px);
+      top: calc(50% - 230px);
+      width: 360px;
+      height: 460px;
+      z-index: 2;
+      pointer-events: auto;
+    }
+
+    /* Mask group — visible viewport, 232×248 per Figma.
+       Idle: opacity 0.34, crisp
+       Hover: opacity 1, blur(5px) — soft glow */
+    .ring-card-mask {
+      position: absolute;
+      width: 232px;
+      height: 248px;
+      left: 17px;
+      top: -36px;
+      overflow: visible;
+      pointer-events: none;
+      opacity: 0.34;
+      z-index: 0;
+      transition: opacity 0.35s ease, filter 0.35s ease;
+    }
+
+    /* Shared stage — scales both the model-viewer and the gradient canvas
+       together so they stay at identical size/position → perfect sync. */
+    .ring-card-stage {
+      position: absolute;
+      width: 232px;
+      height: 248px;
+      left: 0;
+      top: 0;
+      transform: scale(1.6);
+      transform-origin: 50% 50%;
+      pointer-events: none;
+    }
+
+    /* Model silhouette. One element, one rotation source, filter swaps on hover.
+       Idle  → CSS filter flattens all shading to solid grey.
+       Hover → SVG filter composites accent gradient inside the model's alpha. */
+    .ring-card-model {
+      position: absolute;
+      width: 232px;
+      height: 248px;
+      left: 0;
+      top: 0;
+      background-color: transparent !important;
+      border: none;
+      outline: none;
+      filter: contrast(0) brightness(1.28);
+      transition: filter 0.35s ease;
+      z-index: 0;
+    }
+
+    /* Hover — swap to gradient-tint filter, bump container opacity, add gentle blur */
+    .ring-card:hover .ring-card-mask {
+      opacity: 1;
+      filter: blur(3px);
+    }
+    .ring-card:hover .ring-card-model {
+      filter: url(#mv-gradient-tint);
+    }
+
+    /* Long-press (~3s) on hero hit area: show full lit model (no silhouette / gradient tint) */
+    .ring-card.ring-card--model-revealed .ring-card-mask {
+      opacity: 1;
+      filter: none;
+    }
+
+    .ring-card.ring-card--model-revealed:hover .ring-card-mask {
+      filter: blur(2px);
+    }
+
+    .ring-card.ring-card--model-revealed .ring-card-model,
+    .ring-card.ring-card--model-revealed:hover .ring-card-model {
+      filter: none;
+    }
+
+    .ring-card-model::part(default-ar-button)    { display: none; }
+    .ring-card-model::part(default-progress-bar) { display: none; }
+
+    /* Static-image variant of the ring-card visual (HERO_CONFIG.image).
+       Preserves aspect ratio inside the 232×248 stage and matches the
+       Figma silhouette rotation. The grey-silhouette + hover-gradient
+       filters applied to .ring-card-model above carry over unchanged. */
+    img.ring-card-model {
+      object-fit: contain;
+      /* Half the visual size of the static mascot relative to the model-viewer
+         baseline (Figma: 212.75×200 mascot inside the 232×248 mask, further
+         shrunk by 0.5 so it reads at the same scale as the SHLTR silhouette). */
+      transform: rotate(12.23deg) scale(0.5);
+      transform-origin: 50% 50%;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    /* Project name label — hidden idle, visible on hover (Figma Glow) */
+    .ring-tag {
+      position: absolute;
+      left: 10px;
+      top: -20.37px;
+      z-index: 3;
+      visibility: hidden;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .ring-card:hover .ring-tag {
+      visibility: visible;
+    }
+
+    /* Long-press reveal: full model, no mask blur — hide label too (was still showing via :hover) */
+    .ring-card.ring-card--model-revealed .ring-tag,
+    .ring-card.ring-card--model-revealed:hover .ring-tag {
+      visibility: hidden;
+      opacity: 0;
+    }
+
+    .ring-tag-slash {
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: 18px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      color: var(--color-muted-50);
+    }
+
+    .ring-tag-name {
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+    }
+
+    /* ── Hero text block — above cards visually; pointer-events:none so the SHLTR hit area isn’t a tiny sliver under the headline */
+    .hero-text {
+      position: relative;
+      z-index: 10;
+      isolation: isolate;
+      mix-blend-mode: normal;
+      width: min(782px, calc(100% - 80px));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 27px;
+      pointer-events: none;
+    }
+
+    .hero-headline {
+      width: 100%;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 88px;
+      line-height: 114px;
+      color: var(--color-muted);
+      text-box-trim: trim-both;
+      text-box-edge: cap alphabetic;
+      /* .hero-text has pointer-events:none so the SHLTR card can be hovered; letters must opt in */
+      pointer-events: auto;
+    }
+
+    .hero-labels {
+      width: 100%;
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 var(--space-md);
+    }
+
+    .hero-labels span {
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 24px;
+      line-height: 120%;
+      letter-spacing: -0.02em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       WORK / CARDS
+    ══════════════════════════════════════════════════════ */
+    .cards-section {
+      width: 100%;
+      background: var(--color-bg);
+      padding: var(--space-2xl) 0 var(--space-3xl);
+    }
+
+    .cards-inner {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-2xl);
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 220px;
+      box-sizing: border-box;
+    }
+
+    /* Each column holds the header (left only) + 4 cards */
+    .cards-col {
+      display: flex;
+      flex-direction: column;
+      gap: 200px;
+      width: var(--card-w);
+      flex-shrink: 0;
+    }
+
+    /* "/ my work" label sits in a fixed-height header slot
+       so both columns' first cards align horizontally */
+    .cards-col-header {
+      width: var(--card-w);
+      height: var(--space-2xl);
+      display: flex;
+      align-items: flex-start;
+      flex-shrink: 0;
+    }
+
+    .cards-col-label {
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 32px;
+      line-height: 120%;
+      letter-spacing: -0.02em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+      margin: 0;
+    }
+
+    /* Card outer wrapper (body + footer) */
+    .card-b {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-sm);
+      width: var(--card-w);
+      height: 508px; /* card-h (480) + gap (16) + footer (12) */
+      cursor: pointer;
+    }
+
+    .card-b-title,
+    .card-b-tag {
+      transition: color 0.15s ease;
+    }
+
+    .card-b:hover .card-b-title {
+      color: #5c5a56;
+    }
+
+    .card-b:hover .card-b-tag {
+      color: rgba(92, 90, 86, 0.88);
+    }
+
+    /* Card image area */
+    .card-b-body {
+      box-sizing: border-box;
+      width: var(--card-w);
+      height: var(--card-h);
+      background: var(--color-white);
+      border: none;
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    /* SHLTR work card: 3D turntable (Figma frame 467×607) */
+    .card-b.card-b--turntable {
+      width: 467px;
+      flex-shrink: 0;
+      align-self: center;
+      height: auto;
+    }
+
+    /* When the body wraps a thumbnail image with rounded corners, drop the white
+       card background so it doesn't peek out at the corners */
+    .card-b-body.card-b-body--thumb { background: transparent; }
+
+    .card-b-body.card-b-body--turntable {
+      width: 467px;
+      height: 607px;
+      background: #F8F6F3;
+    }
+
+    .card-b.card-b--turntable .card-b-footer {
+      width: 467px;
+    }
+
+    .card-turntable-model {
+      position: absolute;
+      z-index: 0;
+      width: 467px;
+      height: 607px;
+      left: calc(50% - 467px / 2 + 0.5px);
+      top: calc(50% - 607px / 2 - 18.5px);
+      display: block;
+      /* 150% zoom on the GLB only (logo overlay is a sibling, not scaled) */
+      transform: scale(1.5);
+      transform-origin: center center;
+    }
+
+    /* Vector logo — centered over the thumbnail (3D sits behind at z-index 0) */
+    .card-turntable-logo {
+      position: absolute;
+      z-index: 10;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(185px, 88%);
+      max-width: 100%;
+      height: auto;
+      max-height: 42%;
+      object-fit: contain;
+      object-position: center center;
+      pointer-events: none;
+      display: block;
+    }
+
+    /* Composite cover — tinted frame + background image + laser gradient + centered logo */
+    .card-b-body--composite {
+      background: #EAEEFB;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .card-cover-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .card-cover-logo {
+      position: absolute;
+      /* Figma: 223.03 × 29.01, centered horizontally, top 59.75px */
+      width: 223.03px;
+      height: 29.01px;
+      left: calc(50% - 223.03px / 2 - 0.48px);
+      top:  59.75px;
+      object-fit: contain;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Thumbnail image fills the card body */
+    .card-cover {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 16px;
+    }
+
+    /* Video thumbnail — scaled to card width (400px), proportional height ≈711px */
+    .card-thumbnail-video {
+      position: absolute;
+      width:  400px;
+      height: 711px;           /* 926 × (400/521) */
+      left:   0;
+      top:    calc(50% - 711px / 2 - 20px);
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+    }
+
+    /* Grain layer — sits between video and image overlay */
+    @keyframes grain-shift {
+      0%   { background-position:   0%   0%; }
+      10%  { background-position:  -5%  -10%; }
+      20%  { background-position: -15%   5%; }
+      30%  { background-position:   7%  -25%; }
+      40%  { background-position:  -5%  25%; }
+      50%  { background-position: -15%  10%; }
+      60%  { background-position:  15%   0%; }
+      70%  { background-position:   0%  15%; }
+      80%  { background-position:   3%  35%; }
+      90%  { background-position: -10%  10%; }
+      100% { background-position:   0%   0%; }
+    }
+
+    .card-grain {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.12;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+      animation: grain-shift 0.35s steps(1) infinite;
+    }
+
+    /* Image layer on top of video + grain */
+    .card-thumbnail-img {
+      position: absolute;
+      left: 50%;
+      top:  50%;
+      transform: translate(-50%, -50%);
+      display: block;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Footer: title left, tags right */
+    .card-b-footer {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 0 var(--space-xs);
+      gap: var(--space-sm);
+      width: var(--card-w);
+      height: 12px;
+      flex-shrink: 0;
+      box-sizing: border-box;
+    }
+
+    .card-b-title {
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: 18px;
+      line-height: 120%;
+      text-transform: capitalize;
+      color: var(--color-muted);
+      margin: 0;
+      flex-shrink: 0;
+    }
+
+    .card-b-tags {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-end;
+      gap: var(--space-md);
+    }
+
+    .card-b-tag {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: 18px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-muted-50);
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       PROJECT OVERLAY
+       A full-screen fixed layer that dims/blurs the page
+       and presents a centered panel with a scrolling gallery.
+    ══════════════════════════════════════════════════════ */
+    #project-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      display: none;
+      pointer-events: none;
+    }
+
+    #project-overlay.open {
+      display: block;
+      pointer-events: all;
+    }
+
+    /* Clicking the backdrop closes the overlay */
+    #overlay-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(248, 246, 243, 0);
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+      transition: background var(--dur-md) ease, backdrop-filter var(--dur-md) ease;
+    }
+
+    #project-overlay.open #overlay-backdrop {
+      background: rgba(248, 246, 243, 0.5);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* Panel: centered, max 1200px; background matches Figma #FBFAF9 */
+    #overlay-panel {
+      --overlay-panel-actual-w: min(var(--overlay-w), calc(100vw - 48px));
+      position: absolute;
+      width: var(--overlay-panel-actual-w);
+      left: calc(50% - var(--overlay-panel-actual-w) / 2);
+      top: var(--overlay-panel-top);
+      bottom: auto;
+      height: min(var(--overlay-gallery-h), calc(100vh - var(--overlay-panel-top) - 24px));
+      background: #FBFAF9;
+      overflow: hidden;
+      opacity: 0;
+      transform-origin: top center;
+      /* Spring easing gives a slight overshoot on open */
+      transform: scale(0.96) translateY(16px);
+      transition: opacity var(--dur-md) ease, transform var(--dur-md) var(--ease-spring);
+      pointer-events: all;
+    }
+
+    /* Case study: flexible height — fills to bottom of viewport; same chrome + footer strip */
+    #overlay-panel.overlay-panel--case {
+      display: flex;
+      flex-direction: column;
+      bottom: 0;
+      height: auto;
+      padding: 0;
+      background: #FBFAF9;
+      border-radius: 0;
+      transform-origin: top center;
+    }
+
+    #overlay-panel.overlay-panel--case .overlay-view--default {
+      display: none !important;
+    }
+
+    #overlay-panel:not(.overlay-panel--case) .overlay-view--case {
+      display: none !important;
+    }
+
+    .overlay-view--default {
+      position: absolute;
+      inset: 0;
+    }
+
+    .overlay-view--case {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      position: relative;
+    }
+
+    .overlay-case {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .overlay-case-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+      overscroll-behavior: contain;
+      /* Hide scrollbar (still scrollable): Firefox / IE / WebKit */
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      /* Figma content padding; extra right clears top-right controls */
+      padding: 120px 56px 100px 120px;
+      box-sizing: border-box;
+    }
+
+    .overlay-case-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .overlay-case-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 80px;
+    }
+
+    .overlay-case-img {
+      display: block;
+      object-fit: cover;
+      background: transparent;
+    }
+
+    video.overlay-case-img {
+      flex-shrink: 0;
+    }
+
+    .overlay-case-img--video {
+      width: auto;
+      height: auto;
+      max-height: 540px;
+      max-width: 100%;
+      object-fit: contain;
+    }
+
+    /* Outro video wrapper — hugs the video at its native aspect ratio,
+       capped at 540px tall (slightly less than the 600px scroll panel)
+       so nothing is cropped and no letterbox bars are ever visible. */
+    .overlay-case-video-wrap {
+      position: relative;
+      display: inline-block;
+      width: auto;
+      height: auto;
+      max-height: 540px;
+      max-width: 100%;
+      background: transparent;
+      flex-shrink: 0;
+      overflow: visible;
+      line-height: 0;
+    }
+    .overlay-case-video-wrap > .overlay-case-img--video {
+      display: block;
+      width: auto;
+      height: auto;
+      max-height: 540px;
+      max-width: 100%;
+      object-fit: contain;
+      border-radius: 16px;
+      background: transparent;
+    }
+
+    /* Controls stack: 32×72 top-right, column flex gap 8, two 32×32 icon buttons. */
+    .overlay-case-video-controls {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      width: 32px;
+      height: 72px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      z-index: 2;
+    }
+    .overlay-case-video-btn {
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+      background: none;
+      border: none;
+      color: #A3A09B;
+      cursor: none;
+      transition: color var(--dur-sm) ease;
+    }
+    .overlay-case-video-btn svg { display: block; flex-shrink: 0; }
+    .overlay-case-video-btn:hover { color: var(--color-ink-muted); }
+
+    /* Mute: swap SVGs via aria-pressed (true = muted). */
+    .overlay-case-video-btn[data-video-action="mute"] .icon-unmuted { display: none; }
+    .overlay-case-video-btn[data-video-action="mute"][aria-pressed="false"] .icon-muted   { display: none; }
+    .overlay-case-video-btn[data-video-action="mute"][aria-pressed="false"] .icon-unmuted { display: inline-block; }
+
+
+    /* Figma “Frame with Four Frames”: 960×680, gap 40, four 460×320 cells */
+    .overlay-case-grid4 {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-content: center;
+      align-items: center;
+      gap: 40px;
+      width: 100%;
+      max-width: 960px;
+      min-height: 680px;
+      margin: 0 auto;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    .overlay-case-tile {
+      position: relative;
+      flex: 0 0 auto;
+      width: 460px;
+      height: 320px;
+      background: #F4F1ED;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .overlay-case-tile model-viewer.overlay-case-qr-mv {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      /* User-driven: drag to rotate, scroll to zoom. No auto-rotate. */
+      pointer-events: auto;
+      cursor: grab;
+    }
+    .overlay-case-tile model-viewer.overlay-case-qr-mv:active { cursor: grabbing; }
+
+    /* Image variant — used when a grid4-3d tile has { img } instead of { glb }
+       (e.g. QR poster stickers). Fills the tile frame like the model-viewer does. */
+    .overlay-case-tile .overlay-case-qr-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* 3D-indicator badge — top-right corner of each case-study tile.
+       32×32 pill (rgba muted 20%) with cube glyph. Hover → "Interactive 3D Object"
+       tooltip. Tiny footprint — doesn't block dragging the model elsewhere. */
+    .overlay-case-tile-3d {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      /* pointer-events enabled so the tooltip fires; the 32×32 area still
+         leaves the rest of the 460×320 tile free for camera-control drag. */
+      pointer-events: auto;
+      cursor: help;
+    }
+    .overlay-case-tile-3d svg { display: block; }
+
+    .overlay-case-tile-tag {
+      position: absolute;
+      left: 20px;
+      top: 20px;
+      z-index: 2;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      font-family: var(--font-sans);
+      font-size: 18px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      color: rgba(104, 100, 94, 0.5);
+    }
+
+    .overlay-case-section {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 24px;
+      width: 100%;
+    }
+
+    /* Figma “About the Project” / two-column copy — Nimbus Sans 16 / 150% */
+    .overlay-case-subhead {
+      font-family: var(--font-sans);
+      font-style: normal;
+      font-weight: 400; /* override UA <h3> bold */
+      font-size: 16px;
+      line-height: 1.5;
+      letter-spacing: -0.02em;
+      text-transform: capitalize;
+      color: #68645E;
+      margin: 0;
+      max-width: 960px;
+      width: 100%;
+    }
+    .overlay-case-subhead-slash {
+      /* "/" prefix — same weight/size as title, no capitalize so it stays thin */
+      display: inline;
+    }
+
+    .overlay-case-cols {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 48px;
+      width: 100%;
+      max-width: 960px;
+    }
+
+    .overlay-case-col {
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 456px;
+      font-family: var(--font-sans);
+      font-style: normal;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 1.5;
+      letter-spacing: -0.02em;
+      color: #A3A09B;
+      margin: 0;
+    }
+
+    .overlay-case-section p.overlay-case-col {
+      margin: 0;
+    }
+
+    /* Figma “Frame with Inner Frames”: 960×440, row ~619px centered, 4× phone columns */
+    .overlay-case-inner-phones {
+      width: 100%;
+      max-width: 960px;
+      height: 440px;
+      margin: 0 auto;
+      background: #F4F1ED;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+
+    .overlay-case-inner-phones-row {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: center;
+      justify-content: center;
+      gap: 29px;
+    }
+
+    .overlay-case-inner-phone {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      width: 131.5px;
+      flex: 0 0 131.5px;
+    }
+
+    /* Figma QR tag: row, gap 2, padding 0 8, Nimbus Sans 18/120%/-0.01em, #A3A09B.
+       Number is capitalized (no effect on digits); "/" itself stays untransformed. */
+    .overlay-case-inner-phone-tag {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      padding: 0 8px;
+      width: 100%;
+      height: 12px;
+      box-sizing: border-box;
+      font-family: var(--font-sans);
+      font-size: 18px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: #A3A09B;
+    }
+    .overlay-case-inner-phone-slash {
+      text-transform: none;
+    }
+
+    .overlay-case-inner-phone-img {
+      width: 131.5px;
+      height: 263px;
+      object-fit: cover;
+      display: block;
+      flex-shrink: 0;
+      background: #fff;
+    }
+
+    .overlay-case-picture-all {
+      width: 100%;
+      max-width: 960px;
+      height: auto;
+      aspect-ratio: 960 / 540;
+      display: block;
+      object-fit: cover;
+      background: #F4F1ED;
+    }
+    /* Natural-proportion variant — honors the image's own aspect ratio */
+    .overlay-case-picture-all--natural {
+      aspect-ratio: auto;
+      object-fit: contain;
+      background: transparent;
+    }
+
+    /* ── Solution nav bar (Radiant) ──
+       Static SVG sits behind; absolutely-positioned lottie-players overlay
+       the icon slots. The wrapper enforces the SVG aspect ratio so
+       percentage positions stay accurate at every container width. */
+    .overlay-case-solnav {
+      position: relative;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      display: block;
+      /* aspect-ratio is set inline from viewBox to stay data-driven */
+    }
+    .overlay-case-solnav-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      pointer-events: none;
+    }
+    .overlay-case-solnav-icon {
+      position: absolute;
+      transform: translate(-50%, -50%);   /* (left,top) is the icon center */
+      aspect-ratio: 1;                    /* keeps the slot square as it scales */
+      pointer-events: none;
+      /* Cover the static SVG icon underneath: the SVG icon slot is a white
+         33.33×33.33 rounded square (rx 6.667 → 20% radius). Painting the
+         overlay with the same white square hides the baked-in illustration
+         so only the lottie animation is visible. */
+      background: #FFFFFF;
+      border-radius: 20%;
+      overflow: hidden;
+    }
+    .overlay-case-solnav-icon lottie-player {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    /* Interactive hover hit-zones layered above the SVG (top nav buttons +
+       dropdown cells). Transparent by default; on hover, paint the brand
+       pink-tint gradient with 10px radius — matches the live radiantsecurity.ai
+       hover treatment. Sits below the icon overlays so the lottie still shows
+       through (icons are pointer-events:none, hits are pointer-events:auto). */
+    .overlay-case-solnav-hit {
+      position: absolute;
+      background: transparent;
+      border-radius: 10px;
+      pointer-events: auto;
+      cursor: pointer;
+      transition: background 160ms ease;
+    }
+    .overlay-case-solnav-hit:hover {
+      background: linear-gradient(102.87deg, rgba(234, 238, 251, 0) -108.49%, rgba(253, 112, 159, 0.2) 118.17%);
+    }
+
+    /* ── Icon library (Radiant) — single-row infinite carousel with edge fade.
+       The track duplicates its children and animates translateX from 0 to -50%
+       so the wrap point is invisible. The mask-image fades the left/right edges
+       of the visible viewport to transparent. Hovering pauses the marquee. */
+    .overlay-case-icon-library {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      overflow: hidden;
+      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%);
+              mask-image: linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%);
+    }
+    .overlay-case-icon-library-track {
+      display: flex;
+      flex-direction: row;
+      gap: 30px;
+      width: max-content;
+      animation: overlay-case-icon-library-scroll linear infinite;
+    }
+    .overlay-case-icon-library:hover .overlay-case-icon-library-track {
+      animation-play-state: paused;
+    }
+    @keyframes overlay-case-icon-library-scroll {
+      from { transform: translateX(0); }
+      /* -50% works because the track contains two identical copies of the
+         icon list, so when one set scrolls fully off-left the second is in
+         the same position the first started — visually seamless. */
+      to   { transform: translateX(calc(-50% - 15px)); }
+    }
+    .overlay-case-icon-library-tile {
+      width: 80px;
+      height: 80px;
+      background: #FFFFFF;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex: 0 0 auto;
+    }
+    .overlay-case-icon-library-tile lottie-player {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ── Globe (V4): case-study blocks ───────────────────────────
+       All blocks stay 960-wide to match the rest of the case study.
+       Videos autoplay muted loops; imagery is lazy-loaded. */
+
+    /* 2×2 video grid — 460×320 tiles, 40px gap. Sizes match Figma. */
+    .overlay-case-grid2x2 {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 40px;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .overlay-case-grid2x2-vid {
+      width: calc((100% - 40px) / 2);
+      aspect-ratio: 460 / 320;
+      object-fit: cover;
+      display: block;
+      background: #F4F1ED;
+    }
+
+    /* Full-width wide video (960×440) — no controls, just a looping clip. */
+    .overlay-case-wide-vid {
+      width: 100%;
+      max-width: 960px;
+      aspect-ratio: 960 / 440;
+      object-fit: cover;
+      display: block;
+      margin: 0 auto;
+      background: #F4F1ED;
+    }
+
+    /* Two-up subheading layout: two 456-wide columns each with its own
+       subheading above a short paragraph. Used after the wide videos. */
+    .overlay-case-subcols {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 48px;
+      width: 100%;
+      max-width: 960px;
+    }
+    .overlay-case-subcol {
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 456px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* 2-image row — two 460×320 tiles side-by-side. */
+    .overlay-case-grid2 {
+      display: flex;
+      flex-direction: row;
+      gap: 40px;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .overlay-case-grid2-img {
+      width: calc((100% - 40px) / 2);
+      aspect-ratio: 460 / 320;
+      object-fit: cover;
+      display: block;
+      background: #F4F1ED;
+    }
+
+    /* ── Globe code: scroll-driven sticky frame ──
+       Outer section is a 250vh runway. Inside, a sticky 100vh stage
+       centers an inner box whose width/height interpolate between the
+       regular 960-block size and full viewport based on scroll progress
+       (set as --p from 0 → 1 → 0 by JS). Page scroll is never hijacked —
+       the block just visually grows, fills, then shrinks as the visitor
+       keeps scrolling. The iframe inside is non-interactive during the
+       scale phases; a click-to-interact affordance can be added later. */
+    .overlay-case-globe-scroll {
+      position: relative;
+      width: 100%;
+      height: 250vh;
+      /* Sticky child needs a containing block taller than the viewport. */
+    }
+    .overlay-case-globe-stage {
+      position: sticky;
+      top: 0;
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .overlay-case-globe-inner {
+      /* --p drives the scale: 0 = base (960×552.7), 1 = viewport. */
+      --p: 0;
+      width: calc(960px + (100vw - 960px) * var(--p));
+      height: calc(552.7px + (100vh - 552.7px) * var(--p));
+      max-width: 100vw;
+      max-height: 100vh;
+      background: #FBFAF9;
+      display: block;
+      position: relative;
+      overflow: hidden;
+      transition: none;
+    }
+    /* The iframe always renders at full desktop viewport size (100vw × 100vh)
+       so the page inside doesn't reflow responsively when the outer box is
+       smaller. A uniform transform:scale() shrinks it visually to fit.
+       Scale factor = current_inner_width / 100vw.
+       At p=0 (base 960 wide) the page renders as if on a desktop monitor,
+       just scaled down. At p=1 it's 1:1, matching the real viewport. */
+    .overlay-case-globe-frame {
+      width: 100vw;
+      height: 100vh;
+      border: 0;
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: top left;
+      transform: scale(calc((960px + (100vw - 960px) * var(--p)) / 100vw));
+      /* Pointer events disabled so the iframe doesn't trap wheel/scroll
+         while the user is reading the case study. A future "interact"
+         mode will toggle this back on. */
+      pointer-events: none;
+    }
+
+    /* Figma “Horizontal Frame with Images”: four scene clips 225×400, gap 20 */
+    .overlay-case-scene-videos {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      align-items: stretch;
+      gap: 20px;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .overlay-case-scene-vid {
+      width: calc((100% - 60px) / 4);
+      min-width: 0;
+      height: 400px;
+      object-fit: cover;
+      display: block;
+      background: #F4F1ED;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 900px) {
+      .overlay-case-scene-videos {
+        flex-wrap: wrap;
+      }
+      .overlay-case-scene-vid {
+        width: calc((100% - 20px) / 2);
+      }
+    }
+
+    @media (max-width: 520px) {
+      .overlay-case-scene-vid {
+        width: 100%;
+      }
+    }
+
+    /* Sketch + Logo evolution — space-between, gap 12 */
+    .overlay-case-sketch-logo {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      box-sizing: border-box;
+    }
+
+    .overlay-case-sketch-wrap {
+      position: relative;
+      flex: 0 0 auto;
+      background: #F4F1ED;
+      max-width: 502px;
+      max-height: 525px;
+    }
+
+    .overlay-case-sketch-wrap .overlay-case-tile-tag {
+      color: rgba(104, 100, 94, 0.5);
+    }
+
+    .overlay-case-sketch-img {
+      display: block;
+      width: 100%;
+      max-width: 502px;
+      height: auto;
+      max-height: 525px;
+      object-fit: contain;
+    }
+
+    .overlay-case-logo-evo {
+      width: 217px;
+      height: 330px;
+      max-width: 100%;
+      object-fit: cover;
+      display: block;
+      flex-shrink: 0;
+      background: transparent;
+    }
+
+    /* Case-study top title ("SHLTR") — Instrument Serif 88px #A3A09B */
+    .overlay-case-title {
+      align-self: center;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 88px;
+      line-height: 114px;
+      letter-spacing: 0;
+      text-transform: capitalize;
+      color: #A3A09B;
+      text-align: center;
+    }
+
+    /* ── Lottie blocks ─────────────────────────────────
+       lottie-single  → full-width framed animation (like outro-video but lottie)
+       grid4-lottie   → reuses .overlay-case-grid4 layout; tiles embed Lottie
+       lottie-strip   → horizontal row of small Lottie icons (nav icons etc.)
+    ─────────────────────────────────────────────────── */
+    /* Per-block variants for the framed lottie container.
+       Default = beige (#F4F1ED); set b.variant: 'white' | 'transparent' in project.js */
+    /* Note: Executable Response Plans uses --white but the animation sits on a
+       pale blue-gray (#F3F4FA) — match the outer frame to that for a seamless look. */
+    .overlay-case-lottie-single-frame--white       { background: #F3F4FA !important; }
+    .overlay-case-lottie-single-frame--transparent { background: transparent !important; }
+    /* `small: true` on lottie-single — shrink the inner lottie to ~50% of default
+       (used for Executable Response Plans) */
+    .overlay-case-lottie-single-frame--small lottie-player {
+      max-width: 450px;
+      max-height: 260px;
+    }
+
+    /* Framed variant of grid4-lottie — wraps each lottie in an inner EAEEFB
+       345×230 frame (matches Figma SOC pain-point tiles). Tile bg becomes white. */
+    .overlay-case-grid4--framed .overlay-case-tile {
+      background: #FFFFFF !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay-case-grid4--framed .overlay-case-tile-frame {
+      position: relative;       /* anchor for the inner lottie */
+      width: 345px;
+      height: 230px;
+      background: #EAEEFB;
+      border-radius: 11.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    /* Lottie fills the inner 345×230 frame completely (the lottie player
+       preserves its own aspect ratio internally). Override the global
+       `position: absolute; inset: 0` so the lottie is laid out by the
+       frame's flex centering instead of being yanked to the tile's top-left. */
+    .overlay-case-grid4--framed .overlay-case-tile-frame lottie-player.overlay-case-lottie-tile {
+      position: static;
+      inset: auto;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+    }
+
+    /* ── Panel-cards block (Why Radiant) ──
+       960×736 EAEEFB panel with centered title + subtitle + 2×2 white cards. */
+    .overlay-case-panel-cards {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      background: #EAEEFB;
+      padding: 80px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 53.33px;
+      border-radius: 16px;
+    }
+    .overlay-case-panel-cards-head {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      text-align: center;
+    }
+    .overlay-case-panel-cards-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+      font-size: 40px;
+      line-height: 110%;
+      letter-spacing: -0.02em;
+      color: #111933;
+      margin: 0;
+    }
+    .overlay-case-panel-cards-sub {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 400;
+      font-size: 14px;
+      line-height: 140%;
+      color: #111933;
+      margin: 0;
+    }
+    .overlay-case-panel-cards-grid {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .overlay-case-panel-card {
+      flex: 0 0 calc(50% - 8px);
+      min-height: 213.33px;
+      background: #FFFFFF;
+      border-radius: 13.18px;
+      padding: 24px 32px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10.67px;
+    }
+    .overlay-case-panel-card-icon {
+      width: 53.33px;
+      height: 53.33px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay-case-panel-card-icon lottie-player {
+      width: 100%;
+      height: 100%;
+    }
+    .overlay-case-panel-card-spacer { flex: 1 0 0; min-height: 8px; }
+    .overlay-case-panel-card-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+      font-size: 18px;
+      line-height: 120%;
+      color: #111933;
+      margin: 0;
+    }
+    .overlay-case-panel-card-desc {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 400;
+      font-size: 13px;
+      line-height: 140%;
+      color: #111933;
+      margin: 0;
+    }
+
+    .overlay-case-lottie-single-frame {
+      width: 100%;
+      max-width: 100%;
+      background: #F4F1ED;
+      border-radius: 2px;
+      padding: 40px;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 320px;
+    }
+    .overlay-case-lottie-single-frame lottie-player {
+      width: 100%;
+      max-width: 900px;
+      height: auto;
+      max-height: 520px;
+    }
+
+    /* Tile-embedded Lottie (inside .overlay-case-tile — shares grid4 frame) */
+    .overlay-case-tile lottie-player.overlay-case-lottie-tile {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    /* No frame background for Lottie tiles — the animation carries its own look */
+    .overlay-case-tile:has(lottie-player.overlay-case-lottie-tile) {
+      background: transparent;
+    }
+
+    /* Optional caption under a grid4 tile (used by grid4-lottie with captions) */
+    .overlay-case-tile-caption {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -44px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 140%;
+      color: #68645E;
+      text-align: left;
+      padding: 0 4px;
+    }
+    .overlay-case-grid4--captioned {
+      margin-bottom: 48px; /* room for captions hanging below tiles */
+    }
+
+    /* Lottie strip — N icons in a flexible row, wraps on narrow widths */
+    .overlay-case-lottie-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+      gap: 24px;
+      padding: 32px;
+      background: #F4F1ED;
+      border-radius: 2px;
+    }
+    .overlay-case-lottie-strip lottie-player {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      display: block;
+    }
+
+    /* Feature-row Lottie — alternating "Main Container" cards (Lottie + text) */
+    .overlay-case-feature-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .overlay-case-feature-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      align-items: center;
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 1px 2px rgba(17, 25, 51, 0.04);
+    }
+    .overlay-case-feature-row--reverse .overlay-case-feature-row-media {
+      order: 2;
+    }
+    .overlay-case-feature-row--reverse .overlay-case-feature-row-text {
+      order: 1;
+    }
+    .overlay-case-feature-row-media {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      background: #F3F4FA;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay-case-feature-row-media lottie-player {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .overlay-case-feature-row-title {
+      margin: 0 0 12px 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+      font-size: 24px;
+      line-height: 1.3;
+      color: #111933;
+    }
+    .overlay-case-feature-row-desc {
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 400;
+      font-size: 14px;
+      line-height: 1.55;
+      color: #68645E;
+    }
+    @media (max-width: 720px) {
+      .overlay-case-feature-row {
+        grid-template-columns: 1fr;
+      }
+      .overlay-case-feature-row--reverse .overlay-case-feature-row-media,
+      .overlay-case-feature-row--reverse .overlay-case-feature-row-text {
+        order: initial;
+      }
+    }
+
+    /* "Back to top" button — same type as title, hover darkens + clickable */
+    .overlay-case-back-to-top {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      align-self: center;
+      margin: 0 auto;
+      padding: 80px 0;
+      background: transparent;
+      border: none;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 88px;
+      line-height: 114px;
+      letter-spacing: 0;
+      text-transform: capitalize;
+      color: #A3A09B;
+      text-align: center;
+      transition: color var(--dur-sm) ease;
+    }
+    .overlay-case-back-to-top:hover { color: #68645E; }
+
+    /* Closing “Video of project” — 337×600, centered */
+    .overlay-case-section.overlay-case-outro-video {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      align-self: stretch;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .overlay-case-footer {
+      flex-shrink: 0;
+      width: 100%;
+      height: var(--overlay-foot-h);
+      box-sizing: border-box;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-start;
+      gap: 40px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #FFFFFF 100%);
+      pointer-events: none;
+    }
+
+    .overlay-case-footer-inner {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-end;
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
+      gap: 20px;
+    }
+
+    .overlay-case-name {
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-ink-muted);
+    }
+
+    .overlay-case-tags {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .overlay-case-tag {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+    }
+
+    .overlay-case-tag-slash {
+      color: var(--color-muted);
+    }
+
+    #project-overlay.open #overlay-panel {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+
+    /* ── Exit + Share — thin stroke, #A3A09B; Exit = boxed X + label; Share = icon under icon column ─ */
+    /* ══════════════════════════════════════════════════════
+       SHARE MODAL
+       Styled with the site's tokens — bg #FBFAF9, ink #26251E,
+       muted #A3A09B, Instrument Serif title, Nimbus italic labels.
+    ══════════════════════════════════════════════════════ */
+    /* ──────────────────────────────────────────────────────
+       VIDEO FULLSCREEN POPUP
+       Fills everything below the navbar with --color-bg,
+       shows the video large (with X to close). The navbar
+       stays visible and active on top.
+    ────────────────────────────────────────────────────── */
+    .video-fs-modal {
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: var(--navbar-h);
+      bottom: 0;
+      background: var(--color-bg);
+      z-index: 9600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity var(--dur-lg) ease;
+    }
+    .video-fs-modal[hidden] { display: none; }
+    .video-fs-modal.open { opacity: 1; }
+
+    .video-fs-modal-video {
+      display: block;
+      max-width: calc(100vw - 80px);
+      max-height: calc(100vh - var(--navbar-h) - 80px);
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      background: transparent;
+    }
+
+    .video-fs-modal-controls {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .video-fs-modal-close,
+    .video-fs-modal-mute {
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: #A3A09B;
+      padding: 0;
+      transition: color var(--dur-sm) ease;
+    }
+    .video-fs-modal-close:hover,
+    .video-fs-modal-mute:hover { color: #26251E; }
+    .video-fs-modal-close svg,
+    .video-fs-modal-mute svg { width: 32px; height: 32px; }
+    .video-fs-modal-mute .icon-unmuted { display: none; }
+    .video-fs-modal-mute[aria-pressed="false"] .icon-muted   { display: none; }
+    .video-fs-modal-mute[aria-pressed="false"] .icon-unmuted { display: inline-block; }
+
+    .share-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 9500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .share-modal[hidden] { display: none; }
+
+    .share-modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(38, 37, 30, 0.32);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity: 0;
+      transition: opacity var(--dur-lg) ease;
+    }
+    .share-modal.open .share-modal-backdrop { opacity: 1; }
+
+    .share-modal-panel {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      width: 720px;
+      max-width: calc(100vw - 40px);
+      height: 440px;
+      background: #FBFAF9;
+      box-shadow: 0 24px 80px rgba(38, 37, 30, 0.18);
+      transform: translateY(12px);
+      opacity: 0;
+      transition: opacity var(--dur-lg) ease, transform var(--dur-lg) ease;
+      overflow: hidden;
+    }
+    .share-modal.open .share-modal-panel {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .share-modal-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+      background: none;
+      border: none;
+      color: #A3A09B;
+      cursor: none;
+      z-index: 2;
+      transition: color var(--dur-sm) ease;
+    }
+    .share-modal-close:hover { color: var(--color-ink-muted); }
+    .share-modal-close:hover svg path { stroke: var(--color-ink-muted); }
+
+    /* Left column — thumbnail (video poster or image) */
+    .share-modal-thumb {
+      position: relative;
+      flex: 0 0 300px;
+      width: 300px;
+      height: 100%;
+      background: #F4F1ED;
+      overflow: hidden;
+    }
+    .share-modal-thumb-video,
+    .share-modal-thumb-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    /* Video: contain (preserve framing, beige letterbox if ratios mismatch). */
+    .share-modal-thumb-video { object-fit: contain; }
+    /* Image: cover (fill the column edge-to-edge — no beige showing). */
+    .share-modal-thumb-img   { object-fit: cover; }
+    .share-modal-thumb-fallback {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 100%),
+        linear-gradient(135deg, #EDE9E3 0%, #F4F1ED 100%);
+    }
+
+    /* Right column — content */
+    .share-modal-content {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      padding: 40px;
+      gap: 20px;
+      min-width: 0;
+    }
+    .share-modal-eyebrow {
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 14px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      color: #A3A09B;
+    }
+    .share-modal-title {
+      margin: 0;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 48px;
+      line-height: 100%;
+      letter-spacing: -0.01em;
+      color: #26251E;
+    }
+
+    /* Copy-link field */
+    .share-modal-link {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      width: 100%;
+      border: 1px solid rgba(163, 160, 155, 0.35);
+      background: #F8F6F3;
+      margin-top: 8px;
+    }
+    .share-modal-url {
+      flex: 1 1 auto;
+      min-width: 0;
+      border: none;
+      outline: none;
+      background: transparent;
+      padding: 0 14px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      color: #68645E;
+      height: 40px;
+    }
+    .share-modal-copy {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 14px;
+      height: 40px;
+      background: transparent;
+      border: none;
+      border-left: 1px solid rgba(163, 160, 155, 0.35);
+      color: #A3A09B;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-size: 14px;
+      letter-spacing: -0.01em;
+      cursor: none;
+      transition: color var(--dur-sm) ease, background var(--dur-sm) ease;
+    }
+    .share-modal-copy:hover { color: var(--color-ink-muted); background: #F4F1ED; }
+    .share-modal-copy .icon-check  { display: none; }
+    .share-modal-copy.copied .icon-copy  { display: none; }
+    .share-modal-copy.copied .icon-check { display: inline-block; }
+    .share-modal-copy.copied             { color: #26251E; }
+
+    /* Platform row */
+    .share-modal-platforms {
+      display: flex;
+      flex-direction: row;
+      gap: 10px;
+      margin-top: auto;
+    }
+    .share-platform {
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(163, 160, 155, 0.35);
+      background: transparent;
+      color: #A3A09B;
+      cursor: none;
+      transition: color var(--dur-sm) ease, border-color var(--dur-sm) ease, background var(--dur-sm) ease;
+    }
+    .share-platform:hover {
+      color: #26251E;
+      border-color: #26251E;
+      background: #F4F1ED;
+    }
+
+    /* Figma: share stack — 32×88, right:10 top:10, column gap 24.
+       Two 32×32 icon-only buttons (Exit + Share). */
+    .overlay-actions {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      z-index: 30;
+      width: 32px;
+      height: 88px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 24px;
+      pointer-events: none;
+    }
+
+    .overlay-close,
+    .overlay-share {
+      pointer-events: all;
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      width: 32px;
+      height: 32px;
+      margin: 0;
+      padding: 0;
+      background: none;
+      border: none;
+      color: #A3A09B;
+      cursor: none;
+      transition: color var(--dur-sm) ease;
+    }
+
+    .overlay-close svg,
+    .overlay-share svg {
+      display: block;
+      flex-shrink: 0;
+    }
+
+    /* Hover: tighten to ink-muted */
+    .overlay-close:hover,
+    .overlay-share:hover {
+      color: var(--color-ink-muted);
+    }
+    .overlay-close:hover svg path,
+    .overlay-share:hover svg path {
+      stroke: var(--color-ink-muted);
+    }
+
+    /* ── Gallery columns inside the overlay ────────────
+       Two absolutely-positioned columns scroll upward
+       continuously via JS (INIT_LEFT / INIT_RIGHT set their
+       starting vertical offsets so they appear mid-scroll
+       on open rather than starting from the top).
+       SET_H is the total pixel height of one "set" of images;
+       when an offset exceeds SET_H it wraps back by SET_H,
+       creating seamless infinite scroll.
+    ──────────────────────────────────────────────────── */
+    .overlay-body {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .card-gallery-left,
+    .card-gallery-right {
+      position: absolute;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xl);
+      will-change: transform;
+      user-select: none;
+    }
+
+    .card-gallery-left  { left: var(--space-xl);  width: 561px; }
+    .card-gallery-right { right: var(--space-xl); width: var(--card-w); }
+
+    /* Placeholder block — muted fill while no real image exists */
+    .card-ph {
+      flex-shrink: 0;
+      background: rgba(163, 160, 155, 0.10);
+      border: 1px solid var(--color-muted-15);
+      border-radius: var(--space-xs);
+    }
+
+    /* ── Gallery overlay: flexible description + fixed 91px foot (Figma Frame 402 / 412) ─ */
+    .card-overlay-desc {
+      position: absolute;
+      left: 40px;
+      right: 40px;
+      bottom: var(--overlay-foot-h);
+      max-width: 1120px;
+      width: auto;
+      margin: 0 auto;
+      padding-bottom: 20px;
+      box-sizing: border-box;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 135%;
+      letter-spacing: -0.01em;
+      color: var(--color-muted);
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+      pointer-events: none;
+    }
+
+    .card-overlay-desc .desc-col {
+      flex-shrink: 0;
+      min-width: 0;
+    }
+
+    .card-overlay-foot {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: var(--overlay-foot-h);
+      box-sizing: border-box;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: stretch;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #FFFFFF 100%);
+      pointer-events: none;
+    }
+
+    .card-overlay-foot-inner {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 20px;
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
+      min-height: 11px;
+    }
+
+    /* Project title — Figma “SHLTR” */
+    .card-overlay-name {
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-ink-muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin: 0;
+    }
+
+    .card-overlay-tags {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .card-tag {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+    }
+
+    .card-tag-slash {
+      color: var(--color-muted);
+    }
+
+    /* Small decorative square in top-right of overlay cards */
+    .card-corner-icon {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 12px;
+      height: 12px;
+      border: 1px solid rgba(163, 160, 155, 0.4);
+      pointer-events: none;
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       CONTACT
+    ══════════════════════════════════════════════════════ */
+    .contact-section {
+      width: 100%;
+      min-height: 886px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: var(--space-4xl) var(--space-2xl) var(--space-2xl);
+      gap: 100px;
+      box-sizing: border-box;
+      background: var(--color-bg);
+    }
+
+    /* Top row: About column (left) + More to Explore column (right) */
+    .contact-top-row {
+      width: 100%;
+      max-width: var(--content-width);
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .contact-col-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: flex-start;
+      gap: var(--space-md);
+      flex: 1;
+    }
+
+    .contact-col-right {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-end;
+      gap: 21px;
+      flex: 1;
+    }
+
+    .contact-col-right .contact-btn-row {
+      justify-content: flex-end;
+    }
+
+    /* "About" large heading */
+    .contact-about-heading {
+      margin: 0;
+      height: 63px;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 88px;
+      line-height: 64px;
+      overflow: visible;
+      color: var(--color-muted);
+    }
+
+    .contact-bio {
+      max-width: 500px;
+      margin: 0;
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 150%;
+      letter-spacing: -0.02em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+    }
+
+    .contact-btn-row {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    /* "More to Explore" italic label */
+    .contact-more-label {
+      margin: 0;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 32px;
+      line-height: 120%;
+      text-align: right;
+      letter-spacing: -0.02em;
+      color: var(--color-muted);
+      align-self: stretch;
+    }
+
+    /* Center CTA: "Get in touch" */
+    .contact-bottom {
+      width: 434px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .contact-heading {
+      margin: 0;
+      height: 63px;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 88px;
+      line-height: 64px;
+      text-align: center;
+      color: var(--color-muted);
+      overflow: visible;
+      align-self: stretch;
+    }
+
+    .contact-tagline {
+      margin: 0;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 24px;
+      line-height: 120%;
+      text-align: center;
+      letter-spacing: -0.02em;
+      color: var(--color-muted);
+    }
+
+    .contact-rule {
+      width: 100%;
+      border: none;
+      border-top: 1px solid rgba(163, 160, 155, 0.10);
+      margin: 0;
+      align-self: stretch;
+    }
+
+    /* Pill-style link button used throughout the contact section */
+    .contact-btn {
+      position: relative;
+      isolation: isolate;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 14px;
+      margin: -6px -14px;
+      border-radius: 100px;
+      text-decoration: none;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+      white-space: nowrap;
+      transition: background var(--dur-sm) ease, color var(--dur-sm) ease;
+      overflow: visible;
+    }
+
+    .contact-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 100px;
+      background: var(--gradient-accent);
+      filter: blur(11px);
+      opacity: 0;
+      transition: opacity var(--dur-sm) ease;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .contact-btn:hover,
+    .contact-btn.proximity-hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: var(--color-ink);
+    }
+
+    .contact-btn:hover::before,
+    .contact-btn.proximity-hover::before {
+      opacity: 1;
+    }
+
+    .btn-slash {
+      opacity: 0.4;
+    }
+
+    .btn-label {
+      color: var(--color-muted);
+    }
+
+    .contact-btn:hover .btn-label,
+    .contact-btn:hover .btn-slash,
+    .contact-btn.proximity-hover .btn-label,
+    .contact-btn.proximity-hover .btn-slash {
+      color: var(--color-ink);
+      opacity: 1;
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       ANIMATIONS & UTILITIES
+    ══════════════════════════════════════════════════════ */
+
+    /* ── Letter bounce animation ────────────────────────
+       Each letter span gets this keyframe on mouseenter.
+       The multi-stop ease mimics a real bounce (rises fast,
+       over-shoots, settles with diminishing oscillations).
+    ──────────────────────────────────────────────────── */
+    @keyframes letter-float {
+      0%   { transform: translateY(0); }
+      28%  { transform: translateY(-24px); }
+      50%  { transform: translateY(-4px); }
+      67%  { transform: translateY(-14px); }
+      82%  { transform: translateY(-2px); }
+      93%  { transform: translateY(-7px); }
+      100% { transform: translateY(0); }
+    }
+
+    /* Individual letter wrapping spans */
+    .hero-headline .letter,
+    .contact-heading .letter,
+    .contact-about-heading .letter,
+    .contact-more-label .letter {
+      display: inline-block;
+    }
+
+    /* Space characters stay inline so the browser handles
+       word-break points naturally */
+    .hero-headline .letter-space,
+    .contact-heading .letter-space,
+    .contact-about-heading .letter-space,
+    .contact-more-label .letter-space {
+      display: inline;
+    }
+
+    .hero-headline .letter.bouncing,
+    .contact-heading .letter.bouncing,
+    .contact-about-heading .letter.bouncing,
+    .contact-more-label .letter.bouncing {
+      animation: letter-float 0.9s ease-in-out forwards;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════════
+       SVG FILTERS — reusable effects
+       ══════════════════════════════════════════════════════
+       #mv-gradient-tint
+       Takes the SourceAlpha of whatever element this filter is applied to
+       (e.g. a rotating <model-viewer>) and composites the accent gradient
+       image inside that silhouette via feComposite operator="in".
+
+       Result: the element's exact shape, painted with the pink→yellow→cyan
+       accent gradient. No per-frame JS, no canvas, works on WebGL output.
+       Uses objectBoundingBox units so it scales to ANY element size —
+       apply `filter: url(#mv-gradient-tint)` to any element and it just works.
+
+       ──────────────────────────────────────────────────
+       REUSABLE 3D-CARD PATTERN (see SHLTR hero card below)
+       Structure:
+         .ring-card                ← positioning + hover target
+           .ring-card-hit          ← invisible pointer area
+           .ring-card-mask         ← idle opacity 0.34, gains blur on hover
+             .ring-card-stage      ← transform: scale() wrapper
+               <model-viewer>      ← GLB; grey filter idle, gradient on hover
+           .ring-tag               ← "/name" label, appears on hover
+       JS: a single frame clock calls mv.resetTurntableRotation(θ) for
+       continuous turntable spin. One clock can drive many cards — query
+       all .ring-card-model elements. -->
+  <svg xmlns="http://www.w3.org/2000/svg"
+       style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+    <defs>
+      <filter id="mv-gradient-tint"
+              x="0" y="0" width="1" height="1"
+              filterUnits="objectBoundingBox"
+              primitiveUnits="objectBoundingBox">
+        <feImage x="0" y="0" width="1" height="1" preserveAspectRatio="none"
+                 result="grad"
+                 href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' preserveAspectRatio='none'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0.1' stop-color='%2360FBFF'/><stop offset='0.5' stop-color='%23F8FF7B'/><stop offset='0.9' stop-color='%23FF6EFD'/></linearGradient></defs><rect width='100' height='100' fill='url(%23g)'/></svg>"/>
+        <feComposite in="grad" in2="SourceAlpha" operator="in"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- ══════════════════════════════════════════════════
+       CURSOR
+       Three visual states managed by JS:
+         idle     → brackets + × cross (pointer arrow replacement)
+         canPress → brackets + filled dot (hovering a clickable element)
+         tooltip  → dot + text (optional right caret if data-cursor-tooltip-arrow; hero ring-card only)
+       mix-blend-mode is set on the canvas smoke trail, not the cursor SVG,
+       so the cursor itself renders normally.
+  ══════════════════════════════════════════════════════ -->
+  <div id="cursor">
+    <div id="cursor-inner">
+
+      <!-- Idle: corner brackets + × — white strokes + #cursor-inner's
+           mix-blend-mode: difference produce inverted contrast on any bg. -->
+      <div id="cursor-idle">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18.75 24.75H24.75V18.75M6.75 24.75H0.75V18.75M0.75 6.75V0.75H6.75M18.75 0.75H24.75V6.75" stroke="#26251E" stroke-width="1.5"/>
+          <path d="M12.755 6.75V18.75" stroke="#26251E" stroke-width="1.5"/>
+          <path d="M18.755 12.75L6.755 12.75" stroke="#26251E" stroke-width="1.5"/>
+        </svg>
+      </div>
+
+      <!-- Can press: corner brackets + filled dot -->
+      <div id="cursor-canpress" style="display:none">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18.75 24.75H24.75V18.75M6.75 24.75H0.75V18.75M0.75 6.75V0.75H6.75M18.75 0.75H24.75V6.75" stroke="#26251E" stroke-width="1.5"/>
+          <circle cx="12.75" cy="12.75" r="4" fill="#26251E"/>
+        </svg>
+      </div>
+
+      <!-- Tooltip: dot + dynamic label — innerHTML built by JS -->
+      <div id="cursor-tooltip" style="display:none"></div>
+      <!-- Image cursor: shown instead of the tooltip when an element has data-cursor-image="<url>" -->
+      <img id="cursor-image" alt="" style="display:none; width:96px; height:auto; pointer-events:none;">
+
+      <!-- Action: [ ▶ Play ]  — shown when hovering hover-to-play videos.
+           Inherits mix-blend-mode from #cursor-inner — no local override. -->
+      <div id="cursor-action" style="display:none">
+        <svg width="69" height="26" viewBox="0 0 69 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6.75 24.75H0.75V18.75M0.75 6.75V0.75H6.75" stroke="#26251E" stroke-width="1.5"/>
+          <path d="M19.75 12.75L14.75 16.75L14.75 8.75L19.75 12.75Z" fill="#26251E"/>
+          <path d="M30.623 14.299V17.25H28.673V8.579H32.079C33.262 8.579 33.886 8.748 34.445 9.242C35.043 9.775 35.381 10.568 35.381 11.504C35.381 12.297 35.134 12.986 34.64 13.506C34.12 14.052 33.457 14.299 32.456 14.299H30.623ZM30.623 12.635H32.157C32.924 12.635 33.392 12.18 33.392 11.439C33.392 10.685 32.924 10.243 32.157 10.243H30.623V12.635ZM38.5842 8.579V17.25H36.7382V8.579H38.5842ZM42.128 12.947H40.477C40.594 11.504 41.491 10.802 43.259 10.802C44.208 10.802 44.936 11.023 45.43 11.452C45.885 11.855 46.054 12.362 46.054 13.285V16.171C46.054 16.847 46.08 16.938 46.288 17.25H44.403C44.325 17.029 44.325 16.99 44.26 16.756C43.649 17.263 43.207 17.419 42.466 17.419C41.075 17.419 40.152 16.639 40.152 15.456C40.152 14.273 40.893 13.662 42.648 13.376L43.649 13.207C44.065 13.142 44.208 13.038 44.208 12.778C44.208 12.427 43.844 12.206 43.246 12.206C42.57 12.206 42.206 12.44 42.128 12.947ZM44.26 15.222V14.26C44.065 14.338 43.896 14.39 43.584 14.455L42.921 14.598C42.258 14.754 41.972 14.975 41.972 15.352C41.972 15.768 42.323 16.015 42.908 16.015C43.519 16.015 43.961 15.755 44.26 15.222ZM51.4867 10.971H53.3977L51.2137 17.302C50.8627 18.329 50.6547 18.693 50.3297 18.927C50.0307 19.148 49.6147 19.239 48.9257 19.239H47.8467V17.848H48.3927C49.0427 17.848 49.3417 17.601 49.3417 17.055C49.3417 16.834 49.3287 16.795 49.1077 16.249L47.0407 10.971H49.0167L49.9397 13.844C50.1217 14.429 50.1217 14.442 50.2647 14.962L50.3427 15.209C50.4207 14.793 50.5247 14.364 50.6677 13.805L51.4867 10.971Z" fill="#26251E"/>
+          <path d="M61.75 24.75H67.75V18.75M61.75 0.75H67.75V6.75" stroke="#26251E" stroke-width="1.5"/>
+        </svg>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════
+       NAVBAR
+  ══════════════════════════════════════════════════════ -->
+  <nav class="navbar">
+    <div class="navbar-inner">
+
+      <!-- Logo — scrolls to top on click -->
+      <a class="nav-logo" href="#" aria-label="Yam Livnat — home">
+        <span class="slash">/</span>
+        <svg width="71" height="11" viewBox="70.12 24.828 70.956 10.768" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M73.992 31.596L73.16 35.5H71.64L72.52 31.388L70.12 24.828H71.848L73.512 30.044L77 24.828H78.872L73.992 31.596ZM79.0723 29.9H77.7123C78.1603 28.348 79.3123 27.564 81.1363 27.564C82.7043 27.564 83.7283 28.252 83.7283 29.308C83.7283 29.5 83.6483 30.076 83.5683 30.412L82.9923 33.132C82.8803 33.676 82.8643 33.788 82.8643 33.964C82.8643 34.364 83.0243 34.492 83.4723 34.492H83.7603L83.5203 35.596H82.9603C82.1283 35.596 81.8563 35.372 81.7763 34.668C81.1363 35.388 80.4163 35.708 79.3923 35.708C78.6243 35.708 78.0003 35.5 77.5683 35.084C77.1363 34.668 76.8643 33.98 76.8643 33.324C76.8643 32.62 77.1683 31.948 77.6803 31.532C78.1603 31.116 78.8483 30.908 79.9043 30.844L81.1523 30.764C81.7603 30.716 81.9843 30.652 82.1443 30.444C82.2883 30.252 82.3843 29.932 82.3843 29.596C82.3843 28.972 81.9683 28.684 81.0563 28.684C79.9043 28.684 79.3443 29.036 79.0723 29.9ZM81.9043 32.012L81.9683 31.756C81.7603 31.788 81.6803 31.804 81.5203 31.836C81.4403 31.836 81.2963 31.852 81.1043 31.884L80.7203 31.916L79.8403 32.012C78.8483 32.124 78.3683 32.556 78.3683 33.324C78.3683 34.028 78.8483 34.476 79.6323 34.476C80.2723 34.476 80.9603 34.156 81.2963 33.692C81.5363 33.372 81.7443 32.812 81.9043 32.012ZM86.2239 27.772H87.5839L87.3599 28.796C88.3679 27.916 89.1359 27.564 89.9999 27.564C91.0079 27.564 91.6319 28.044 91.7759 28.956C92.6079 28.044 93.5359 27.564 94.4799 27.564C95.6319 27.564 96.3999 28.252 96.3999 29.308C96.3999 29.612 96.3519 29.948 96.2559 30.444L95.1679 35.5H93.7119L94.7359 30.636C94.8799 29.996 94.8959 29.884 94.8959 29.644C94.8959 29.132 94.5599 28.796 94.0319 28.796C92.8319 28.796 91.7919 29.852 91.4559 31.42L90.5919 35.5H89.1199L90.1599 30.636C90.2719 30.092 90.3039 29.9 90.3039 29.66C90.3039 29.1 90.0159 28.796 89.4719 28.796C88.8159 28.796 88.1119 29.18 87.6799 29.756C87.2799 30.284 87.0079 30.988 86.7839 31.996L86.0479 35.5H84.5759L86.2239 27.772ZM105.771 24.828L103.787 34.172H109.307L109.035 35.5H101.979L104.251 24.828H105.771ZM113.325 27.772L111.693 35.5H110.221L111.869 27.772H113.325ZM113.949 24.828L113.613 26.428H112.141L112.493 24.828H113.949ZM119.558 27.772H121.126L116.854 35.5H115.334L114.198 27.772H115.686L116.166 32.172C116.278 33.116 116.342 33.772 116.342 34.236C116.582 33.532 116.79 33.068 117.158 32.396L119.558 27.772ZM122.221 27.772H123.581L123.357 28.796C124.269 27.916 125.005 27.564 125.901 27.564C127.165 27.564 127.981 28.3 127.981 29.404C127.981 29.708 127.949 29.996 127.853 30.46L126.765 35.5H125.309L126.365 30.54C126.477 30.028 126.493 29.884 126.493 29.708C126.493 29.132 126.157 28.796 125.581 28.796C125.069 28.796 124.493 29.036 124.013 29.436C123.421 29.932 123.101 30.54 122.877 31.532L122.045 35.5H120.573L122.221 27.772ZM131.124 29.9H129.764C130.212 28.348 131.364 27.564 133.188 27.564C134.756 27.564 135.78 28.252 135.78 29.308C135.78 29.5 135.7 30.076 135.62 30.412L135.044 33.132C134.932 33.676 134.916 33.788 134.916 33.964C134.916 34.364 135.076 34.492 135.524 34.492H135.812L135.572 35.596H135.012C134.18 35.596 133.908 35.372 133.828 34.668C133.188 35.388 132.468 35.708 131.444 35.708C130.676 35.708 130.052 35.5 129.62 35.084C129.188 34.668 128.916 33.98 128.916 33.324C128.916 32.62 129.22 31.948 129.732 31.532C130.212 31.116 130.9 30.908 131.956 30.844L133.204 30.764C133.812 30.716 134.036 30.652 134.196 30.444C134.34 30.252 134.436 29.932 134.436 29.596C134.436 28.972 134.02 28.684 133.108 28.684C131.956 28.684 131.396 29.036 131.124 29.9ZM133.956 32.012L134.02 31.756C133.812 31.788 133.732 31.804 133.572 31.836C133.492 31.836 133.348 31.852 133.156 31.884L132.772 31.916L131.892 32.012C130.9 32.124 130.42 32.556 130.42 33.324C130.42 34.028 130.9 34.476 131.684 34.476C132.324 34.476 133.012 34.156 133.348 33.692C133.588 33.372 133.796 32.812 133.956 32.012ZM141.076 27.772L140.836 28.844H139.684L138.756 33.244C138.66 33.644 138.66 33.644 138.66 33.788C138.66 34.108 138.852 34.268 139.252 34.268C139.476 34.268 139.668 34.236 139.94 34.14L139.7 35.356C139.348 35.452 139.06 35.5 138.788 35.5C137.844 35.5 137.14 34.956 137.14 34.236C137.14 34.092 137.188 33.66 137.236 33.468L138.212 28.844H137.06L137.316 27.772H138.468L138.932 25.5H140.388L139.94 27.772H141.076Z" fill="currentColor"/>
+        </svg>
+        <span class="slash">/</span>
+      </a>
+
+      <!-- Links right -->
+      <div class="nav-links">
+
+        <a class="nav-link" href="#work">
+          <span class="slash">/</span>
+          <svg width="58" height="14" viewBox="1167.4 24.828 57.74 13.344" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1173.22 35.5H1171.7L1170.87 29.5C1170.74 28.62 1170.63 27.596 1170.58 26.796C1170.41 27.948 1170.38 28.14 1170.07 29.5L1168.84 35.5H1167.4L1169.67 24.828H1171.66L1172.55 32.252C1172.62 32.876 1172.68 33.452 1172.73 34.012C1172.94 33.564 1173.08 33.292 1173.53 32.46L1177.72 24.828H1179.69L1177.42 35.5H1175.98L1177.24 29.708C1177.51 28.428 1177.61 28.044 1177.96 26.796C1177.4 27.948 1176.9 28.924 1176.57 29.5L1173.22 35.5ZM1185.53 27.772H1187.1L1182.3 36.812C1181.71 37.916 1181.28 38.172 1179.95 38.172H1179.05L1179.31 37.004H1179.82C1180.62 37.004 1180.75 36.908 1181.2 36.044L1181.42 35.612L1180.12 27.772H1181.64L1182.2 31.612C1182.28 32.076 1182.36 33.132 1182.41 34.06C1182.64 33.5 1183.04 32.668 1183.47 31.836L1185.53 27.772ZM1194.53 35.5H1192.96L1192.14 24.828H1193.71L1194.05 30.668C1194.06 31.1 1194.08 31.5 1194.08 31.724C1194.08 31.772 1194.06 33.276 1194.05 33.884C1194.4 32.796 1194.96 31.26 1195.2 30.668L1197.65 24.828H1199.26L1199.74 30.668C1199.82 32.012 1199.84 32.284 1199.84 33.548V33.884C1200.05 32.988 1200.29 32.252 1200.78 30.956L1203.18 24.828H1204.75L1200.38 35.5H1198.83L1198.35 29.788C1198.29 29.164 1198.24 27.868 1198.24 27.18C1198.24 26.796 1198.24 26.588 1198.27 26.124C1197.82 27.692 1197.63 28.204 1196.81 30.108L1194.53 35.5ZM1208.16 27.564C1210.15 27.564 1211.36 28.828 1211.36 30.908C1211.36 32.188 1210.85 33.5 1209.99 34.428C1209.2 35.276 1208.23 35.708 1207.07 35.708C1205.09 35.708 1203.86 34.412 1203.86 32.348C1203.86 29.692 1205.76 27.564 1208.16 27.564ZM1208.08 28.796C1206.56 28.796 1205.35 30.364 1205.35 32.316C1205.35 33.612 1206.07 34.476 1207.14 34.476C1207.78 34.476 1208.45 34.124 1208.9 33.58C1209.47 32.876 1209.87 31.788 1209.87 30.924C1209.87 29.564 1209.22 28.796 1208.08 28.796ZM1213.7 27.612H1215.06L1214.71 29.244C1215.43 28.044 1216.03 27.548 1216.85 27.548C1217.15 27.548 1217.36 27.596 1217.71 27.772L1217.33 29.132C1216.98 29.036 1216.8 29.02 1216.56 29.02C1216 29.02 1215.51 29.26 1215.11 29.724C1214.72 30.172 1214.53 30.62 1214.32 31.532L1213.49 35.5H1212.02L1213.7 27.612ZM1221.83 30.476L1223.6 35.5H1222.1L1220.69 31.404L1219.27 32.572L1218.64 35.5H1217.17L1219.44 24.828H1220.9L1219.62 30.86L1223.12 27.772H1225.14L1221.83 30.476Z" fill="currentColor"/>
+          </svg>
+          <span class="slash">/</span>
+        </a>
+
+        <a class="nav-link" href="#contact">
+          <span class="slash">/</span>
+          <svg width="83" height="12" viewBox="1285.94 24.556 82.87 11.216" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1290.95 29.756H1295.8L1294.57 35.5H1293.4L1293.53 34.22C1292.5 35.308 1291.48 35.772 1290.15 35.772C1287.62 35.772 1285.94 33.932 1285.94 31.18C1285.94 29.388 1286.62 27.612 1287.75 26.332C1288.78 25.18 1290.22 24.556 1291.8 24.556C1294.1 24.556 1295.54 25.788 1295.7 27.884H1294.22C1294.02 26.62 1293.11 25.884 1291.7 25.884C1290.66 25.884 1289.78 26.284 1289.05 27.068C1288.06 28.156 1287.51 29.612 1287.51 31.228C1287.51 32.364 1287.8 33.164 1288.41 33.708C1288.92 34.188 1289.64 34.444 1290.42 34.444C1292.23 34.444 1293.67 33.084 1294.06 31.036H1290.66L1290.95 29.756ZM1303.96 31.996H1298.28C1298.25 32.236 1298.23 32.348 1298.23 32.508C1298.23 33.724 1298.93 34.476 1300.07 34.476C1300.92 34.476 1301.64 34.06 1302.09 33.292H1303.59C1302.82 34.924 1301.65 35.708 1299.99 35.708C1298.04 35.708 1296.84 34.444 1296.84 32.396C1296.84 31.1 1297.29 29.804 1298.05 28.876C1298.77 27.98 1299.83 27.5 1301.03 27.5C1302.9 27.5 1304.12 28.716 1304.12 30.62C1304.12 31.036 1304.07 31.42 1303.96 31.996ZM1302.71 30.828L1302.73 30.444C1302.73 29.356 1302.09 28.732 1300.98 28.732C1299.78 28.732 1298.93 29.468 1298.53 30.828H1302.71ZM1309.15 27.772L1308.91 28.844H1307.76L1306.83 33.244C1306.73 33.644 1306.73 33.644 1306.73 33.788C1306.73 34.108 1306.93 34.268 1307.33 34.268C1307.55 34.268 1307.74 34.236 1308.01 34.14L1307.77 35.356C1307.42 35.452 1307.13 35.5 1306.86 35.5C1305.92 35.5 1305.21 34.956 1305.21 34.236C1305.21 34.092 1305.26 33.66 1305.31 33.468L1306.29 28.844H1305.13L1305.39 27.772H1306.54L1307.01 25.5H1308.46L1308.01 27.772H1309.15ZM1317.35 24.828L1315.08 35.5H1313.56L1315.83 24.828H1317.35ZM1318.9 27.772H1320.26L1320.04 28.796C1320.95 27.916 1321.68 27.564 1322.58 27.564C1323.84 27.564 1324.66 28.3 1324.66 29.404C1324.66 29.708 1324.63 29.996 1324.53 30.46L1323.44 35.5H1321.99L1323.04 30.54C1323.16 30.028 1323.17 29.884 1323.17 29.708C1323.17 29.132 1322.84 28.796 1322.26 28.796C1321.75 28.796 1321.17 29.036 1320.69 29.436C1320.1 29.932 1319.78 30.54 1319.56 31.532L1318.72 35.5H1317.25L1318.9 27.772ZM1335.78 26.156L1333.8 35.5H1332.28L1334.26 26.156H1331.1L1331.38 24.828H1339.11L1338.82 26.156H1335.78ZM1341.6 27.564C1343.58 27.564 1344.8 28.828 1344.8 30.908C1344.8 32.188 1344.29 33.5 1343.42 34.428C1342.64 35.276 1341.66 35.708 1340.51 35.708C1338.53 35.708 1337.3 34.412 1337.3 32.348C1337.3 29.692 1339.2 27.564 1341.6 27.564ZM1341.52 28.796C1340 28.796 1338.78 30.364 1338.78 32.316C1338.78 33.612 1339.5 34.476 1340.58 34.476C1341.22 34.476 1341.89 34.124 1342.34 33.58C1342.91 32.876 1343.31 31.788 1343.31 30.924C1343.31 29.564 1342.66 28.796 1341.52 28.796ZM1353.34 27.772L1351.7 35.5H1350.34L1350.61 34.236C1349.74 35.292 1349.01 35.708 1347.97 35.708C1346.74 35.708 1345.9 34.956 1345.9 33.868C1345.9 33.58 1345.98 33.02 1346.11 32.428L1347.1 27.772H1348.56L1347.52 32.716C1347.46 33.02 1347.41 33.372 1347.41 33.58C1347.41 34.14 1347.78 34.492 1348.35 34.492C1348.98 34.492 1349.76 34.06 1350.27 33.404C1350.69 32.86 1350.88 32.38 1351.12 31.26L1351.87 27.772H1353.34ZM1361.13 30.236H1359.75C1359.75 29.356 1359.14 28.78 1358.21 28.78C1357.57 28.78 1356.93 29.068 1356.5 29.564C1355.86 30.3 1355.46 31.42 1355.46 32.444C1355.46 33.692 1356.12 34.476 1357.16 34.476C1358.1 34.476 1358.82 33.964 1359.29 32.988H1360.69C1360.18 34.684 1358.85 35.708 1357.16 35.708C1355.19 35.708 1353.96 34.508 1353.96 32.572C1353.96 31.084 1354.53 29.644 1355.51 28.652C1356.2 27.948 1357.14 27.564 1358.17 27.564C1359.93 27.564 1361.13 28.636 1361.13 30.236ZM1363.69 24.828H1365.15L1364.33 28.7C1365.27 27.868 1365.95 27.564 1366.78 27.564C1367.96 27.564 1368.81 28.3 1368.81 29.356C1368.81 29.644 1368.76 30.044 1368.65 30.524L1367.59 35.5H1366.12L1367.19 30.524C1367.29 30.044 1367.32 29.836 1367.32 29.628C1367.32 29.1 1366.97 28.796 1366.36 28.796C1365.13 28.796 1364.09 29.852 1363.74 31.468L1362.89 35.5H1361.42L1363.69 24.828Z" fill="currentColor"/>
+          </svg>
+          <span class="slash">/</span>
+        </a>
+
+      </div>
+    </div>
+  </nav>
+
+
+  <!-- ══════════════════════════════════════════════════
+       HERO
+  ══════════════════════════════════════════════════════ -->
+  <section class="hero">
+
+    <!-- Hero cards — idle state: SHLTR model in grey silhouette position -->
+    <div class="hero-cards">
+
+      <!-- Hero ring-card: driven by window.HERO_CONFIG (see hero/hero-config.js).
+           The src/tooltip/label below are sensible defaults; hero wiring below
+           overwrites them on load. -->
+      <div class="ring-card"
+           id="hero-ring-card"
+           data-cursor-tooltip="See More"
+           data-cursor-tooltip-arrow
+           style="left:calc(50% - 133.335px - 499.67px); top:calc(50% - 88.235px + 0.24px)">
+
+        <div class="ring-card-hit" aria-hidden="true"></div>
+
+        <div class="ring-card-mask">
+          <div class="ring-card-stage">
+            <model-viewer
+              class="ring-card-model"
+              src="projects/shltr/assets/Anthem 3D.glb"
+              interaction-prompt="none"
+              shadow-intensity="0"
+              shadow-softness="0"
+              exposure="1"
+              environment-image="neutral"
+              min-field-of-view="42deg"
+              max-field-of-view="42deg"
+              camera-orbit="0deg 78deg 105%"
+              style="background-color: transparent;"
+            ></model-viewer>
+          </div>
+        </div>
+
+        <div class="ring-tag">
+          <span class="ring-tag-slash">/</span>
+          <span class="ring-tag-name">SHLTR</span>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="hero-text">
+      <h1 class="hero-headline">Welcome to my exhibition</h1>
+      <div class="hero-labels">
+        <span>Selected works</span>
+        <span>creative explorations</span>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════════
+       WORK / CARDS
+       Card HTML is injected by JS (renderCards()).
+       The left column header is also injected.
+  ══════════════════════════════════════════════════════ -->
+  <section id="work" class="cards-section">
+    <div class="cards-inner">
+      <!-- Left column: "/ my work" + projects 0–3 -->
+      <div id="cards-col-left"  class="cards-col"></div>
+      <!-- Right column: projects 4–7 -->
+      <div id="cards-col-right" class="cards-col"></div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════════
+       CONTACT
+  ══════════════════════════════════════════════════════ -->
+  <section id="contact" class="contact-section">
+
+    <div class="contact-top-row">
+
+      <!-- Left: About -->
+      <div class="contact-col-left">
+        <h2 class="contact-about-heading">About</h2>
+        <p class="contact-bio">Multidisciplinary designer working across product, brand, and motion, creating cohesive digital experiences from concept to execution. Combines strategic thinking with hands-on design to translate complex ideas into clear, engaging visuals. Constantly exploring new tools and technologies to push creative and product outcomes forward.</p>
+        <div class="contact-btn-row">
+          <a class="contact-btn" href="contact/Yam Livnat resume.pdf" target="_blank" data-cursor-tooltip="/ yamlivnat-resume.pdf">Resume</a>
+        </div>
+      </div>
+
+      <!-- Right: More to Explore -->
+      <div class="contact-col-right">
+        <p class="contact-more-label">More to Explore</p>
+        <div class="contact-btn-row">
+          <a class="contact-btn" href="https://www.linkedin.com/in/yam-livnat-baa9242a6" target="_blank" data-cursor-tooltip="https // linkedin.com / in / yam-livnat">LinkedIn</a>
+          <a class="contact-btn" href="https://www.behance.net/yamlivnat" target="_blank" data-cursor-tooltip="https // behance.net / yamlivnat">Behance</a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Center CTA -->
+    <div class="contact-bottom">
+      <h2 class="contact-heading">Get in touch</h2>
+      <p class="contact-tagline">Let's create something meaningful together</p>
+      <div class="contact-btn-row">
+        <a class="contact-btn" href="mailto:yamlivnat@gmail.com" data-cursor-tooltip="mailto // yamlivnat@gmail.com">email</a>
+        <a class="contact-btn" href="tel:+972528229418" data-cursor-tooltip="tel // +972-52-822-9418">phone</a>
+      </div>
+    </div>
+
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════════
+       PROJECT OVERLAY
+       Injected content is populated dynamically by
+       openOverlay(projectId) from the PROJECTS array.
+  ══════════════════════════════════════════════════════ -->
+  <div id="project-overlay">
+    <div id="overlay-backdrop"></div>
+    <div id="overlay-panel">
+
+      <!-- Figma "share" stack: 32×88 container, right:10 top:10, column gap 24.
+           Two 32×32 icon buttons — Exit (X-cross) and Share (upload). -->
+      <div class="overlay-actions" aria-label="Overlay actions">
+        <button class="overlay-close" type="button" data-cursor-tooltip="Exit" aria-label="Close">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M22 22L16 16M16 16L10 10M16 16L10 22M16 16L22 10" stroke="#A3A09B"/>
+          </svg>
+        </button>
+        <button class="overlay-share" type="button" data-cursor-tooltip="Share" aria-label="Share">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M11.2267 13.2243H8.5V25H23.5V13.2243H20.7733M16 7.33645V16.5888M19.0333 10.1542L15.9083 7L12.7833 10.1542" stroke="#A3A09B"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Default overlay: two-column infinite gallery + bottom strip (Figma Frame 402 / 412) -->
+      <div class="overlay-view overlay-view--default">
+        <div class="overlay-body">
+          <div class="card-gallery-left"></div>
+          <div class="card-gallery-right"></div>
+
+          <div id="overlay-desc" class="card-overlay-desc"></div>
+
+          <footer class="card-overlay-foot" aria-label="Project info">
+            <div class="card-overlay-foot-inner">
+              <span id="overlay-name" class="card-overlay-name"></span>
+              <div id="overlay-tags" class="card-overlay-tags"></div>
+            </div>
+          </footer>
+        </div>
+      </div>
+
+      <!-- SHLTR case study: scrollable content + bottom gradient strip -->
+      <div class="overlay-view overlay-view--case" hidden>
+        <div class="overlay-case">
+          <div class="overlay-case-scroll" id="overlay-case-scroll"></div>
+          <footer class="overlay-case-footer">
+            <div class="overlay-case-footer-inner">
+              <span id="overlay-case-title" class="overlay-case-name"></span>
+              <div id="overlay-case-tags" class="overlay-case-tags"></div>
+            </div>
+          </footer>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       SHARE MODAL
+       Opened by the overlay "share" button (top-right).
+       Shows project thumbnail, copy-link field, and a row
+       of one-click shares (X, LinkedIn, Facebook, WhatsApp,
+       Email). Styled to match the site's design tokens.
+  ══════════════════════════════════════════════════════ -->
+  <!-- Custom video fullscreen popup -->
+  <div id="video-fs-modal" class="video-fs-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="Video fullscreen">
+    <div class="video-fs-modal-controls" aria-label="Video controls">
+      <button class="video-fs-modal-close" type="button" data-cursor-tooltip="Exit" aria-label="Close fullscreen video">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M22 22L16 16M16 16L10 10M16 16L10 22M16 16L22 10" stroke="currentColor"/>
+        </svg>
+      </button>
+      <button class="video-fs-modal-mute" type="button" data-cursor-tooltip="Sound" aria-label="Toggle sound" aria-pressed="true">
+        <svg class="icon-muted" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M19 13.6667L23.5 18.3333M23.5 13.6667L19 18.3333M8.5 12.8889V19.1111H12.3242L16.75 23V9L12.25 12.8889H8.5Z" stroke="currentColor"/>
+        </svg>
+        <svg class="icon-unmuted" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M8.5 12.8889V19.1111H12.3242L16.75 23V9L12.25 12.8889H8.5Z" stroke="currentColor"/>
+          <path d="M19.5 13.5c1 1 1 4 0 5M22 11c1.8 1.8 1.8 7.2 0 10" stroke="currentColor" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <video class="video-fs-modal-video" playsinline loop></video>
+  </div>
+
+  <div id="share-modal" class="share-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
+    <div class="share-modal-backdrop"></div>
+    <div class="share-modal-panel" role="document">
+      <button class="share-modal-close" type="button" aria-label="Close share">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M22 22L16 16M16 16L10 10M16 16L10 22M16 16L22 10" stroke="#A3A09B"/>
+        </svg>
+      </button>
+
+      <!-- Left: project thumbnail (video poster or still image) -->
+      <div class="share-modal-thumb">
+        <video class="share-modal-thumb-video" muted playsinline loop autoplay hidden></video>
+        <img   class="share-modal-thumb-img"   alt="" hidden/>
+        <div   class="share-modal-thumb-fallback" aria-hidden="true"></div>
+      </div>
+
+      <!-- Right: content -->
+      <div class="share-modal-content">
+        <span class="share-modal-eyebrow">/ Share</span>
+        <h3 class="share-modal-title" id="share-modal-title">Project</h3>
+
+        <!-- Copy-link field -->
+        <div class="share-modal-link">
+          <input type="text" class="share-modal-url" readonly aria-label="Project URL"/>
+          <button type="button" class="share-modal-copy" aria-label="Copy link">
+            <svg class="icon-copy" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <rect x="4" y="4" width="9" height="9" stroke="currentColor" stroke-width="0.9"/>
+              <path d="M11 3H3v9" stroke="currentColor" stroke-width="0.9"/>
+            </svg>
+            <svg class="icon-check" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M3 8.5L6.5 12L13 5" stroke="currentColor" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="share-modal-copy-label">Copy</span>
+          </button>
+        </div>
+
+        <!-- Platform row -->
+        <div class="share-modal-platforms" role="group" aria-label="Share to platform">
+          <button type="button" class="share-platform" data-platform="x" data-cursor-tooltip="Share on X" aria-label="Share on X">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+          </button>
+          <button type="button" class="share-platform" data-platform="linkedin" data-cursor-tooltip="Share on LinkedIn" aria-label="Share on LinkedIn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.063 2.063 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+            </svg>
+          </button>
+          <button type="button" class="share-platform" data-platform="facebook" data-cursor-tooltip="Share on Facebook" aria-label="Share on Facebook">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+          </button>
+          <button type="button" class="share-platform" data-platform="whatsapp" data-cursor-tooltip="Share on WhatsApp" aria-label="Share on WhatsApp">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413"/>
+            </svg>
+          </button>
+          <button type="button" class="share-platform" data-platform="email" data-cursor-tooltip="Share via Email" aria-label="Share via Email">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M1.5 4.5h21c.828 0 1.5.672 1.5 1.5v12c0 .828-.672 1.5-1.5 1.5h-21A1.5 1.5 0 010 18V6c0-.828.672-1.5 1.5-1.5zm.75 2.652v.63l9.75 6.364 9.75-6.364v-.63H2.25zm19.5 2.41l-9.188 5.998a1.05 1.05 0 01-1.124 0L2.25 9.562v7.938h19.5V9.562z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       DATA LAYER
+       Loaded before the main script. Order matters:
+         1) blocks.js         – exposes window.renderBlocks
+         2) hero/hero-config  – exposes window.HERO_CONFIG
+         3) projects/index.js – exposes window.PROJECTS_ORDER + registry
+         4) each project.js   – populates window.__PROJECTS__[slug]
+  ══════════════════════════════════════════════════════ -->
+  <script src="blocks.js"></script>
+  <script src="hero/hero-config.js"></script>
+  <script src="projects/index.js"></script>
+  <script src="projects/radiant/project.js"></script>
+  <script src="projects/sourcix/project.js"></script>
+  <script src="projects/achalta/project.js"></script>
+  <script src="projects/h1/project.js"></script>
+  <script src="projects/cinnabun/project.js"></script>
+  <script src="projects/shltr/project.js"></script>
+  <script src="projects/neon/project.js"></script>
+  <script src="projects/3d-type-system/project.js"></script>
+  <script src="projects/sculptural-calligraphy/project.js"></script>
+  <script src="projects/madre/project.js"></script>
+  <script src="projects/sunny-side/project.js"></script>
+  <script src="projects/katze-ve-robi/project.js"></script>
+  <script src="projects/greengrocer/project.js"></script>
+  <script src="projects/geula/project.js"></script>
+  <script src="projects/knockings/project.js"></script>
+  <script src="projects/room-2704/project.js"></script>
+  <script src="projects/ae-scripts/project.js"></script>
+  <script src="projects/globe/project.js"></script>
+  <script src="projects/wiply/project.js"></script>
+  <script src="projects/practitest/project.js"></script>
+
+  <script>
+    /* ══════════════════════════════════════════════════════
+       CONTENT DATA
+       Single source of truth for all project information.
+       Add a new project here and it automatically appears
+       in the card grid and the overlay.
+    ══════════════════════════════════════════════════════ */
+
+    /**
+     * @typedef {Object} GalleryImage
+     * @property {string} src  - Path relative to the site root
+     * @property {number} w    - Intrinsic width in pixels (used for sizing the card-ph placeholder)
+     * @property {number} h    - Intrinsic height in pixels
+     */
+
+    /**
+     * @typedef {Object} Project
+     * @property {string}   id          - Kebab-case identifier, matches data-project attribute
+     * @property {string}   title       - Display name shown in card footer + overlay info bar
+     * @property {string[]} tags        - Discipline tags (e.g. ['Web', 'Motion'])
+     * @property {string}   description - One–two sentence project description
+     * @property {string|null} thumbnail - Path to card thumbnail, or null for blank card
+     * @property {string} [turntableModel] - Optional .glb path; card shows model-viewer (takes precedence over video/thumbnail)
+     * @property {string} [turntableLogo] - Optional logo URL above the 3D model (SVG or PNG; SVG preferred)
+     * @property {string} [video] - Optional MP4 for animated card thumbnail
+     * @property {string} [videoOverlay] - Optional image layered on top of video
+     * @property {{ left: GalleryImage[], right: GalleryImage[] }} gallery
+     *   - left:  images for the wide (561px) left gallery column
+     *   - right: images for the narrow (400px) right gallery column
+     *   Empty arrays fall back to default placeholder blocks.
+     * @property {boolean} [caseStudy] - If true, overlay uses scrollable case layout (SHLTR)
+     * @property {string[]} [overlayTags] - Tags shown in case-study footer (optional)
+     * @property {Object} [caseStudyAssets] - Image / video paths under projects/SHLTR/
+     *   (optional: qrTooltips — title+body per column; body-only shown on 2×2 grid plain tooltips)
+     *   (optional: qrModels — string[] .glb paths for the four large preview tiles)
+     *   (optional: qrStripImages — four PNG/JPEG paths for the narrow inner row; if omitted, qrModels GLBs are reused)
+     *   (optional: sceneVideos — four MP4 paths, row after Typography)
+     *   (optional: pictureAllFour — composite image after Public space)
+     *   (optional: heroSide — logo image beside Sketch; heroVideo — closing full-height video)
+     */
+
+    /* Projects come from window.__PROJECTS__ (populated by /projects/<slug>/project.js),
+       ordered per window.PROJECTS_ORDER (from /projects/index.js). */
+    const PROJECTS = (window.PROJECTS_ORDER || [])
+      .map(slug => window.__PROJECTS__ && window.__PROJECTS__[slug])
+      .filter(Boolean);
+
+    // Fill gallery default for projects that don't declare one (safety for renderer).
+    PROJECTS.forEach(p => {
+      if (!p.gallery) p.gallery = { left: [], right: [] };
+      if (p.caseStudy && typeof p.caseStudy === 'object') {
+        // Projects with block-based caseStudy expose a flag for old code paths.
+        p._hasBlocks = Array.isArray(p.caseStudy.blocks);
+      }
+    });
+
+    // Hero ring-card: apply HERO_CONFIG overrides so the featured project is
+    // data-driven (change hero/hero-config.js to swap which project is featured).
+    (function applyHeroConfig() {
+      const cfg = window.HERO_CONFIG;
+      if (!cfg) return;
+      const baseCard = document.getElementById('hero-ring-card');
+      if (!baseCard) return;
+      const heroCards = baseCard.parentElement;
+
+      // Normalize: support either { cards: [...] } or the legacy single-card shape.
+      const cards = Array.isArray(cfg.cards) ? cfg.cards : [cfg];
+      if (!cards.length) return;
+
+      // Hero card mirror positions (Figma): SHLTR left, Radiant mirrored right.
+      const POSITIONS = {
+        left:  'left:calc(50% - 133.335px - 499.67px); top:calc(50% - 88.235px + 0.24px);',
+        right: 'left:calc(50% - 133.335px + 499.67px); top:calc(50% - 88.235px + 0.24px);'
+      };
+
+      function applyOne(card, entry) {
+        const stage = card.querySelector('.ring-card-stage');
+        const existing = card.querySelector('.ring-card-model');
+        // Static image variant: swap <model-viewer> for <img>; keeps the same
+        // .ring-card-model class so the silhouette + hover-tint filters carry over.
+        if (entry.image && stage) {
+          if (existing) existing.remove();
+          const img = document.createElement('img');
+          img.className = 'ring-card-model';
+          img.src = entry.image;
+          img.alt = '';
+          img.draggable = false;
+          stage.appendChild(img);
+        } else if (existing && entry.model) {
+          existing.setAttribute('src', entry.model);
+        }
+        if (entry.tooltip) card.setAttribute('data-cursor-tooltip', entry.tooltip);
+        const tagName = card.querySelector('.ring-tag-name');
+        if (tagName) {
+          const project = entry.projectId && window.__PROJECTS__ && window.__PROJECTS__[entry.projectId];
+          tagName.textContent = entry.label || (project && project.title) || tagName.textContent;
+        }
+        if (entry.position && POSITIONS[entry.position]) {
+          card.setAttribute('style', POSITIONS[entry.position]);
+        }
+        // Click on the card opens this entry's project overlay (handler in
+        // the .ring-card click block reads card.dataset.project).
+        if (entry.projectId) card.dataset.project = entry.projectId;
+      }
+
+      // First entry reuses the markup-defined card; clone the template for any extras.
+      applyOne(baseCard, cards[0]);
+      for (let i = 1; i < cards.length; i++) {
+        const clone = baseCard.cloneNode(true);
+        clone.removeAttribute('id');
+        // Clear any model/image left over from the template before applying fresh.
+        const leftoverModel = clone.querySelector('.ring-card-model');
+        if (leftoverModel) leftoverModel.removeAttribute('src');
+        heroCards.appendChild(clone);
+        applyOne(clone, cards[i]);
+      }
+    })();
+
+    /* ══════════════════════════════════════════════════════
+       CURSOR SYSTEM
+       Three visual states:
+         idle     – shown when nothing interactive is nearby
+         canPress – shown when cursor is over a link / button
+         tooltip  – element has data-cursor-tooltip; small caret only with data-cursor-tooltip-arrow (hero)
+       The cursor element is translated to mouse coordinates each frame.
+       Anchor offsets compensate so the "hot spot" (click point) always
+       sits at the mouse's actual position regardless of SVG size.
+       mix-blend-mode on the smoke canvas is handled separately below.
+    ══════════════════════════════════════════════════════ */
+
+    // ── Tooltip SVG builder ──────────────────────────────
+    // We build the SVG as a string rather than DOM nodes for
+    // speed — innerHTML assignment is a single paint.
+    const FONT_FAMILY  = 'Inter, system-ui, sans-serif';
+    const TOOLTIP_SIZE = 16;     // font size in px
+    const TOOLTIP_H    = 24;     // svg height for single-line tooltip
+    const DOT_R        = 4;      // radius of the anchor dot
+    const DOT_CX       = 12;     // dot center x — also the cursor anchor x
+    const DOT_CY       = 12;     // dot center y — also the cursor anchor y
+    const TEXT_START_X = 27;     // text starts 15px after the dot's right edge
+    const TEXT_Y       = 17;     // text baseline (visual centre of TOOLTIP_H)
+    const PAD_RIGHT    = 10;     // right padding inside the SVG (after arrow)
+    const ARROW_GAP    = 8;      // space between text end and triangle
+    const ARROW_W      = 6;      // horizontal span of right-pointing triangle
+
+    // Hidden SVG used solely to measure text width so we can
+    // size the tooltip SVG tightly around its content.
+    const _mSVG  = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const _mText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    _mSVG.style.cssText = 'position:absolute;visibility:hidden;top:-9999px;left:-9999px;pointer-events:none;';
+    _mText.setAttribute('font-family', FONT_FAMILY);
+    _mText.setAttribute('font-size', TOOLTIP_SIZE);
+    _mText.setAttribute('font-weight', '400');
+    _mSVG.appendChild(_mText);
+    document.body.appendChild(_mSVG);
+
+    function textWidth(str) {
+      _mText.textContent = str;
+      return _mText.getComputedTextLength();
+    }
+
+    function escapeSvgText(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    /** Strip scene title line; keep paragraph body only (for QR plain tooltips). */
+    function tooltipBodyOnly(full) {
+      const s = String(full).trim();
+      const gap = s.indexOf('\n\n');
+      if (gap >= 0) return s.slice(gap + 2).trim();
+      const one = s.indexOf('\n');
+      if (one >= 0) return s.slice(one + 1).trim();
+      return s;
+    }
+
+    /**
+     * Paragraph-only tooltip (case-study QR): same font metrics as default tooltip + “my work” line
+     * (Inter 16px, #26251E, 150% leading) — white card, generous padding, rounded rect; no dot/arrow.
+     */
+    function buildPlainTooltipSVG(label) {
+      const MAX_TEXT_W = 300;
+      const LINE_H     = TOOLTIP_SIZE * 1.5; /* 150% — matches default multi-line + case copy */
+      const PARA_GAP   = LINE_H * 0.4;
+      const PAD_X      = 24;
+      const PAD_Y      = 24;
+      const RX         = 10;
+
+      const segments = String(label).trim().split(/\n+/).map(x => x.trim()).filter(Boolean);
+      const lines = [];
+      for (let s = 0; s < segments.length; s++) {
+        if (s > 0) lines.push('');
+        lines.push(...wrapTooltipWords(segments[s], MAX_TEXT_W));
+      }
+      const nonEmpty = lines.filter(l => l !== '');
+      if (nonEmpty.length === 0) return '';
+
+      const W       = PAD_X * 2 + MAX_TEXT_W;
+      let y         = PAD_Y + TOOLTIP_SIZE * 0.85;
+      const textParts = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line === '') {
+          y += PARA_GAP;
+          continue;
+        }
+        textParts.push(
+          `<text x="${PAD_X}" y="${y}" font-family="${FONT_FAMILY}" font-weight="400" font-size="${TOOLTIP_SIZE}" fill="#26251E">${escapeSvgText(line)}</text>`
+        );
+        y += LINE_H;
+      }
+      const H = Math.ceil(y + PAD_Y);
+      return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" rx="${RX}" fill="#FFFFFF" stroke="#E8E6E3"/>
+        ${textParts.join('')}
+      </svg>`;
+    }
+
+    /** Greedy word-wrap to a max text width (for tooltip lines). */
+    function wrapTooltipWords(text, maxW) {
+      const words = String(text).split(/\s+/).filter(Boolean);
+      const lines = [];
+      let current = '';
+      for (const word of words) {
+        const test = current ? current + ' ' + word : word;
+        if (current && textWidth(test) > maxW) {
+          lines.push(current);
+          current = word;
+        } else {
+          current = test;
+        }
+      }
+      if (current) lines.push(current);
+      return lines;
+    }
+
+    /**
+     * Build a tooltip SVG string (dot + label; optional right caret).
+     * Paragraphs separated by newlines; each paragraph wraps at 300px width.
+     * Caret is off unless `withArrow` — opt-in via data-cursor-tooltip-arrow (hero only).
+     */
+    function buildTooltipSVG(label, withArrow) {
+      const showCaret = !!withArrow;
+      const MAX_TEXT_W = 300;
+      const LINE_H     = TOOLTIP_SIZE * 1.35; // 135% line-height matches CSS convention
+      const PARA_GAP   = LINE_H * 0.4;
+
+      const segments = String(label).trim().split(/\n+/).map(s => s.trim()).filter(Boolean);
+      const lines = [];
+      for (let s = 0; s < segments.length; s++) {
+        if (s > 0) lines.push('');
+        lines.push(...wrapTooltipWords(segments[s], MAX_TEXT_W));
+      }
+
+      const nonEmpty = lines.filter(l => l !== '');
+      if (nonEmpty.length === 0) return '';
+
+      if (lines.length === 1) {
+        const t          = lines[0];
+        const tw         = textWidth(t);
+        const textEnd    = TEXT_START_X + tw;
+        const ay         = DOT_CY;
+        const ax1        = textEnd + ARROW_GAP;
+        const W          = textEnd + (showCaret ? ARROW_GAP + ARROW_W : 0) + PAD_RIGHT;
+        const caretSvg   = showCaret
+          ? `<polygon points="${ax1},${ay - 4} ${ax1 + ARROW_W},${ay} ${ax1},${ay + 4}" fill="#292929"/>`
+          : '';
+        return `<svg width="${W}" height="${TOOLTIP_H}" viewBox="0 0 ${W} ${TOOLTIP_H}" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="${DOT_CX}" cy="${DOT_CY}" r="${DOT_R}" fill="#292929"/>
+          <text x="${TEXT_START_X}" y="${TEXT_Y}" font-family="${FONT_FAMILY}" font-weight="400" font-size="${TOOLTIP_SIZE}" fill="#26251E">${escapeSvgText(t)}</text>
+          ${caretSvg}
+        </svg>`;
+      }
+
+      const maxTw = nonEmpty.reduce((m, line) => Math.max(m, textWidth(line)), 0);
+
+      let y = TEXT_Y;
+      const textParts = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line === '') {
+          y += PARA_GAP;
+          continue;
+        }
+        textParts.push(
+          `<text x="${TEXT_START_X}" y="${y}" font-family="${FONT_FAMILY}" font-weight="400" font-size="${TOOLTIP_SIZE}" fill="#26251E">${escapeSvgText(line)}</text>`
+        );
+        y += LINE_H;
+      }
+
+      const bottomPad = 8;
+      const H         = Math.ceil(y + bottomPad);
+      const textEnd   = TEXT_START_X + maxTw;
+      const arrowCy   = H / 2;
+      const ax2       = textEnd + ARROW_GAP;
+      const W         = textEnd + (showCaret ? ARROW_GAP + ARROW_W : 0) + PAD_RIGHT;
+      const caretSvg  = showCaret
+        ? `<polygon points="${ax2},${arrowCy - 4} ${ax2 + ARROW_W},${arrowCy} ${ax2},${arrowCy + 4}" fill="#292929"/>`
+        : '';
+
+      return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="${DOT_CX}" cy="${DOT_CY}" r="${DOT_R}" fill="#292929"/>
+        ${textParts.join('')}
+        ${caretSvg}
+      </svg>`;
+    }
+
+    // ── Cursor element refs ──────────────────────────────
+    const cursor         = document.getElementById('cursor');
+    const cursorInner    = document.getElementById('cursor-inner');
+    const cursorIdle     = document.getElementById('cursor-idle');
+    const cursorCanpress = document.getElementById('cursor-canpress');
+    const cursorTooltip  = document.getElementById('cursor-tooltip');
+    const cursorAction   = document.getElementById('cursor-action');
+    const cursorImage    = document.getElementById('cursor-image');
+    /* Anchor for the image cursor — top-left of img sits a touch right/below mouse */
+    const ANCHOR_IMAGE = 'translate(14px,14px)';
+
+    // Anchor transforms:
+    //   ANCHOR_26  — offsets 26×26 SVG so its visual center (13,13) is at mouse
+    //   ANCHOR_DOT — offsets tooltip SVG so the dot center (DOT_CX, DOT_CY) is at mouse
+    const ANCHOR_26  = 'translate(-13px,-13px)';
+    const ANCHOR_DOT = `translate(-${DOT_CX}px,-${DOT_CY}px)`;
+    /* Plain paragraph box: top-left of SVG near cursor (no anchor dot). */
+    const ANCHOR_PLAIN = 'translate(10px,10px)';
+    /* Action cursor: 69×26 SVG centered on mouse. */
+    const ANCHOR_ACTION = 'translate(-34.5px,-13px)';
+
+    function _hideAllCursorVariants() {
+      cursorIdle.style.display     = 'none';
+      cursorCanpress.style.display = 'none';
+      cursorTooltip.style.display  = 'none';
+      cursorTooltip.classList.remove('cursor-tooltip--plain');
+      if (cursorAction) cursorAction.style.display = 'none';
+      if (cursorImage)  cursorImage.style.display  = 'none';
+    }
+
+    function showIdle() {
+      _hideAllCursorVariants();
+      cursorIdle.style.display     = 'block';
+      cursorInner.style.transform  = ANCHOR_26;
+    }
+
+    function showCanPress() {
+      _hideAllCursorVariants();
+      cursorCanpress.style.display = 'block';
+      cursorInner.style.transform  = ANCHOR_26;
+    }
+
+    function showTooltip(label, variant, showArrow) {
+      const plain = variant === 'plain';
+      _hideAllCursorVariants();
+      cursorTooltip.innerHTML      = plain ? buildPlainTooltipSVG(label) : buildTooltipSVG(label, showArrow);
+      cursorTooltip.classList.toggle('cursor-tooltip--plain', plain);
+      cursorTooltip.style.display  = 'block';
+      cursorInner.style.transform  = plain ? ANCHOR_PLAIN : ANCHOR_DOT;
+    }
+
+    function showAction() {
+      _hideAllCursorVariants();
+      if (cursorAction) cursorAction.style.display = 'block';
+      cursorInner.style.transform  = ANCHOR_ACTION;
+    }
+
+    /* Image cursor — small image (e.g. brand logo) follows the cursor instead of a tooltip. */
+    function showImage(src) {
+      if (!cursorImage) return;
+      _hideAllCursorVariants();
+      if (cursorImage.getAttribute('src') !== src) cursorImage.setAttribute('src', src);
+      cursorImage.style.display    = 'block';
+      cursorInner.style.transform  = ANCHOR_IMAGE;
+    }
+
+    /**
+     * Walk up the DOM from the hovered element to find
+     * the nearest ancestor that declares a cursor interaction.
+     * data-cursor-tooltip takes priority over data-cursor-can-press
+     * which takes priority over generic link/button tags.
+     */
+    function getInteraction(el) {
+      let node = el;
+      while (node && node !== document.body) {
+        if (node.dataset && node.dataset.cursorAction !== undefined) {
+          return { type: 'action' };
+        }
+        // Image cursor takes priority over tooltip — used for the Radiant logo on hover
+        if (node.dataset && node.dataset.cursorImage !== undefined) {
+          return { type: 'image', src: node.dataset.cursorImage };
+        }
+        if (node.dataset && node.dataset.cursorTooltip !== undefined) {
+          const variant = node.dataset.cursorTooltipVariant === 'plain' ? 'plain' : 'default';
+          const showArrow = variant !== 'plain' &&
+            node.hasAttribute('data-cursor-tooltip-arrow') &&
+            node.getAttribute('data-cursor-tooltip-arrow') !== 'false';
+          return { type: 'tooltip', label: node.dataset.cursorTooltip, variant, showArrow };
+        }
+        if (node.dataset && node.dataset.cursorCanPress !== undefined)
+          return { type: 'canPress' };
+        if (node.tagName === 'A' || node.tagName === 'BUTTON')
+          return { type: 'canPress' };
+        node = node.parentElement;
+      }
+      return null;
+    }
+
+    // ── Mouse tracking ───────────────────────────────────
+    document.addEventListener('mousemove', (e) => {
+      cursor.style.opacity   = '1';
+      cursor.style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
+
+      const hit = getInteraction(e.target);
+      if (hit?.type === 'tooltip')      showTooltip(hit.label, hit.variant, hit.showArrow);
+      else if (hit?.type === 'image')    showImage(hit.src);
+      else if (hit?.type === 'canPress') showCanPress();
+      else if (hit?.type === 'action')   showAction();
+      else                               showIdle();
+    });
+
+    document.addEventListener('mouseleave', () => {
+      cursor.style.opacity = '0';
+    });
+
+
+    /* ══════════════════════════════════════════════════════
+       HERO ANIMATIONS
+    ══════════════════════════════════════════════════════ */
+
+    // ── Smoke trail ──────────────────────────────────────
+    // A canvas element rendered above all page content via z-index.
+    // mix-blend-mode: multiply on the canvas means the colorful smoke
+    // particles darken whatever is behind them — on the light background
+    // this produces a saturated, paint-like smear that follows the cursor.
+    // Particles are spawned every ~4px of mouse movement (interpolated)
+    // so there are never visible gaps even at high cursor speed.
+    (function () {
+      var canvas = document.createElement('canvas');
+      canvas.style.cssText = 'position:fixed;top:0;left:0;pointer-events:none;z-index:99998;filter:blur(4px);mix-blend-mode:multiply;';
+      document.body.appendChild(canvas);
+      var ctx = canvas.getContext('2d');
+
+      function resize() {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      // pts = active particles; raf = current animation frame handle
+      var pts = [], raf = null, lx = 0, ly = 0;
+
+      // Map particle life (0–1) to an RGB color along the gradient:
+      //   life 1.0  → pink   (#FF6EFD)  — newest, at cursor position
+      //   life 0.5  → yellow (#F8FF7B)  — mid trail
+      //   life 0.0  → cyan   (#60FBFF)  — oldest, trailing behind
+      function rgb(t) {
+        var r, g, b, u;
+        if (t > 0.5) {
+          u = (t - 0.5) * 2;                    // 1 = pink, 0 = yellow
+          r = Math.round(248 + 7   * u);
+          g = Math.round(255 - 145 * u);
+          b = Math.round(123 + 130 * u);
+        } else {
+          u = t * 2;                              // 1 = yellow, 0 = cyan
+          r = Math.round(96  + 152 * u);
+          g = Math.round(251 + 4   * u);
+          b = Math.round(255 - 132 * u);
+        }
+        return r + ',' + g + ',' + b;
+      }
+
+      function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        var alive = [];
+        for (var i = 0; i < pts.length; i++) {
+          var p = pts[i];
+          p.life -= 0.018;        // ~55 frames total lifespan at 60fps
+          if (p.life <= 0) continue;
+          alive.push(p);
+          p.r += 0.7;             // radius grows = smoke expanding outward
+
+          var c  = rgb(p.life);
+          var a  = p.life * 0.5;  // alpha fades with life
+          var gr = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+          gr.addColorStop(0,   'rgba(' + c + ',' + a          + ')');
+          gr.addColorStop(0.4, 'rgba(' + c + ',' + (a * 0.5)  + ')');
+          gr.addColorStop(1,   'rgba(' + c + ',0)');
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = gr;
+          ctx.fill();
+        }
+        pts = alive;
+        raf = pts.length ? requestAnimationFrame(loop) : null;
+      }
+
+      document.addEventListener('mousemove', function (e) {
+        var dx   = e.clientX - lx;
+        var dy   = e.clientY - ly;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 1) return;
+
+        // Spawn one particle every 4px of travel to fill fast swipes
+        var steps = Math.max(1, Math.ceil(dist / 4));
+        for (var i = 1; i <= steps; i++) {
+          var t = i / steps;
+          pts.push({ x: lx + dx * t, y: ly + dy * t, life: 1, r: 6 });
+        }
+        lx = e.clientX;
+        ly = e.clientY;
+        if (!raf) raf = requestAnimationFrame(loop);
+      });
+
+      document.addEventListener('mouseleave', function () {
+        pts = [];
+        if (raf) { cancelAnimationFrame(raf); raf = null; }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      });
+    })();
+
+    // ── Letter gradient color mapping ────────────────────
+    // Each letter's hover color is pre-calculated from its
+    // position within the word/sentence — leftmost = pink,
+    // rightmost = cyan, evenly interpolated through yellow.
+    function letterColor(t) {
+      var r, g, b, u;
+      if (t <= 0.5) {
+        u = t * 2;                                // pink → yellow
+        r = Math.round(255 + (248 - 255) * u);
+        g = Math.round(110 + (255 - 110) * u);
+        b = Math.round(253 + (123 - 253) * u);
+      } else {
+        u = (t - 0.5) * 2;                       // yellow → cyan
+        r = Math.round(248 + (96  - 248) * u);
+        g = Math.round(255 + (251 - 255) * u);
+        b = Math.round(123 + (255 - 123) * u);
+      }
+      return 'rgb(' + r + ',' + g + ',' + b + ')';
+    }
+
+    // ── Wrap each letter in a span and attach bounce + color events ──
+    // Runs on hero headline + all contact headings so they share
+    // the same interactive letter behaviour.
+    ['.hero-headline', '.contact-heading', '.contact-about-heading', '.contact-more-label'].forEach(sel => {
+      const el = document.querySelector(sel);
+      if (!el) return;
+      const raw = el.textContent;
+      el.textContent = '';
+
+      // Pass 1: create a <span> per character, collect non-space letter spans
+      const letters = [];
+      raw.split('').forEach(char => {
+        const s = document.createElement('span');
+        // letter-space spans stay display:inline so word wrapping still works
+        s.className   = char === ' ' ? 'letter-space' : 'letter';
+        s.textContent = char;
+        el.appendChild(s);
+        if (char !== ' ') letters.push(s);
+      });
+
+      // Pass 2: attach events — color and bounce are fixed at the letter's
+      // position in the string, computed once here (not recalculated on hover)
+      const n = letters.length;
+      letters.forEach((s, idx) => {
+        const color = letterColor(n > 1 ? idx / (n - 1) : 0.5);
+        let leaveTimer = null;
+
+        s.addEventListener('mouseenter', () => {
+          clearTimeout(leaveTimer);
+          // Re-trigger animation: remove class, force reflow, re-add
+          s.classList.remove('bouncing');
+          void s.offsetWidth; // forced reflow resets the animation timeline
+          s.classList.add('bouncing');
+          // Apply gradient color + instant blur that clears to 0 with transition
+          s.style.color      = color;
+          s.style.transition = 'none';
+          s.style.filter     = 'blur(8px)';
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            s.style.transition = 'filter 0.45s ease';
+            s.style.filter     = 'blur(0px)';
+          }));
+        });
+
+        s.addEventListener('mouseleave', () => {
+          s.style.transition = 'filter 0.35s ease';
+          s.style.filter     = 'blur(8px)';
+          // After blur-out finishes, reset color back to CSS default
+          leaveTimer = setTimeout(() => {
+            s.style.color      = '';
+            s.style.transition = 'none';
+            s.style.filter     = '';
+          }, 360);
+        });
+
+        // Clean up the bouncing class so re-entering triggers a fresh animation
+        s.addEventListener('animationend', () => s.classList.remove('bouncing'));
+      });
+    });
+
+    // ── Active nav (scroll-based) ────────────────────────
+    const sections = [
+      { id: 'contact', el: document.getElementById('contact') },
+      { id: 'work',    el: document.getElementById('work') },
+    ];
+    const navLinks = document.querySelectorAll('.nav-link');
+    const navLogo  = document.querySelector('.nav-logo');
+
+    navLogo.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    function updateActiveNav() {
+      let activeId = null;
+      for (const { id, el } of sections) {
+        // A section becomes "active" once its top edge scrolls past the navbar
+        if (el && el.getBoundingClientRect().top <= 60) {
+          activeId = id;
+          break;
+        }
+      }
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + activeId);
+      });
+    }
+
+    window.addEventListener('scroll', updateActiveNav, { passive: true });
+    updateActiveNav();
+
+
+    /* ══════════════════════════════════════════════════════
+       CARD RENDERING
+       Reads the PROJECTS array and writes card HTML into the
+       two column containers. Projects 0–3 go left, 4–7 right.
+       The left column also gets the "/ my work" header slot.
+
+    ── Ping-pong helper ────────────────────────────────────
+    Makes a <video> play forward, then backward, then forward…
+    Native reverse playback isn't supported in HTML5, so we
+    tick currentTime backwards in rAF until we reach 0, then
+    flip back to forward speed. */
+
+    function setupPingPong(video) {
+      let dir = 1;      // 1 = forward, -1 = reverse
+      let rafId = null;
+
+      function reverseTick() {
+        if (video.paused) return;
+        video.currentTime = Math.max(0, video.currentTime - 0.04);
+        if (video.currentTime <= 0) {
+          dir = 1;
+          video.play().catch(() => {});
+        } else {
+          rafId = requestAnimationFrame(reverseTick);
+        }
+      }
+
+      video.addEventListener('ended', () => {
+        // Forward pass finished → start reverse
+        dir = -1;
+        rafId = requestAnimationFrame(reverseTick);
+      });
+
+      video.addEventListener('play', () => {
+        // If we resumed while going forward, cancel any stray rAF
+        if (dir === 1 && rafId) { cancelAnimationFrame(rafId); rafId = null; }
+      });
+    }
+
+    /**
+     * Build a card-b element from a project object.
+     * @param {Project} project
+     * @returns {HTMLElement}
+     */
+    function buildCard(project) {
+      const card = document.createElement('div');
+      card.className          = 'card-b';
+      card.dataset.project    = project.id;
+      // Per-project hover cursor: image (e.g. brand logo) takes priority over the default "See More" tooltip
+      if (project.cursorImage) {
+        card.dataset.cursorImage = project.cursorImage;
+      } else {
+        card.dataset.cursorTooltip = 'See More';
+      }
+
+      // Card body (image / video / 3D — clicks handled on .card-b)
+      const body = document.createElement('div');
+      body.className                  = 'card-b-body';
+
+      // 3D GLB turntable (same spin clock as hero .ring-card-model)
+      if (project.turntableModel) {
+        card.classList.add('card-b--turntable');
+        body.classList.add('card-b-body--turntable');
+        const mv = document.createElement('model-viewer');
+        mv.className = 'card-turntable-model';
+        mv.setAttribute('src', project.turntableModel);
+        mv.setAttribute('interaction-prompt', 'none');
+        mv.setAttribute('shadow-intensity', '0');
+        mv.setAttribute('shadow-softness', '0');
+        mv.setAttribute('exposure', '1');
+        mv.setAttribute('environment-image', 'neutral');
+        mv.setAttribute('min-field-of-view', '42deg');
+        mv.setAttribute('max-field-of-view', '42deg');
+        mv.setAttribute('camera-orbit', '0deg 78deg 105%');
+        mv.setAttribute('style', 'background-color: transparent;');
+        body.appendChild(mv);
+        if (project.turntableLogo) {
+          const logo = document.createElement('img');
+          logo.className = 'card-turntable-logo';
+          logo.src = project.turntableLogo;
+          logo.alt = '';
+          body.appendChild(logo);
+        }
+      }
+      // Video thumbnail (ping-pong autoplay, no controls, no sound)
+      else if (project.video) {
+        body.style.background = '#F8F6F3';
+        const vid           = document.createElement('video');
+        vid.className       = 'card-thumbnail-video';
+        vid.autoplay        = true;
+        vid.muted           = true;
+        vid.playsInline     = true;
+        vid.loop            = false;          // we handle looping manually
+        const src           = document.createElement('source');
+        src.src             = project.video;
+        src.type            = 'video/mp4';
+        vid.appendChild(src);
+        body.appendChild(vid);
+        setupPingPong(vid);
+
+        // Grain layer between video and image
+        const grain = document.createElement('div');
+        grain.className = 'card-grain';
+        body.appendChild(grain);
+
+        // Image overlay on top of video
+        if (project.videoOverlay) {
+          const overlay   = document.createElement('img');
+          overlay.className = 'card-thumbnail-img';
+          overlay.src     = project.videoOverlay;
+          overlay.alt     = '';
+          body.appendChild(overlay);
+        }
+      }
+      // Composite cover (bg image + laser gradient blob + centered logo on tinted frame)
+      else if (project.cover) {
+        body.classList.add('card-b-body--composite');
+        if (project.cover.bgColor) body.style.background = project.cover.bgColor;
+        if (project.cover.bg) {
+          const bgImg = document.createElement('img');
+          bgImg.className = 'card-cover-bg';
+          bgImg.src = project.cover.bg;
+          bgImg.alt = '';
+          body.appendChild(bgImg);
+        }
+        if (project.cover.logo) {
+          const logo = document.createElement('img');
+          logo.className = 'card-cover-logo';
+          logo.src = project.cover.logo;
+          logo.alt = project.title;
+          body.appendChild(logo);
+        }
+      }
+      // Static thumbnail image (fallback / other projects)
+      else if (project.thumbnail) {
+        // Transparent body bg so the white card doesn't show in the rounded corners
+        body.classList.add('card-b-body--thumb');
+        const img      = document.createElement('img');
+        img.className  = 'card-cover';
+        img.src        = project.thumbnail;
+        img.alt        = project.title;
+        body.appendChild(img);
+      }
+
+      // Card footer: title + tag chips
+      const footer = document.createElement('div');
+      footer.className = 'card-b-footer';
+
+      const titleEl = document.createElement('span');
+      titleEl.className   = 'card-b-title';
+      titleEl.textContent = project.title;
+
+      const tagsEl = document.createElement('div');
+      tagsEl.className = 'card-b-tags';
+      project.tags.forEach(tag => {
+        const chip = document.createElement('span');
+        chip.className = 'card-b-tag';
+        chip.innerHTML = `<span class="card-b-tag-slash">/</span> ${tag}`;
+        tagsEl.appendChild(chip);
+      });
+
+      footer.appendChild(titleEl);
+      footer.appendChild(tagsEl);
+      card.appendChild(body);
+      card.appendChild(footer);
+
+      return card;
+    }
+
+    /** Render all cards into their column containers. */
+    function renderCards() {
+      const leftCol  = document.getElementById('cards-col-left');
+      const rightCol = document.getElementById('cards-col-right');
+
+      // Left column header (only the left column has this)
+      const header = document.createElement('div');
+      header.className = 'cards-col-header';
+      const label = document.createElement('span');
+      label.className              = 'cards-col-label';
+      label.dataset.cursorTooltip  = "A collection of selected projects and creative experiments I've worked on over time.";
+      label.textContent            = '/ my work';
+      header.appendChild(label);
+      leftCol.appendChild(header);
+
+      // Interleave by index so the order in projects/index.js reads the way
+      // the cards are actually seen on screen. The right column sits a bit
+      // higher than the left (no header above it), so its first card is the
+      // first thing a visitor lands on — the list maps right-first:
+      //   #1 → top-right,   #2 → top-left,
+      //   #3 → 2nd row R,   #4 → 2nd row L, …
+      PROJECTS.forEach((project, i) => {
+        const card   = buildCard(project);
+        const target = (i % 2 === 0) ? rightCol : leftCol;
+        target.appendChild(card);
+      });
+
+      // Whole card (media + footer text) opens the overlay
+      document.querySelectorAll('.card-b').forEach(el => {
+        el.addEventListener('click', () => {
+          openOverlay(el.dataset.project);
+        });
+      });
+    }
+
+    renderCards();
+
+
+    /* ══════════════════════════════════════════════════════
+       OVERLAY SYSTEM
+       openOverlay(id) looks up the project in PROJECTS,
+       populates the info bar and gallery columns, then
+       triggers the CSS transition by adding .open.
+       The gallery auto-scrolls continuously via rAF loop;
+       drag lets the user scrub manually.
+    ══════════════════════════════════════════════════════ */
+
+    const overlay         = document.getElementById('project-overlay');
+    const overlayPanel    = document.getElementById('overlay-panel');
+    const overlayBackdrop = document.getElementById('overlay-backdrop');
+
+    // ── Gallery placeholder factory ──────────────────────
+    /**
+     * Build default placeholder blocks for one gallery column.
+     * We repeat 6 blocks — enough to fill any scroll position
+     * without a visible gap given SET_H wrapping in the scroll loop.
+     * @param {number} w  Column width in px
+     * @param {number} h  Block height in px
+     * @returns {HTMLElement[]}
+     */
+    function defaultPlaceholders(w, h, count = 6) {
+      return Array.from({ length: count }, () => {
+        const ph = document.createElement('div');
+        ph.className = 'card-ph';
+        ph.style.width  = w + 'px';
+        ph.style.height = h + 'px';
+        return ph;
+      });
+    }
+
+    /**
+     * Build <img> elements from a GalleryImage array, falling
+     * back to placeholder blocks if the array is empty.
+     * @param {GalleryImage[]} images
+     * @param {number} fallbackW
+     * @param {number} fallbackH
+     * @returns {HTMLElement[]}
+     */
+    function buildGalleryItems(images, fallbackW, fallbackH) {
+      if (!images || images.length === 0) {
+        return defaultPlaceholders(fallbackW, fallbackH);
+      }
+      return images.map(({ src, w, h }) => {
+        const img     = document.createElement('img');
+        img.src       = src;
+        img.style.width  = w  + 'px';
+        img.style.height = h  + 'px';
+        img.style.display = 'block';
+        img.style.flexShrink = '0';
+        return img;
+      });
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /** Escape for double-quoted data-* attributes; newlines → &#10; */
+    function escapeDataAttr(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\r?\n/g, '&#10;');
+    }
+
+    function attrUrl(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Expose helpers to window so external scripts (blocks.js) can reuse them.
+    window.escapeHtml     = escapeHtml;
+    window.escapeDataAttr = escapeDataAttr;
+    window.attrUrl        = attrUrl;
+
+    /** Extra copy blocks for SHLTR case study (two-column sections) */
+    const SHLTR_CASE_SECTIONS = {
+      concrete: {
+        title: 'Concrete barriers in public space',
+        cols: [
+          'Physical barriers and digital layers are designed as a single language: weight, texture, and QR entry points are treated as one continuous surface.',
+          'Each placement responds to urban rhythm — bus stops, dividers, and quiet corners — so the work meets people where they already pause.'
+        ]
+      },
+      typography: {
+        title: 'Typography',
+        cols: [
+          'Hebrew lettering is drawn with the same structural logic as the 3D objects: sharp edges, deliberate gaps, and a restrained palette.',
+          'Latin “SHLTR” sits in parallel — not as translation, but as a second voice in the same conversation.'
+        ]
+      },
+      publicSpace: {
+        title: 'Public space',
+        cols: [
+          'The scenes are distributed across the city: scanning is intentional, not a gimmick — it asks for a moment of attention in public.',
+          'The physical pieces and the AR layer are meant to be encountered in passing — scale, material, and screen held in the same frame.'
+        ]
+      }
+    };
+
+    /** Shared load hook for programmatic turntable (hero, cards, case-study QR previews). */
+    function bindTurntableModelViewer(mv) {
+      if (!mv || mv.tagName !== 'MODEL-VIEWER') return;
+      mv.addEventListener('load', () => {
+        if (typeof mv.resetTurntableRotation !== 'function') {
+          mv.setAttribute('auto-rotate', '');
+          mv.setAttribute('auto-rotate-delay', '0');
+          mv.setAttribute('rotation-per-second', '16deg');
+          return;
+        }
+        mv.autoRotate = false;
+        mv.removeAttribute('auto-rotate');
+      });
+    }
+
+    /**
+     * Build scrollable long-form HTML for SHLTR case study overlay.
+     * Asset paths live under projects/SHLTR/ — add files to match, or update caseStudyAssets.
+     * @param {Project} project
+     */
+    function buildCaseStudyHTML(project) {
+      // Block-based projects (V3): delegate to the shared renderer.
+      if (project && project._hasBlocks && typeof window.renderBlocks === 'function') {
+        return window.renderBlocks(project.caseStudy.blocks, project);
+      }
+      const assets = project.caseStudyAssets || {};
+      const heroVideo = assets.heroVideo || 'projects/SHLTR/Video of project.mp4';
+      const heroSide  = assets.heroSide  || 'projects/SHLTR/Logo evolution.jpeg';
+      const gridLabels = assets.gridLabels || ['Research', 'Process', 'XR', 'Print'];
+      const qrModels   = assets.qrModels   || [];
+      const qrStripImages = (assets.qrStripImages && assets.qrStripImages.length === 4)
+        ? assets.qrStripImages
+        : null;
+      const qrLabels = assets.qrLabels || ['', '', '', ''];
+      const qrTooltips = assets.qrTooltips || [];
+      const pictureAllFour = assets.pictureAllFour || 'projects/SHLTR/pictue of all 4.jpg';
+      const innerFrame = assets.innerFrame || 'projects/SHLTR/Sketch.png';
+      const innerTag   = assets.innerTag   || 'Sketch';
+      const sceneVideos  = (assets.sceneVideos && assets.sceneVideos.length === 4)
+        ? assets.sceneVideos
+        : [
+            'projects/SHLTR/Vid anthem.mp4',
+            'projects/SHLTR/Vid passage.mp4',
+            'projects/SHLTR/Vid dreams.mp4',
+            'projects/SHLTR/Vid fracture.mp4'
+          ];
+
+      const desc = Array.isArray(project.description) ? project.description : [project.description];
+      const sec  = SHLTR_CASE_SECTIONS;
+
+      const sceneVideosHTML = [0, 1, 2, 3].map(i => {
+        const src = sceneVideos[i];
+        if (!src) return '';
+        // Static by default; hover activates Action cursor + ping-pong playback.
+        return `<video class="overlay-case-scene-vid" data-hover-ppong data-cursor-action src="${attrUrl(src)}" muted playsinline preload="auto"></video>`;
+      }).join('');
+
+      const heroVideoIsVid = /\.(mp4|webm|ogg)(\?.*)?$/i.test(String(heroVideo));
+      // Figma: 460×320 frame (#F4F1ED) with 32×72 control stack top-right:
+      //   fullscreen (top) + mute/unmute (bottom, default muted).
+      // Video inside uses object-fit: contain so the frame adapts to the
+      // video's aspect without cropping.
+      const heroMainMedia = heroVideoIsVid
+        ? `<div class="overlay-case-video-wrap">
+             <video class="overlay-case-img overlay-case-img--video" src="${attrUrl(heroVideo)}" muted playsinline loop autoplay></video>
+             <div class="overlay-case-video-controls" aria-label="Video controls">
+               <button type="button" class="overlay-case-video-btn" data-video-action="fullscreen" data-cursor-tooltip="Fullscreen" aria-label="Fullscreen">
+                 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                   <path d="M9 9L12.8889 12.85M9 9V12.5M9 9H12.5M9 22.9611L12.8889 19.1111M23 22.9611L19.15 19.1111M22.9611 9L19.1111 12.85M19.5 9H23V12.5M23 19.5V23H19.5M12.5 23H9V19.5" stroke="currentColor"/>
+                 </svg>
+               </button>
+               <button type="button" class="overlay-case-video-btn" data-video-action="mute" data-cursor-tooltip="Sound" aria-label="Toggle sound" aria-pressed="true">
+                 <!-- muted (default) — speaker with X -->
+                 <svg class="icon-muted" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                   <path d="M19 13.6667L23.5 18.3333M23.5 13.6667L19 18.3333M8.5 12.8889V19.1111H12.3242L16.75 23V9L12.25 12.8889H8.5Z" stroke="currentColor"/>
+                 </svg>
+                 <!-- unmuted — speaker with waves -->
+                 <svg class="icon-unmuted" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                   <path d="M8.5 12.8889V19.1111H12.3242L16.75 23V9L12.25 12.8889H8.5Z" stroke="currentColor"/>
+                   <path d="M19.5 13.5c1 1 1 4 0 5M22 11c1.8 1.8 1.8 7.2 0 10" stroke="currentColor" stroke-linecap="round"/>
+                 </svg>
+               </button>
+             </div>
+           </div>`
+        : `<img class="overlay-case-img overlay-case-img--video" src="${attrUrl(heroVideo)}" alt="" loading="lazy"/>`;
+
+      // Figma "About the Project" block:
+      //   960w frame · 24 gap · subhead 16/150% #68645E capitalize · row of 2× 456w cols #A3A09B
+      //   Subhead prefixed with "/" to match section-label convention (e.g. "/ my work")
+      const twoCol = (title, cols) => `
+        <section class="overlay-case-section">
+          <h3 class="overlay-case-subhead"><span class="overlay-case-subhead-slash">/</span> ${escapeHtml(title)}</h3>
+          <div class="overlay-case-cols">
+            ${cols.map(c => `<div class="overlay-case-col">${escapeHtml(c)}</div>`).join('')}
+          </div>
+        </section>`;
+
+      /** Four frames (Figma): one GLB + “/” tag per 460×320 tile; long plain tooltips only here. */
+      const fourFramesHTML = [0, 1, 2, 3].map(i => {
+        const glb = qrModels[i];
+        const lab = qrLabels[i] || gridLabels[i] || ('Scene ' + (i + 1));
+        const fullTip = (qrTooltips[i] || '').trim();
+        const bodyTip = fullTip ? tooltipBodyOnly(fullTip) : '';
+        // Same tooltip variant as "/ my work" section header → default dot+text
+        const tipAttr = bodyTip
+          ? ` data-cursor-tooltip="${escapeDataAttr(bodyTip)}"`
+          : '';
+        const media = glb
+          ? `<model-viewer
+              class="overlay-case-qr-mv"
+              src="${attrUrl(glb)}"
+              camera-controls
+              touch-action="pan-y"
+              interaction-prompt="none"
+              shadow-intensity="0"
+              shadow-softness="0"
+              exposure="1"
+              environment-image="neutral"
+              min-field-of-view="5deg"
+              max-field-of-view="70deg"
+              min-camera-orbit="auto auto 10%"
+              max-camera-orbit="auto auto 200%"
+              camera-orbit="0deg 78deg 75%"
+              style="background-color: transparent;"
+            ></model-viewer>`
+          : '<div style="position:absolute;inset:0;background:#E8E4DF" aria-hidden="true"></div>';
+        return `
+        <div class="overlay-case-tile"${tipAttr}>
+          <div class="overlay-case-tile-tag"><span>/</span> ${escapeHtml(lab)}</div>
+          ${media}
+          <span class="overlay-case-tile-3d" data-cursor-tooltip="Interactive 3D Object" aria-label="Interactive 3D object">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect width="32" height="32" rx="16" fill="#A3A09B" fill-opacity="0.2"/>
+              <path d="M9.5 11.9999L16 15.4999M16 15.4999L22.5 11.9999M16 15.4999V22.9999M15.76 8.62985L9.76 11.8599C9.6 11.9499 9.5 12.1099 9.5 12.2999V19.6999C9.5 19.8799 9.6 20.0499 9.76 20.1399L15.76 23.3699C15.91 23.4499 16.09 23.4499 16.23 23.3699L22.23 20.1399C22.39 20.0499 22.49 19.8799 22.49 19.6999V12.2999C22.49 12.1199 22.39 11.9499 22.23 11.8599L16.23 8.62985C16.1579 8.59047 16.0771 8.56982 15.995 8.56982C15.9129 8.56982 15.8321 8.59047 15.76 8.62985Z" stroke="#A3A09B"/>
+            </svg>
+          </span>
+        </div>`;
+      }).join('');
+
+      /** Inner strip: 4 QR frames, 619.5×283 row centred in 960×440 band per Figma.
+       *  Tag above each is the INDEX (1–4), not the scene title — the titles live
+       *  on the 4 3D tiles above; this strip is the numeric “QR deck”. */
+      const innerPhonesHTML = [0, 1, 2, 3].map(i => {
+        const glb = qrModels[i];
+        const num = i + 1;                         // "/ 1", "/ 2", …
+        const stripSrc = qrStripImages ? qrStripImages[i] : '';
+        let media;
+        if (stripSrc) {
+          media = `<img class="overlay-case-inner-phone-img" src="${attrUrl(stripSrc)}" alt="" loading="lazy"/>`;
+        } else if (glb) {
+          media = `<model-viewer
+              class="overlay-case-qr-mv"
+              src="${attrUrl(glb)}"
+              interaction-prompt="none"
+              shadow-intensity="0"
+              shadow-softness="0"
+              exposure="1"
+              environment-image="neutral"
+              min-field-of-view="42deg"
+              max-field-of-view="42deg"
+              camera-orbit="0deg 78deg 105%"
+              style="background-color: transparent;"
+            ></model-viewer>`;
+        } else {
+          media = '<div style="width:131.5px;height:263px;background:#E8E4DF" aria-hidden="true"></div>';
+        }
+        return `
+        <div class="overlay-case-inner-phone">
+          <div class="overlay-case-inner-phone-tag"><span class="overlay-case-inner-phone-slash">/</span>${num}</div>
+          ${media}
+        </div>`;
+      }).join('');
+
+      return `
+        <div class="overlay-case-inner">
+          <h1 class="overlay-case-title">${escapeHtml(project.title || '')}</h1>
+
+          ${twoCol('About the Project', desc)}
+
+          <section class="overlay-case-grid4" aria-label="Four scene frames">${fourFramesHTML}</section>
+
+          ${twoCol(sec.concrete.title, sec.concrete.cols)}
+
+          <section class="overlay-case-section" aria-label="Inner frames">
+            <div class="overlay-case-inner-phones">
+              <div class="overlay-case-inner-phones-row">${innerPhonesHTML}</div>
+            </div>
+          </section>
+
+          ${twoCol(sec.typography.title, sec.typography.cols)}
+
+          <section class="overlay-case-section" aria-label="Scene videos">
+            <div class="overlay-case-scene-videos">${sceneVideosHTML}</div>
+          </section>
+
+          ${twoCol(sec.publicSpace.title, sec.publicSpace.cols)}
+
+          <section class="overlay-case-section" aria-label="Four scenes composite">
+            <img class="overlay-case-picture-all" src="${attrUrl(pictureAllFour)}" alt="" loading="lazy"/>
+          </section>
+
+          <section class="overlay-case-section" aria-label="Sketch and logo">
+            <div class="overlay-case-sketch-logo">
+              <div class="overlay-case-sketch-wrap">
+                <div class="overlay-case-tile-tag"><span>/</span> ${escapeHtml(innerTag)}</div>
+                <img class="overlay-case-sketch-img" src="${attrUrl(innerFrame)}" alt="" loading="lazy"/>
+              </div>
+              <img class="overlay-case-logo-evo" src="${attrUrl(heroSide)}" alt="" loading="lazy"/>
+            </div>
+          </section>
+
+          <section class="overlay-case-section overlay-case-outro-video" aria-label="Project video">
+            ${heroMainMedia}
+          </section>
+
+          <button type="button" class="overlay-case-back-to-top" data-cursor-tooltip="Scroll to top" aria-label="Back to top">Back to top</button>
+        </div>`;
+    }
+
+    /**
+     * Outro video-frame controls: fullscreen + mute toggle.
+     * Called after case-study HTML is injected. Mute starts "true" (required
+     * for autoplay on modern browsers) and is reset to true on every open.
+     */
+    function bindOutroVideoControls(scope) {
+      const wrap = scope.querySelector('.overlay-case-video-wrap');
+      if (!wrap) return;
+      const video   = wrap.querySelector('video');
+      const fsBtn   = wrap.querySelector('[data-video-action="fullscreen"]');
+      const muteBtn = wrap.querySelector('[data-video-action="mute"]');
+      if (!video) return;
+
+      // Always reset to muted on open.
+      video.muted = true;
+      if (muteBtn) muteBtn.setAttribute('aria-pressed', 'true');
+
+      if (muteBtn) {
+        muteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          video.muted = !video.muted;
+          muteBtn.setAttribute('aria-pressed', String(video.muted));
+          if (!video.muted) {
+            const p = video.play();
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+          }
+        });
+      }
+
+      if (fsBtn) {
+        fsBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openVideoFsModal(video);
+        });
+      }
+    }
+
+    /**
+     * Wire hover-to-play + ping-pong for every <video data-hover-ppong> in scope.
+     * Default state: paused at t=0. On pointerenter: play forward. When the
+     * playhead reaches the end, switch to reverse (rAF-driven, since HTML5
+     * video doesn't reliably support negative playbackRate). On pointerleave:
+     * pause and reset.
+     *
+     * Scoped intentionally to `data-hover-ppong` so the outro video (and any
+     * other autoplay videos) are NOT affected.
+     */
+    function bindHoverPingPongVideos(scope) {
+      const vids = scope.querySelectorAll('video[data-hover-ppong]');
+      vids.forEach(v => {
+        // Make sure the video stays paused at the first frame.
+        v.pause();
+        v.currentTime = 0;
+        v.removeAttribute('autoplay');
+        v.removeAttribute('loop');
+
+        let dir = 1;          // 1 = forward, -1 = reverse
+        let raf = null;
+        let lastT = 0;
+
+        function stopReverseLoop() {
+          if (raf) { cancelAnimationFrame(raf); raf = null; }
+        }
+        function reverseTick(now) {
+          const dt = (now - lastT) / 1000;
+          lastT = now;
+          const next = v.currentTime - dt;
+          if (next <= 0.02) {
+            v.currentTime = 0;
+            dir = 1;
+            stopReverseLoop();
+            const p = v.play();
+            if (p && p.catch) p.catch(() => {});
+            return;
+          }
+          v.currentTime = next;
+          raf = requestAnimationFrame(reverseTick);
+        }
+        function onEnded() {
+          // End reached — flip to reverse via rAF.
+          dir = -1;
+          v.pause();
+          lastT = performance.now();
+          stopReverseLoop();
+          raf = requestAnimationFrame(reverseTick);
+        }
+        v.addEventListener('ended', onEnded);
+        // Fallback — some browsers don't fire `ended` reliably with muted videos.
+        v.addEventListener('timeupdate', () => {
+          if (dir === 1 && v.duration && v.currentTime >= v.duration - 0.05) {
+            onEnded();
+          }
+        });
+
+        v.addEventListener('pointerenter', () => {
+          stopReverseLoop();
+          dir = 1;
+          const p = v.play();
+          if (p && p.catch) p.catch(() => {});
+        });
+        v.addEventListener('pointerleave', () => {
+          stopReverseLoop();
+          dir = 1;
+          v.pause();
+          v.currentTime = 0;
+        });
+      });
+    }
+
+    /**
+     * Scroll-driven sticky scale for the Globe code block.
+     * As the inner overlay scroller passes through the block's runway:
+     *   0.00 → 0.33  →  inner grows from base to viewport size (phase 0→1)
+     *   0.33 → 0.66  →  stays full-screen (phase stays at 1)
+     *   0.66 → 1.00  →  shrinks back to base (phase 1→0)
+     * Written as a rAF-throttled listener on #overlay-case-scroll so we don't
+     * fight the page-level smooth scroll, and only recomputes when the block
+     * is actually near/in the viewport.
+     */
+    function bindGlobeScrollScale(scope) {
+      const scrolls = scope.querySelectorAll('.overlay-case-globe-scroll');
+      if (!scrolls.length) return;
+      const scroller = scope; // overlay-case-scroll itself
+      const viewportH = () => scroller.clientHeight || window.innerHeight;
+
+      let raf = null;
+      function tick() {
+        raf = null;
+        scrolls.forEach(sec => {
+          const inner = sec.querySelector('.overlay-case-globe-inner');
+          if (!inner) return;
+          const rect = sec.getBoundingClientRect();
+          const scRect = scroller.getBoundingClientRect();
+          // Position of section top relative to scroller top.
+          const relTop = rect.top - scRect.top;
+          const vh = viewportH();
+          const total = sec.offsetHeight - vh; // scroll runway inside this section
+          if (total <= 0) { inner.style.setProperty('--p', 0); return; }
+          const scrolled = -relTop;
+          const p = Math.max(0, Math.min(1, scrolled / total));
+          let phase;
+          if (p < 0.33)      phase = p / 0.33;
+          else if (p < 0.66) phase = 1;
+          else               phase = 1 - (p - 0.66) / 0.34;
+          inner.style.setProperty('--p', phase.toFixed(4));
+        });
+      }
+      function onScroll() {
+        if (raf == null) raf = requestAnimationFrame(tick);
+      }
+      scroller.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll);
+      // Initial paint after iframe layout settles.
+      requestAnimationFrame(() => requestAnimationFrame(tick));
+    }
+
+    /**
+     * Custom video fullscreen popup — fills everything below the navbar with
+     * page background, displays the video large with an X button. Navbar stays
+     * visible/active on top (z-index 10000 via .navbar > ours 9600).
+     */
+    const _videoFsState = { video: null, wasMuted: true, wasPaused: false };
+    function openVideoFsModal(sourceVideo) {
+      const modal = document.getElementById('video-fs-modal');
+      if (!modal || !sourceVideo) return;
+      const vid   = modal.querySelector('.video-fs-modal-video');
+      _videoFsState.video    = sourceVideo;
+      _videoFsState.wasMuted = sourceVideo.muted;
+      _videoFsState.wasPaused= sourceVideo.paused;
+      vid.src   = sourceVideo.currentSrc || sourceVideo.src;
+      vid.muted = sourceVideo.muted;
+      vid.currentTime = sourceVideo.currentTime || 0;
+      const muteBtn = modal.querySelector('.video-fs-modal-mute');
+      if (muteBtn) muteBtn.setAttribute('aria-pressed', String(vid.muted));
+      modal.hidden = false;
+      modal.setAttribute('aria-hidden', 'false');
+      requestAnimationFrame(() => requestAnimationFrame(() => modal.classList.add('open')));
+      const p = vid.play();
+      if (p && p.catch) p.catch(() => {});
+    }
+    function closeVideoFsModal() {
+      const modal = document.getElementById('video-fs-modal');
+      if (!modal) return;
+      const vid = modal.querySelector('.video-fs-modal-video');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      setTimeout(() => {
+        modal.hidden = true;
+        try { vid.pause(); } catch (e) {}
+        vid.removeAttribute('src');
+        vid.load && vid.load();
+      }, 350);
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      const modal = document.getElementById('video-fs-modal');
+      if (!modal) return;
+      modal.querySelector('.video-fs-modal-close').addEventListener('click', closeVideoFsModal);
+      const muteBtn = modal.querySelector('.video-fs-modal-mute');
+      const vid     = modal.querySelector('.video-fs-modal-video');
+      if (muteBtn && vid) {
+        muteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          vid.muted = !vid.muted;
+          muteBtn.setAttribute('aria-pressed', String(vid.muted));
+          if (!vid.muted) {
+            const p = vid.play();
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+          }
+        });
+      }
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modal.hidden) closeVideoFsModal();
+      });
+    });
+
+    /**
+     * Populate overlay info bar (name, tags, description)
+     * and gallery columns for the given project.
+     * @param {Project} project
+     */
+    function populateOverlay(project) {
+      const panelEl     = document.getElementById('overlay-panel');
+      const viewDefault = document.querySelector('.overlay-view--default');
+      const viewCase    = document.querySelector('.overlay-view--case');
+      const isCase      = !!project.caseStudy;
+
+      panelEl.classList.toggle('overlay-panel--case', isCase);
+      if (viewDefault) viewDefault.hidden = isCase;
+      if (viewCase) viewCase.hidden = !isCase;
+
+      if (isCase) {
+        const scrollEl = document.getElementById('overlay-case-scroll');
+        scrollEl.innerHTML = buildCaseStudyHTML(project);
+        scrollEl.scrollTop = 0;
+        // 4 case-study tiles: no turntable — user controls rotation/zoom via camera-controls.
+        bindOutroVideoControls(scrollEl);
+        const backBtn = scrollEl.querySelector('.overlay-case-back-to-top');
+        if (backBtn) {
+          backBtn.addEventListener('click', () => {
+            scrollEl.scrollTo({ top: 0, behavior: 'smooth' });
+          });
+        }
+        bindHoverPingPongVideos(scrollEl);
+        bindGlobeScrollScale(scrollEl);
+        document.getElementById('overlay-case-title').textContent = project.title;
+        const tagList = project.overlayTags || project.tags;
+        const tagsWrap = document.getElementById('overlay-case-tags');
+        tagsWrap.innerHTML = '';
+        tagList.forEach(tag => {
+          const span = document.createElement('span');
+          span.className = 'overlay-case-tag';
+          span.innerHTML = `<span class="overlay-case-tag-slash">/</span> ${escapeHtml(tag)}`;
+          tagsWrap.appendChild(span);
+        });
+        return;
+      }
+
+      document.getElementById('overlay-name').textContent = project.title;
+      const descEl = document.getElementById('overlay-desc');
+      if (Array.isArray(project.description)) {
+        descEl.innerHTML = project.description
+          .map(p => `<span class="desc-col" style="flex:${p.length}">${p}</span>`)
+          .join('');
+      } else {
+        descEl.innerHTML = `<span class="desc-col" style="flex:1">${project.description}</span>`;
+      }
+
+      const tagsEl = document.getElementById('overlay-tags');
+      tagsEl.innerHTML = '';
+      project.tags.forEach(tag => {
+        const chip = document.createElement('span');
+        chip.className = 'card-tag';
+        chip.innerHTML = `<span class="card-tag-slash">/</span> ${escapeHtml(tag)}`;
+        tagsEl.appendChild(chip);
+      });
+
+      const leftCol  = overlay.querySelector('.card-gallery-left');
+      const rightCol = overlay.querySelector('.card-gallery-right');
+      leftCol.innerHTML  = '';
+      rightCol.innerHTML = '';
+
+      buildGalleryItems(project.gallery.left,  561, 400).forEach(el => leftCol.appendChild(el));
+      buildGalleryItems(project.gallery.right, 400, 400).forEach(el => rightCol.appendChild(el));
+    }
+
+    /**
+     * Open the overlay for a given project id.
+     * Passes null / unknown id → uses the first project as a fallback.
+     * @param {string} projectId
+     */
+    // Track the currently displayed project so the Share button knows what to share.
+    let _activeProject = null;
+
+    function openOverlay(projectId) {
+      const project = PROJECTS.find(p => p.id === projectId) || PROJECTS[0];
+      _activeProject = project;
+      populateOverlay(project);
+
+      overlay.style.display = 'block';
+      document.body.classList.add('overlay-open');
+      // Per-project class so CSS can scope project-specific overrides
+      // (e.g. body.overlay-project-radiant .overlay-case-lottie-single-frame { ... })
+      document.body.dataset.overlayProject = project.id;
+      // Double rAF ensures the display:block has rendered before
+      // we add .open, so the CSS transition actually fires
+      requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('open')));
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeOverlay() {
+      overlay.classList.remove('open');
+      document.body.classList.remove('overlay-open');
+      overlayPanel.addEventListener('transitionend', () => {
+        overlay.style.display = 'none';
+        document.body.style.overflow = '';
+      }, { once: true }); // {once:true} auto-removes the listener after it fires
+    }
+
+    // ── Gallery infinite vertical scroll ────────────────
+    // INIT_LEFT / INIT_RIGHT: starting translateY offsets so the
+    // gallery appears mid-scroll on open (not anchored to the top).
+    // SET_H: the total pixel height of one "set" of gallery items
+    //   (items + gaps). When an offset reaches SET_H it wraps back
+    //   by subtracting SET_H — making the scroll appear infinite.
+    // SPEED: pixels per animation frame (at 60fps ≈ 18px/s).
+    (function () {
+      const INIT_LEFT  = 349;  // left column starts 349px down
+      const INIT_RIGHT = 75;   // right column starts 75px down (offset gives visual rhythm)
+      const SET_H      = 1440; // total height of one repeating gallery set in px
+      const SPEED      = 0.3;  // px per frame — slow ambient upward drift
+
+      const overlayBody = document.querySelector('.overlay-body');
+      if (!overlayBody) return;
+
+      // We re-query every frame so newly populated gallery columns are found
+      let leftOff  = INIT_LEFT;
+      let rightOff = INIT_RIGHT;
+      let dragging = false;
+      let dragStartY = 0, dragBaseL = 0, dragBaseR = 0;
+
+      function getColumns() {
+        return {
+          leftCol:  overlayBody.querySelector('.card-gallery-left'),
+          rightCol: overlayBody.querySelector('.card-gallery-right')
+        };
+      }
+
+      // Apply current offsets to both columns
+      function applyTransforms() {
+        const { leftCol, rightCol } = getColumns();
+        if (leftCol)  leftCol.style.transform  = `translateY(-${leftOff}px)`;
+        if (rightCol) rightCol.style.transform = `translateY(-${rightOff}px)`;
+      }
+
+      // Set initial position
+      applyTransforms();
+
+      // rAF loop: advance offset each frame unless user is dragging
+      (function tick() {
+        if (!dragging) {
+          leftOff  += SPEED;
+          rightOff += SPEED;
+          // Modulo wrap: keep offsets in [0, SET_H)
+          if (leftOff  >= SET_H) leftOff  -= SET_H;
+          if (rightOff >= SET_H) rightOff -= SET_H;
+          applyTransforms();
+        }
+        requestAnimationFrame(tick);
+      })();
+
+      // ── Drag to scrub gallery ────────────────────────
+      // Dragging up/down manually overrides auto-scroll while held.
+      // The modulo formula keeps the offset in range even if the user
+      // drags far past a boundary.
+      overlayBody.addEventListener('mousedown', e => {
+        dragging   = true;
+        dragStartY = e.clientY;
+        dragBaseL  = leftOff;
+        dragBaseR  = rightOff;
+        e.preventDefault(); // prevent text selection during drag
+      });
+
+      window.addEventListener('mousemove', e => {
+        if (!dragging) return;
+        const dy = dragStartY - e.clientY; // positive = dragging up = scroll down
+        leftOff  = ((dragBaseL + dy) % SET_H + SET_H) % SET_H;
+        rightOff = ((dragBaseR + dy) % SET_H + SET_H) % SET_H;
+        applyTransforms();
+      });
+
+      window.addEventListener('mouseup', () => { dragging = false; });
+    })();
+
+    // ── Overlay open triggers ────────────────────────────
+    // Ring cards in the hero also open the overlay (no specific project linked)
+    // Long-press (3s) on .ring-card-hit reveals full model (no silhouette); suppresses the click that ends the hold.
+    const HERO_MODEL_REVEAL_MS = 3000;
+    document.querySelectorAll('.ring-card').forEach(card => {
+      const hit = card.querySelector('.ring-card-hit');
+      let revealTimer = null;
+      let suppressOverlayClick = false;
+
+      function clearRevealTimer() {
+        if (revealTimer !== null) {
+          clearTimeout(revealTimer);
+          revealTimer = null;
+        }
+      }
+
+      if (hit) {
+        hit.addEventListener('pointerdown', e => {
+          if (card.classList.contains('ring-card--model-revealed')) return;
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+          clearRevealTimer();
+          try {
+            hit.setPointerCapture(e.pointerId);
+          } catch (_) { /* already captured, etc. */ }
+
+          revealTimer = window.setTimeout(() => {
+            revealTimer = null;
+            card.classList.add('ring-card--model-revealed');
+            suppressOverlayClick = true;
+          }, HERO_MODEL_REVEAL_MS);
+        });
+
+        /* End hold before 3s → cancel reveal; pointer capture keeps the gesture if pointer drifts outside hit */
+        hit.addEventListener('pointerup', clearRevealTimer);
+        hit.addEventListener('pointercancel', clearRevealTimer);
+      }
+
+      card.addEventListener('click', e => {
+        if (suppressOverlayClick) {
+          e.preventDefault();
+          e.stopPropagation();
+          suppressOverlayClick = false;
+          return;
+        }
+        // Each hero ring-card opens its own project overlay. The project id
+        // is set on the card by applyHeroConfig (data-project="…"); fall back
+        // to 'shltr' for safety if no config has been applied yet.
+        openOverlay(card.dataset.project || 'shltr');
+      });
+    });
+
+    /* Hero + work cards + case-study QR previews: one turntable clock.
+       .overlay-case-qr-mv is injected when the overlay opens — spinTick queries the DOM each frame. */
+    (function () {
+      const DEG_PER_SEC = 16;
+      const RAD_PER_SEC = (DEG_PER_SEC * Math.PI) / 180;
+      const spinStart = performance.now();
+      // Only hero + work cards auto-spin; the 4 case-study tiles are user-driven (drag/zoom).
+      const SPIN_SEL  = '.ring-card-model, .card-turntable-model';
+
+      document.querySelectorAll('.ring-card-model, .card-turntable-model').forEach(bindTurntableModelViewer);
+
+      function spinTick() {
+        const t = (performance.now() - spinStart) / 1000;
+        const rad = (t * RAD_PER_SEC) % (2 * Math.PI);
+        document.querySelectorAll(SPIN_SEL).forEach(mv => {
+          if (typeof mv.resetTurntableRotation === 'function') {
+            mv.resetTurntableRotation(rad);
+          }
+        });
+        requestAnimationFrame(spinTick);
+      }
+
+      requestAnimationFrame(spinTick);
+    })();
+
+    // ── Overlay close triggers ───────────────────────────
+    const overlayClose = overlay.querySelector('.overlay-close');
+    overlayClose.addEventListener('click', closeOverlay);
+    overlayBackdrop.addEventListener('click', closeOverlay);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOverlay(); });
+
+    // Navbar sits above the overlay (z-index 10000 > 9000) so clicks on it
+    // can't reach the backdrop. When the overlay is open, any click on the
+    // navbar should close it too — the navbar's own action (logo → home,
+    // nav links → scroll) still runs in parallel.
+    (function () {
+      const navbar = document.querySelector('.navbar');
+      if (!navbar) return;
+      navbar.addEventListener('click', () => {
+        if (overlay.classList.contains('open')) closeOverlay();
+      });
+    })();
+
+
+    /* ══════════════════════════════════════════════════════
+       SHARE MODAL
+       openShareModal(project) populates thumbnail + title + URL,
+       wires up the copy button + platform shares, and animates in.
+    ══════════════════════════════════════════════════════ */
+    (function () {
+      const modal    = document.getElementById('share-modal');
+      if (!modal) return;
+      const backdrop = modal.querySelector('.share-modal-backdrop');
+      const closeBtn = modal.querySelector('.share-modal-close');
+      const titleEl  = modal.querySelector('#share-modal-title');
+      const urlEl    = modal.querySelector('.share-modal-url');
+      const copyBtn  = modal.querySelector('.share-modal-copy');
+      const copyLab  = modal.querySelector('.share-modal-copy-label');
+      const thumbVid = modal.querySelector('.share-modal-thumb-video');
+      const thumbImg = modal.querySelector('.share-modal-thumb-img');
+      const thumbFb  = modal.querySelector('.share-modal-thumb-fallback');
+      const shareBtn = document.querySelector('.overlay-share');
+
+      // Build a shareable URL for a project (hash-based so it works offline too)
+      function projectUrl(project) {
+        const base = location.origin + location.pathname;
+        return `${base}#${encodeURIComponent(project.id)}`;
+      }
+
+      // Pick the best preview asset for the thumbnail column
+      function setThumbnail(project) {
+        thumbVid.hidden = true;
+        thumbImg.hidden = true;
+        thumbFb.hidden  = false;
+        thumbVid.removeAttribute('src');
+        thumbImg.removeAttribute('src');
+
+        const isVid = s => typeof s === 'string' && /\.(mp4|webm|ogg)(\?.*)?$/i.test(s);
+
+        // Priority: explicit shareImage (forces image preview, skips video)
+        //           → explicit shareVideo → outro-video block → legacy heroVideo
+        //           → thumbnail image → project turntable logo.
+        if (project.shareImage) {
+          thumbImg.src = project.shareImage;
+          thumbImg.hidden = false;
+          thumbFb.hidden  = true;
+          return;
+        }
+        let vidSrc = null;
+        if (isVid(project.shareVideo)) vidSrc = project.shareVideo;
+        if (!vidSrc && project._hasBlocks) {
+          const outro = (project.caseStudy.blocks || []).find(
+            b => b && b.type === 'outro-video' && isVid(b.src)
+          );
+          if (outro) vidSrc = outro.src;
+        }
+        const a = project.caseStudyAssets || {};
+        if (!vidSrc && isVid(a.heroVideo)) vidSrc = a.heroVideo;
+
+        if (vidSrc) {
+          thumbVid.src = vidSrc;
+          thumbVid.hidden = false;
+          thumbFb.hidden  = true;
+          const p = thumbVid.play();
+          if (p && p.catch) p.catch(() => {});
+          return;
+        }
+        if (project.thumbnail) {
+          thumbImg.src = project.thumbnail;
+          thumbImg.hidden = false;
+          thumbFb.hidden  = true;
+          return;
+        }
+        if (project.turntableLogo) {
+          thumbImg.src = project.turntableLogo;
+          thumbImg.hidden = false;
+          thumbFb.hidden  = true;
+        }
+      }
+
+      function openShareModal(project) {
+        if (!project) return;
+        titleEl.textContent = project.title || 'Project';
+        urlEl.value = projectUrl(project);
+        setThumbnail(project);
+        copyBtn.classList.remove('copied');
+        if (copyLab) copyLab.textContent = 'Copy';
+
+        modal.hidden = false;
+        modal.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => requestAnimationFrame(() => modal.classList.add('open')));
+      }
+
+      function closeShareModal() {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        setTimeout(() => {
+          modal.hidden = true;
+          // Stop preview playback
+          if (thumbVid && !thumbVid.hidden) {
+            try { thumbVid.pause(); } catch (e) {}
+          }
+        }, 350); // matches --dur-lg
+      }
+
+      // Wire up close
+      backdrop.addEventListener('click', closeShareModal);
+      closeBtn.addEventListener('click', closeShareModal);
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && !modal.hidden) closeShareModal();
+      });
+
+      // Wire up copy-link (with clipboard fallback for older browsers)
+      copyBtn.addEventListener('click', async () => {
+        const url = urlEl.value;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+          } else {
+            urlEl.select();
+            document.execCommand('copy');
+          }
+          copyBtn.classList.add('copied');
+          if (copyLab) copyLab.textContent = 'Copied';
+          setTimeout(() => {
+            copyBtn.classList.remove('copied');
+            if (copyLab) copyLab.textContent = 'Copy';
+          }, 1800);
+        } catch (e) {
+          // Silent — URL still selectable
+          urlEl.select();
+        }
+      });
+
+      // Platform share URL builders
+      const PLATFORM_URL = {
+        x:        (u, t) => `https://twitter.com/intent/tweet?text=${encodeURIComponent(t)}&url=${encodeURIComponent(u)}`,
+        linkedin: (u)    => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(u)}`,
+        facebook: (u)    => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(u)}`,
+        whatsapp: (u, t) => `https://wa.me/?text=${encodeURIComponent(t + ' ' + u)}`,
+        email:    (u, t) => `mailto:?subject=${encodeURIComponent(t)}&body=${encodeURIComponent(t + '\n\n' + u)}`
+      };
+      modal.querySelectorAll('.share-platform').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const platform = btn.dataset.platform;
+          const url   = urlEl.value;
+          const title = titleEl.textContent;
+          const href  = (PLATFORM_URL[platform] || ((u) => u))(url, title);
+          if (platform === 'email') window.location.href = href;
+          else window.open(href, '_blank', 'noopener,noreferrer,width=640,height=540');
+        });
+      });
+
+      // Wire the overlay share button to open this modal with the active project
+      if (shareBtn) {
+        shareBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openShareModal(_activeProject);
+        });
+      }
+
+      // Expose for debugging / future non-overlay share triggers
+      window.openShareModal = openShareModal;
+    })();
+
+
+    /* ══════════════════════════════════════════════════════
+       PROXIMITY HOVER
+       Elements with this behaviour show their hover styles
+       when the cursor is within PROXIMITY_R pixels of their
+       bounding box — not only when directly hovered.
+       Distance is computed as the shortest distance from
+       the cursor point to the nearest edge of the rect.
+       This gives interactive elements a "magnetic" feel.
+    ══════════════════════════════════════════════════════ */
+
+    // px radius around the element bounding box that triggers proximity-hover
+    const PROXIMITY_R = 20;
+    // Elements to watch — nav links and contact buttons
+    const proximityEls = document.querySelectorAll('.nav-link, .contact-btn');
+
+    document.addEventListener('mousemove', e => {
+      const cx = e.clientX, cy = e.clientY;
+      proximityEls.forEach(el => {
+        const r  = el.getBoundingClientRect();
+        // dx/dy = 0 when cursor is inside the rect; > 0 when outside
+        const dx = Math.max(r.left - cx, 0, cx - r.right);
+        const dy = Math.max(r.top  - cy, 0, cy - r.bottom);
+        // Pythagorean distance squared compared to radius squared (avoids sqrt)
+        el.classList.toggle('proximity-hover', dx * dx + dy * dy < PROXIMITY_R * PROXIMITY_R);
+      });
+    }, { passive: true });
+
+  </script>
+
+</body>
+</html>

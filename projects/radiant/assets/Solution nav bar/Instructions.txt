@@ -1,0 +1,10 @@
+add animations to the frame instead of the static icons
+make the navbar interactive so while hovering an item on the navbar it would change color like this:
+
+background: linear-gradient(102.87deg, rgba(234, 238, 251, 0) -108.49%, rgba(253, 112, 159, 0.2) 118.17%);
+border-radius: 10px;
+
+
+
+
+
