@@ -2753,15 +2753,18 @@
         height: 100%;
         width: 100%;
       }
-      /* Footer: keep title + tags on a single line — no wrapping. */
+      /* Footer: title left, tags right, single line.
+         8px side padding inside the card width. */
       .card-b-footer {
         width: 100%;
         flex-wrap: nowrap;
+        padding: 0 8px;
         gap: 12px;
         min-width: 0;
+        box-sizing: border-box;
       }
       .card-b-title {
-        font-size: 14px;
+        font-size: 16px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -2773,7 +2776,7 @@
         flex-shrink: 0;
       }
       .card-b-tag {
-        font-size: 14px;
+        font-size: 16px;
         white-space: nowrap;
       }
 
