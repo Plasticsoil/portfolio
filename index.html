@@ -209,6 +209,17 @@
       display: none;
     }
 
+    /* Plain-text fallback for navbar — hidden on desktop (where the SVG
+       wordmarks are shown), revealed on mobile where the SVG is hidden. */
+    .nav-text-fallback {
+      display: none;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 400;
+      letter-spacing: 0;
+      color: inherit;
+    }
+
     .nav-links {
       display: flex;
       align-items: center;
@@ -2562,39 +2573,50 @@
       .navbar-inner { padding: 0 24px; }
     }
 
-    /* ── Mobile (≤640px) ── */
-    @media (max-width: 640px) {
+    /* ── Mobile (≤600px) ──
+       Layout follows the Figma mobile design (360×3166, bg #F8F6F3):
+       same hero shapes as desktop but smaller and tucked around the
+       headline; single-column cards with 36px side padding; contact
+       stacked centred in order About → Get in touch → Explore More. */
+    @media (max-width: 600px) {
       :root {
         --navbar-h: 52px;
       }
 
-      /* ── Navbar — tighter padding, smaller logo, no proximity hover ── */
+      /* ── Navbar — replace the SVG wordmarks with plain text fallbacks ── */
       .navbar-inner {
         padding: 0 16px;
       }
-      .nav-links { gap: 6px; }
+      .nav-links { gap: 4px; }
       .nav-logo, .nav-link {
         padding: 6px 10px;
       }
-      .nav-logo svg { width: 56px; height: 9px; }
-      .nav-link svg { width: 44px; height: 11px; }
+      .nav-logo svg,
+      .nav-link svg,
+      .nav-logo .slash,
+      .nav-link .slash {
+        display: none !important;
+      }
+      .nav-text-fallback {
+        display: inline-block;
+      }
       /* Touch devices: drop the blurred hover glow (no real hover anyway) */
       @media (hover: none) {
         .nav-logo::before, .nav-link::before { display: none; }
       }
 
-      /* ── Hero — stack vertically: headline on top, card(s) below ── */
+      /* ── Hero — same composition as desktop (cards flank headline)
+         but the cards shrink and tuck close so they read as decorative
+         shapes around the title rather than two big standalone cards. */
       .hero {
         height: auto;
         min-height: calc(100vh - 80px);
-        padding: 90px 20px 40px;
-        flex-direction: column;
-        justify-content: flex-start;
-        gap: 40px;
+        padding: 80px 20px 60px;
+        position: relative;
       }
       .hero-text {
         position: relative;
-        order: 0;
+        z-index: 2;
         width: 100%;
         max-width: 100%;
         text-align: center;
@@ -2602,40 +2624,42 @@
         pointer-events: auto;
       }
       .hero-headline {
-        font-size: clamp(38px, 11vw, 56px);
+        font-size: clamp(40px, 12vw, 56px);
         line-height: 1.05;
       }
+      /* Hide the secondary labels on mobile — they don't earn the real estate. */
       .hero-labels {
-        font-size: 14px;
-        margin-top: 12px;
-        gap: 4px;
+        display: none;
       }
       .hero-cards {
-        position: static;
-        order: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 32px;
-        width: 100%;
-        height: auto;
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      /* Override the desktop inline absolute positioning. The two ring-cards
+         (SHLTR + Radiant per HERO_CONFIG) get tucked in opposite corners
+         around the headline, smaller than desktop. */
+      .hero-cards .ring-card {
+        position: absolute !important;
+        width: 140px !important;
+        height: 140px !important;
+        margin: 0 !important;
+        transform: none !important;
         pointer-events: auto;
       }
-      /* Reset the desktop ring positioning — the card was absolutely placed
-         far off-center via inline style. On mobile each card flows in a
-         vertical stack and sits at natural document size. */
-      .hero-cards .ring-card {
-        position: static !important;
-        left: auto !important;
-        top: auto !important;
+      .hero-cards .ring-card:nth-child(1) {
+        left: 12px !important;
+        top: 100px !important;
         right: auto !important;
         bottom: auto !important;
-        transform: none !important;
-        margin: 0 auto !important;
+      }
+      .hero-cards .ring-card:nth-child(2) {
+        right: 12px !important;
+        bottom: 40px !important;
+        left: auto !important;
+        top: auto !important;
       }
       .ring-card-hit {
-        /* Cancel the over-sized invisible hit target (it bled past the card
-           on mobile and grabbed taps that were meant for the page). */
         left: 0 !important;
         top: 0 !important;
         right: 0 !important;
@@ -2644,10 +2668,7 @@
         height: 100% !important;
       }
 
-      /* ── Auto-cycle highlight for hero cards (replaces hover) ──
-         The cycle JS adds .is-pulsing to one card at a time at a steady
-         pace (constant per-card duration, so adding/removing cards keeps
-         the same vibe — pace, not total time). */
+      /* ── Auto-cycle highlight for hero cards (replaces hover) ── */
       .ring-card.is-pulsing .ring-card-stage {
         animation: hero-card-pulse 2.6s ease-in-out;
       }
@@ -2657,20 +2678,18 @@
         100% { transform: scale(1);    filter: brightness(1)   drop-shadow(0 0 0 rgba(255, 80, 200, 0)); }
       }
 
-      /* ── Cards section — collapse 2 columns into a single ordered list ── */
+      /* ── Cards section — single column, 36px side padding per Figma ── */
       .cards-section {
         padding: 60px 0 100px;
       }
       .cards-inner {
         flex-direction: column;
-        padding: 0 20px;
+        padding: 0 36px;
         gap: 0;
         align-items: stretch;
       }
-      /* `display: contents` makes the column wrappers transparent to flex,
-         so each card becomes a direct child of cards-inner — and the
-         `order` rule below puts them in PROJECTS_ORDER sequence regardless
-         of which column they were rendered into. */
+      /* `display: contents` lets cards-col vanish so each card is a direct
+         flex child of cards-inner and we can `order` them into PROJECTS_ORDER. */
       .cards-col {
         display: contents;
       }
@@ -2686,35 +2705,116 @@
         font-size: 22px;
       }
       :root {
-        /* Card width fills the screen (with side padding handled by parent) */
         --card-w: 100%;
       }
       .card-b {
         width: 100%;
         height: auto;
-        margin-bottom: 56px;
+        margin-bottom: 40px;
       }
       .card-b:last-child {
         margin-bottom: 0;
       }
-      /* Card media (image / video / model) keeps its aspect ratio without
-         locking to the desktop fixed 480px height. */
+      /* Thumbnail media: full container width, height proportional to
+         desktop's 400×480 (5:6) ratio so visuals stay consistent. */
+      .card-b-body {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 5 / 6;
+      }
       .card-b .card-media,
       .card-b .card-media-wrap,
-      .card-b > :first-child {
-        height: auto;
-        aspect-ratio: 16 / 11;
+      .card-b-body > :first-child {
+        height: 100%;
+        width: 100%;
+      }
+      /* Footer: keep title + tags on a single line — no wrapping. */
+      .card-b-footer {
+        width: 100%;
+        flex-wrap: nowrap;
+        gap: 12px;
+        min-width: 0;
+      }
+      .card-b-title {
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+      }
+      .card-b-tags {
+        flex-wrap: nowrap;
+        gap: 12px;
+        flex-shrink: 0;
+      }
+      .card-b-tag {
+        font-size: 14px;
+        white-space: nowrap;
       }
 
-      /* ── Contact section — stack columns ── */
+      /* ── Contact section — three centred blocks, ordered per Figma:
+         About → Get in touch → Explore More. The contact-top-row wrapper
+         is dissolved with display:contents so the three blocks become
+         direct children of contact-section and can be re-ordered freely. */
+      .contact-section {
+        padding: 60px 20px 80px;
+        gap: 64px;
+        min-height: auto;
+      }
       .contact-top-row {
-        flex-direction: column;
-        gap: 40px;
-        padding: 0 20px;
+        display: contents;
       }
       .contact-col-left,
+      .contact-bottom,
       .contact-col-right {
         width: 100%;
+        max-width: 100%;
+        align-items: center;
+        text-align: center;
+      }
+      .contact-col-left   { order: 0; }
+      .contact-bottom     { order: 1; }
+      .contact-col-right  { order: 2; align-items: center; }
+
+      .contact-col-right .contact-btn-row,
+      .contact-col-left  .contact-btn-row {
+        justify-content: center;
+      }
+
+      .contact-about-heading,
+      .contact-heading {
+        font-size: 56px;
+        height: auto;
+        line-height: 1;
+        text-align: center;
+      }
+      .contact-bio {
+        text-align: center;
+        font-size: 15px;
+      }
+      /* Rename "More to Explore" → "Explore More" on mobile, keeping the
+         desktop markup untouched. The :empty-style swap is done by hiding
+         the original text node with font-size:0 and inserting a ::before. */
+      .contact-more-label {
+        font-size: 0;
+        text-align: center;
+        align-self: center;
+      }
+      .contact-more-label::before {
+        content: "Explore More";
+        font-family: var(--font-sans);
+        font-style: italic;
+        font-weight: 400;
+        font-size: 28px;
+        line-height: 120%;
+        letter-spacing: -0.02em;
+        color: var(--color-muted);
+      }
+      .contact-bottom {
+        width: 100%;
+      }
+      .contact-tagline {
+        text-align: center;
       }
     }
 
@@ -2820,6 +2920,8 @@
 
       <!-- Logo — scrolls to top on click -->
       <a class="nav-logo" href="#" aria-label="Yam Livnat — home">
+        <!-- Mobile fallback: plain text replaces the SVG below 600px (mobile CSS) -->
+        <span class="nav-text-fallback">Yam Livnat</span>
         <span class="slash">/</span>
         <svg width="71" height="11" viewBox="70.12 24.828 70.956 10.768" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M73.992 31.596L73.16 35.5H71.64L72.52 31.388L70.12 24.828H71.848L73.512 30.044L77 24.828H78.872L73.992 31.596ZM79.0723 29.9H77.7123C78.1603 28.348 79.3123 27.564 81.1363 27.564C82.7043 27.564 83.7283 28.252 83.7283 29.308C83.7283 29.5 83.6483 30.076 83.5683 30.412L82.9923 33.132C82.8803 33.676 82.8643 33.788 82.8643 33.964C82.8643 34.364 83.0243 34.492 83.4723 34.492H83.7603L83.5203 35.596H82.9603C82.1283 35.596 81.8563 35.372 81.7763 34.668C81.1363 35.388 80.4163 35.708 79.3923 35.708C78.6243 35.708 78.0003 35.5 77.5683 35.084C77.1363 34.668 76.8643 33.98 76.8643 33.324C76.8643 32.62 77.1683 31.948 77.6803 31.532C78.1603 31.116 78.8483 30.908 79.9043 30.844L81.1523 30.764C81.7603 30.716 81.9843 30.652 82.1443 30.444C82.2883 30.252 82.3843 29.932 82.3843 29.596C82.3843 28.972 81.9683 28.684 81.0563 28.684C79.9043 28.684 79.3443 29.036 79.0723 29.9ZM81.9043 32.012L81.9683 31.756C81.7603 31.788 81.6803 31.804 81.5203 31.836C81.4403 31.836 81.2963 31.852 81.1043 31.884L80.7203 31.916L79.8403 32.012C78.8483 32.124 78.3683 32.556 78.3683 33.324C78.3683 34.028 78.8483 34.476 79.6323 34.476C80.2723 34.476 80.9603 34.156 81.2963 33.692C81.5363 33.372 81.7443 32.812 81.9043 32.012ZM86.2239 27.772H87.5839L87.3599 28.796C88.3679 27.916 89.1359 27.564 89.9999 27.564C91.0079 27.564 91.6319 28.044 91.7759 28.956C92.6079 28.044 93.5359 27.564 94.4799 27.564C95.6319 27.564 96.3999 28.252 96.3999 29.308C96.3999 29.612 96.3519 29.948 96.2559 30.444L95.1679 35.5H93.7119L94.7359 30.636C94.8799 29.996 94.8959 29.884 94.8959 29.644C94.8959 29.132 94.5599 28.796 94.0319 28.796C92.8319 28.796 91.7919 29.852 91.4559 31.42L90.5919 35.5H89.1199L90.1599 30.636C90.2719 30.092 90.3039 29.9 90.3039 29.66C90.3039 29.1 90.0159 28.796 89.4719 28.796C88.8159 28.796 88.1119 29.18 87.6799 29.756C87.2799 30.284 87.0079 30.988 86.7839 31.996L86.0479 35.5H84.5759L86.2239 27.772ZM105.771 24.828L103.787 34.172H109.307L109.035 35.5H101.979L104.251 24.828H105.771ZM113.325 27.772L111.693 35.5H110.221L111.869 27.772H113.325ZM113.949 24.828L113.613 26.428H112.141L112.493 24.828H113.949ZM119.558 27.772H121.126L116.854 35.5H115.334L114.198 27.772H115.686L116.166 32.172C116.278 33.116 116.342 33.772 116.342 34.236C116.582 33.532 116.79 33.068 117.158 32.396L119.558 27.772ZM122.221 27.772H123.581L123.357 28.796C124.269 27.916 125.005 27.564 125.901 27.564C127.165 27.564 127.981 28.3 127.981 29.404C127.981 29.708 127.949 29.996 127.853 30.46L126.765 35.5H125.309L126.365 30.54C126.477 30.028 126.493 29.884 126.493 29.708C126.493 29.132 126.157 28.796 125.581 28.796C125.069 28.796 124.493 29.036 124.013 29.436C123.421 29.932 123.101 30.54 122.877 31.532L122.045 35.5H120.573L122.221 27.772ZM131.124 29.9H129.764C130.212 28.348 131.364 27.564 133.188 27.564C134.756 27.564 135.78 28.252 135.78 29.308C135.78 29.5 135.7 30.076 135.62 30.412L135.044 33.132C134.932 33.676 134.916 33.788 134.916 33.964C134.916 34.364 135.076 34.492 135.524 34.492H135.812L135.572 35.596H135.012C134.18 35.596 133.908 35.372 133.828 34.668C133.188 35.388 132.468 35.708 131.444 35.708C130.676 35.708 130.052 35.5 129.62 35.084C129.188 34.668 128.916 33.98 128.916 33.324C128.916 32.62 129.22 31.948 129.732 31.532C130.212 31.116 130.9 30.908 131.956 30.844L133.204 30.764C133.812 30.716 134.036 30.652 134.196 30.444C134.34 30.252 134.436 29.932 134.436 29.596C134.436 28.972 134.02 28.684 133.108 28.684C131.956 28.684 131.396 29.036 131.124 29.9ZM133.956 32.012L134.02 31.756C133.812 31.788 133.732 31.804 133.572 31.836C133.492 31.836 133.348 31.852 133.156 31.884L132.772 31.916L131.892 32.012C130.9 32.124 130.42 32.556 130.42 33.324C130.42 34.028 130.9 34.476 131.684 34.476C132.324 34.476 133.012 34.156 133.348 33.692C133.588 33.372 133.796 32.812 133.956 32.012ZM141.076 27.772L140.836 28.844H139.684L138.756 33.244C138.66 33.644 138.66 33.644 138.66 33.788C138.66 34.108 138.852 34.268 139.252 34.268C139.476 34.268 139.668 34.236 139.94 34.14L139.7 35.356C139.348 35.452 139.06 35.5 138.788 35.5C137.844 35.5 137.14 34.956 137.14 34.236C137.14 34.092 137.188 33.66 137.236 33.468L138.212 28.844H137.06L137.316 27.772H138.468L138.932 25.5H140.388L139.94 27.772H141.076Z" fill="currentColor"/>
@@ -2831,6 +2933,7 @@
       <div class="nav-links">
 
         <a class="nav-link" href="#work">
+          <span class="nav-text-fallback">Work</span>
           <span class="slash">/</span>
           <svg width="58" height="14" viewBox="1167.4 24.828 57.74 13.344" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M1173.22 35.5H1171.7L1170.87 29.5C1170.74 28.62 1170.63 27.596 1170.58 26.796C1170.41 27.948 1170.38 28.14 1170.07 29.5L1168.84 35.5H1167.4L1169.67 24.828H1171.66L1172.55 32.252C1172.62 32.876 1172.68 33.452 1172.73 34.012C1172.94 33.564 1173.08 33.292 1173.53 32.46L1177.72 24.828H1179.69L1177.42 35.5H1175.98L1177.24 29.708C1177.51 28.428 1177.61 28.044 1177.96 26.796C1177.4 27.948 1176.9 28.924 1176.57 29.5L1173.22 35.5ZM1185.53 27.772H1187.1L1182.3 36.812C1181.71 37.916 1181.28 38.172 1179.95 38.172H1179.05L1179.31 37.004H1179.82C1180.62 37.004 1180.75 36.908 1181.2 36.044L1181.42 35.612L1180.12 27.772H1181.64L1182.2 31.612C1182.28 32.076 1182.36 33.132 1182.41 34.06C1182.64 33.5 1183.04 32.668 1183.47 31.836L1185.53 27.772ZM1194.53 35.5H1192.96L1192.14 24.828H1193.71L1194.05 30.668C1194.06 31.1 1194.08 31.5 1194.08 31.724C1194.08 31.772 1194.06 33.276 1194.05 33.884C1194.4 32.796 1194.96 31.26 1195.2 30.668L1197.65 24.828H1199.26L1199.74 30.668C1199.82 32.012 1199.84 32.284 1199.84 33.548V33.884C1200.05 32.988 1200.29 32.252 1200.78 30.956L1203.18 24.828H1204.75L1200.38 35.5H1198.83L1198.35 29.788C1198.29 29.164 1198.24 27.868 1198.24 27.18C1198.24 26.796 1198.24 26.588 1198.27 26.124C1197.82 27.692 1197.63 28.204 1196.81 30.108L1194.53 35.5ZM1208.16 27.564C1210.15 27.564 1211.36 28.828 1211.36 30.908C1211.36 32.188 1210.85 33.5 1209.99 34.428C1209.2 35.276 1208.23 35.708 1207.07 35.708C1205.09 35.708 1203.86 34.412 1203.86 32.348C1203.86 29.692 1205.76 27.564 1208.16 27.564ZM1208.08 28.796C1206.56 28.796 1205.35 30.364 1205.35 32.316C1205.35 33.612 1206.07 34.476 1207.14 34.476C1207.78 34.476 1208.45 34.124 1208.9 33.58C1209.47 32.876 1209.87 31.788 1209.87 30.924C1209.87 29.564 1209.22 28.796 1208.08 28.796ZM1213.7 27.612H1215.06L1214.71 29.244C1215.43 28.044 1216.03 27.548 1216.85 27.548C1217.15 27.548 1217.36 27.596 1217.71 27.772L1217.33 29.132C1216.98 29.036 1216.8 29.02 1216.56 29.02C1216 29.02 1215.51 29.26 1215.11 29.724C1214.72 30.172 1214.53 30.62 1214.32 31.532L1213.49 35.5H1212.02L1213.7 27.612ZM1221.83 30.476L1223.6 35.5H1222.1L1220.69 31.404L1219.27 32.572L1218.64 35.5H1217.17L1219.44 24.828H1220.9L1219.62 30.86L1223.12 27.772H1225.14L1221.83 30.476Z" fill="currentColor"/>
@@ -2839,6 +2942,7 @@
         </a>
 
         <a class="nav-link" href="#contact">
+          <span class="nav-text-fallback">Contact</span>
           <span class="slash">/</span>
           <svg width="83" height="12" viewBox="1285.94 24.556 82.87 11.216" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M1290.95 29.756H1295.8L1294.57 35.5H1293.4L1293.53 34.22C1292.5 35.308 1291.48 35.772 1290.15 35.772C1287.62 35.772 1285.94 33.932 1285.94 31.18C1285.94 29.388 1286.62 27.612 1287.75 26.332C1288.78 25.18 1290.22 24.556 1291.8 24.556C1294.1 24.556 1295.54 25.788 1295.7 27.884H1294.22C1294.02 26.62 1293.11 25.884 1291.7 25.884C1290.66 25.884 1289.78 26.284 1289.05 27.068C1288.06 28.156 1287.51 29.612 1287.51 31.228C1287.51 32.364 1287.8 33.164 1288.41 33.708C1288.92 34.188 1289.64 34.444 1290.42 34.444C1292.23 34.444 1293.67 33.084 1294.06 31.036H1290.66L1290.95 29.756ZM1303.96 31.996H1298.28C1298.25 32.236 1298.23 32.348 1298.23 32.508C1298.23 33.724 1298.93 34.476 1300.07 34.476C1300.92 34.476 1301.64 34.06 1302.09 33.292H1303.59C1302.82 34.924 1301.65 35.708 1299.99 35.708C1298.04 35.708 1296.84 34.444 1296.84 32.396C1296.84 31.1 1297.29 29.804 1298.05 28.876C1298.77 27.98 1299.83 27.5 1301.03 27.5C1302.9 27.5 1304.12 28.716 1304.12 30.62C1304.12 31.036 1304.07 31.42 1303.96 31.996ZM1302.71 30.828L1302.73 30.444C1302.73 29.356 1302.09 28.732 1300.98 28.732C1299.78 28.732 1298.93 29.468 1298.53 30.828H1302.71ZM1309.15 27.772L1308.91 28.844H1307.76L1306.83 33.244C1306.73 33.644 1306.73 33.644 1306.73 33.788C1306.73 34.108 1306.93 34.268 1307.33 34.268C1307.55 34.268 1307.74 34.236 1308.01 34.14L1307.77 35.356C1307.42 35.452 1307.13 35.5 1306.86 35.5C1305.92 35.5 1305.21 34.956 1305.21 34.236C1305.21 34.092 1305.26 33.66 1305.31 33.468L1306.29 28.844H1305.13L1305.39 27.772H1306.54L1307.01 25.5H1308.46L1308.01 27.772H1309.15ZM1317.35 24.828L1315.08 35.5H1313.56L1315.83 24.828H1317.35ZM1318.9 27.772H1320.26L1320.04 28.796C1320.95 27.916 1321.68 27.564 1322.58 27.564C1323.84 27.564 1324.66 28.3 1324.66 29.404C1324.66 29.708 1324.63 29.996 1324.53 30.46L1323.44 35.5H1321.99L1323.04 30.54C1323.16 30.028 1323.17 29.884 1323.17 29.708C1323.17 29.132 1322.84 28.796 1322.26 28.796C1321.75 28.796 1321.17 29.036 1320.69 29.436C1320.1 29.932 1319.78 30.54 1319.56 31.532L1318.72 35.5H1317.25L1318.9 27.772ZM1335.78 26.156L1333.8 35.5H1332.28L1334.26 26.156H1331.1L1331.38 24.828H1339.11L1338.82 26.156H1335.78ZM1341.6 27.564C1343.58 27.564 1344.8 28.828 1344.8 30.908C1344.8 32.188 1344.29 33.5 1343.42 34.428C1342.64 35.276 1341.66 35.708 1340.51 35.708C1338.53 35.708 1337.3 34.412 1337.3 32.348C1337.3 29.692 1339.2 27.564 1341.6 27.564ZM1341.52 28.796C1340 28.796 1338.78 30.364 1338.78 32.316C1338.78 33.612 1339.5 34.476 1340.58 34.476C1341.22 34.476 1341.89 34.124 1342.34 33.58C1342.91 32.876 1343.31 31.788 1343.31 30.924C1343.31 29.564 1342.66 28.796 1341.52 28.796ZM1353.34 27.772L1351.7 35.5H1350.34L1350.61 34.236C1349.74 35.292 1349.01 35.708 1347.97 35.708C1346.74 35.708 1345.9 34.956 1345.9 33.868C1345.9 33.58 1345.98 33.02 1346.11 32.428L1347.1 27.772H1348.56L1347.52 32.716C1347.46 33.02 1347.41 33.372 1347.41 33.58C1347.41 34.14 1347.78 34.492 1348.35 34.492C1348.98 34.492 1349.76 34.06 1350.27 33.404C1350.69 32.86 1350.88 32.38 1351.12 31.26L1351.87 27.772H1353.34ZM1361.13 30.236H1359.75C1359.75 29.356 1359.14 28.78 1358.21 28.78C1357.57 28.78 1356.93 29.068 1356.5 29.564C1355.86 30.3 1355.46 31.42 1355.46 32.444C1355.46 33.692 1356.12 34.476 1357.16 34.476C1358.1 34.476 1358.82 33.964 1359.29 32.988H1360.69C1360.18 34.684 1358.85 35.708 1357.16 35.708C1355.19 35.708 1353.96 34.508 1353.96 32.572C1353.96 31.084 1354.53 29.644 1355.51 28.652C1356.2 27.948 1357.14 27.564 1358.17 27.564C1359.93 27.564 1361.13 28.636 1361.13 30.236ZM1363.69 24.828H1365.15L1364.33 28.7C1365.27 27.868 1365.95 27.564 1366.78 27.564C1367.96 27.564 1368.81 28.3 1368.81 29.356C1368.81 29.644 1368.76 30.044 1368.65 30.524L1367.59 35.5H1366.12L1367.19 30.524C1367.29 30.044 1367.32 29.836 1367.32 29.628C1367.32 29.1 1366.97 28.796 1366.36 28.796C1365.13 28.796 1364.09 29.852 1363.74 31.468L1362.89 35.5H1361.42L1363.69 24.828Z" fill="currentColor"/>
