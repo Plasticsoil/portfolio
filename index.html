@@ -2544,6 +2544,180 @@
       animation: letter-float 0.9s ease-in-out forwards;
     }
 
+    /* ══════════════════════════════════════════════════════════════
+       MOBILE — Phase 1 + 2
+       Tablet  ≤ 900px  : compact desktop layout (gentle scaling)
+       Mobile  ≤ 640px  : single-column layout, stacked hero, larger
+                          touch targets, hover effects gracefully
+                          replaced by scroll/auto cycles.
+       ══════════════════════════════════════════════════════════════ */
+
+    /* ── Tablet (≤900px) ── */
+    @media (max-width: 900px) {
+      .cards-inner {
+        padding: 0 60px;
+        gap: var(--space-xl, 60px);
+      }
+      .nav-links { gap: 20px; }
+      .navbar-inner { padding: 0 24px; }
+    }
+
+    /* ── Mobile (≤640px) ── */
+    @media (max-width: 640px) {
+      :root {
+        --navbar-h: 52px;
+      }
+
+      /* ── Navbar — tighter padding, smaller logo, no proximity hover ── */
+      .navbar-inner {
+        padding: 0 16px;
+      }
+      .nav-links { gap: 6px; }
+      .nav-logo, .nav-link {
+        padding: 6px 10px;
+      }
+      .nav-logo svg { width: 56px; height: 9px; }
+      .nav-link svg { width: 44px; height: 11px; }
+      /* Touch devices: drop the blurred hover glow (no real hover anyway) */
+      @media (hover: none) {
+        .nav-logo::before, .nav-link::before { display: none; }
+      }
+
+      /* ── Hero — stack vertically: headline on top, card(s) below ── */
+      .hero {
+        height: auto;
+        min-height: calc(100vh - 80px);
+        padding: 90px 20px 40px;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: 40px;
+      }
+      .hero-text {
+        position: relative;
+        order: 0;
+        width: 100%;
+        max-width: 100%;
+        text-align: center;
+        padding: 0;
+        pointer-events: auto;
+      }
+      .hero-headline {
+        font-size: clamp(38px, 11vw, 56px);
+        line-height: 1.05;
+      }
+      .hero-labels {
+        font-size: 14px;
+        margin-top: 12px;
+        gap: 4px;
+      }
+      .hero-cards {
+        position: static;
+        order: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 32px;
+        width: 100%;
+        height: auto;
+        pointer-events: auto;
+      }
+      /* Reset the desktop ring positioning — the card was absolutely placed
+         far off-center via inline style. On mobile each card flows in a
+         vertical stack and sits at natural document size. */
+      .hero-cards .ring-card {
+        position: static !important;
+        left: auto !important;
+        top: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        transform: none !important;
+        margin: 0 auto !important;
+      }
+      .ring-card-hit {
+        /* Cancel the over-sized invisible hit target (it bled past the card
+           on mobile and grabbed taps that were meant for the page). */
+        left: 0 !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      /* ── Auto-cycle highlight for hero cards (replaces hover) ──
+         The cycle JS adds .is-pulsing to one card at a time at a steady
+         pace (constant per-card duration, so adding/removing cards keeps
+         the same vibe — pace, not total time). */
+      .ring-card.is-pulsing .ring-card-stage {
+        animation: hero-card-pulse 2.6s ease-in-out;
+      }
+      @keyframes hero-card-pulse {
+        0%   { transform: scale(1);    filter: brightness(1)   drop-shadow(0 0 0 rgba(255, 80, 200, 0)); }
+        45%  { transform: scale(1.04); filter: brightness(1.06) drop-shadow(0 8px 28px rgba(255, 80, 200, 0.35)); }
+        100% { transform: scale(1);    filter: brightness(1)   drop-shadow(0 0 0 rgba(255, 80, 200, 0)); }
+      }
+
+      /* ── Cards section — collapse 2 columns into a single ordered list ── */
+      .cards-section {
+        padding: 60px 0 100px;
+      }
+      .cards-inner {
+        flex-direction: column;
+        padding: 0 20px;
+        gap: 0;
+        align-items: stretch;
+      }
+      /* `display: contents` makes the column wrappers transparent to flex,
+         so each card becomes a direct child of cards-inner — and the
+         `order` rule below puts them in PROJECTS_ORDER sequence regardless
+         of which column they were rendered into. */
+      .cards-col {
+        display: contents;
+      }
+      .cards-col-header,
+      .card-b {
+        order: var(--card-order, 0);
+      }
+      .cards-col-header {
+        height: auto;
+        margin: 0 0 16px;
+      }
+      .cards-col-label {
+        font-size: 22px;
+      }
+      :root {
+        /* Card width fills the screen (with side padding handled by parent) */
+        --card-w: 100%;
+      }
+      .card-b {
+        width: 100%;
+        height: auto;
+        margin-bottom: 56px;
+      }
+      .card-b:last-child {
+        margin-bottom: 0;
+      }
+      /* Card media (image / video / model) keeps its aspect ratio without
+         locking to the desktop fixed 480px height. */
+      .card-b .card-media,
+      .card-b .card-media-wrap,
+      .card-b > :first-child {
+        height: auto;
+        aspect-ratio: 16 / 11;
+      }
+
+      /* ── Contact section — stack columns ── */
+      .contact-top-row {
+        flex-direction: column;
+        gap: 40px;
+        padding: 0 20px;
+      }
+      .contact-col-left,
+      .contact-col-right {
+        width: 100%;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -3781,6 +3955,9 @@
       // Left column header (only the left column has this)
       const header = document.createElement('div');
       header.className = 'cards-col-header';
+      // --card-order = -1 puts the header first when mobile collapses the
+      // two columns into one flex column (see the mobile CSS block).
+      header.style.setProperty('--card-order', '-1');
       const label = document.createElement('span');
       label.className              = 'cards-col-label';
       label.dataset.cursorTooltip  = "A collection of selected projects and creative experiments I've worked on over time.";
@@ -3794,8 +3971,12 @@
       // first thing a visitor lands on — the list maps right-first:
       //   #1 → top-right,   #2 → top-left,
       //   #3 → 2nd row R,   #4 → 2nd row L, …
+      // On mobile the columns collapse to a single flex column and `order`
+      // (driven by --card-order) restores the PROJECTS_ORDER sequence so
+      // visitors read the cards in the same order the array defines them.
       PROJECTS.forEach((project, i) => {
         const card   = buildCard(project);
+        card.style.setProperty('--card-order', String(i));
         const target = (i % 2 === 0) ? rightCol : leftCol;
         target.appendChild(card);
       });
@@ -3809,6 +3990,88 @@
     }
 
     renderCards();
+
+
+    /* ══════════════════════════════════════════════════════
+       MOBILE HERO ANIMATION CYCLE
+       Replaces hover-driven hero behavior with two automatic
+       phases on touch / narrow viewports:
+         1. Letter wave — the headline characters bounce in
+            reading order on first paint (one-shot).
+         2. Highlight cycle — each hero card pulses in turn,
+            DOM-order = visual top-to-bottom on the stacked
+            mobile layout (clockwise on a future ring layout).
+       Pace is fixed per element (PACE_PER_CARD_MS), so adding
+       or removing cards keeps the same vibe — pace stays the
+       same, total cycle time scales with count.
+    ══════════════════════════════════════════════════════ */
+    (function initMobileHeroCycle() {
+      const mq = window.matchMedia('(max-width: 640px)');
+
+      const LETTER_STAGGER_MS = 75;   // per-letter wave delay
+      const PACE_PER_CARD_MS  = 2800; // per-card pulse cadence
+      const POST_WAVE_PAUSE   = 600;  // breath before card cycle starts
+
+      let cycleTimer = null;
+
+      function fireLetterWave() {
+        const letters = document.querySelectorAll('.hero-headline .letter');
+        if (!letters.length) return 0;
+        letters.forEach((s, i) => {
+          setTimeout(() => {
+            // Mirror the desktop hover behaviour: re-trigger the bounce
+            // animation via remove → reflow → add. Color/blur are skipped
+            // here so the wave reads as motion only (calm, not flashy).
+            s.classList.remove('bouncing');
+            void s.offsetWidth;
+            s.classList.add('bouncing');
+          }, i * LETTER_STAGGER_MS);
+        });
+        return letters.length * LETTER_STAGGER_MS + 900; // wave length + bounce duration
+      }
+
+      function startCardCycle() {
+        const cards = Array.from(document.querySelectorAll('.hero-cards .ring-card'));
+        if (!cards.length) return;
+        let i = 0;
+        const tick = () => {
+          cards.forEach(c => c.classList.remove('is-pulsing'));
+          // Force reflow so the keyframe animation re-runs from frame 0
+          // even when the same card is targeted again on a single-card hero.
+          void cards[i].offsetWidth;
+          cards[i].classList.add('is-pulsing');
+          i = (i + 1) % cards.length;
+        };
+        tick(); // start immediately so the first pulse hits right after the wave
+        cycleTimer = setInterval(tick, PACE_PER_CARD_MS);
+      }
+
+      function stopCardCycle() {
+        if (cycleTimer) { clearInterval(cycleTimer); cycleTimer = null; }
+        document.querySelectorAll('.hero-cards .ring-card.is-pulsing')
+          .forEach(c => c.classList.remove('is-pulsing'));
+      }
+
+      function activate() {
+        const waveDur = fireLetterWave();
+        setTimeout(startCardCycle, waveDur + POST_WAVE_PAUSE);
+      }
+
+      function handleChange() {
+        if (mq.matches) activate();
+        else stopCardCycle();
+      }
+
+      // Defer one frame so renderCards() finishes wiring the DOM first.
+      requestAnimationFrame(() => {
+        if (mq.matches) activate();
+        // If the viewport flips between mobile/desktop later (devtools, rotate),
+        // start/stop the cycle accordingly. The letter wave only re-fires
+        // when crossing back into mobile (felt cleaner than firing every flip).
+        if (mq.addEventListener) mq.addEventListener('change', handleChange);
+        else mq.addListener(handleChange); // older Safari
+      });
+    })();
 
 
     /* ══════════════════════════════════════════════════════
