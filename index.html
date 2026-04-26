@@ -2787,7 +2787,10 @@
         height: 100%;
         left: 0;
         top: 0;
-        transform: none;
+        /* Match desktop's 150% zoom so the 3D silhouette fills the
+           card frame instead of looking small + lost inside the body. */
+        transform: scale(1.5);
+        transform-origin: 50% 50%;
       }
       /* Thumbnail PNGs (e.g. Radiant) have rounded transparent corners.
          Keep the body bg transparent and drop the border so the white
@@ -2878,7 +2881,10 @@
         -webkit-text-stroke: 0.4px #A3A09B;
       }
       .contact-bio {
-        text-align: center;
+        text-align: justify;
+        text-align-last: center;
+        text-wrap: balance;
+        hyphens: auto;
         font-size: 14px;
         line-height: 150%;
         letter-spacing: -0.02em;
@@ -2897,27 +2903,24 @@
         text-decoration: underline;
         letter-spacing: -0.01em;
       }
-      /* Rename "More to Explore" → "Explore More" on mobile, keeping the
-         desktop markup untouched. The :empty-style swap is done by hiding
-         the original text node with font-size:0 and inserting a ::before
-         that mirrors the same 52px serif heading style. */
+      /* "More to Explore" gets its text replaced by JS to "Explore More"
+         on mobile (so the existing letter-wrap can split it into per-letter
+         spans for the auto cycle). Style here mirrors the other 52px serif
+         headings — font-style is forced to normal because the desktop
+         label is italic. */
       .contact-more-label {
-        font-size: 0;
-        text-align: center;
-        align-self: center;
-        height: auto;
-      }
-      .contact-more-label::before {
-        content: "Explore More";
         font-family: var(--font-serif);
         font-style: normal;
         font-weight: 400;
         font-size: 52px;
         line-height: 120%;
         letter-spacing: -0.01em;
+        text-align: center;
         text-transform: capitalize;
         color: var(--color-muted);
         -webkit-text-stroke: 0.4px #A3A09B;
+        align-self: center;
+        height: auto;
       }
 
       /* ── Disable the custom JS cursor on touch devices ──
@@ -3905,6 +3908,16 @@
       return 'rgb(' + r + ',' + g + ',' + b + ')';
     }
 
+    // ── Mobile-only text swap before letter-wrap: the contact "More to
+    //    Explore" label reads as "Explore More" in the Figma mobile design.
+    //    Replacing here (rather than via CSS ::before) means the letters
+    //    end up as real DOM nodes that the letter-wrap loop below can split
+    //    + the contact-cycle script can animate.
+    if (window.matchMedia('(max-width: 600px)').matches) {
+      const moreLabel = document.querySelector('.contact-more-label');
+      if (moreLabel) moreLabel.textContent = 'Explore More';
+    }
+
     // ── Wrap each letter in a span and attach bounce + color events ──
     // Runs on hero headline + all contact headings so they share
     // the same interactive letter behaviour.
@@ -4287,6 +4300,125 @@
         // when crossing back into mobile (felt cleaner than firing every flip).
         if (mq.addEventListener) mq.addEventListener('change', handleChange);
         else mq.addListener(handleChange); // older Safari
+      });
+    })();
+
+
+    /* ══════════════════════════════════════════════════════
+       MOBILE — CONTACT AUTO-CYCLE
+       Replaces the desktop hover behaviour on touch.
+       Sequence (per round):
+         About letters → Resume btn → Get In Touch letters →
+         Email btn → Phone btn → Explore More letters →
+         LinkedIn btn → Behance btn → 2s pause → repeat.
+       Each "step" mirrors the desktop hover effect: bounce +
+       blur-in/out + gradient color, then resets back.
+    ══════════════════════════════════════════════════════ */
+    (function initMobileContactCycle() {
+      const mq = window.matchMedia('(max-width: 600px)');
+      const STAGGER_MS    = 70;   // per-letter wave delay inside a heading
+      const STEP_PAUSE_MS = 350;  // pause between sequence steps
+      const ROUND_PAUSE_MS = 2000; // pause between full rounds
+      const FLASH_HOLD_MS = 700;  // how long the bounce/blur/color stays before fading
+      const FLASH_OUT_MS  = 360;  // fade-out duration
+
+      let stopped = false;
+      const timers = new Set();
+      function setT(fn, ms) { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); return id; }
+      function clearAll() { timers.forEach(clearTimeout); timers.clear(); }
+      function wait(ms) { return new Promise(r => setT(r, ms)); }
+
+      // Color-gradient palette across a sequence (matches the hero headline
+      // pink → yellow → cyan ramp via window.letterColor if available).
+      function colorFor(t) {
+        if (typeof letterColor === 'function') return letterColor(t);
+        return '#A3A09B';
+      }
+
+      // Apply the desktop-hover "flash" (bounce + blur + tint) to one
+      // span/element, then reset it after FLASH_HOLD_MS + FLASH_OUT_MS.
+      function flash(el, color) {
+        el.classList.remove('bouncing');
+        void el.offsetWidth;
+        el.classList.add('bouncing');
+        el.style.color = color;
+        el.style.transition = 'none';
+        el.style.filter = 'blur(8px)';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          el.style.transition = 'filter 0.45s ease';
+          el.style.filter = 'blur(0px)';
+        }));
+        setT(() => {
+          el.style.transition = 'filter ' + (FLASH_OUT_MS / 1000) + 's ease';
+          el.style.filter = 'blur(8px)';
+          setT(() => {
+            el.style.color = '';
+            el.style.transition = 'none';
+            el.style.filter = '';
+            el.classList.remove('bouncing');
+          }, FLASH_OUT_MS);
+        }, FLASH_HOLD_MS);
+      }
+
+      async function waveHeading(sel) {
+        const el = document.querySelector(sel);
+        if (!el) return;
+        const letters = el.querySelectorAll('.letter');
+        if (!letters.length) return;
+        const n = letters.length;
+        letters.forEach((s, i) => {
+          setT(() => flash(s, colorFor(n > 1 ? i / (n - 1) : 0.5)), i * STAGGER_MS);
+        });
+        // Wait for the last letter's flash to finish before yielding
+        await wait(n * STAGGER_MS + FLASH_HOLD_MS + FLASH_OUT_MS);
+      }
+
+      async function flashButton(el, t) {
+        if (!el) return;
+        flash(el, colorFor(t));
+        await wait(FLASH_HOLD_MS + FLASH_OUT_MS);
+      }
+
+      async function runRound() {
+        if (stopped || !mq.matches) return;
+
+        await waveHeading('.contact-about-heading');
+        await wait(STEP_PAUSE_MS);
+
+        await flashButton(document.querySelector('.contact-col-left .contact-btn'), 0.15);
+        await wait(STEP_PAUSE_MS);
+
+        await waveHeading('.contact-heading');
+        await wait(STEP_PAUSE_MS);
+
+        const bottomBtns = document.querySelectorAll('.contact-bottom .contact-btn');
+        await flashButton(bottomBtns[0], 0.35);
+        await wait(STEP_PAUSE_MS);
+        await flashButton(bottomBtns[1], 0.5);
+        await wait(STEP_PAUSE_MS);
+
+        await waveHeading('.contact-more-label');
+        await wait(STEP_PAUSE_MS);
+
+        const exploreBtns = document.querySelectorAll('.contact-col-right .contact-btn');
+        await flashButton(exploreBtns[0], 0.75);
+        await wait(STEP_PAUSE_MS);
+        await flashButton(exploreBtns[1], 0.95);
+
+        await wait(ROUND_PAUSE_MS);
+        if (!stopped && mq.matches) runRound();
+      }
+
+      function start() { stopped = false; runRound(); }
+      function stop() { stopped = true; clearAll(); }
+
+      requestAnimationFrame(() => {
+        // Defer a tick so the letter-wrap pass has finished splitting
+        // the contact headings into per-letter spans.
+        setT(() => { if (mq.matches) start(); }, 200);
+        const handle = () => { if (mq.matches) start(); else stop(); };
+        if (mq.addEventListener) mq.addEventListener('change', handle);
+        else mq.addListener(handle);
       });
     })();
 
