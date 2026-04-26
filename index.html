@@ -111,12 +111,14 @@
       left: 0;
       right: 0;
       bottom: 0;
-      height: 140px;
+      /* Taller bar so all three accent colors have room to read. */
+      height: 240px;
       background: linear-gradient(to top,
-        rgba(255, 110, 253, 0.55) 0%,
-        rgba(248, 255, 123, 0.45) 50%,
-        rgba(96, 251, 255, 0.0)  100%);
-      filter: blur(22px);
+        rgba(255, 110, 253, 0.70) 0%,
+        rgba(248, 255, 123, 0.55) 45%,
+        rgba(96, 251, 255, 0.40)  80%,
+        rgba(96, 251, 255, 0.0)   100%);
+      filter: blur(28px);
       transform: translateY(100%);
       opacity: 0;
       pointer-events: none;
@@ -2946,11 +2948,11 @@
         line-height: 120%;
         letter-spacing: -0.02em;
       }
-      /* Buttons — italic 16px underlined per Figma. */
+      /* Buttons — italic 16px, no underline per latest spec. */
       .contact-btn {
         font-style: italic;
         font-size: 16px;
-        text-decoration: underline;
+        text-decoration: none;
         letter-spacing: -0.01em;
       }
       /* "More to Explore" gets its text replaced by JS to "Explore More"
@@ -2966,7 +2968,9 @@
         line-height: 120%;
         letter-spacing: -0.01em;
         text-align: center;
-        text-transform: capitalize;
+        /* Only the first letter is uppercase per Figma — text content is
+           already "Explore more", so disable the desktop capitalize. */
+        text-transform: none;
         color: var(--color-muted);
         -webkit-text-stroke: 0.4px #A3A09B;
         align-self: center;
@@ -3983,7 +3987,7 @@
     //    + the contact-cycle script can animate.
     if (window.matchMedia('(max-width: 600px)').matches) {
       const moreLabel = document.querySelector('.contact-more-label');
-      if (moreLabel) moreLabel.textContent = 'Explore More';
+      if (moreLabel) moreLabel.textContent = 'Explore more';
     }
 
     // ── Wrap each letter in a span and attach bounce + color events ──
@@ -4384,11 +4388,14 @@
     ══════════════════════════════════════════════════════ */
     (function initMobileContactCycle() {
       const mq = window.matchMedia('(max-width: 600px)');
-      const STAGGER_MS    = 70;   // per-letter wave delay inside a heading
-      const STEP_PAUSE_MS = 350;  // pause between sequence steps
-      const ROUND_PAUSE_MS = 2000; // pause between full rounds
-      const FLASH_HOLD_MS = 700;  // how long the bounce/blur/color stays before fading
-      const FLASH_OUT_MS  = 360;  // fade-out duration
+      const STAGGER_MS              = 95;   // per-letter wave delay inside a heading
+      const HEADING_TO_BUTTON_DELAY = 450;  // pause after a heading before the next button
+      const BUTTON_TO_BUTTON_DELAY  = 350;  // pause between two buttons in the same row
+      const BUTTON_TO_HEADING_DELAY = 750;  // larger pause before the next heading wave
+      const BUTTON_HOLD_MS          = 700;  // button stays lit for this long
+      const ROUND_PAUSE_MS          = 2400; // pause between full rounds
+      const FLASH_HOLD_MS           = 850;  // letter bounce/blur/color hold time
+      const FLASH_OUT_MS            = 400;  // fade-out duration
 
       let stopped = false;
       const timers = new Set();
@@ -4455,26 +4462,39 @@
       }
 
       async function stepButton(el) {
-        flashButton(el);
-        // A button counts as one "letter unit" of rhythm — same beat as
-        // a single letter in a heading wave.
-        await wait(STAGGER_MS);
+        if (!el) return;
+        el.classList.add('proximity-hover');
+        // Hold the button lit for BUTTON_HOLD_MS, then release before
+        // the next item — so each button "sits" on screen instead of
+        // flashing past in one letter unit.
+        await wait(BUTTON_HOLD_MS);
+        el.classList.remove('proximity-hover');
       }
 
       async function runRound() {
         if (stopped || !mq.matches) return;
 
+        // ── About → Resume ──
         await waveHeading('.contact-about-heading');
+        await wait(HEADING_TO_BUTTON_DELAY);
         await stepButton(document.querySelector('.contact-col-left .contact-btn'));
+        await wait(BUTTON_TO_HEADING_DELAY);
 
+        // ── Get In Touch → Email → Phone ──
         await waveHeading('.contact-heading');
+        await wait(HEADING_TO_BUTTON_DELAY);
         const bottomBtns = document.querySelectorAll('.contact-bottom .contact-btn');
         await stepButton(bottomBtns[0]);
+        await wait(BUTTON_TO_BUTTON_DELAY);
         await stepButton(bottomBtns[1]);
+        await wait(BUTTON_TO_HEADING_DELAY);
 
+        // ── Explore More → LinkedIn → Behance ──
         await waveHeading('.contact-more-label');
+        await wait(HEADING_TO_BUTTON_DELAY);
         const exploreBtns = document.querySelectorAll('.contact-col-right .contact-btn');
         await stepButton(exploreBtns[0]);
+        await wait(BUTTON_TO_BUTTON_DELAY);
         await stepButton(exploreBtns[1]);
 
         await wait(ROUND_PAUSE_MS);
@@ -4510,8 +4530,8 @@
       peek.id = 'overscroll-peek';
       document.body.appendChild(peek);
 
-      const MAX_PEEK_PX = 36;       // total reveal cap (px)
-      const RESIST      = 5;        // higher = more finger travel per px revealed
+      const MAX_PEEK_PX = 90;       // total reveal cap (px) — bigger peek
+      const RESIST      = 3.5;      // less resistance so it feels easier to drag in
 
       let touchStartY = 0;
       let dragging    = false;
@@ -4545,8 +4565,10 @@
         if (dy <= 0) { reset(); return; }
         const reveal = Math.min(dy / RESIST, MAX_PEEK_PX);
         peek.style.transition = 'none';
-        peek.style.transform  = `translateY(${100 - (reveal / 140) * 100}%)`;
-        peek.style.opacity    = String(Math.min(reveal / MAX_PEEK_PX, 0.9));
+        // Translate up by `reveal` px regardless of bar height, so MAX_PEEK_PX
+        // is the actual on-screen height of the visible gradient.
+        peek.style.transform  = `translateY(calc(100% - ${reveal}px))`;
+        peek.style.opacity    = String(Math.min(reveal / MAX_PEEK_PX, 0.95));
       }, { passive: true });
 
       window.addEventListener('touchend',    reset, { passive: true });
