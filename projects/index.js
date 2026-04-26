@@ -12,6 +12,8 @@ window.PROJECTS_ORDER = [
   'radiant',
   'placeholder-1',
   'placeholder-2',
+  'placeholder-3',
+  'placeholder-4',
   // ── Hidden until built ─────────────────────────────────────────
   // Re-add a slug below to make that project appear on the home grid.
   // 'globe',

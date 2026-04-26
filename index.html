@@ -2761,16 +2761,33 @@
         box-sizing: border-box;
       }
       /* Override desktop's fixed 467×607 turntable body so SHLTR's card
-         scales to the mobile column width like every other card. */
+         scales to the mobile column width like every other card.
+         The turntable body is also given a transparent bg + no border
+         so the 3D model floats on the page bg (matches Figma — no
+         frame around the 3D silhouette). */
       .card-b.card-b--turntable,
       .card-b-body.card-b-body--turntable {
         width: 100% !important;
         height: auto !important;
         align-self: stretch !important;
         aspect-ratio: 144 / 173;
+        background: transparent !important;
+        border: none !important;
       }
       .card-b.card-b--turntable .card-b-footer {
         width: 100%;
+      }
+      /* The model-viewer is desktop-locked at 467×607 and absolutely
+         positioned with a desktop-zoom transform. On mobile, fill the
+         body and reset the zoom so the model is centered + uncropped. */
+      .card-b-body.card-b-body--turntable .card-turntable-model {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        transform: none;
       }
       /* Thumbnail PNGs (e.g. Radiant) have rounded transparent corners.
          Keep the body bg transparent and drop the border so the white
@@ -2813,13 +2830,16 @@
         white-space: nowrap;
       }
 
-      /* ── Contact section — three centred blocks, ordered per Figma:
-         About → Get in touch → Explore More. The contact-top-row wrapper
-         is dissolved with display:contents so the three blocks become
-         direct children of contact-section and can be re-ordered freely. */
+      /* ── Contact section — three centred blocks per Figma:
+         About → Get in touch → Explore More.
+         Section: padding 200px 36px 120px, gap 100px between blocks.
+         Block: gap 24px between heading/body/buttons.
+         Heading: Instrument Serif 52px, 0.4px stroke in muted tone.
+         Body text: Nimbus Sans 14px, italic for taglines.
+         Buttons: italic 16px underlined, gap 24 between buttons. */
       .contact-section {
-        padding: 60px 36px 80px;
-        gap: 64px;
+        padding: 120px 36px 120px;
+        gap: 100px;
         min-height: auto;
       }
       .contact-top-row {
@@ -2834,6 +2854,7 @@
         max-width: 100%;
         align-items: center;
         text-align: center;
+        gap: 24px;
         box-sizing: border-box;
       }
       .contact-col-left   { order: 0; }
@@ -2843,43 +2864,67 @@
       .contact-col-right .contact-btn-row,
       .contact-col-left  .contact-btn-row {
         justify-content: center;
+        gap: 24px;
       }
 
+      /* Headings — 52px serif with a hairline stroke per Figma. */
       .contact-about-heading,
       .contact-heading {
-        font-size: 56px;
+        font-size: 52px;
         height: auto;
-        line-height: 1;
+        line-height: 120%;
         text-align: center;
+        letter-spacing: -0.01em;
+        -webkit-text-stroke: 0.4px #A3A09B;
       }
       .contact-bio {
         text-align: center;
-        font-size: 15px;
+        font-size: 14px;
+        line-height: 150%;
+        letter-spacing: -0.02em;
+      }
+      .contact-tagline {
+        text-align: center;
+        font-style: italic;
+        font-size: 14px;
+        line-height: 120%;
+        letter-spacing: -0.02em;
+      }
+      /* Buttons — italic 16px underlined per Figma. */
+      .contact-btn {
+        font-style: italic;
+        font-size: 16px;
+        text-decoration: underline;
+        letter-spacing: -0.01em;
       }
       /* Rename "More to Explore" → "Explore More" on mobile, keeping the
          desktop markup untouched. The :empty-style swap is done by hiding
-         the original text node with font-size:0 and inserting a ::before. */
+         the original text node with font-size:0 and inserting a ::before
+         that mirrors the same 52px serif heading style. */
       .contact-more-label {
         font-size: 0;
         text-align: center;
         align-self: center;
+        height: auto;
       }
       .contact-more-label::before {
         content: "Explore More";
-        font-family: var(--font-sans);
-        font-style: italic;
+        font-family: var(--font-serif);
+        font-style: normal;
         font-weight: 400;
-        font-size: 28px;
+        font-size: 52px;
         line-height: 120%;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.01em;
+        text-transform: capitalize;
         color: var(--color-muted);
+        -webkit-text-stroke: 0.4px #A3A09B;
       }
-      .contact-bottom {
-        width: 100%;
-      }
-      .contact-tagline {
-        text-align: center;
-      }
+
+      /* ── Disable the custom JS cursor on touch devices ──
+         The cursor div + tooltip should not appear on tap; the
+         OS pointer (or no pointer at all) takes over. */
+      *, *::before, *::after { cursor: auto !important; }
+      #cursor, #cursor-tooltip { display: none !important; }
     }
 
   </style>
@@ -3296,6 +3341,8 @@
   <script src="projects/index.js"></script>
   <script src="projects/placeholder-1/project.js"></script>
   <script src="projects/placeholder-2/project.js"></script>
+  <script src="projects/placeholder-3/project.js"></script>
+  <script src="projects/placeholder-4/project.js"></script>
   <script src="projects/radiant/project.js"></script>
   <script src="projects/sourcix/project.js"></script>
   <script src="projects/achalta/project.js"></script>
