@@ -2760,8 +2760,24 @@
         border: 1px solid rgba(163, 160, 155, 0.15);
         box-sizing: border-box;
       }
+      /* Override desktop's fixed 467×607 turntable body so SHLTR's card
+         scales to the mobile column width like every other card. */
+      .card-b.card-b--turntable,
+      .card-b-body.card-b-body--turntable {
+        width: 100% !important;
+        height: auto !important;
+        align-self: stretch !important;
+        aspect-ratio: 144 / 173;
+      }
+      .card-b.card-b--turntable .card-b-footer {
+        width: 100%;
+      }
+      /* Thumbnail PNGs (e.g. Radiant) have rounded transparent corners.
+         Keep the body bg transparent and drop the border so the white
+         card doesn't peek through the corners. */
       .card-b-body.card-b-body--thumb {
-        background: #FFFFFF;
+        background: transparent;
+        border: none;
       }
       .card-b .card-media,
       .card-b .card-media-wrap,
@@ -2789,7 +2805,7 @@
       }
       .card-b-tags {
         flex-wrap: nowrap;
-        gap: 24px;
+        gap: 16px;
         flex-shrink: 0;
       }
       .card-b-tag {
@@ -3278,6 +3294,8 @@
   <script src="blocks.js"></script>
   <script src="hero/hero-config.js"></script>
   <script src="projects/index.js"></script>
+  <script src="projects/placeholder-1/project.js"></script>
+  <script src="projects/placeholder-2/project.js"></script>
   <script src="projects/radiant/project.js"></script>
   <script src="projects/sourcix/project.js"></script>
   <script src="projects/achalta/project.js"></script>

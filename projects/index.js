@@ -10,9 +10,11 @@
 window.PROJECTS_ORDER = [
   'shltr',
   'radiant',
-  'globe',
+  'placeholder-1',
+  'placeholder-2',
   // ── Hidden until built ─────────────────────────────────────────
   // Re-add a slug below to make that project appear on the home grid.
+  // 'globe',
   // 'sourcix',
   // 'achalta',
   // 'h1',
