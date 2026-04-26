@@ -102,6 +102,30 @@
       overflow-x: hidden;
     }
 
+    /* Overscroll peek — a soft pink/yellow/cyan gradient that pulls up
+       from the bottom of the page when the user tries to scroll past
+       the end. Lives outside the mobile media query because the JS that
+       drives it only runs on touch devices anyway. */
+    #overscroll-peek {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 140px;
+      background: linear-gradient(to top,
+        rgba(255, 110, 253, 0.55) 0%,
+        rgba(248, 255, 123, 0.45) 50%,
+        rgba(96, 251, 255, 0.0)  100%);
+      filter: blur(22px);
+      transform: translateY(100%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 99997;
+      will-change: transform, opacity;
+      transition: transform 0.35s cubic-bezier(.2,.8,.2,1),
+                  opacity   0.35s ease;
+    }
+
 
     /* ══════════════════════════════════════════════════════
        CURSOR
@@ -3864,21 +3888,23 @@
         raf = pts.length ? requestAnimationFrame(loop) : null;
       }
 
-      document.addEventListener('mousemove', function (e) {
-        var dx   = e.clientX - lx;
-        var dy   = e.clientY - ly;
+      function emit(cx, cy) {
+        var dx   = cx - lx;
+        var dy   = cy - ly;
         var dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < 1) return;
-
-        // Spawn one particle every 4px of travel to fill fast swipes
         var steps = Math.max(1, Math.ceil(dist / 4));
         for (var i = 1; i <= steps; i++) {
           var t = i / steps;
           pts.push({ x: lx + dx * t, y: ly + dy * t, life: 1, r: 6 });
         }
-        lx = e.clientX;
-        ly = e.clientY;
+        lx = cx;
+        ly = cy;
         if (!raf) raf = requestAnimationFrame(loop);
+      }
+
+      document.addEventListener('mousemove', function (e) {
+        emit(e.clientX, e.clientY);
       });
 
       document.addEventListener('mouseleave', function () {
@@ -3886,6 +3912,22 @@
         if (raf) { cancelAnimationFrame(raf); raf = null; }
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       });
+
+      // Touch trail — same smoke effect follows the finger on mobile.
+      // touchstart seeds the last-position so the first move doesn't
+      // draw a long line back to (0,0).
+      document.addEventListener('touchstart', function (e) {
+        var t = e.touches[0];
+        if (!t) return;
+        lx = t.clientX;
+        ly = t.clientY;
+      }, { passive: true });
+
+      document.addEventListener('touchmove', function (e) {
+        var t = e.touches[0];
+        if (!t) return;
+        emit(t.clientX, t.clientY);
+      }, { passive: true });
     })();
 
     // ── Letter gradient color mapping ────────────────────
@@ -4335,13 +4377,15 @@
         return '#A3A09B';
       }
 
-      // Apply the desktop-hover "flash" (bounce + blur + tint) to one
-      // span/element, then reset it after FLASH_HOLD_MS + FLASH_OUT_MS.
-      function flash(el, color) {
+      // Per-letter flash: bounce + blur in/out + gradient color tint.
+      // Also temporarily zeros out the heading's -webkit-text-stroke so
+      // the muted gray outline doesn't show through the colored fill.
+      function flashLetter(el, color) {
         el.classList.remove('bouncing');
         void el.offsetWidth;
         el.classList.add('bouncing');
         el.style.color = color;
+        el.style.webkitTextStrokeWidth = '0';
         el.style.transition = 'none';
         el.style.filter = 'blur(8px)';
         requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -4353,11 +4397,21 @@
           el.style.filter = 'blur(8px)';
           setT(() => {
             el.style.color = '';
-            el.style.transition = 'none';
+            el.style.transition = '';
             el.style.filter = '';
+            el.style.webkitTextStrokeWidth = '';
             el.classList.remove('bouncing');
           }, FLASH_OUT_MS);
         }, FLASH_HOLD_MS);
+      }
+
+      // Buttons reuse the existing desktop hover styling: toggling
+      // .proximity-hover lights up the ::before gradient blur (the
+      // glow happens on the BUTTON BG, not on the text — matches desktop).
+      function flashButton(el) {
+        if (!el) return;
+        el.classList.add('proximity-hover');
+        setT(() => el.classList.remove('proximity-hover'), FLASH_HOLD_MS);
       }
 
       async function waveHeading(sel) {
@@ -4367,43 +4421,35 @@
         if (!letters.length) return;
         const n = letters.length;
         letters.forEach((s, i) => {
-          setT(() => flash(s, colorFor(n > 1 ? i / (n - 1) : 0.5)), i * STAGGER_MS);
+          setT(() => flashLetter(s, colorFor(n > 1 ? i / (n - 1) : 0.5)), i * STAGGER_MS);
         });
-        // Wait for the last letter's flash to finish before yielding
-        await wait(n * STAGGER_MS + FLASH_HOLD_MS + FLASH_OUT_MS);
+        // Wait only for the wave's trigger pass to finish, not for each
+        // letter's full fade-out — overlapping flashes give a flowing feel.
+        await wait(n * STAGGER_MS);
       }
 
-      async function flashButton(el, t) {
-        if (!el) return;
-        flash(el, colorFor(t));
-        await wait(FLASH_HOLD_MS + FLASH_OUT_MS);
+      async function stepButton(el) {
+        flashButton(el);
+        // A button counts as one "letter unit" of rhythm — same beat as
+        // a single letter in a heading wave.
+        await wait(STAGGER_MS);
       }
 
       async function runRound() {
         if (stopped || !mq.matches) return;
 
         await waveHeading('.contact-about-heading');
-        await wait(STEP_PAUSE_MS);
-
-        await flashButton(document.querySelector('.contact-col-left .contact-btn'), 0.15);
-        await wait(STEP_PAUSE_MS);
+        await stepButton(document.querySelector('.contact-col-left .contact-btn'));
 
         await waveHeading('.contact-heading');
-        await wait(STEP_PAUSE_MS);
-
         const bottomBtns = document.querySelectorAll('.contact-bottom .contact-btn');
-        await flashButton(bottomBtns[0], 0.35);
-        await wait(STEP_PAUSE_MS);
-        await flashButton(bottomBtns[1], 0.5);
-        await wait(STEP_PAUSE_MS);
+        await stepButton(bottomBtns[0]);
+        await stepButton(bottomBtns[1]);
 
         await waveHeading('.contact-more-label');
-        await wait(STEP_PAUSE_MS);
-
         const exploreBtns = document.querySelectorAll('.contact-col-right .contact-btn');
-        await flashButton(exploreBtns[0], 0.75);
-        await wait(STEP_PAUSE_MS);
-        await flashButton(exploreBtns[1], 0.95);
+        await stepButton(exploreBtns[0]);
+        await stepButton(exploreBtns[1]);
 
         await wait(ROUND_PAUSE_MS);
         if (!stopped && mq.matches) runRound();
@@ -4420,6 +4466,65 @@
         if (mq.addEventListener) mq.addEventListener('change', handle);
         else mq.addListener(handle);
       });
+    })();
+
+
+    /* ══════════════════════════════════════════════════════
+       MOBILE — OVERSCROLL PEEK
+       When the user is at the bottom of the page and keeps
+       pulling up, a soft pink/yellow/cyan gradient peeks
+       from below. The harder the pull, the more it shows
+       — capped at a small reveal. Releases back on touchend.
+    ══════════════════════════════════════════════════════ */
+    (function initOverscrollPeek() {
+      const mq = window.matchMedia('(max-width: 600px)');
+      if (!('ontouchstart' in window)) return;
+
+      const peek = document.createElement('div');
+      peek.id = 'overscroll-peek';
+      document.body.appendChild(peek);
+
+      const MAX_PEEK_PX = 36;       // total reveal cap (px)
+      const RESIST      = 5;        // higher = more finger travel per px revealed
+
+      let touchStartY = 0;
+      let dragging    = false;
+
+      function atBottom() {
+        return (window.scrollY + window.innerHeight) >= (document.documentElement.scrollHeight - 1);
+      }
+
+      function reset() {
+        dragging = false;
+        peek.style.transition = 'transform 0.35s cubic-bezier(.2,.8,.2,1), opacity 0.35s ease';
+        peek.style.transform  = 'translateY(100%)';
+        peek.style.opacity    = '0';
+      }
+
+      window.addEventListener('touchstart', (e) => {
+        if (!mq.matches) return;
+        const t = e.touches[0];
+        if (!t) return;
+        touchStartY = t.clientY;
+        dragging    = atBottom();
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (e) => {
+        if (!mq.matches || !dragging) return;
+        const t = e.touches[0];
+        if (!t) return;
+        // If the user scrolled away from the bottom mid-drag, abort.
+        if (!atBottom()) { reset(); return; }
+        const dy = touchStartY - t.clientY; // positive when finger drags up
+        if (dy <= 0) { reset(); return; }
+        const reveal = Math.min(dy / RESIST, MAX_PEEK_PX);
+        peek.style.transition = 'none';
+        peek.style.transform  = `translateY(${100 - (reveal / 140) * 100}%)`;
+        peek.style.opacity    = String(Math.min(reveal / MAX_PEEK_PX, 0.9));
+      }, { passive: true });
+
+      window.addEventListener('touchend',    reset, { passive: true });
+      window.addEventListener('touchcancel', reset, { passive: true });
     })();
 
 
