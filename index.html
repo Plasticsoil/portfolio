@@ -90,6 +90,8 @@
       box-sizing: border-box;
       /* Hide the OS cursor globally — the custom #cursor div takes over */
       cursor: none !important;
+      /* Suppress the iOS/Android blue tap-highlight rectangle on touch */
+      -webkit-tap-highlight-color: transparent;
     }
 
     html {
@@ -2514,12 +2516,14 @@
     }
 
     .contact-btn:hover,
+    .contact-btn:active,
     .contact-btn.proximity-hover {
       background: rgba(255, 255, 255, 0.15);
       color: var(--color-ink);
     }
 
     .contact-btn:hover::before,
+    .contact-btn:active::before,
     .contact-btn.proximity-hover::before {
       opacity: 1;
     }
@@ -2685,12 +2689,12 @@
         text-align: center;
       }
       /* Force the headline onto 3 lines per Figma:
-         "Welcome / to my / exhibition".
-         Letter-spaces are inline spans inserted by the letter-wrap JS;
-         we promote spaces #1 and #3 to display:block so they act as
-         line breaks after "Welcome" and after "my". */
-      .hero-headline .letter-space:nth-of-type(1),
-      .hero-headline .letter-space:nth-of-type(3) {
+         "Welcome / To My / Exhibition".
+         Each .letter-space has a data-space-idx (1, 2, 3) set by the
+         letter-wrap JS — we promote spaces #1 and #3 to display:block
+         so they break the line after "Welcome" and after "My". */
+      .hero-headline .letter-space[data-space-idx="1"],
+      .hero-headline .letter-space[data-space-idx="3"] {
         display: block;
         height: 0;
         width: 0;
@@ -4008,12 +4012,20 @@
       const raw = el.textContent;
       el.textContent = '';
 
-      // Pass 1: create a <span> per character, collect non-space letter spans
+      // Pass 1: create a <span> per character, collect non-space letter spans.
+      // Each space gets a sequential data-space-idx so CSS can target the
+      // Nth space (e.g. force a line break after word #1 / #3 on mobile).
       const letters = [];
+      let spaceIdx = 0;
       raw.split('').forEach(char => {
         const s = document.createElement('span');
-        // letter-space spans stay display:inline so word wrapping still works
-        s.className   = char === ' ' ? 'letter-space' : 'letter';
+        if (char === ' ') {
+          spaceIdx++;
+          s.className = 'letter-space';
+          s.dataset.spaceIdx = String(spaceIdx);
+        } else {
+          s.className = 'letter';
+        }
         s.textContent = char;
         el.appendChild(s);
         if (char !== ' ') letters.push(s);
@@ -4525,6 +4537,32 @@
 
 
     /* ══════════════════════════════════════════════════════
+       MOBILE — TAP GLOW ON CONTACT BUTTONS
+       The .contact-btn glow uses a slow 0.7s ease transition
+       so the auto-cycle reads as a soft breath. A quick tap
+       would release before the glow had a chance to come up,
+       so we add .proximity-hover on touchstart and hold it
+       briefly on release — the glow appears instantly and
+       fades cleanly on its own transition.
+    ══════════════════════════════════════════════════════ */
+    (function initTapGlow() {
+      if (!('ontouchstart' in window)) return;
+      document.querySelectorAll('.contact-btn').forEach(btn => {
+        btn.addEventListener('touchstart', () => {
+          btn.classList.add('proximity-hover');
+        }, { passive: true });
+        const release = () => {
+          // Hold for a beat after lift so the user actually sees the glow,
+          // then drop the class — the slow fade-out animates from there.
+          setTimeout(() => btn.classList.remove('proximity-hover'), 220);
+        };
+        btn.addEventListener('touchend',    release, { passive: true });
+        btn.addEventListener('touchcancel', release, { passive: true });
+      });
+    })();
+
+
+    /* ══════════════════════════════════════════════════════
        MOBILE — OVERSCROLL PEEK
        When the user is at the bottom of the page and keeps
        pulling up, a soft pink/yellow/cyan gradient peeks
@@ -4539,49 +4577,83 @@
       peek.id = 'overscroll-peek';
       document.body.appendChild(peek);
 
-      const MAX_PEEK_PX = 180;      // total reveal cap (px) — significant peek
-      const RESIST      = 2.6;      // less resistance so all 3 colors come into view
+      const BASE_PEEK_PX     = 70;   // resting reveal when sitting at bottom
+      const MAX_PEEK_PX      = 200;  // cap when actively pulling
+      const APPROACH_PX      = 240;  // distance from bottom where peek starts fading in
+      const RESIST           = 2.4;  // smaller = easier finger drag → bigger reveal
 
       let touchStartY = 0;
       let dragging    = false;
+      let currentReveal = 0;
 
-      function atBottom() {
-        return (window.scrollY + window.innerHeight) >= (document.documentElement.scrollHeight - 1);
+      function distanceFromBottom() {
+        return document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
       }
 
-      function reset() {
-        dragging = false;
-        peek.style.transition = 'transform 0.35s cubic-bezier(.2,.8,.2,1), opacity 0.35s ease';
-        peek.style.transform  = 'translateY(100%)';
-        peek.style.opacity    = '0';
+      function applyReveal(px, animated) {
+        currentReveal = px;
+        peek.style.transition = animated
+          ? 'transform 0.35s cubic-bezier(.2,.8,.2,1), opacity 0.35s ease'
+          : 'none';
+        peek.style.transform = `translateY(calc(100% - ${px}px))`;
+        peek.style.opacity   = String(Math.min(px / BASE_PEEK_PX * 0.85, 0.95));
       }
+
+      // Idle reveal: as the user scrolls within APPROACH_PX of the bottom,
+      // the gradient eases in until it sits at BASE_PEEK_PX at the very
+      // bottom. So even without dragging, the peek is "always on" near
+      // the page end — a persistent hint, not just an overscroll-only flash.
+      function syncIdle() {
+        if (!mq.matches || dragging) return;
+        const d = distanceFromBottom();
+        if (d > APPROACH_PX) {
+          applyReveal(0, true);
+          return;
+        }
+        const t = 1 - Math.max(0, d) / APPROACH_PX; // 0 at far, 1 at bottom
+        applyReveal(BASE_PEEK_PX * t, true);
+      }
+
+      window.addEventListener('scroll', syncIdle, { passive: true });
+      window.addEventListener('resize', syncIdle);
+      requestAnimationFrame(syncIdle);
 
       window.addEventListener('touchstart', (e) => {
         if (!mq.matches) return;
         const t = e.touches[0];
         if (!t) return;
         touchStartY = t.clientY;
-        dragging    = atBottom();
+        // Drag-amplifies the peek only when the user is already at /
+        // very near the bottom (within 4px of end-of-page).
+        dragging = distanceFromBottom() <= 4;
       }, { passive: true });
 
       window.addEventListener('touchmove', (e) => {
         if (!mq.matches || !dragging) return;
         const t = e.touches[0];
         if (!t) return;
-        // If the user scrolled away from the bottom mid-drag, abort.
-        if (!atBottom()) { reset(); return; }
+        if (distanceFromBottom() > 4) {
+          dragging = false;
+          syncIdle();
+          return;
+        }
         const dy = touchStartY - t.clientY; // positive when finger drags up
-        if (dy <= 0) { reset(); return; }
-        const reveal = Math.min(dy / RESIST, MAX_PEEK_PX);
-        peek.style.transition = 'none';
-        // Translate up by `reveal` px regardless of bar height, so MAX_PEEK_PX
-        // is the actual on-screen height of the visible gradient.
-        peek.style.transform  = `translateY(calc(100% - ${reveal}px))`;
-        peek.style.opacity    = String(Math.min(reveal / MAX_PEEK_PX, 0.95));
+        // While at the bottom, the resting BASE_PEEK_PX is already showing —
+        // dragging up adds extra reveal on top, capped at MAX_PEEK_PX.
+        const extra  = Math.max(0, dy / RESIST);
+        const reveal = Math.min(BASE_PEEK_PX + extra, MAX_PEEK_PX);
+        applyReveal(reveal, false);
       }, { passive: true });
 
-      window.addEventListener('touchend',    reset, { passive: true });
-      window.addEventListener('touchcancel', reset, { passive: true });
+      function endDrag() {
+        if (!dragging) return;
+        dragging = false;
+        // Snap back to whatever the idle reveal should be (BASE_PEEK_PX
+        // if still at bottom, 0 if scrolled away).
+        syncIdle();
+      }
+      window.addEventListener('touchend',    endDrag, { passive: true });
+      window.addEventListener('touchcancel', endDrag, { passive: true });
     })();
 
 
