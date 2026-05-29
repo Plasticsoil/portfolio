@@ -77,8 +77,7 @@
     const t = Math.max(0, ms);
     const m = Math.floor(t / 60000);
     const s = Math.floor((t % 60000) / 1000);
-    const d = Math.floor((t % 1000) / 100);
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${d}`;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
   function tick() {
     elapsed = Date.now() - startTime;

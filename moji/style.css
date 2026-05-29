@@ -103,32 +103,25 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
+  padding: 56px 16px;
 }
 
-/* The whole game springs out of this one circle. */
+/* One huge word, spanning almost the full width. No circle. */
 .btn-start {
-  position: relative;
-  display: grid;
-  place-items: center;
-  /* Explicit equal width + height guarantees a perfect circle
-     even where aspect-ratio behaves oddly. */
-  width:  clamp(180px, 52vw, 220px);
-  height: clamp(180px, 52vw, 220px);
-  flex: 0 0 auto;
-  border-radius: 50%;
-  border: 2.5px solid var(--color-ink);
+  display: block;
+  width: 100%;
+  border: none;
   background: none;
   color: var(--color-ink);
   font-family: var(--font-serif);
-  font-size: var(--fs);
-  line-height: 1;
-  letter-spacing: 0.04em;
+  font-size: clamp(84px, 34vw, 170px);
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
   cursor: pointer;
-  transition: transform 0.5s var(--ease-spring), opacity 0.5s ease,
-              background-color 0.3s ease, color 0.3s ease;
+  transition: transform 0.5s var(--ease-spring), opacity 0.5s ease;
 }
-.btn-start:hover { background: var(--color-ink); color: var(--color-bg); }
-.btn-start:active { transform: scale(0.95); }
+.btn-start:active { transform: scale(0.96); }
 /* On click the circle blooms outward, the puzzle emerging from it. */
 .btn-start.is-detonating { transform: scale(7); opacity: 0; }
 
@@ -164,19 +157,9 @@ body {
   justify-content: space-between;
 }
 .timer {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 10px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
 }
-.timer .dot {
-  align-self: center;
-  width: 9px; height: 9px; border-radius: 50%;
-  background: var(--color-ink);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-@keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:.45} }
 
 .today { opacity: var(--o-3); }
 
