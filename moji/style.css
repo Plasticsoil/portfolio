@@ -310,7 +310,7 @@ body {
 #screen-end { align-items: center; justify-content: center; text-align: center; gap: 22px; }
 .end-emoji {
   font-family: var(--font-emoji);
-  font-size: clamp(84px, 26vw, 132px);
+  font-size: var(--fs);
   line-height: 1;
   animation: pop 0.6s var(--ease-spring) both;
 }
@@ -355,15 +355,21 @@ body {
 .btn-solid:hover { opacity: 0.9; }
 
 /* ── Leaderboard ───────────────────────────────────────────── */
-#screen-board { gap: 22px; }
-/* Heading is the quiet label now — small sans, like yamliv.net. */
+#screen-board { gap: 18px; }
+.board-head { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+/* Heading is the quiet sans label; the date applies to the whole table. */
 .board-head h2 {
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
   font-weight: 400;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   opacity: var(--o-2);
+}
+.board-date {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  letter-spacing: 0;
+  opacity: var(--o-3);
 }
 /* Rows are the editorial serif; hierarchy comes from opacity. */
 .board-list {
@@ -372,7 +378,6 @@ body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
   padding: 4px 0;
   font-family: var(--font-serif);
   font-size: var(--fs);
@@ -383,14 +388,16 @@ body {
   grid-template-columns: 1.4em 1fr auto;
   align-items: baseline;
   gap: 16px;
+  padding: 12px 2px;
+  border-bottom: 1px solid rgba(38, 37, 30, 0.16);
 }
+.board-row:last-child { border-bottom: none; }
 .board-row .rank { font-variant-numeric: tabular-nums; }
 .board-row .who  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.board-row .when { font-family: var(--font-sans); font-size: var(--fs-sm); letter-spacing: 0; opacity: var(--o-3); }
 .board-row .ms   { font-variant-numeric: tabular-nums; }
-/* Mine: solid black. Everyone else: faded back. */
-.board-row.is-me        { opacity: 1; }
-.board-row:not(.is-me)  { opacity: var(--o-3); }
+/* Mine: solid black. Everyone else: faded back (border stays crisp). */
+.board-row .rank, .board-row .who, .board-row .ms { opacity: var(--o-3); }
+.board-row.is-me .rank, .board-row.is-me .who, .board-row.is-me .ms { opacity: 1; }
 .board-empty { opacity: var(--o-3); text-align: center; padding: 40px 0; }
 
 .note {

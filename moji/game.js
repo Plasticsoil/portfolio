@@ -10,13 +10,46 @@
   const PUZZLES = window.MOJI_PUZZLES || [];
   const LB_KEY = 'moji_leaderboard_v1';   // history of daily solves
   const DAILY_KEY = 'moji_daily_v1';      // today's locked-in result
-  const EXPLOSION_EMOJIS = ['🎉', '✨', '💥', '🟡', '🟣', '🔵', '🐝', '🍃', '⭐', '🔥', '🎊', '💫'];
+  const EXPLOSION_EMOJIS = ['🎉', '🎊', '🎈', '🥳', '🏆', '🎁', '🪅', '✨', '💫', '⭐', '🌟', '💥', '🎆', '🎇', '👑', '🤩'];
 
   // ── State ────────────────────────────────────────────────
   let startTime = 0;
   let elapsed = 0;
   let rafId = null;
+  let lastBeepSec = 0;
   let lastEntry = null; // remembers the score we just submitted, to highlight it
+
+  // ── Sound — synthesized juice, no asset files, works offline ──
+  const Sound = (function () {
+    let ctx;
+    const ac = () => {
+      if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+      return ctx;
+    };
+    function tone(freq, delay, dur, type, gain) {
+      const c = ac(); if (!c) return;
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = type || 'sine';
+      o.frequency.value = freq;
+      o.connect(g); g.connect(c.destination);
+      const t = c.currentTime + (delay || 0);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(gain || 0.2, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.2));
+      o.start(t); o.stop(t + (dur || 0.2) + 0.03);
+    }
+    const seq = (notes, step, dur, type, gain) =>
+      notes.forEach((f, i) => tone(f, i * step, dur, type, gain));
+    return {
+      resume() { const c = ac(); if (c && c.state === 'suspended') c.resume(); },
+      start()   { seq([523, 659, 784, 1047], 0.06, 0.20, 'triangle', 0.20); },
+      tick()    { tone(990, 0, 0.05, 'square', 0.05); },
+      correct() { seq([659, 784, 988, 1319], 0.075, 0.22, 'triangle', 0.22); },
+      wrong()   { tone(150, 0, 0.20, 'sawtooth', 0.14); },
+      publish() { seq([784, 1047, 1319, 1568, 2093], 0.07, 0.26, 'triangle', 0.24); },
+    };
+  })();
 
   // ── Element refs ─────────────────────────────────────────
   const $ = (s) => document.querySelector(s);
@@ -39,6 +72,7 @@
     nameInput: $('#name-input'),
     saveBtn: $('#save-btn'),
     boardList: $('#board-list'),
+    boardDate: $('#board-date'),
     boardNote: $('#board-note'),
   };
 
@@ -52,6 +86,9 @@
     const d = new Date();
     const epochDay = Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000);
     return ((epochDay % PUZZLES.length) + PUZZLES.length) % PUZZLES.length;
+  }
+  function prettyDate() {
+    return new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
   }
   function loadDaily() {
     try { return JSON.parse(localStorage.getItem(DAILY_KEY)); } catch (e) { return null; }
@@ -77,10 +114,17 @@
   function tick() {
     elapsed = Date.now() - startTime;
     els.timer.textContent = fmt(elapsed);
+    // A little juice on the clock: a soft blip every 10 seconds.
+    const sec = Math.floor(elapsed / 1000);
+    if (sec > 0 && sec % 10 === 0 && sec !== lastBeepSec) {
+      lastBeepSec = sec;
+      Sound.tick();
+    }
     rafId = requestAnimationFrame(tick);
   }
   function startTimer() {
     startTime = Date.now();
+    lastBeepSec = 0;
     cancelAnimationFrame(rafId);
     tick();
   }
@@ -183,11 +227,13 @@
     if (guess === target) {
       els.answer.classList.add('is-good');
       inputs.forEach((x) => (x.disabled = true));
-      explode(els.answer, 16, screens.game);
+      Sound.correct();
+      explode(els.answer, 24, screens.game);
       // No explanation — celebrate, then straight on to the leaderboard.
       setTimeout(finishGame, 950);
     } else {
       els.answer.classList.add('is-bad');
+      Sound.wrong();
       els.feedback.className = 'feedback show';
       els.feedback.style.color = 'var(--color-bad)';
       els.feedback.textContent = 'Not quite — try again';
@@ -205,8 +251,10 @@
   function beginGame() {
     // Already cracked today's clue? Don't replay — show the result.
     const done = solvedToday();
+    Sound.resume();
+    Sound.start();
     els.startBtn.classList.add('is-detonating');
-    explode(els.startBtn, 34);
+    explode(els.startBtn, 48);
     setTimeout(() => {
       els.startBtn.classList.remove('is-detonating');
       if (done) {
@@ -227,7 +275,7 @@
     els.nameRow.style.display = '';
     show('end');
     setTimeout(() => els.nameInput.focus(), 350);
-    explode(els.endEmoji, 30, screens.end);
+    explode(els.endEmoji, 42, screens.end);
   }
 
   // ── Leaderboard (localStorage) ───────────────────────────
@@ -251,6 +299,7 @@
     saveBoard(list);
 
     lastEntry = entry;
+    Sound.publish();
     showBoard(false);
   }
 
@@ -263,7 +312,14 @@
   }
 
   function renderBoard() {
-    const list = loadBoard().slice(0, 25);
+    // Daily board: only today's runs (same clue), fastest first.
+    const today = todayStr();
+    const list = loadBoard()
+      .filter((r) => r.dateStr === today)
+      .sort((a, b) => a.ms - b.ms)
+      .slice(0, 25);
+
+    els.boardDate.textContent = prettyDate();
     els.boardList.innerHTML = '';
     if (!list.length) {
       const li = document.createElement('li');
@@ -276,15 +332,11 @@
       const li = document.createElement('li');
       li.className = 'board-row';
       if (lastEntry && row.ts === lastEntry.ts) li.classList.add('is-me');
-      const when = row.dateStr
-        ? new Date(row.dateStr + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-        : '';
       li.innerHTML =
         `<span class="rank">${i + 1}</span>` +
-        `<span class="who"><span class="who-name"></span><span class="when"></span></span>` +
+        `<span class="who"></span>` +
         `<span class="ms">${fmt(row.ms)}</span>`;
-      li.querySelector('.who-name').textContent = row.name;
-      li.querySelector('.when').textContent = when ? ` · ${when}` : '';
+      li.querySelector('.who').textContent = row.name;
       els.boardList.appendChild(li);
     });
   }
