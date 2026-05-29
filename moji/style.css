@@ -38,6 +38,15 @@
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* Scroll where needed, but never show the scrollbar/indicator. */
+.board-list, .about-body, #screen-end {
+  scrollbar-width: none;            /* Firefox */
+  -ms-overflow-style: none;         /* old Edge/IE */
+}
+.board-list::-webkit-scrollbar,
+.about-body::-webkit-scrollbar,
+#screen-end::-webkit-scrollbar { width: 0; height: 0; display: none; }  /* WebKit */
+
 /* QA-ONLY: temporary floating replay button. Delete this block before release. */
 #qa-restart {
   position: fixed;
