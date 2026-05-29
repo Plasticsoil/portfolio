@@ -78,6 +78,7 @@
     startBtn: $('#start-btn'),
     particles: $('#particles'),
     timer: $('#timer-val'),
+    gameBody: $('#screen-game .game-body'),
     clue: $('#puzzle-clue'),
     answer: $('#answer'),
     feedback: $('#feedback'),
@@ -120,8 +121,9 @@
   function show(name) {
     Object.values(screens).forEach((s) => s.classList.remove('is-active'));
     screens[name].classList.add('is-active');
-    if (name === 'game') { mode = 'game'; els.keyboard.classList.add('is-visible'); }
-    else if (name === 'end') { mode = 'name'; els.keyboard.classList.add('is-visible'); }
+    // The keyboard lives in the flow, right under the content that needs it.
+    if (name === 'game') { mode = 'game'; els.gameBody.appendChild(els.keyboard); els.keyboard.classList.add('is-visible'); }
+    else if (name === 'end') { mode = 'name'; screens.end.appendChild(els.keyboard); els.keyboard.classList.add('is-visible'); }
     else { mode = null; els.keyboard.classList.remove('is-visible'); }
   }
 
@@ -192,7 +194,7 @@
         k.className = 'kb-key';
         k.type = 'button';
         k.textContent = ch;
-        k.addEventListener('click', () => typeLetter(ch));
+        k.addEventListener('click', () => { typeLetter(ch); k.blur(); });
         rowEl.appendChild(k);
       });
       if (ri === KB_ROWS.length - 1) {
@@ -201,7 +203,7 @@
         back.type = 'button';
         back.textContent = '⌫';
         back.setAttribute('aria-label', 'delete');
-        back.addEventListener('click', backspace);
+        back.addEventListener('click', () => { backspace(); back.blur(); });
         rowEl.appendChild(back);
       }
       els.keyboard.appendChild(rowEl);

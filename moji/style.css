@@ -271,7 +271,7 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 44px;
+  gap: 26px;
 }
 
 /* One flowing sentence, emoji woven inline at text size.
@@ -391,6 +391,14 @@ body {
   0%   { opacity: 0; transform: scale(0.2) rotate(-12deg); }
   100% { opacity: 1; transform: none; }
 }
+/* Big WIN, sized like the Start word. */
+.win-title {
+  font-family: var(--font-serif);
+  font-size: clamp(84px, 34vw, 170px);
+  font-weight: 400;
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+}
 /* The time you scored — bare number, no frame. */
 .end-time {
   font-variant-numeric: tabular-nums;
@@ -497,19 +505,14 @@ body {
 }
 
 /* ── On-screen keyboard ─────────────────────────────────────
-   Bare sans letters in a QWERTY bank, floating a little above
-   the bottom. Screens that use it reserve room so nothing overlaps. */
-#screen-game, #screen-end { padding-bottom: clamp(220px, 40vh, 280px); }
-
+   Bare sans letters in a QWERTY bank. Lives in the flow, right
+   under the word (or the name field) — not pinned to the bottom. */
 .keyboard {
-  position: absolute;
-  left: 0; right: 0;
-  bottom: calc(clamp(16px, 4.5vh, 36px) + env(safe-area-inset-bottom));
-  z-index: 40;
   display: none;
   flex-direction: column;
   gap: clamp(9px, 2.2vw, 14px);
-  padding: 0 clamp(6px, 2vw, 16px);
+  width: 100%;
+  padding: 0 clamp(4px, 1.6vw, 14px);
   font-family: var(--font-sans);
   user-select: none;
 }
