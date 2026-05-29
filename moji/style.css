@@ -22,7 +22,7 @@
   --font-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
 
   /* One single text size everywhere. Hierarchy = opacity + space. */
-  --fs:       clamp(26px, 7.2vw, 34px);
+  --fs:       clamp(30px, 8.4vw, 42px);
 
   /* Opacity tiers — the only "size" we vary */
   --o-1: 1;      /* primary   */
@@ -45,8 +45,8 @@ html, body {
   font-family: var(--font-serif);
   font-size: var(--fs);
   font-weight: 400;
-  line-height: 1.25;
-  letter-spacing: 0.005em;
+  line-height: 1.22;
+  letter-spacing: -0.018em;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
@@ -178,7 +178,7 @@ body {
 }
 @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:.45} }
 
-.progress { opacity: var(--o-3); font-variant-numeric: tabular-nums; }
+.today { opacity: var(--o-3); }
 
 .game-body {
   flex: 1;
@@ -195,10 +195,9 @@ body {
 .puzzle-clue {
   max-width: 15em;
   line-height: 1.5;
-  letter-spacing: normal;
+  letter-spacing: -0.01em;
   font-variant-emoji: emoji;
 }
-.puzzle-clue .len { opacity: var(--o-3); white-space: nowrap; }
 
 /* Answer cells — square, butted together with shared walls. */
 .answer {
@@ -334,6 +333,7 @@ body {
 }
 .board-row .rank { opacity: var(--o-3); font-variant-numeric: tabular-nums; }
 .board-row .who  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-row .when { opacity: var(--o-3); }
 .board-row .ms   { font-variant-numeric: tabular-nums; }
 .board-row.is-me .who,
 .board-row.is-me .ms { opacity: var(--o-1); }

@@ -1,16 +1,18 @@
 /* ============================================================
    moji — game logic
-   Start → explosion → timed emoji puzzles → name → leaderboard
+   One cryptic clue per day. Come in, solve it, land on the
+   leaderboard. The puzzle rotates by calendar day so everyone
+   gets the same clue on the same date.
    ============================================================ */
 (function () {
   'use strict';
 
   const PUZZLES = window.MOJI_PUZZLES || [];
-  const LB_KEY = 'moji_leaderboard_v1';
-  const EXPLOSION_EMOJIS = ['🎉', '✨', '💥', '🟡', '🟣', '🔵', '🐝', '🍂', '⭐', '🔥', '🎊', '💫'];
+  const LB_KEY = 'moji_leaderboard_v1';   // history of daily solves
+  const DAILY_KEY = 'moji_daily_v1';      // today's locked-in result
+  const EXPLOSION_EMOJIS = ['🎉', '✨', '💥', '🟡', '🟣', '🔵', '🐝', '🍃', '⭐', '🔥', '🎊', '💫'];
 
   // ── State ────────────────────────────────────────────────
-  let current = 0;
   let startTime = 0;
   let elapsed = 0;
   let rafId = null;
@@ -28,19 +30,41 @@
     startBtn: $('#start-btn'),
     particles: $('#particles'),
     timer: $('#timer-val'),
-    progress: $('#progress'),
+    today: $('#today'),
     clue: $('#puzzle-clue'),
     answer: $('#answer'),
     feedback: $('#feedback'),
-    nextBtn: $('#next-btn'),
     endTime: $('#end-time'),
+    nameRow: $('#name-row'),
     nameInput: $('#name-input'),
     saveBtn: $('#save-btn'),
+    endNote: $('#end-note'),
     boardList: $('#board-list'),
-    boardBtnStart: $('#board-btn-start'),
-    againBtn: $('#again-btn'),
+    boardNote: $('#board-note'),
     boardBackBtn: $('#board-back-btn'),
   };
+
+  // ── Daily helpers ────────────────────────────────────────
+  // Local calendar day → same puzzle for everyone that date.
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function dayIndex() {
+    const d = new Date();
+    const epochDay = Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000);
+    return ((epochDay % PUZZLES.length) + PUZZLES.length) % PUZZLES.length;
+  }
+  function prettyDate() {
+    return new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+  function loadDaily() {
+    try { return JSON.parse(localStorage.getItem(DAILY_KEY)); } catch (e) { return null; }
+  }
+  function solvedToday() {
+    const d = loadDaily();
+    return d && d.date === todayStr() ? d : null;
+  }
 
   // ── Screen switching ─────────────────────────────────────
   function show(name) {
@@ -99,16 +123,14 @@
     }
   }
 
-  // ── Render a puzzle ──────────────────────────────────────
+  // ── Render today's puzzle ────────────────────────────────
   function renderPuzzle() {
-    const p = PUZZLES[current];
-    els.progress.textContent = `${current + 1} / ${PUZZLES.length}`;
+    const p = PUZZLES[dayIndex()];
+    els.today.textContent = prettyDate();
 
-    // one sentence, emoji woven inline, with the enumeration appended
-    const letters = p.answer.replace(/\s+/g, '').length;
-    els.clue.innerHTML = `${p.clue} <span class="len">(${letters})</span>`;
+    // one sentence, emoji woven inline — no enumeration
+    els.clue.innerHTML = p.clue;
 
-    // build answer boxes, with gaps between words
     els.answer.className = 'answer';
     els.answer.innerHTML = '';
     const inputs = [];
@@ -133,7 +155,6 @@
 
     els.feedback.className = 'feedback';
     els.feedback.textContent = '';
-    els.nextBtn.style.display = 'none';
 
     wireInputs(inputs, p);
     // Keyboard stays closed until the player taps a cell themselves.
@@ -170,11 +191,8 @@
       els.answer.classList.add('is-good');
       inputs.forEach((x) => (x.disabled = true));
       explode(els.answer, 16, screens.game);
-      const last = current === PUZZLES.length - 1;
-      els.feedback.className = 'feedback show is-explain';
-      els.feedback.innerHTML = puzzle.explain || 'Nice';
-      els.nextBtn.textContent = last ? 'Finish →' : 'Next →';
-      els.nextBtn.style.display = 'inline-block';
+      // No explanation — celebrate, then straight on to the leaderboard.
+      setTimeout(finishGame, 950);
     } else {
       els.answer.classList.add('is-bad');
       els.feedback.className = 'feedback show';
@@ -190,25 +208,22 @@
     }
   }
 
-  function nextPuzzle() {
-    if (current === PUZZLES.length - 1) {
-      finishGame();
-    } else {
-      current++;
-      renderPuzzle();
-    }
-  }
-
   // ── Flow ─────────────────────────────────────────────────
   function beginGame() {
+    // Already cracked today's clue? Don't replay — show the result.
+    const done = solvedToday();
     els.startBtn.classList.add('is-detonating');
     explode(els.startBtn, 34);
     setTimeout(() => {
       els.startBtn.classList.remove('is-detonating');
-      current = 0;
-      show('game');
-      renderPuzzle();
-      startTimer();
+      if (done) {
+        lastEntry = { name: done.name, ms: done.ms, dateStr: done.date, ts: done.ts };
+        showBoard(true);
+      } else {
+        show('game');
+        renderPuzzle();
+        startTimer();
+      }
     }, 520);
   }
 
@@ -216,6 +231,8 @@
     stopTimer();
     els.endTime.textContent = fmt(elapsed);
     els.nameInput.value = '';
+    els.nameRow.style.display = '';
+    els.endNote.textContent = 'Scores are saved on this device';
     show('end');
     setTimeout(() => els.nameInput.focus(), 350);
     explode(els.endTime, 28, screens.end);
@@ -231,15 +248,28 @@
   }
   function submitScore() {
     const name = (els.nameInput.value || 'Anon').trim().slice(0, 14) || 'Anon';
-    const entry = { name, ms: elapsed, date: Date.now() };
+    const dateStr = todayStr();
+    const entry = { name, ms: elapsed, dateStr, ts: Date.now() };
+
+    // Lock in today's result and append to the all-time daily history.
+    try { localStorage.setItem(DAILY_KEY, JSON.stringify({ date: dateStr, ms: elapsed, name, ts: entry.ts })); } catch (e) {}
     const list = loadBoard();
     list.push(entry);
     list.sort((a, b) => a.ms - b.ms);
     saveBoard(list);
+
     lastEntry = entry;
+    showBoard(false);
+  }
+
+  function showBoard(alreadyDone) {
     renderBoard();
+    els.boardNote.textContent = alreadyDone
+      ? "You've already solved today's moji — come back tomorrow for a new one."
+      : 'Solved! Come back tomorrow for a fresh clue.';
     show('board');
   }
+
   function renderBoard() {
     const list = loadBoard().slice(0, 25);
     els.boardList.innerHTML = '';
@@ -253,25 +283,24 @@
     list.forEach((row, i) => {
       const li = document.createElement('li');
       li.className = 'board-row';
-      if (lastEntry && row.date === lastEntry.date && row.name === lastEntry.name) {
-        li.classList.add('is-me');
-      }
+      if (lastEntry && row.ts === lastEntry.ts) li.classList.add('is-me');
+      const when = row.dateStr
+        ? new Date(row.dateStr + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        : '';
       li.innerHTML =
         `<span class="rank">${i + 1}</span>` +
-        `<span class="who"></span>` +
+        `<span class="who"><span class="who-name"></span><span class="when"></span></span>` +
         `<span class="ms">${fmt(row.ms)}</span>`;
-      li.querySelector('.who').textContent = row.name;
+      li.querySelector('.who-name').textContent = row.name;
+      li.querySelector('.when').textContent = when ? ` · ${when}` : '';
       els.boardList.appendChild(li);
     });
   }
 
-  // ── Wire global buttons ──────────────────────────────────
+  // ── Wire buttons ─────────────────────────────────────────
   els.startBtn.addEventListener('click', beginGame);
-  els.nextBtn.addEventListener('click', nextPuzzle);
   els.saveBtn.addEventListener('click', submitScore);
   els.nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitScore(); });
-  if (els.boardBtnStart) els.boardBtnStart.addEventListener('click', () => { lastEntry = null; renderBoard(); show('board'); });
-  els.againBtn.addEventListener('click', beginGame);
   els.boardBackBtn.addEventListener('click', () => show('start'));
 
   // ── Boot ─────────────────────────────────────────────────

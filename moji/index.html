@@ -26,28 +26,25 @@
     <section class="screen" id="screen-game">
       <div class="topbar">
         <span class="timer"><span class="dot"></span><span id="timer-val">00:00.0</span></span>
-        <span class="progress" id="progress">1 / 6</span>
+        <span class="today" id="today"></span>
       </div>
       <div class="game-body">
         <div class="puzzle-clue" id="puzzle-clue"></div>
         <div class="answer" id="answer"></div>
         <div class="feedback" id="feedback"></div>
-        <div class="game-actions">
-          <button class="btn" id="next-btn" style="display:none">Next →</button>
-        </div>
       </div>
     </section>
 
     <!-- ── END ───────────────────────────────────────── -->
     <section class="screen" id="screen-end">
       <h2 class="end-title">Solved</h2>
-      <p class="end-sub">Every clue cracked in</p>
+      <p class="end-sub">Today's clue cracked in</p>
       <div class="end-time" id="end-time">00:00.0</div>
-      <div class="name-row">
+      <div class="name-row" id="name-row">
         <input class="name-input" id="name-input" maxlength="14" placeholder="Your name" />
         <button class="btn" id="save-btn">Save</button>
       </div>
-      <p class="note">Scores are saved on this device</p>
+      <p class="note" id="end-note">Scores are saved on this device</p>
     </section>
 
     <!-- ── LEADERBOARD ───────────────────────────────── -->
@@ -57,10 +54,9 @@
       </div>
       <ul class="board-list" id="board-list"></ul>
       <div class="game-actions" style="justify-content:center">
-        <button class="btn" id="again-btn">Play again</button>
         <button class="btn ghost" id="board-back-btn">Home</button>
       </div>
-      <p class="note">Fastest total time wins — stored locally on this device for now</p>
+      <p class="note" id="board-note">Fastest day wins — stored locally on this device for now</p>
     </section>
   </div>
 
