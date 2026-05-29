@@ -23,7 +23,6 @@
 
   /* One single text size everywhere. Hierarchy = opacity + space. */
   --fs:       clamp(26px, 7.2vw, 34px);
-  --fs-start: clamp(56px, 17vw, 96px); /* the one big CTA */
 
   /* Opacity tiers — the only "size" we vary */
   --o-1: 1;      /* primary   */
@@ -106,34 +105,38 @@ body {
   text-align: center;
 }
 
+/* The whole game springs out of this one circle. */
 .btn-start {
   position: relative;
-  font-family: var(--font-serif);
-  font-size: var(--fs-start);
-  line-height: 1;
-  color: var(--color-ink);
+  display: grid;
+  place-items: center;
+  width: clamp(176px, 50vw, 224px);
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  border: 2px solid var(--color-ink);
   background: none;
-  border: none;
-  cursor: pointer;
-  padding: 14px 10px 22px;
+  color: var(--color-ink);
+  font-family: var(--font-serif);
+  font-size: var(--fs);
+  line-height: 1;
   letter-spacing: 0.01em;
-  transition: transform 0.3s var(--ease-spring), letter-spacing 0.3s ease;
+  cursor: pointer;
+  transition: transform 0.5s var(--ease-spring), opacity 0.5s ease, letter-spacing 0.3s ease;
 }
-.btn-start::after {
-  content: "";
-  position: absolute;
-  left: 10px; right: 10px; bottom: 8px;
-  height: 5px;
-  border-radius: 3px;
-  background: var(--color-ink);
-  transform: scaleX(0.4);
-  transform-origin: center;
-  transition: transform 0.35s var(--ease-spring);
+.btn-start > span { transition: letter-spacing 0.3s ease; }
+.btn-start:hover > span { letter-spacing: 0.18em; }
+.btn-start:active { transform: scale(0.95); }
+/* On click the circle blooms outward, the puzzle emerging from it. */
+.btn-start.is-detonating { transform: scale(7); opacity: 0; }
+
+/* Game elements emerge from the circle's spot and settle into place. */
+@keyframes emerge {
+  from { opacity: 0; transform: scale(0.35) translateY(10px); }
+  to   { opacity: 1; transform: none; }
 }
-.btn-start:hover { letter-spacing: 0.16em; }
-.btn-start:hover::after { transform: scaleX(1); }
-.btn-start:active { transform: scale(0.96); }
-.btn-start.is-detonating { transform: scale(1.5); opacity: 0; }
+#screen-game.is-active .puzzle-clue   { animation: emerge 0.55s var(--ease-spring) both; }
+#screen-game.is-active .answer        { animation: emerge 0.55s 0.09s var(--ease-spring) both; }
+#screen-game.is-active .game-actions  { animation: emerge 0.55s 0.18s var(--ease-spring) both; }
 
 /* ── Explosion particles ───────────────────────────────────── */
 #particles {
@@ -184,29 +187,23 @@ body {
   gap: 44px;
 }
 
-.puzzle-emojis {
-  font-family: var(--font-emoji);
-  font-size: clamp(52px, 17vw, 76px);
-  line-height: 1.1;
-  letter-spacing: 6px;
-  user-select: none;
+/* One flowing sentence, emoji woven inline at text size.
+   No letter-spacing — that would split ZWJ emoji like 🧑‍🍳. */
+.puzzle-clue {
+  max-width: 15em;
+  line-height: 1.5;
+  letter-spacing: normal;
+  font-variant-emoji: emoji;
 }
-.puzzle-emojis .op { opacity: var(--o-3); margin: 0 2px; }
+.puzzle-clue .len { opacity: var(--o-3); white-space: nowrap; }
 
-.puzzle-hint {
-  opacity: var(--o-2);
-  max-width: 12em;
-  line-height: 1.3;
-}
-.puzzle-hint .len { opacity: 0.6; }
-
-/* Answer boxes — real empty squares, one row, no wrap. */
+/* Answer cells — square, butted together with shared walls. */
 .answer {
   display: flex;
   flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
-  gap: clamp(3px, 1.6vw, 10px);
+  gap: 0;
   width: 100%;
 }
 .word-gap { flex: 0 0 auto; width: clamp(6px, 2.4vw, 14px); }
@@ -215,8 +212,9 @@ body {
   min-width: 0;
   width: 52px;
   aspect-ratio: 1 / 1;
+  margin-left: -2px;            /* collapse touching borders into one line */
   border: 2px solid rgba(38, 37, 30, 0.28);
-  border-radius: 10px;
+  border-radius: 0;
   background: none;
   text-align: center;
   font-family: var(--font-serif);
@@ -226,12 +224,23 @@ body {
   caret-color: transparent;
   transition: border-color 0.25s ease, color 0.25s ease, transform 0.2s ease;
 }
+.box:first-child {
+  margin-left: 0;
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+.box:last-child {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
 .box:focus {
   outline: none;
+  position: relative;          /* lift the focused cell's border above neighbours */
+  z-index: 1;
   border-color: var(--color-ink);
 }
-.answer.is-good .box { border-color: var(--color-good); color: var(--color-good); }
-.answer.is-bad   .box { border-color: var(--color-bad); animation: shake 0.4s; }
+.answer.is-good .box { border-color: var(--color-good); color: var(--color-good); z-index: 1; }
+.answer.is-bad   .box { border-color: var(--color-bad); position: relative; z-index: 1; animation: shake 0.4s; }
 @keyframes shake {
   0%,100%{transform:translateX(0)}
   20%{transform:translateX(-7px)} 40%{transform:translateX(7px)}

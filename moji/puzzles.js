@@ -1,63 +1,70 @@
 /* ============================================================
    moji — puzzle data
    ------------------------------------------------------------
-   Each puzzle is an emoji rebus in the spirit of a cryptic clue:
-   the EMOJIS are the wordplay, the HINT is the definition, and
-   the ANSWER drops into the letter boxes.
+   Proper CRYPTIC CLUES (à la British crosswords), written as a
+   SINGLE sentence with the emoji woven inline. Every clue has
+   two routes to the same answer:
+     • a DEFINITION (a straight synonym, hidden in the sentence)
+     • WORDPLAY (a recipe that builds the answer letter by letter)
 
-   The trick: read the emojis out loud and smush the sounds
-   together — the answer is rarely the literal picture.
-     🐝 (bee) + 🍃 (leaf)  →  "bee-leaf"  →  BELIEF
+   The flagship example (COOK):
+     "The special 🧑‍🍳 tucks his 🧆 inside his Calvin Klein 🩲"
+       def      → 🧑‍🍳 chef = COOK
+       wordplay → 🧆 meatballs = OO, Calvin Klein = CK,
+                  "inside" = put OO within CK → C(OO)K
+   The emojis ARE part of the sentence; the cracking happens by
+   reading them as words and following the recipe.
+
+   Cryptic devices used below: container, anagram, reversal,
+   hidden-word, charade, double-definition, homophone.
 
    Fields:
-     emojis  : array of emoji strings, joined with a "+" operator
-     hint    : the definition, shown in serif (the cryptic "meaning")
-     answer  : solution. Use spaces for multi-word answers.
-     explain : the "aha" line revealed after a correct solve
-   Add / reorder freely — the game reads this list top to bottom.
+     clue    : the full cryptic clue — one sentence, emoji inline
+     answer  : solution. The game shows the letter count for you.
+     explain : the "aha" breakdown revealed after a correct solve
    ============================================================ */
 
 window.MOJI_PUZZLES = [
   {
-    emojis: ['🐝', '🍃'],
-    hint: 'A firm conviction',
-    answer: 'BELIEF',
-    explain: '🐝 bee + 🍃 leaf → "bee-leaf" → BELIEF',
-  },
-  {
-    emojis: ['👨‍🍳', '🧆'],
-    hint: 'He rolls the meatballs',
+    // CONTAINER — meatballs (OO) inside Calvin Klein (CK)
+    clue: 'The special 🧑‍🍳 tucks his 🧆 inside his Calvin Klein 🩲',
     answer: 'COOK',
-    explain: '👨‍🍳 the one rolling the 🧆 meatballs is a COOK',
+    explain: '🧑‍🍳 chef = the answer · 🧆 meatballs = OO, slipped inside CK (Calvin Klein) → C·OO·K',
   },
   {
-    emojis: ['🧈', '🪰'],
-    hint: 'It flutters through the garden',
-    answer: 'BUTTERFLY',
-    explain: '🧈 butter + 🪰 fly → BUTTERFLY (not a butterfly!)',
+    // ANAGRAM — HEART rearranged
+    clue: 'A shattered ❤️ somehow ends up as the whole 🌍',
+    answer: 'EARTH',
+    explain: 'def: the whole 🌍 · “shattered” = anagram of ❤️ HEART → EARTH',
   },
   {
-    emojis: ['👂', '💍'],
-    hint: 'Dangles from a lobe',
-    answer: 'EARRING',
-    explain: '👂 ear + 💍 ring → EARRING',
+    // REVERSAL — LIVE backwards
+    clue: 'Held up to the 🪞, the way we live comes out 😈',
+    answer: 'EVIL',
+    explain: 'def: 😈 wicked · 🪞 reflects “LIVE” backwards → EVIL',
   },
   {
-    emojis: ['🚗', '🐶'],
-    hint: 'It ties the room together',
-    answer: 'CARPET',
-    explain: '🚗 car + 🐶 pet → CARPET',
+    // HIDDEN WORD — concealed in "this land"
+    clue: 'You can spot some of “this land” ringed by 🌊',
+    answer: 'ISLAND',
+    explain: 'def: ringed by 🌊 · hidden inside “th‑ISLAND” → ISLAND',
   },
   {
-    emojis: ['🧠', '⛈️'],
-    hint: 'A sudden flurry of ideas',
-    answer: 'BRAINSTORM',
-    explain: '🧠 brain + ⛈️ storm → BRAINSTORM',
+    // CHARADE — I + CON
+    clue: 'With one little 🃏 con, I land on your home 🖥️',
+    answer: 'ICON',
+    explain: 'def: home-🖥️ symbol · I + CON (🃏 to trick) → ICON',
   },
   {
-    emojis: ['🌧️', '🎀'],
-    hint: 'An arc of colour after the rain',
-    answer: 'RAINBOW',
-    explain: '🌧️ rain + 🎀 bow → RAINBOW',
+    // DOUBLE DEFINITION
+    clue: 'A 🌴, or the very part of your 🤚 that would hold it',
+    answer: 'PALM',
+    explain: 'two meanings at once: a 🌴 PALM tree, and the PALM of your 🤚',
+  },
+  {
+    // HOMOPHONE — "bee-leaf"
+    clue: 'A 🐝 resting on a 🍃 — by the sound of it, pure faith',
+    answer: 'BELIEF',
+    explain: 'def: faith · 🐝 bee + 🍃 leaf sound like “belief” → BELIEF',
   },
 ];

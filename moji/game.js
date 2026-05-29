@@ -29,8 +29,7 @@
     particles: $('#particles'),
     timer: $('#timer-val'),
     progress: $('#progress'),
-    emojis: $('#puzzle-emojis'),
-    hint: $('#puzzle-hint'),
+    clue: $('#puzzle-clue'),
     answer: $('#answer'),
     feedback: $('#feedback'),
     nextBtn: $('#next-btn'),
@@ -105,13 +104,9 @@
     const p = PUZZLES[current];
     els.progress.textContent = `${current + 1} / ${PUZZLES.length}`;
 
-    // emojis joined with a faint "+"
-    els.emojis.innerHTML = p.emojis
-      .map((e) => `<span class="e">${e}</span>`)
-      .join('<span class="op">+</span>');
-
+    // one sentence, emoji woven inline, with the enumeration appended
     const letters = p.answer.replace(/\s+/g, '').length;
-    els.hint.innerHTML = `${p.hint} <span class="len">(${letters})</span>`;
+    els.clue.innerHTML = `${p.clue} <span class="len">(${letters})</span>`;
 
     // build answer boxes, with gaps between words
     els.answer.className = 'answer';
@@ -141,7 +136,7 @@
     els.nextBtn.style.display = 'none';
 
     wireInputs(inputs, p);
-    setTimeout(() => inputs[0] && inputs[0].focus(), 350);
+    // Keyboard stays closed until the player taps a cell themselves.
   }
 
   function wireInputs(inputs, puzzle) {
@@ -177,14 +172,14 @@
       explode(els.answer, 16, screens.game);
       const last = current === PUZZLES.length - 1;
       els.feedback.className = 'feedback show is-explain';
-      els.feedback.innerHTML = puzzle.explain || 'nice';
-      els.nextBtn.textContent = last ? 'finish →' : 'next →';
+      els.feedback.innerHTML = puzzle.explain || 'Nice';
+      els.nextBtn.textContent = last ? 'Finish →' : 'Next →';
       els.nextBtn.style.display = 'inline-block';
     } else {
       els.answer.classList.add('is-bad');
       els.feedback.className = 'feedback show';
       els.feedback.style.color = 'var(--color-bad)';
-      els.feedback.textContent = 'not quite — try again';
+      els.feedback.textContent = 'Not quite — try again';
       setTimeout(() => {
         els.answer.classList.remove('is-bad');
         inputs.forEach((x) => (x.value = ''));
@@ -251,7 +246,7 @@
     if (!list.length) {
       const li = document.createElement('li');
       li.className = 'board-empty';
-      li.textContent = 'no scores yet — be the first';
+      li.textContent = 'No scores yet — be the first';
       els.boardList.appendChild(li);
       return;
     }
