@@ -34,11 +34,11 @@
     clue: $('#puzzle-clue'),
     answer: $('#answer'),
     feedback: $('#feedback'),
+    endEmoji: $('#end-emoji'),
     endTime: $('#end-time'),
     nameRow: $('#name-row'),
     nameInput: $('#name-input'),
     saveBtn: $('#save-btn'),
-    endNote: $('#end-note'),
     boardList: $('#board-list'),
     boardNote: $('#board-note'),
     boardBackBtn: $('#board-back-btn'),
@@ -231,10 +231,9 @@
     els.endTime.textContent = fmt(elapsed);
     els.nameInput.value = '';
     els.nameRow.style.display = '';
-    els.endNote.textContent = 'Scores are saved on this device';
     show('end');
     setTimeout(() => els.nameInput.focus(), 350);
-    explode(els.endTime, 28, screens.end);
+    explode(els.endEmoji, 30, screens.end);
   }
 
   // ── Leaderboard (localStorage) ───────────────────────────

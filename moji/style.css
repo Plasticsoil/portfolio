@@ -277,11 +277,27 @@ body {
 .btn.ghost:hover { opacity: var(--o-1); letter-spacing: 0.1em; }
 
 /* ── End screen ────────────────────────────────────────────── */
-#screen-end { align-items: center; justify-content: center; text-align: center; gap: 30px; }
-.end-title { line-height: 1; }
-.end-sub { opacity: var(--o-2); }
-.end-time { font-variant-numeric: tabular-nums; }
-.name-row { display: flex; align-items: baseline; gap: 24px; margin-top: 8px; }
+#screen-end { align-items: center; justify-content: center; text-align: center; gap: 22px; }
+.end-emoji {
+  font-family: var(--font-emoji);
+  font-size: clamp(84px, 26vw, 132px);
+  line-height: 1;
+  animation: pop 0.6s var(--ease-spring) both;
+}
+@keyframes pop {
+  0%   { opacity: 0; transform: scale(0.2) rotate(-12deg); }
+  100% { opacity: 1; transform: none; }
+}
+.end-title { line-height: 1; opacity: var(--o-2); }
+/* The time you scored — framed like an achievement, matching the cells. */
+.end-time {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  padding: 8px 28px;
+  border: 2px solid rgba(38, 37, 30, 0.28);
+  border-radius: 16px;
+}
+.name-row { display: flex; align-items: baseline; gap: 24px; margin-top: 14px; }
 .name-input {
   font-family: var(--font-serif);
   font-size: var(--fs);
