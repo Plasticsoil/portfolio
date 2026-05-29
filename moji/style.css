@@ -15,7 +15,6 @@
   --color-good:    #2FB877;
   --color-bad:     #E2574C;
 
-  --gradient-accent: linear-gradient(90deg, #FF6EFD -0.24%, #F8FF7B 55.18%, #60FBFF 88.92%);
 
   --font-serif: 'Instrument Serif', serif;
   /* Native color-emoji stack so emoji render in their normal aesthetic,
@@ -126,7 +125,7 @@ body {
   left: 10px; right: 10px; bottom: 8px;
   height: 5px;
   border-radius: 3px;
-  background: var(--gradient-accent);
+  background: var(--color-ink);
   transform: scaleX(0.4);
   transform-origin: center;
   transition: transform 0.35s var(--ease-spring);
@@ -168,7 +167,7 @@ body {
 .timer .dot {
   align-self: center;
   width: 9px; height: 9px; border-radius: 50%;
-  background: var(--gradient-accent);
+  background: var(--color-ink);
   animation: pulse 1.5s ease-in-out infinite;
 }
 @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:.45} }
@@ -201,22 +200,23 @@ body {
 }
 .puzzle-hint .len { opacity: 0.6; }
 
-/* Answer boxes — light, open cells. */
+/* Answer boxes — real empty squares, one row, no wrap. */
 .answer {
   display: flex;
   flex-wrap: nowrap;
   justify-content: center;
-  align-items: flex-end;
+  align-items: center;
   gap: clamp(3px, 1.6vw, 10px);
   width: 100%;
 }
-.word-gap { flex: 0 0 auto; width: clamp(8px, 3vw, 16px); }
+.word-gap { flex: 0 0 auto; width: clamp(6px, 2.4vw, 14px); }
 .box {
-  flex: 0 1 46px;
+  flex: 0 1 52px;
   min-width: 0;
-  width: 46px; height: 58px;
-  border: none;
-  border-bottom: 2px solid rgba(38, 37, 30, 0.28);
+  width: 52px;
+  aspect-ratio: 1 / 1;
+  border: 2px solid rgba(38, 37, 30, 0.28);
+  border-radius: 10px;
   background: none;
   text-align: center;
   font-family: var(--font-serif);
@@ -228,10 +228,10 @@ body {
 }
 .box:focus {
   outline: none;
-  border-bottom-color: var(--color-ink);
+  border-color: var(--color-ink);
 }
-.answer.is-good .box { border-bottom-color: var(--color-good); color: var(--color-good); }
-.answer.is-bad   .box { border-bottom-color: var(--color-bad); animation: shake 0.4s; }
+.answer.is-good .box { border-color: var(--color-good); color: var(--color-good); }
+.answer.is-bad   .box { border-color: var(--color-bad); animation: shake 0.4s; }
 @keyframes shake {
   0%,100%{transform:translateX(0)}
   20%{transform:translateX(-7px)} 40%{transform:translateX(7px)}
@@ -253,7 +253,7 @@ body {
   justify-content: center;
 }
 
-/* Buttons: text + gradient underline. No heavy fills. */
+/* Buttons: text + solid ink underline. No heavy fills. */
 .btn {
   position: relative;
   font-family: var(--font-serif);
@@ -271,7 +271,7 @@ body {
   position: absolute;
   left: 4px; right: 4px; bottom: 4px;
   height: 2.5px; border-radius: 2px;
-  background: var(--gradient-accent);
+  background: var(--color-ink);
   transform: scaleX(0.4); transform-origin: center;
   transition: transform 0.35s var(--ease-spring);
 }
