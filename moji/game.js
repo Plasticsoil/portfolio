@@ -30,7 +30,6 @@
     startBtn: $('#start-btn'),
     particles: $('#particles'),
     timer: $('#timer-val'),
-    today: $('#today'),
     clue: $('#puzzle-clue'),
     answer: $('#answer'),
     feedback: $('#feedback'),
@@ -53,9 +52,6 @@
     const d = new Date();
     const epochDay = Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000);
     return ((epochDay % PUZZLES.length) + PUZZLES.length) % PUZZLES.length;
-  }
-  function prettyDate() {
-    return new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
   function loadDaily() {
     try { return JSON.parse(localStorage.getItem(DAILY_KEY)); } catch (e) { return null; }
@@ -124,7 +120,6 @@
   // ── Render today's puzzle ────────────────────────────────
   function renderPuzzle() {
     const p = PUZZLES[dayIndex()];
-    els.today.textContent = prettyDate();
 
     // one sentence, emoji woven inline — no enumeration
     els.clue.innerHTML = p.clue;
