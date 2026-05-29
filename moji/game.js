@@ -275,7 +275,7 @@
   els.nextBtn.addEventListener('click', nextPuzzle);
   els.saveBtn.addEventListener('click', submitScore);
   els.nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitScore(); });
-  els.boardBtnStart.addEventListener('click', () => { lastEntry = null; renderBoard(); show('board'); });
+  if (els.boardBtnStart) els.boardBtnStart.addEventListener('click', () => { lastEntry = null; renderBoard(); show('board'); });
   els.againBtn.addEventListener('click', beginGame);
   els.boardBackBtn.addEventListener('click', () => show('start'));
 
