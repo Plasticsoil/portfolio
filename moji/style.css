@@ -208,22 +208,23 @@ body {
   flex-direction: column;
   gap: 12px;
 }
-/* Title (the name) is the big sans; subheadings are serif. */
+/* Sans stays small; the serif subheadings are the large ones. */
 .about-title {
   font-family: var(--font-sans);
-  font-size: var(--fs);
+  font-size: var(--fs-sm);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.02em;
+  opacity: var(--o-2);
   margin-bottom: 2px;
 }
 .about-body h3 {
   font-family: var(--font-serif);
-  font-size: clamp(20px, 5.4vw, 26px);
+  font-size: clamp(26px, 7vw, 38px);
   font-weight: 400;
-  letter-spacing: -0.01em;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
   text-transform: none;
-  opacity: 0.9;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 .about-fine { opacity: var(--o-2); }
 /* On click the circle blooms outward, the puzzle emerging from it. */
@@ -395,33 +396,34 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 14px;
+  gap: 20px;
   padding-top: 34px;
   overflow-y: auto;
 }
-.end-emoji {
-  font-family: var(--font-emoji);
-  font-size: var(--fs);
-  line-height: 1;
-  animation: pop 0.6s var(--ease-spring) both;
-}
-@keyframes pop {
-  0%   { opacity: 0; transform: scale(0.2) rotate(-12deg); }
-  100% { opacity: 1; transform: none; }
-}
-/* Big WIN, sized like the Start word. */
-.win-title {
+/* The time is the hero now — huge, in the Start style. */
+.end-time {
   font-family: var(--font-serif);
-  font-size: clamp(84px, 34vw, 170px);
-  font-weight: 400;
+  font-size: clamp(76px, 30vw, 156px);
   line-height: 0.92;
   letter-spacing: -0.02em;
-}
-/* The time you scored — bare number, no frame. */
-.end-time {
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
+  animation: pop 0.5s var(--ease-spring) both;
 }
+@keyframes pop {
+  0%   { opacity: 0; transform: scale(0.4); }
+  100% { opacity: 1; transform: none; }
+}
+/* Publish is the forward hand from the start screen. */
+.publish-hand {
+  font-family: var(--font-emoji);
+  font-size: clamp(44px, 13vw, 64px);
+  line-height: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  animation: nudge 1.3s ease-in-out infinite;
+}
+.publish-hand:active { transform: scale(0.9); }
 .name-row { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 14px; }
 /* The name field is a framed display, filled by the on-screen keyboard. */
 .name-input {
