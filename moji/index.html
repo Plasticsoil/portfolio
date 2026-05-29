@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Hidden page: keep it out of search engines and crawlers -->
+  <meta name="robots" content="noindex, nofollow">
+  <title>moji</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400&family=Instrument+Serif&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --color-bg:      #F8F6F3;
+      --color-surface: #FBFAF9;
+      --color-muted:   #A3A09B;
+      --color-ink:     #26251E;
+      --gradient-accent: linear-gradient(90deg, #FF6EFD -0.24%, #F8FF7B 55.18%, #60FBFF 88.92%);
+      --font-serif: 'Instrument Serif', serif;
+      --font-sans:  'Nimbus Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      background: var(--color-bg);
+      color: var(--color-ink);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 16px;
+      padding: 40px;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: clamp(56px, 12vw, 120px);
+      line-height: 1;
+    }
+
+    .rule {
+      width: 120px;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--gradient-accent);
+    }
+
+    p {
+      color: var(--color-muted);
+      font-size: 15px;
+      letter-spacing: 0.02em;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>moji</h1>
+    <div class="rule"></div>
+    <p>Coming soon.</p>
+  </main>
+</body>
+</html>
