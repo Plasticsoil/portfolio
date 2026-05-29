@@ -109,14 +109,14 @@ body {
   padding: 56px 40px;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.5s ease, transform 0.6s var(--ease-spring);
-  transform: scale(0.97);
+  transition: opacity 0.45s ease, transform 0.55s var(--ease-spring);
+  transform: translateY(20px) scale(0.985);
   pointer-events: none;
 }
 .screen.is-active {
   opacity: 1;
   visibility: visible;
-  transform: scale(1);
+  transform: none;
   pointer-events: auto;
 }
 
@@ -239,15 +239,6 @@ body {
 /* On click the circle blooms outward, the puzzle emerging from it. */
 .btn-start.is-detonating { transform: scale(7); opacity: 0; }
 
-/* Game elements emerge from the circle's spot and settle into place. */
-@keyframes emerge {
-  from { opacity: 0; transform: scale(0.35) translateY(10px); }
-  to   { opacity: 1; transform: none; }
-}
-#screen-game.is-active .puzzle-clue   { animation: emerge 0.55s var(--ease-spring) both; }
-#screen-game.is-active .answer        { animation: emerge 0.55s 0.09s var(--ease-spring) both; }
-#screen-game.is-active .game-actions  { animation: emerge 0.55s 0.18s var(--ease-spring) both; }
-
 /* ── Explosion particles ───────────────────────────────────── */
 #particles {
   position: absolute;
@@ -349,12 +340,20 @@ body {
   z-index: 1;
   border-color: var(--color-ink);
 }
-.answer.is-good .box { border-color: var(--color-good); color: var(--color-good); z-index: 1; }
+/* Each solved letter turns green in the cascade. */
+.box.is-correct { border-color: var(--color-good); color: var(--color-good); position: relative; z-index: 1; }
 .answer.is-bad   .box { border-color: var(--color-bad); position: relative; z-index: 1; animation: shake 0.4s; }
 @keyframes shake {
   0%,100%{transform:translateX(0)}
   20%{transform:translateX(-7px)} 40%{transform:translateX(7px)}
   60%{transform:translateX(-5px)} 80%{transform:translateX(5px)}
+}
+/* A quick squash-pop when a letter lands or turns green. */
+.box.pop { animation: cellpop 0.2s ease; }
+@keyframes cellpop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.22); }
+  100% { transform: scale(1); }
 }
 
 .feedback {
@@ -434,6 +433,13 @@ body {
   animation: nudge 1.3s ease-in-out infinite;
 }
 .publish-hand:active { transform: scale(0.9); }
+/* Daily streak under the time. */
+.streak {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.02em;
+  opacity: var(--o-2);
+}
 .name-row { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 14px; }
 /* The name field is a framed display, filled by the on-screen keyboard. */
 .name-input {
@@ -496,6 +502,19 @@ body {
   letter-spacing: 0;
   opacity: var(--o-3);
 }
+/* "You're #2 today!" — the reward line above the table. */
+.board-callout {
+  font-family: var(--font-serif);
+  font-size: clamp(26px, 7vw, 36px);
+  letter-spacing: -0.02em;
+  text-align: center;
+  animation: callout 0.6s var(--ease-spring) both;
+}
+@keyframes callout {
+  0%   { opacity: 0; transform: scale(0.7); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
 /* Rows are the editorial serif; hierarchy comes from opacity. */
 .board-list {
   list-style: none;
@@ -523,6 +542,13 @@ body {
 /* Mine: solid black. Everyone else: faded back (border stays crisp). */
 .board-row .rank, .board-row .who, .board-row .ms { opacity: var(--o-3); }
 .board-row.is-me .rank, .board-row.is-me .who, .board-row.is-me .ms { opacity: 1; }
+/* Your row arrives with a soft highlight sweep. */
+.board-row.is-me { animation: rowglow 1.1s ease-out 0.2s both; }
+@keyframes rowglow {
+  0%   { background: rgba(47, 184, 119, 0.0); }
+  35%  { background: rgba(47, 184, 119, 0.22); }
+  100% { background: rgba(47, 184, 119, 0.0); }
+}
 .board-empty { opacity: var(--o-3); text-align: center; padding: 40px 0; }
 
 .note {
