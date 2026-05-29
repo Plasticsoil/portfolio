@@ -38,6 +38,22 @@
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* QA-ONLY: temporary floating replay button. Delete this block before release. */
+#qa-restart {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 9999;
+  font: 12px/1 monospace;
+  padding: 6px 10px;
+  background: #ff2d55;
+  color: #fff;
+  border: 2px dashed #000;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
 /* One size for every piece of text — headings included. */
 h1, h2, h3, p, button, input, span, li { font-size: 1em; font-weight: 400; }
 
@@ -339,35 +355,42 @@ body {
 .btn-solid:hover { opacity: 0.9; }
 
 /* ── Leaderboard ───────────────────────────────────────────── */
-#screen-board { gap: 24px; }
-.board-head h2 { font-weight: 400; }
-/* The board itself is secondary — quiet small sans, like yamliv.net. */
+#screen-board { gap: 22px; }
+/* Heading is the quiet label now — small sans, like yamliv.net. */
+.board-head h2 {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: var(--o-2);
+}
+/* Rows are the editorial serif; hierarchy comes from opacity. */
 .board-list {
   list-style: none;
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   padding: 4px 0;
-  font-family: var(--font-sans);
-  font-size: var(--fs-sm);
-  letter-spacing: 0;
+  font-family: var(--font-serif);
+  font-size: var(--fs);
+  letter-spacing: -0.018em;
 }
 .board-row {
   display: grid;
-  grid-template-columns: 1.6em 1fr auto;
+  grid-template-columns: 1.4em 1fr auto;
   align-items: baseline;
-  gap: 14px;
+  gap: 16px;
 }
-.board-row .rank { opacity: var(--o-3); font-variant-numeric: tabular-nums; }
+.board-row .rank { font-variant-numeric: tabular-nums; }
 .board-row .who  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.board-row .when { opacity: var(--o-3); }
+.board-row .when { font-family: var(--font-sans); font-size: var(--fs-sm); letter-spacing: 0; opacity: var(--o-3); }
 .board-row .ms   { font-variant-numeric: tabular-nums; }
-.board-row.is-me .who,
-.board-row.is-me .ms { opacity: var(--o-1); font-weight: 600; }
-.board-row.is-me .rank { opacity: 0.6; }
-.board-row:not(.is-me) { opacity: var(--o-2); }
+/* Mine: solid black. Everyone else: faded back. */
+.board-row.is-me        { opacity: 1; }
+.board-row:not(.is-me)  { opacity: var(--o-3); }
 .board-empty { opacity: var(--o-3); text-align: center; padding: 40px 0; }
 
 .note {

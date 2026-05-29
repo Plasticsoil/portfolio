@@ -294,6 +294,14 @@
   els.saveBtn.addEventListener('click', submitScore);
   els.nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitScore(); });
 
+  // QA-ONLY: clear today's lock so the daily can be replayed. Remove before release.
+  const qaBtn = document.getElementById('qa-restart');
+  if (qaBtn) qaBtn.addEventListener('click', () => {
+    try { localStorage.removeItem(DAILY_KEY); } catch (e) {}
+    lastEntry = null;
+    show('start');
+  });
+
   // ── Boot ─────────────────────────────────────────────────
   show('start');
 })();
