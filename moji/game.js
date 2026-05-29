@@ -480,14 +480,6 @@
     else if (/^[a-zA-Z]$/.test(e.key)) { typeLetter(e.key); }
   });
 
-  // QA-ONLY: clear today's lock so the daily can be replayed. Remove before release.
-  const qaBtn = document.getElementById('qa-restart');
-  if (qaBtn) qaBtn.addEventListener('click', () => {
-    try { localStorage.removeItem(DAILY_KEY); } catch (e) {}
-    lastEntry = null;
-    show('start');
-  });
-
   // ── Boot ─────────────────────────────────────────────────
   show('start');
 })();

@@ -97,4 +97,28 @@ window.MOJI_PUZZLES = [
     answer: 'EVIL',
     explain: 'def: 😈 wicked · 🪞 reflects “LIVE” backwards → EVIL',
   },
+  {
+    // CHARADE — O (owner's opening) + RANGE (shooting gallery)
+    clue: "Drink the owner's opening at the shooting gallery",
+    answer: 'ORANGE',
+    explain: 'def: Drink (orange squash) · owner’s opening = O + shooting gallery = RANGE → O·RANGE',
+  },
+  {
+    // CHARADE — SAND + BOX
+    clue: 'Beach grit, then a bout of fisticuffs — the kids’ play pit',
+    answer: 'SANDBOX',
+    explain: 'def: kids’ play pit · beach grit = SAND + a bout of fisticuffs = BOX → SAND·BOX',
+  },
+  {
+    // CHARADE — MOUNT + A + IN
+    clue: 'Climb aboard, find a point of entry, and face the great peak',
+    answer: 'MOUNTAIN',
+    explain: 'def: the great peak · climb aboard = MOUNT + a + point of entry = IN → MOUNT·A·IN',
+  },
+  {
+    // DELETION — beheaded NARROW
+    clue: "Behead the narrow lane and you've a pointer",
+    answer: 'ARROW',
+    explain: 'def: a pointer · NARROW beheaded (drop the first letter) → ARROW',
+  },
 ];
