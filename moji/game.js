@@ -14,6 +14,8 @@
   const LB_KEY = 'moji_leaderboard_v1';   // history of daily solves
   const DAILY_KEY = 'moji_daily_v1';      // today's locked-in result
   const EXPLOSION_EMOJIS = ['🎉', '🎊', '🎈', '🥳', '🏆', '🎁', '🪅', '✨', '💫', '⭐', '🌟', '💥', '🎆', '🎇', '👑', '🤩'];
+  // Win-screen hero — a random hit of feminine power each solve.
+  const WIN_EMOJIS = ['👸', '💃', '🧚‍♀️', '🦸‍♀️', '👑', '💪', '👩‍🎤', '🧜‍♀️', '👩‍🚀', '🌟'];
   const KB_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
   const NAME_MAX = 14;
 
@@ -333,6 +335,11 @@
     nameBuf = '';
     renderName();
     els.nameRow.style.display = '';
+    // Pick a random feminine-power emoji and replay its pop.
+    els.endEmoji.textContent = WIN_EMOJIS[(Math.random() * WIN_EMOJIS.length) | 0];
+    els.endEmoji.style.animation = 'none';
+    void els.endEmoji.offsetWidth;
+    els.endEmoji.style.animation = '';
     show('end');
     explode(els.endEmoji, 42, screens.end);
   }
