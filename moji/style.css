@@ -110,21 +110,24 @@ body {
   position: relative;
   display: grid;
   place-items: center;
-  width: clamp(176px, 50vw, 224px);
-  aspect-ratio: 1 / 1;
+  /* Explicit equal width + height guarantees a perfect circle
+     even where aspect-ratio behaves oddly. */
+  width:  clamp(180px, 52vw, 220px);
+  height: clamp(180px, 52vw, 220px);
+  flex: 0 0 auto;
   border-radius: 50%;
-  border: 2px solid var(--color-ink);
+  border: 2.5px solid var(--color-ink);
   background: none;
   color: var(--color-ink);
   font-family: var(--font-serif);
   font-size: var(--fs);
   line-height: 1;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  transition: transform 0.5s var(--ease-spring), opacity 0.5s ease, letter-spacing 0.3s ease;
+  transition: transform 0.5s var(--ease-spring), opacity 0.5s ease,
+              background-color 0.3s ease, color 0.3s ease;
 }
-.btn-start > span { transition: letter-spacing 0.3s ease; }
-.btn-start:hover > span { letter-spacing: 0.18em; }
+.btn-start:hover { background: var(--color-ink); color: var(--color-bg); }
 .btn-start:active { transform: scale(0.95); }
 /* On click the circle blooms outward, the puzzle emerging from it. */
 .btn-start.is-detonating { transform: scale(7); opacity: 0; }
