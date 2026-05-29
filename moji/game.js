@@ -3,6 +3,9 @@
    One cryptic clue per day. Come in, solve it, land on the
    leaderboard. The puzzle rotates by calendar day so everyone
    gets the same clue on the same date.
+
+   Input uses a custom on-screen QWERTY bank (not the native
+   keyboard) so nothing shifts the screen while typing.
    ============================================================ */
 (function () {
   'use strict';
@@ -11,13 +14,21 @@
   const LB_KEY = 'moji_leaderboard_v1';   // history of daily solves
   const DAILY_KEY = 'moji_daily_v1';      // today's locked-in result
   const EXPLOSION_EMOJIS = ['🎉', '🎊', '🎈', '🥳', '🏆', '🎁', '🪅', '✨', '💫', '⭐', '🌟', '💥', '🎆', '🎇', '👑', '🤩'];
+  const KB_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
+  const NAME_MAX = 14;
 
   // ── State ────────────────────────────────────────────────
   let startTime = 0;
   let elapsed = 0;
   let rafId = null;
   let lastBeepSec = 0;
-  let lastEntry = null; // remembers the score we just submitted, to highlight it
+  let lastEntry = null;       // the score we just submitted, to highlight it
+  let mode = null;            // 'game' | 'name' | null — where typed keys go
+  let guess = [];             // letters entered for the puzzle
+  let letterCells = [];       // the answer cell elements (letters only)
+  let currentTarget = '';     // today's answer, upper-cased, no spaces
+  let answerLocked = false;   // true once solved, until we move on
+  let nameBuf = '';           // name being typed on the end screen
 
   // ── Sound — synthesized juice, no asset files, works offline ──
   const Sound = (function () {
@@ -45,6 +56,7 @@
       resume() { const c = ac(); if (c && c.state === 'suspended') c.resume(); },
       start()   { seq([523, 659, 784, 1047], 0.06, 0.20, 'triangle', 0.20); },
       tick()    { tone(990, 0, 0.05, 'square', 0.05); },
+      key()     { tone(660, 0, 0.04, 'sine', 0.06); },
       correct() { seq([659, 784, 988, 1319], 0.075, 0.22, 'triangle', 0.22); },
       wrong()   { tone(150, 0, 0.20, 'sawtooth', 0.14); },
       publish() { seq([784, 1047, 1319, 1568, 2093], 0.07, 0.26, 'triangle', 0.24); },
@@ -69,15 +81,15 @@
     endEmoji: $('#end-emoji'),
     endTime: $('#end-time'),
     nameRow: $('#name-row'),
-    nameInput: $('#name-input'),
+    nameDisplay: $('#name-display'),
     saveBtn: $('#save-btn'),
+    keyboard: $('#keyboard'),
     boardList: $('#board-list'),
     boardDate: $('#board-date'),
     boardNote: $('#board-note'),
   };
 
   // ── Daily helpers ────────────────────────────────────────
-  // Local calendar day → same puzzle for everyone that date.
   function todayStr() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -98,10 +110,13 @@
     return d && d.date === todayStr() ? d : null;
   }
 
-  // ── Screen switching ─────────────────────────────────────
+  // ── Screen switching (also drives the keyboard + input mode) ──
   function show(name) {
     Object.values(screens).forEach((s) => s.classList.remove('is-active'));
     screens[name].classList.add('is-active');
+    if (name === 'game') { mode = 'game'; els.keyboard.classList.add('is-visible'); }
+    else if (name === 'end') { mode = 'name'; els.keyboard.classList.add('is-visible'); }
+    else { mode = null; els.keyboard.classList.remove('is-visible'); }
   }
 
   // ── Timer ────────────────────────────────────────────────
@@ -114,7 +129,6 @@
   function tick() {
     elapsed = Date.now() - startTime;
     els.timer.textContent = fmt(elapsed);
-    // A little juice on the clock: a soft blip every 10 seconds.
     const sec = Math.floor(elapsed / 1000);
     if (sec > 0 && sec % 10 === 0 && sec !== lastBeepSec) {
       lastBeepSec = sec;
@@ -161,16 +175,72 @@
     }
   }
 
+  // ── On-screen keyboard ───────────────────────────────────
+  function buildKeyboard() {
+    els.keyboard.innerHTML = '';
+    KB_ROWS.forEach((row, ri) => {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'kb-row';
+      row.split('').forEach((ch) => {
+        const k = document.createElement('button');
+        k.className = 'kb-key';
+        k.type = 'button';
+        k.textContent = ch;
+        k.addEventListener('click', () => typeLetter(ch));
+        rowEl.appendChild(k);
+      });
+      if (ri === KB_ROWS.length - 1) {
+        const back = document.createElement('button');
+        back.className = 'kb-key kb-back';
+        back.type = 'button';
+        back.textContent = '⌫';
+        back.setAttribute('aria-label', 'delete');
+        back.addEventListener('click', backspace);
+        rowEl.appendChild(back);
+      }
+      els.keyboard.appendChild(rowEl);
+    });
+  }
+
+  function typeLetter(ch) {
+    ch = (ch || '').toUpperCase();
+    if (!/^[A-Z]$/.test(ch)) return;
+    if (mode === 'game') {
+      if (answerLocked || guess.length >= letterCells.length) return;
+      guess.push(ch);
+      Sound.key();
+      renderCells();
+      if (guess.length === letterCells.length) attemptCheck();
+    } else if (mode === 'name') {
+      if (nameBuf.length >= NAME_MAX) return;
+      nameBuf += ch;
+      Sound.key();
+      renderName();
+    }
+  }
+  function backspace() {
+    if (mode === 'game') {
+      if (answerLocked || !guess.length) return;
+      guess.pop();
+      els.answer.classList.remove('is-bad');
+      renderCells();
+    } else if (mode === 'name') {
+      nameBuf = nameBuf.slice(0, -1);
+      renderName();
+    }
+  }
+
   // ── Render today's puzzle ────────────────────────────────
   function renderPuzzle() {
     const p = PUZZLES[dayIndex()];
+    currentTarget = p.answer.replace(/\s+/g, '').toUpperCase();
+    guess = [];
+    letterCells = [];
+    answerLocked = false;
 
-    // one sentence, emoji woven inline — no enumeration
     els.clue.innerHTML = p.clue;
-
     els.answer.className = 'answer';
     els.answer.innerHTML = '';
-    const inputs = [];
     p.answer.split('').forEach((ch) => {
       if (ch === ' ') {
         const gap = document.createElement('span');
@@ -178,55 +248,30 @@
         els.answer.appendChild(gap);
         return;
       }
-      const inp = document.createElement('input');
-      inp.className = 'box';
-      inp.maxLength = 1;
-      inp.type = 'text';
-      inp.autocomplete = 'off';
-      inp.autocapitalize = 'characters';
-      inp.setAttribute('inputmode', 'text');
-      inp.setAttribute('aria-label', 'answer letter');
-      els.answer.appendChild(inp);
-      inputs.push(inp);
+      const cell = document.createElement('div');
+      cell.className = 'box';
+      els.answer.appendChild(cell);
+      letterCells.push(cell);
     });
 
     els.feedback.className = 'feedback';
     els.feedback.textContent = '';
-
-    wireInputs(inputs, p);
-    // Keyboard stays closed until the player taps a cell themselves.
+    renderCells();
   }
 
-  function wireInputs(inputs, puzzle) {
-    inputs.forEach((inp, i) => {
-      inp.addEventListener('input', () => {
-        inp.value = inp.value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 1);
-        els.answer.classList.remove('is-bad');
-        if (inp.value && i < inputs.length - 1) inputs[i + 1].focus();
-        if (inputs.every((x) => x.value)) checkAnswer(inputs, puzzle);
-      });
-      inp.addEventListener('keydown', (e) => {
-        if (e.key === 'Backspace' && !inp.value && i > 0) {
-          inputs[i - 1].focus();
-          inputs[i - 1].value = '';
-          e.preventDefault();
-        }
-        if (e.key === 'ArrowLeft' && i > 0) inputs[i - 1].focus();
-        if (e.key === 'ArrowRight' && i < inputs.length - 1) inputs[i + 1].focus();
-        if (e.key === 'Enter') checkAnswer(inputs, puzzle);
-      });
-      inp.addEventListener('focus', () => inp.select());
+  function renderCells() {
+    letterCells.forEach((cell, i) => {
+      cell.textContent = guess[i] || '';
+      cell.classList.toggle('is-active', !answerLocked && i === guess.length);
     });
   }
 
-  function checkAnswer(inputs, puzzle) {
-    const guess = inputs.map((x) => x.value).join('').toUpperCase();
-    const target = puzzle.answer.replace(/\s+/g, '').toUpperCase();
-    if (guess.length < target.length) return;
-
-    if (guess === target) {
+  function attemptCheck() {
+    if (guess.length < currentTarget.length) return;
+    if (guess.join('') === currentTarget) {
+      answerLocked = true;
       els.answer.classList.add('is-good');
-      inputs.forEach((x) => (x.disabled = true));
+      renderCells();
       Sound.correct();
       explode(els.answer, 24, screens.game);
       // No explanation — celebrate, then straight on to the leaderboard.
@@ -239,17 +284,27 @@
       els.feedback.textContent = 'Not quite — try again';
       setTimeout(() => {
         els.answer.classList.remove('is-bad');
-        inputs.forEach((x) => (x.value = ''));
-        inputs[0].focus();
+        guess = [];
+        renderCells();
         els.feedback.classList.remove('show');
         els.feedback.style.color = '';
       }, 700);
     }
   }
 
+  // ── Name (typed via the same keyboard) ───────────────────
+  function renderName() {
+    if (nameBuf) {
+      els.nameDisplay.textContent = nameBuf;
+      els.nameDisplay.classList.remove('is-empty');
+    } else {
+      els.nameDisplay.textContent = 'Your name';
+      els.nameDisplay.classList.add('is-empty');
+    }
+  }
+
   // ── Flow ─────────────────────────────────────────────────
   function beginGame() {
-    // Already cracked today's clue? Don't replay — show the result.
     const done = solvedToday();
     Sound.resume();
     Sound.start();
@@ -271,10 +326,10 @@
   function finishGame() {
     stopTimer();
     els.endTime.textContent = fmt(elapsed);
-    els.nameInput.value = '';
+    nameBuf = '';
+    renderName();
     els.nameRow.style.display = '';
     show('end');
-    setTimeout(() => els.nameInput.focus(), 350);
     explode(els.endEmoji, 42, screens.end);
   }
 
@@ -287,11 +342,10 @@
     try { localStorage.setItem(LB_KEY, JSON.stringify(list)); } catch (e) {}
   }
   function submitScore() {
-    const name = (els.nameInput.value || 'Anon').trim().slice(0, 14) || 'Anon';
+    const name = (nameBuf || 'Anon').trim().slice(0, NAME_MAX) || 'Anon';
     const dateStr = todayStr();
     const entry = { name, ms: elapsed, dateStr, ts: Date.now() };
 
-    // Lock in today's result and append to the all-time daily history.
     try { localStorage.setItem(DAILY_KEY, JSON.stringify({ date: dateStr, ms: elapsed, name, ts: entry.ts })); } catch (e) {}
     const list = loadBoard();
     list.push(entry);
@@ -341,10 +395,18 @@
     });
   }
 
-  // ── Wire buttons ─────────────────────────────────────────
+  // ── Wire it up ───────────────────────────────────────────
+  buildKeyboard();
   els.startBtn.addEventListener('click', beginGame);
   els.saveBtn.addEventListener('click', submitScore);
-  els.nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitScore(); });
+
+  // Physical keyboard works too (desktop), routed by mode.
+  document.addEventListener('keydown', (e) => {
+    if (!mode) return;
+    if (e.key === 'Backspace') { backspace(); e.preventDefault(); }
+    else if (e.key === 'Enter') { if (mode === 'name') submitScore(); }
+    else if (/^[a-zA-Z]$/.test(e.key)) { typeLetter(e.key); }
+  });
 
   // QA-ONLY: clear today's lock so the daily can be replayed. Remove before release.
   const qaBtn = document.getElementById('qa-restart');

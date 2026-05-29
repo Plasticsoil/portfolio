@@ -228,15 +228,17 @@ body {
   width: 52px;
   aspect-ratio: 1 / 1;
   margin-left: -2px;            /* collapse touching borders into one line */
+  display: grid;
+  place-items: center;
   border: 2px solid rgba(38, 37, 30, 0.28);
   border-radius: 0;
   background: none;
-  text-align: center;
   font-family: var(--font-serif);
   font-size: var(--fs);
+  line-height: 1;
   text-transform: uppercase;
   color: var(--color-ink);
-  caret-color: transparent;
+  user-select: none;
   transition: border-color 0.25s ease, color 0.25s ease, transform 0.2s ease;
 }
 .box:first-child {
@@ -248,9 +250,9 @@ body {
   border-top-right-radius: 12px;
   border-bottom-right-radius: 12px;
 }
-.box:focus {
-  outline: none;
-  position: relative;          /* lift the focused cell's border above neighbours */
+/* The cell waiting for the next letter. */
+.box.is-active {
+  position: relative;
   z-index: 1;
   border-color: var(--color-ink);
 }
@@ -323,21 +325,35 @@ body {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
 }
-.name-row { display: flex; align-items: stretch; gap: 12px; margin-top: 14px; }
-/* The name field gets the frame now. */
+.name-row { display: flex; align-items: stretch; justify-content: center; gap: 12px; margin-top: 14px; }
+/* The name field is a framed display, filled by the on-screen keyboard. */
 .name-input {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--font-serif);
   font-size: var(--fs);
-  text-align: center;
+  line-height: 1.1;
   padding: 6px 18px;
   border: 2px solid rgba(38, 37, 30, 0.28);
   border-radius: 14px;
   background: none;
   color: var(--color-ink);
   width: min(56vw, 230px);
+  white-space: nowrap;
+  overflow: hidden;
 }
-.name-input::placeholder { color: var(--color-ink); opacity: var(--o-3); }
-.name-input:focus { outline: none; border-color: var(--color-ink); }
+.name-input.is-empty { opacity: var(--o-3); }
+/* Blinking caret while the name is being typed. */
+#screen-end.is-active .name-input:not(.is-empty)::after {
+  content: '';
+  width: 2px;
+  height: 1em;
+  margin-left: 3px;
+  background: var(--color-ink);
+  animation: caret 1.05s steps(1) infinite;
+}
+@keyframes caret { 50% { opacity: 0; } }
 /* Save is a real, solid button. */
 .btn-solid {
   font-family: var(--font-serif);
@@ -408,3 +424,38 @@ body {
   line-height: 1.4;
   text-align: center;
 }
+
+/* ── On-screen keyboard ─────────────────────────────────────
+   Bare sans letters in a QWERTY bank, pinned to the bottom.
+   Screens that use it reserve room so nothing overlaps. */
+#screen-game, #screen-end { padding-bottom: clamp(170px, 32vh, 220px); }
+
+.keyboard {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  z-index: 40;
+  display: none;
+  flex-direction: column;
+  gap: clamp(7px, 1.8vw, 12px);
+  padding: 14px clamp(6px, 2vw, 14px) calc(16px + env(safe-area-inset-bottom));
+  font-family: var(--font-sans);
+  user-select: none;
+}
+.keyboard.is-visible { display: flex; }
+.kb-row { display: flex; justify-content: center; gap: clamp(3px, 1.4vw, 9px); }
+.kb-key {
+  font-family: var(--font-sans);
+  font-size: clamp(17px, 5vw, 24px);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  background: none;
+  border: none;
+  padding: 9px 5px;
+  min-width: clamp(22px, 7.2vw, 34px);
+  cursor: pointer;
+  transition: transform 0.08s ease, opacity 0.15s ease;
+}
+.kb-key:active { transform: scale(0.84); opacity: 0.5; }
+.kb-back { opacity: var(--o-2); }

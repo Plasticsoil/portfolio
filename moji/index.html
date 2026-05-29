@@ -43,7 +43,7 @@
       <div class="end-emoji" id="end-emoji">👑</div>
       <div class="end-time" id="end-time">00:00</div>
       <div class="name-row" id="name-row">
-        <input class="name-input" id="name-input" maxlength="14" placeholder="Your name" />
+        <div class="name-input is-empty" id="name-display">Your name</div>
         <button class="btn-solid" id="save-btn">Publish</button>
       </div>
       <p class="note" id="end-note">Add your name to the leaderboard</p>
@@ -58,6 +58,9 @@
       <ul class="board-list" id="board-list"></ul>
       <p class="note" id="board-note">Come back tomorrow for a new clue</p>
     </section>
+
+    <!-- ── ON-SCREEN KEYBOARD (custom, replaces the native one) ── -->
+    <div class="keyboard" id="keyboard"></div>
   </div>
 
   <script src="puzzles.js"></script>
