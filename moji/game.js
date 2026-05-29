@@ -101,7 +101,10 @@
     return ((epochDay % PUZZLES.length) + PUZZLES.length) % PUZZLES.length;
   }
   function prettyDate() {
-    return new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dd}/${mm}/${d.getFullYear()}`;
   }
   function loadDaily() {
     try { return JSON.parse(localStorage.getItem(DAILY_KEY)); } catch (e) { return null; }
