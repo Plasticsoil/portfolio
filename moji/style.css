@@ -57,6 +57,9 @@
 /* One size for every piece of text — headings included. */
 h1, h2, h3, p, button, input, span, li { font-size: 1em; font-weight: 400; }
 
+/* No blue tap-flash or accidental text selection on controls. */
+button { -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+
 html, body {
   height: 100%;
   background: var(--color-bg);
@@ -138,6 +141,9 @@ body {
   letter-spacing: -0.02em;
   white-space: nowrap;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition: transform 0.5s var(--ease-spring), opacity 0.5s ease;
 }
 .btn-start:active { transform: scale(0.96); }
@@ -510,7 +516,7 @@ body {
   padding: 12px 2px;
   border-bottom: 1px solid rgba(38, 37, 30, 0.16);
 }
-.board-row:last-child { border-bottom: none; }
+.board-row:first-child { border-top: 1px solid rgba(38, 37, 30, 0.16); }
 .board-row .rank { font-variant-numeric: tabular-nums; }
 .board-row .who  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .board-row .ms   { font-variant-numeric: tabular-nums; }
@@ -538,7 +544,9 @@ body {
   gap: clamp(9px, 2.2vw, 14px);
   width: 100%;
   margin-bottom: clamp(8px, 2.5vh, 26px);
-  padding: 0 clamp(4px, 1.6vw, 14px);
+  padding: clamp(12px, 3vw, 18px) clamp(4px, 1.6vw, 14px);
+  border-top: 1px solid rgba(38, 37, 30, 0.16);
+  border-bottom: 1px solid rgba(38, 37, 30, 0.16);
   font-family: var(--font-sans);
   user-select: none;
 }

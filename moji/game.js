@@ -79,7 +79,6 @@
     gameBody: $('#screen-game .game-body'),
     clue: $('#puzzle-clue'),
     answer: $('#answer'),
-    feedback: $('#feedback'),
     endTime: $('#end-time'),
     nameRow: $('#name-row'),
     nameDisplay: $('#name-display'),
@@ -259,8 +258,6 @@
       letterCells.push(cell);
     });
 
-    els.feedback.className = 'feedback';
-    els.feedback.textContent = '';
     renderCells();
   }
 
@@ -282,17 +279,13 @@
       // No explanation — celebrate, then straight on to the leaderboard.
       setTimeout(finishGame, 950);
     } else {
+      // Wrong — colour, shake and sound say it all; no words.
       els.answer.classList.add('is-bad');
       Sound.wrong();
-      els.feedback.className = 'feedback show';
-      els.feedback.style.color = 'var(--color-bad)';
-      els.feedback.textContent = 'Not quite — try again';
       setTimeout(() => {
         els.answer.classList.remove('is-bad');
         guess = [];
         renderCells();
-        els.feedback.classList.remove('show');
-        els.feedback.style.color = '';
       }, 700);
     }
   }
