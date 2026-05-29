@@ -154,6 +154,77 @@ body {
   0%, 100% { transform: translateX(-5px); }
   50%      { transform: translateX(7px); }
 }
+
+/* Small "about" link, centered at the bottom of the home screen. */
+.about-link {
+  position: absolute;
+  bottom: calc(clamp(20px, 5vh, 40px) + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.04em;
+  color: var(--color-ink);
+  background: none;
+  border: none;
+  opacity: var(--o-3);
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+.about-link:hover { opacity: var(--o-1); }
+
+/* ── About screen ──────────────────────────────────────────── */
+#screen-about {
+  align-items: center;
+  justify-content: flex-start;
+  padding: 64px clamp(24px, 7vw, 48px);
+}
+.about-close {
+  position: absolute;
+  top: 14px; right: 18px;
+  font-family: var(--font-sans);
+  font-size: 30px;
+  line-height: 1;
+  color: var(--color-ink);
+  background: none;
+  border: none;
+  opacity: var(--o-3);
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+.about-close:hover { opacity: var(--o-1); }
+.about-body {
+  max-width: 30em;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  line-height: 1.65;
+  letter-spacing: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.about-title {
+  font-family: var(--font-serif);
+  font-size: var(--fs);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  margin-bottom: 2px;
+}
+.about-body h3 {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: var(--o-2);
+  margin-top: 10px;
+}
+.about-fine { opacity: var(--o-2); }
 /* On click the circle blooms outward, the puzzle emerging from it. */
 .btn-start.is-detonating { transform: scale(7); opacity: 0; }
 
@@ -325,7 +396,7 @@ body {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
 }
-.name-row { display: flex; align-items: stretch; justify-content: center; gap: 12px; margin-top: 14px; }
+.name-row { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 14px; }
 /* The name field is a framed display, filled by the on-screen keyboard. */
 .name-input {
   display: flex;
@@ -426,34 +497,35 @@ body {
 }
 
 /* ── On-screen keyboard ─────────────────────────────────────
-   Bare sans letters in a QWERTY bank, pinned to the bottom.
-   Screens that use it reserve room so nothing overlaps. */
-#screen-game, #screen-end { padding-bottom: clamp(170px, 32vh, 220px); }
+   Bare sans letters in a QWERTY bank, floating a little above
+   the bottom. Screens that use it reserve room so nothing overlaps. */
+#screen-game, #screen-end { padding-bottom: clamp(220px, 40vh, 280px); }
 
 .keyboard {
   position: absolute;
-  left: 0; right: 0; bottom: 0;
+  left: 0; right: 0;
+  bottom: calc(clamp(16px, 4.5vh, 36px) + env(safe-area-inset-bottom));
   z-index: 40;
   display: none;
   flex-direction: column;
-  gap: clamp(7px, 1.8vw, 12px);
-  padding: 14px clamp(6px, 2vw, 14px) calc(16px + env(safe-area-inset-bottom));
+  gap: clamp(9px, 2.2vw, 14px);
+  padding: 0 clamp(6px, 2vw, 16px);
   font-family: var(--font-sans);
   user-select: none;
 }
 .keyboard.is-visible { display: flex; }
-.kb-row { display: flex; justify-content: center; gap: clamp(3px, 1.4vw, 9px); }
+.kb-row { display: flex; justify-content: center; gap: clamp(4px, 1.6vw, 10px); }
 .kb-key {
   font-family: var(--font-sans);
-  font-size: clamp(17px, 5vw, 24px);
+  font-size: clamp(18px, 5.4vw, 26px);
   font-weight: 400;
   letter-spacing: 0;
   text-transform: uppercase;
   color: var(--color-ink);
   background: none;
   border: none;
-  padding: 9px 5px;
-  min-width: clamp(22px, 7.2vw, 34px);
+  padding: 13px 5px;
+  min-width: clamp(24px, 7.6vw, 36px);
   cursor: pointer;
   transition: transform 0.08s ease, opacity 0.15s ease;
 }

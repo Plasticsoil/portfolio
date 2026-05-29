@@ -70,6 +70,7 @@
     game: $('#screen-game'),
     end: $('#screen-end'),
     board: $('#screen-board'),
+    about: $('#screen-about'),
   };
   const els = {
     startBtn: $('#start-btn'),
@@ -399,6 +400,11 @@
   buildKeyboard();
   els.startBtn.addEventListener('click', beginGame);
   els.saveBtn.addEventListener('click', submitScore);
+
+  const aboutBtn = document.getElementById('about-btn');
+  const aboutClose = document.getElementById('about-close');
+  if (aboutBtn) aboutBtn.addEventListener('click', () => show('about'));
+  if (aboutClose) aboutClose.addEventListener('click', () => show('start'));
 
   // Physical keyboard works too (desktop), routed by mode.
   document.addEventListener('keydown', (e) => {
