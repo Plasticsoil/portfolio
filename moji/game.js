@@ -41,7 +41,6 @@
     saveBtn: $('#save-btn'),
     boardList: $('#board-list'),
     boardNote: $('#board-note'),
-    boardBackBtn: $('#board-back-btn'),
   };
 
   // ── Daily helpers ────────────────────────────────────────
@@ -299,7 +298,6 @@
   els.startBtn.addEventListener('click', beginGame);
   els.saveBtn.addEventListener('click', submitScore);
   els.nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitScore(); });
-  els.boardBackBtn.addEventListener('click', () => show('start'));
 
   // ── Boot ─────────────────────────────────────────────────
   show('start');

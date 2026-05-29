@@ -20,9 +20,12 @@
   /* Native color-emoji stack so emoji render in their normal aesthetic,
      unaffected by the serif body font. */
   --font-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
+  /* Matches yamliv.net's --font-sans — used small, for secondary text. */
+  --font-sans: 'Nimbus Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 
-  /* One single text size everywhere. Hierarchy = opacity + space. */
+  /* Headline serif size, plus a quiet small-sans size for meta. */
   --fs:       clamp(30px, 8.4vw, 42px);
+  --fs-sm:    clamp(13px, 3.5vw, 15px);
 
   /* Opacity tiers — the only "size" we vary */
   --o-1: 1;      /* primary   */
@@ -161,7 +164,12 @@ body {
   letter-spacing: 0.01em;
 }
 
-.today { opacity: var(--o-3); }
+.today {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  letter-spacing: 0;
+  opacity: var(--o-3);
+}
 
 .game-body {
   flex: 1;
@@ -288,56 +296,79 @@ body {
   0%   { opacity: 0; transform: scale(0.2) rotate(-12deg); }
   100% { opacity: 1; transform: none; }
 }
-.end-title { line-height: 1; opacity: var(--o-2); }
-/* The time you scored — framed like an achievement, matching the cells. */
+/* The time you scored — bare number, no frame. */
 .end-time {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
-  padding: 8px 28px;
-  border: 2px solid rgba(38, 37, 30, 0.28);
-  border-radius: 16px;
 }
-.name-row { display: flex; align-items: baseline; gap: 24px; margin-top: 14px; }
+.name-row { display: flex; align-items: stretch; gap: 12px; margin-top: 14px; }
+/* The name field gets the frame now. */
 .name-input {
   font-family: var(--font-serif);
   font-size: var(--fs);
   text-align: center;
-  padding: 6px 4px 12px;
-  border: none;
-  border-bottom: 2px solid rgba(38, 37, 30, 0.28);
+  padding: 6px 18px;
+  border: 2px solid rgba(38, 37, 30, 0.28);
+  border-radius: 14px;
   background: none;
   color: var(--color-ink);
-  width: 200px;
+  width: min(56vw, 230px);
 }
 .name-input::placeholder { color: var(--color-ink); opacity: var(--o-3); }
-.name-input:focus { outline: none; border-bottom-color: var(--color-ink); }
+.name-input:focus { outline: none; border-color: var(--color-ink); }
+/* Save is a real, solid button. */
+.btn-solid {
+  font-family: var(--font-serif);
+  font-size: var(--fs);
+  line-height: 1;
+  color: var(--color-bg);
+  background: var(--color-ink);
+  border: 2px solid var(--color-ink);
+  border-radius: 14px;
+  padding: 6px 22px;
+  cursor: pointer;
+  transition: transform 0.2s var(--ease-spring), opacity 0.25s ease;
+}
+.btn-solid:active { transform: scale(0.96); }
+.btn-solid:hover { opacity: 0.9; }
 
 /* ── Leaderboard ───────────────────────────────────────────── */
-#screen-board { gap: 28px; }
+#screen-board { gap: 24px; }
 .board-head h2 { font-weight: 400; }
+/* The board itself is secondary — quiet small sans, like yamliv.net. */
 .board-list {
   list-style: none;
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
   padding: 4px 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  letter-spacing: 0;
 }
 .board-row {
   display: grid;
-  grid-template-columns: 1.4em 1fr auto;
+  grid-template-columns: 1.6em 1fr auto;
   align-items: baseline;
-  gap: 18px;
+  gap: 14px;
 }
 .board-row .rank { opacity: var(--o-3); font-variant-numeric: tabular-nums; }
 .board-row .who  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .board-row .when { opacity: var(--o-3); }
 .board-row .ms   { font-variant-numeric: tabular-nums; }
 .board-row.is-me .who,
-.board-row.is-me .ms { opacity: var(--o-1); }
+.board-row.is-me .ms { opacity: var(--o-1); font-weight: 600; }
 .board-row.is-me .rank { opacity: 0.6; }
 .board-row:not(.is-me) { opacity: var(--o-2); }
 .board-empty { opacity: var(--o-3); text-align: center; padding: 40px 0; }
 
-.note { opacity: var(--o-3); line-height: 1.4; text-align: center; }
+.note {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  letter-spacing: 0;
+  opacity: var(--o-3);
+  line-height: 1.4;
+  text-align: center;
+}
