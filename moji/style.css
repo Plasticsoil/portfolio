@@ -549,7 +549,8 @@ body {
   padding: 13px 5px;
   min-width: clamp(24px, 7.6vw, 36px);
   cursor: pointer;
+  opacity: 0.4;
   transition: transform 0.08s ease, opacity 0.15s ease;
 }
-.kb-key:active { transform: scale(0.84); opacity: 0.5; }
-.kb-back { opacity: var(--o-2); }
+.kb-key:active { transform: scale(0.84); opacity: 0.85; }
+.kb-back { opacity: 0.3; }
