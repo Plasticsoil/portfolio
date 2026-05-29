@@ -1,70 +1,124 @@
 /* ============================================================
    moji — puzzle data
    ------------------------------------------------------------
-   Proper CRYPTIC CLUES (à la British crosswords), written as a
-   SINGLE sentence with the emoji woven inline. Every clue has
-   two routes to the same answer:
-     • a DEFINITION (a straight synonym, hidden in the sentence)
-     • WORDPLAY (a recipe that builds the answer letter by letter)
+   Real CRYPTIC CLUES with an emoji twist. Every clue offers two
+   routes to ONE answer:
+     • a DEFINITION (a plain synonym, at the start or end)
+     • WORDPLAY built from the emoji (a sound, some letters, or
+       a word the emoji stands for)
 
-   The flagship example (COOK):
+   The devices used below:
+     • CONTAINER   — one part placed inside another
+     • CHARADE     — pieces joined in order (A + B + C)
+     • ANAGRAM     — letters rearranged ("shattered / strangely")
+     • REVERSAL    — a word turned backwards
+     • HIDDEN      — answer concealed in consecutive letters
+     • HOMOPHONE   — "by the sound of it"
+     • DOUBLE DEF  — two meanings of the same word
+
+   Flagship example (COOK, a container):
      "The special 🧑‍🍳 tucks his 🧆 inside his Calvin Klein 🩲"
        def      → 🧑‍🍳 chef = COOK
-       wordplay → 🧆 meatballs = OO, Calvin Klein = CK,
-                  "inside" = put OO within CK → C(OO)K
-   The emojis ARE part of the sentence; the cracking happens by
-   reading them as words and following the recipe.
+       wordplay → 🧆 meatballs = OO, inside CK (Calvin Klein) → C(OO)K
 
-   Cryptic devices used below: container, anagram, reversal,
-   hidden-word, charade, double-definition, homophone.
-
-   Fields:
-     clue    : the full cryptic clue — one sentence, emoji inline
-     answer  : solution. The game shows the letter count for you.
-     explain : the "aha" breakdown revealed after a correct solve
+   Fields:  clue · answer · explain (the "aha", shown after solving)
    ============================================================ */
 
 window.MOJI_PUZZLES = [
   {
-    // CONTAINER — meatballs (OO) inside Calvin Klein (CK)
+    // CONTAINER
     clue: 'The special 🧑‍🍳 tucks his 🧆 inside his Calvin Klein 🩲',
     answer: 'COOK',
     explain: '🧑‍🍳 chef = the answer · 🧆 meatballs = OO, slipped inside CK (Calvin Klein) → C·OO·K',
   },
   {
-    // ANAGRAM — HEART rearranged
+    // CHARADE — CAT + A + LOG
+    clue: '🐱 dragging a 🪵 around makes one tidy list',
+    answer: 'CATALOG',
+    explain: '🐱 CAT + a + 🪵 LOG → CATALOG · def: a tidy list',
+  },
+  {
+    // ANAGRAM — HEART → EARTH
     clue: 'A shattered ❤️ somehow ends up as the whole 🌍',
     answer: 'EARTH',
     explain: 'def: the whole 🌍 · “shattered” = anagram of ❤️ HEART → EARTH',
   },
   {
-    // REVERSAL — LIVE backwards
+    // CHARADE — HONEY + MOON
+    clue: '🍯 beside a full 🌙 — the getaway after the wedding',
+    answer: 'HONEYMOON',
+    explain: '🍯 HONEY + 🌙 MOON → HONEYMOON · def: the getaway after the wedding',
+  },
+  {
+    // REVERSAL — DOG → GOD
+    clue: 'The 🐶, sent right back, becomes someone you 🙏 to',
+    answer: 'GOD',
+    explain: 'def: one you 🙏 to · 🐶 DOG reversed → GOD',
+  },
+  {
+    // DOUBLE DEFINITION
+    clue: 'A 🐻 — or simply to put up with something',
+    answer: 'BEAR',
+    explain: 'two meanings at once: the animal 🐻, and to BEAR (endure)',
+  },
+  {
+    // HIDDEN — concealed in "Spain"
+    clue: 'Some of Spain 🇪🇸 turns out to be a real 🤕',
+    answer: 'PAIN',
+    explain: 'def: 🤕 ache · hidden in “s·PAIN” (some of Spain) → PAIN',
+  },
+  {
+    // ANAGRAM — STAR → RATS
+    clue: 'A 🌟, strangely, scatters into vermin',
+    answer: 'RATS',
+    explain: 'def: vermin · “strangely” = anagram of 🌟 STAR → RATS',
+  },
+  {
+    // CHARADE — BUTTER + FLY
+    clue: '🧈 with a 🪰 attached flits across the garden',
+    answer: 'BUTTERFLY',
+    explain: '🧈 BUTTER + 🪰 FLY → BUTTERFLY · def: it flits across the garden',
+  },
+  {
+    // CHARADE — EAR + RING
+    clue: 'An 👂 fitted with a 💍 dangles from the lobe',
+    answer: 'EARRING',
+    explain: '👂 EAR + 💍 RING → EARRING · def: it dangles from the lobe',
+  },
+  {
+    // HOMOPHONE — "bee-leaf"
+    clue: 'A 🐝 on a 🍃 — by the sound of it, pure faith',
+    answer: 'BELIEF',
+    explain: 'def: faith · 🐝 bee + 🍃 leaf sound like “belief” → BELIEF',
+  },
+  {
+    // REVERSAL — LIVE → EVIL
     clue: 'Held up to the 🪞, the way we live comes out 😈',
     answer: 'EVIL',
     explain: 'def: 😈 wicked · 🪞 reflects “LIVE” backwards → EVIL',
   },
   {
-    // HIDDEN WORD — concealed in "this land"
-    clue: 'You can spot some of “this land” ringed by 🌊',
-    answer: 'ISLAND',
-    explain: 'def: ringed by 🌊 · hidden inside “th‑ISLAND” → ISLAND',
+    // CHARADE — O (owner's opening) + RANGE (shooting gallery)
+    clue: "Drink the owner's opening at the shooting gallery",
+    answer: 'ORANGE',
+    explain: 'def: Drink (orange squash) · owner’s opening = O + shooting gallery = RANGE → O·RANGE',
   },
   {
-    // CHARADE — I + CON
-    clue: 'With one little 🃏 con, I land on your home 🖥️',
-    answer: 'ICON',
-    explain: 'def: home-🖥️ symbol · I + CON (🃏 to trick) → ICON',
+    // CHARADE — SAND + BOX
+    clue: 'Beach grit, then a bout of fisticuffs — the kids’ play pit',
+    answer: 'SANDBOX',
+    explain: 'def: kids’ play pit · beach grit = SAND + a bout of fisticuffs = BOX → SAND·BOX',
   },
   {
-    // DOUBLE DEFINITION
-    clue: 'A 🌴, or the very part of your 🤚 that would hold it',
-    answer: 'PALM',
-    explain: 'two meanings at once: a 🌴 PALM tree, and the PALM of your 🤚',
+    // CHARADE — MOUNT + A + IN
+    clue: 'Climb aboard, find a point of entry, and face the great peak',
+    answer: 'MOUNTAIN',
+    explain: 'def: the great peak · climb aboard = MOUNT + a + point of entry = IN → MOUNT·A·IN',
   },
   {
-    // HOMOPHONE — "bee-leaf"
-    clue: 'A 🐝 resting on a 🍃 — by the sound of it, pure faith',
-    answer: 'BELIEF',
-    explain: 'def: faith · 🐝 bee + 🍃 leaf sound like “belief” → BELIEF',
+    // DELETION — beheaded NARROW
+    clue: "Behead the narrow lane and you've a pointer",
+    answer: 'ARROW',
+    explain: 'def: a pointer · NARROW beheaded (drop the first letter) → ARROW',
   },
 ];

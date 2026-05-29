@@ -13,6 +13,7 @@
   const PUZZLES = window.MOJI_PUZZLES || [];
   const LB_KEY = 'moji_leaderboard_v1';   // history of daily solves
   const DAILY_KEY = 'moji_daily_v1';      // today's locked-in result
+  const STREAK_KEY = 'moji_streak_v1';    // consecutive-day streak
   const EXPLOSION_EMOJIS = ['🎉', '🎊', '🎈', '🥳', '🏆', '🎁', '🪅', '✨', '💫', '⭐', '🌟', '💥', '🎆', '🎇', '👑', '🤩'];
   const KB_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
   const NAME_MAX = 14;
@@ -60,8 +61,14 @@
       correct() { seq([659, 784, 988, 1319], 0.075, 0.22, 'triangle', 0.22); },
       wrong()   { tone(150, 0, 0.20, 'sawtooth', 0.14); },
       publish() { seq([784, 1047, 1319, 1568, 2093], 0.07, 0.26, 'triangle', 0.24); },
+      note(f)   { tone(f, 0, 0.14, 'triangle', 0.18); },
     };
   })();
+
+  // Haptics — tiny taps of dopamine on devices that support it.
+  function buzz(p) { if (navigator.vibrate) { try { navigator.vibrate(p); } catch (e) {} } }
+  // Restart a quick "pop" animation on a cell.
+  function bump(cell) { if (!cell) return; cell.classList.remove('pop'); void cell.offsetWidth; cell.classList.add('pop'); }
 
   // ── Element refs ─────────────────────────────────────────
   const $ = (s) => document.querySelector(s);
@@ -70,20 +77,22 @@
     game: $('#screen-game'),
     end: $('#screen-end'),
     board: $('#screen-board'),
+    about: $('#screen-about'),
   };
   const els = {
     startBtn: $('#start-btn'),
     particles: $('#particles'),
     timer: $('#timer-val'),
+    gameBody: $('#screen-game .game-body'),
     clue: $('#puzzle-clue'),
     answer: $('#answer'),
-    feedback: $('#feedback'),
-    endEmoji: $('#end-emoji'),
     endTime: $('#end-time'),
+    streak: $('#streak'),
     nameRow: $('#name-row'),
     nameDisplay: $('#name-display'),
     saveBtn: $('#save-btn'),
     keyboard: $('#keyboard'),
+    boardCallout: $('#board-callout'),
     boardList: $('#board-list'),
     boardDate: $('#board-date'),
     boardNote: $('#board-note'),
@@ -100,7 +109,10 @@
     return ((epochDay % PUZZLES.length) + PUZZLES.length) % PUZZLES.length;
   }
   function prettyDate() {
-    return new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dd}/${mm}/${d.getFullYear()}`;
   }
   function loadDaily() {
     try { return JSON.parse(localStorage.getItem(DAILY_KEY)); } catch (e) { return null; }
@@ -114,8 +126,9 @@
   function show(name) {
     Object.values(screens).forEach((s) => s.classList.remove('is-active'));
     screens[name].classList.add('is-active');
-    if (name === 'game') { mode = 'game'; els.keyboard.classList.add('is-visible'); }
-    else if (name === 'end') { mode = 'name'; els.keyboard.classList.add('is-visible'); }
+    // The keyboard lives in the flow, right under the content that needs it.
+    if (name === 'game') { mode = 'game'; els.gameBody.appendChild(els.keyboard); els.keyboard.classList.add('is-visible'); }
+    else if (name === 'end') { mode = 'name'; screens.end.appendChild(els.keyboard); els.keyboard.classList.add('is-visible'); }
     else { mode = null; els.keyboard.classList.remove('is-visible'); }
   }
 
@@ -186,7 +199,7 @@
         k.className = 'kb-key';
         k.type = 'button';
         k.textContent = ch;
-        k.addEventListener('click', () => typeLetter(ch));
+        k.addEventListener('click', () => { typeLetter(ch); k.blur(); });
         rowEl.appendChild(k);
       });
       if (ri === KB_ROWS.length - 1) {
@@ -195,7 +208,7 @@
         back.type = 'button';
         back.textContent = '⌫';
         back.setAttribute('aria-label', 'delete');
-        back.addEventListener('click', backspace);
+        back.addEventListener('click', () => { backspace(); back.blur(); });
         rowEl.appendChild(back);
       }
       els.keyboard.appendChild(rowEl);
@@ -209,7 +222,9 @@
       if (answerLocked || guess.length >= letterCells.length) return;
       guess.push(ch);
       Sound.key();
+      buzz(8);
       renderCells();
+      bump(letterCells[guess.length - 1]);
       if (guess.length === letterCells.length) attemptCheck();
     } else if (mode === 'name') {
       if (nameBuf.length >= NAME_MAX) return;
@@ -254,8 +269,6 @@
       letterCells.push(cell);
     });
 
-    els.feedback.className = 'feedback';
-    els.feedback.textContent = '';
     renderCells();
   }
 
@@ -270,24 +283,33 @@
     if (guess.length < currentTarget.length) return;
     if (guess.join('') === currentTarget) {
       answerLocked = true;
-      els.answer.classList.add('is-good');
-      renderCells();
-      Sound.correct();
-      explode(els.answer, 24, screens.game);
-      // No explanation — celebrate, then straight on to the leaderboard.
-      setTimeout(finishGame, 950);
+      renderCells();                 // drop the active-cell highlight
+      // Green wave — each letter turns, pops and pings in sequence.
+      const step = 90;
+      letterCells.forEach((cell, i) => {
+        setTimeout(() => {
+          cell.classList.add('is-correct');
+          bump(cell);
+          Sound.note(523 + i * 90);
+          buzz(12);
+        }, i * step);
+      });
+      const done = letterCells.length * step;
+      setTimeout(() => {
+        Sound.correct();
+        buzz([0, 30, 40, 70]);
+        explode(els.answer, 30, screens.game);
+      }, done);
+      setTimeout(finishGame, done + 780);
     } else {
+      // Wrong — colour, shake and sound say it all; no words.
       els.answer.classList.add('is-bad');
       Sound.wrong();
-      els.feedback.className = 'feedback show';
-      els.feedback.style.color = 'var(--color-bad)';
-      els.feedback.textContent = 'Not quite — try again';
+      buzz(70);
       setTimeout(() => {
         els.answer.classList.remove('is-bad');
         guess = [];
         renderCells();
-        els.feedback.classList.remove('show');
-        els.feedback.style.color = '';
       }, 700);
     }
   }
@@ -323,14 +345,43 @@
     }, 520);
   }
 
+  // ── Streak (consecutive days solved) ─────────────────────
+  function fmtDate(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function bumpStreak() {
+    const today = todayStr();
+    let s;
+    try { s = JSON.parse(localStorage.getItem(STREAK_KEY)); } catch (e) { s = null; }
+    if (s && s.date === today) return s.streak;           // already counted today
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    const streak = (s && s.date === fmtDate(y)) ? s.streak + 1 : 1;
+    try { localStorage.setItem(STREAK_KEY, JSON.stringify({ date: today, streak })); } catch (e) {}
+    return streak;
+  }
+
+  // Animate a time value counting up into an element.
+  function countUp(el, ms) {
+    const dur = 650, t0 = performance.now();
+    (function frame(now) {
+      const k = Math.min(1, (now - t0) / dur);
+      const eased = 1 - Math.pow(1 - k, 3);
+      el.textContent = fmt(Math.round(ms * eased));
+      if (k < 1) requestAnimationFrame(frame);
+    })(t0);
+  }
+
   function finishGame() {
     stopTimer();
-    els.endTime.textContent = fmt(elapsed);
+    const streak = bumpStreak();
     nameBuf = '';
     renderName();
     els.nameRow.style.display = '';
+    if (els.streak) els.streak.textContent = streak > 1 ? `🔥 ${streak} day streak` : '🔥 first solve';
     show('end');
-    explode(els.endEmoji, 42, screens.end);
+    countUp(els.endTime, elapsed);
+    buzz([0, 40, 40, 90]);
+    explode(els.endTime, 42, screens.end);
   }
 
   // ── Leaderboard (localStorage) ───────────────────────────
@@ -354,11 +405,27 @@
 
     lastEntry = entry;
     Sound.publish();
+    buzz([0, 30, 40, 30, 40, 70]);
     showBoard(false);
+  }
+
+  function currentRank() {
+    if (!lastEntry) return 0;
+    const today = todayStr();
+    const list = loadBoard().filter((r) => r.dateStr === today).sort((a, b) => a.ms - b.ms);
+    const i = list.findIndex((r) => r.ts === lastEntry.ts);
+    return i >= 0 ? i + 1 : 0;
   }
 
   function showBoard(alreadyDone) {
     renderBoard();
+    const rank = currentRank();
+    if (els.boardCallout) {
+      els.boardCallout.textContent = rank
+        ? (alreadyDone ? `Today you're #${rank}` : `You're #${rank} today!`)
+        : '';
+      els.boardCallout.style.display = rank ? '' : 'none';
+    }
     els.boardNote.textContent = alreadyDone
       ? "You've already solved today's moji — come back tomorrow for a new one."
       : 'Solved! Come back tomorrow for a fresh clue.';
@@ -400,20 +467,17 @@
   els.startBtn.addEventListener('click', beginGame);
   els.saveBtn.addEventListener('click', submitScore);
 
+  const aboutBtn = document.getElementById('about-btn');
+  const aboutClose = document.getElementById('about-close');
+  if (aboutBtn) aboutBtn.addEventListener('click', () => show('about'));
+  if (aboutClose) aboutClose.addEventListener('click', () => show('start'));
+
   // Physical keyboard works too (desktop), routed by mode.
   document.addEventListener('keydown', (e) => {
     if (!mode) return;
     if (e.key === 'Backspace') { backspace(); e.preventDefault(); }
     else if (e.key === 'Enter') { if (mode === 'name') submitScore(); }
     else if (/^[a-zA-Z]$/.test(e.key)) { typeLetter(e.key); }
-  });
-
-  // QA-ONLY: clear today's lock so the daily can be replayed. Remove before release.
-  const qaBtn = document.getElementById('qa-restart');
-  if (qaBtn) qaBtn.addEventListener('click', () => {
-    try { localStorage.removeItem(DAILY_KEY); } catch (e) {}
-    lastEntry = null;
-    show('start');
   });
 
   // ── Boot ─────────────────────────────────────────────────
