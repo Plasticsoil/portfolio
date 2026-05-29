@@ -177,14 +177,14 @@
       explode(els.answer, 16, screens.game);
       const last = current === PUZZLES.length - 1;
       els.feedback.className = 'feedback show is-explain';
-      els.feedback.innerHTML = puzzle.explain || 'Nice!';
-      els.nextBtn.textContent = last ? 'Finish →' : 'Next →';
+      els.feedback.innerHTML = puzzle.explain || 'nice';
+      els.nextBtn.textContent = last ? 'finish →' : 'next →';
       els.nextBtn.style.display = 'inline-block';
     } else {
       els.answer.classList.add('is-bad');
       els.feedback.className = 'feedback show';
       els.feedback.style.color = 'var(--color-bad)';
-      els.feedback.textContent = 'Not quite — try again';
+      els.feedback.textContent = 'not quite — try again';
       setTimeout(() => {
         els.answer.classList.remove('is-bad');
         inputs.forEach((x) => (x.value = ''));
@@ -251,7 +251,7 @@
     if (!list.length) {
       const li = document.createElement('li');
       li.className = 'board-empty';
-      li.textContent = 'No scores yet — be the first!';
+      li.textContent = 'no scores yet — be the first';
       els.boardList.appendChild(li);
       return;
     }
