@@ -2,73 +2,76 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
   <!-- Hidden page: keep it out of search engines and crawlers -->
   <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#F8F6F3">
   <title>moji</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400&family=Instrument+Serif&display=swap" rel="stylesheet">
-
-  <style>
-    :root {
-      --color-bg:      #F8F6F3;
-      --color-surface: #FBFAF9;
-      --color-muted:   #A3A09B;
-      --color-ink:     #26251E;
-      --gradient-accent: linear-gradient(90deg, #FF6EFD -0.24%, #F8FF7B 55.18%, #60FBFF 88.92%);
-      --font-serif: 'Instrument Serif', serif;
-      --font-sans:  'Nimbus Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    }
-
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-    html, body {
-      height: 100%;
-      background: var(--color-bg);
-      color: var(--color-ink);
-      font-family: var(--font-sans);
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .wrap {
-      min-height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      gap: 16px;
-      padding: 40px;
-    }
-
-    h1 {
-      font-family: var(--font-serif);
-      font-weight: 400;
-      font-size: clamp(56px, 12vw, 120px);
-      line-height: 1;
-    }
-
-    .rule {
-      width: 120px;
-      height: 3px;
-      border-radius: 2px;
-      background: var(--gradient-accent);
-    }
-
-    p {
-      color: var(--color-muted);
-      font-size: 15px;
-      letter-spacing: 0.02em;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="wrap">
-    <h1>moji</h1>
-    <div class="rule"></div>
-    <p>Coming soon.</p>
-  </main>
+  <div class="frame">
+    <div id="particles"></div>
+
+    <!-- ── START ─────────────────────────────────────── -->
+    <section class="screen" id="screen-start">
+      <div class="emoji-strip">🐝 🍂 ⭐ 🔥 🦊</div>
+      <h1 class="brand">moji</h1>
+      <p class="tagline">Cryptic puzzles, mostly in emoji. Read the picture out loud — then race the clock.</p>
+      <button class="btn-start" id="start-btn">START</button>
+      <div class="link-row">
+        <button id="board-btn-start">🏆 Leaderboard</button>
+      </div>
+    </section>
+
+    <!-- ── GAME ──────────────────────────────────────── -->
+    <section class="screen" id="screen-game">
+      <div class="topbar">
+        <span class="timer"><span class="dot"></span><span id="timer-val">00:00.0</span></span>
+        <span class="progress" id="progress">1 / 6</span>
+      </div>
+      <div class="game-body">
+        <div class="puzzle-emojis" id="puzzle-emojis"></div>
+        <div class="puzzle-hint" id="puzzle-hint"></div>
+        <div class="answer" id="answer"></div>
+        <div class="feedback" id="feedback"></div>
+        <div class="game-actions">
+          <button class="btn" id="next-btn" style="display:none">Next →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── END ───────────────────────────────────────── -->
+    <section class="screen" id="screen-end">
+      <h2 class="end-title">Solved! 🎉</h2>
+      <p class="end-sub">You cracked every clue in</p>
+      <div class="end-time" id="end-time">00:00.0</div>
+      <div class="name-row">
+        <input class="name-input" id="name-input" maxlength="14" placeholder="Your name" />
+        <button class="btn" id="save-btn">Save</button>
+      </div>
+      <p class="note">Scores are saved on this device.</p>
+    </section>
+
+    <!-- ── LEADERBOARD ───────────────────────────────── -->
+    <section class="screen" id="screen-board">
+      <div class="board-head">
+        <h2>🏆 Leaderboard</h2>
+      </div>
+      <ul class="board-list" id="board-list"></ul>
+      <div class="game-actions" style="justify-content:center">
+        <button class="btn" id="again-btn">Play again</button>
+        <button class="btn ghost" id="board-back-btn">Home</button>
+      </div>
+      <p class="note">Fastest total time wins. Stored locally on this device for now.</p>
+    </section>
+  </div>
+
+  <script src="puzzles.js"></script>
+  <script src="game.js"></script>
 </body>
 </html>

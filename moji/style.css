@@ -1,0 +1,393 @@
+/* ============================================================
+   moji — emoji cryptic puzzle game
+   Mobile-first. On desktop the play-frame stays the same size,
+   just centered with wide margins (nothing shifts around).
+   Design tokens mirror the main portfolio site.
+   ============================================================ */
+
+:root {
+  --color-bg:      #F8F6F3;
+  --color-surface: #FBFAF9;
+  --color-muted:   #A3A09B;
+  --color-muted-15: rgba(163, 160, 155, 0.15);
+  --color-muted-40: rgba(163, 160, 155, 0.40);
+  --color-ink:     #26251E;
+  --color-ink-muted: #68645E;
+  --color-good:    #2FB877;
+  --color-bad:     #E2574C;
+
+  --gradient-accent: linear-gradient(90deg, #FF6EFD -0.24%, #F8FF7B 55.18%, #60FBFF 88.92%);
+
+  --font-serif: 'Instrument Serif', serif;
+  --font-sans:  'Nimbus Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+  --frame-w: 440px;
+  --radius:  20px;
+
+  --ease-spring: cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+body {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  min-height: 100dvh;
+}
+
+/* The play-frame: a fixed phone-width column, centered on desktop. */
+.frame {
+  width: 100%;
+  max-width: var(--frame-w);
+  min-height: 100dvh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+/* Wide-screen: give the frame a soft surface so the margins read as intentional. */
+@media (min-width: 600px) {
+  body { padding: 32px 0; align-items: center; }
+  .frame {
+    min-height: min(900px, calc(100dvh - 64px));
+    border-radius: var(--radius);
+    box-shadow: 0 30px 80px -40px rgba(38, 37, 30, 0.35);
+    border: 1px solid var(--color-muted-15);
+  }
+}
+
+/* ── Screens ───────────────────────────────────────────────── */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease, transform 0.5s var(--ease-spring);
+  transform: scale(0.96);
+  pointer-events: none;
+}
+.screen.is-active {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+/* ── Start screen ──────────────────────────────────────────── */
+#screen-start {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 22px;
+}
+.brand {
+  font-family: var(--font-serif);
+  font-size: clamp(64px, 22vw, 104px);
+  line-height: 0.9;
+}
+.tagline {
+  color: var(--color-muted);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  max-width: 18em;
+}
+.emoji-strip {
+  font-size: 30px;
+  letter-spacing: 6px;
+  margin-bottom: 6px;
+}
+
+.btn-start {
+  position: relative;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: 0.08em;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: none;
+  border-radius: 999px;
+  padding: 26px 64px;
+  cursor: pointer;
+  box-shadow: 0 0 0 3px var(--color-ink);
+  transition: transform 0.25s var(--ease-spring), box-shadow 0.25s ease;
+  z-index: 2;
+}
+.btn-start::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  background: var(--gradient-accent);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.btn-start:hover { transform: translateY(-2px) scale(1.03); }
+.btn-start:hover::before { opacity: 1; }
+.btn-start:active { transform: scale(0.97); }
+.btn-start.is-detonating { transform: scale(1.35); opacity: 0; }
+
+.link-row {
+  display: flex;
+  gap: 18px;
+  font-size: 13px;
+}
+.link-row button {
+  background: none; border: none; cursor: pointer;
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.link-row button:hover { color: var(--color-ink); }
+
+/* ── Explosion particles ───────────────────────────────────── */
+#particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  overflow: visible;
+}
+.particle {
+  position: absolute;
+  font-size: 26px;
+  will-change: transform, opacity;
+  transition: transform 0.9s cubic-bezier(0.16, 0.8, 0.34, 1), opacity 0.9s ease;
+}
+
+/* ── Game screen ───────────────────────────────────────────── */
+#screen-game { padding: 0; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 24px 12px;
+}
+.timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+}
+.timer .dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--gradient-accent);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:.5} }
+
+.progress {
+  font-size: 13px;
+  color: var(--color-muted);
+  letter-spacing: 0.04em;
+}
+
+.game-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 24px 28px;
+  gap: 26px;
+}
+
+.puzzle-emojis {
+  font-size: clamp(46px, 16vw, 68px);
+  line-height: 1.1;
+  letter-spacing: 4px;
+  user-select: none;
+}
+.puzzle-emojis .op {
+  font-size: 0.5em;
+  color: var(--color-muted);
+  vertical-align: middle;
+  margin: 0 2px;
+}
+
+.puzzle-hint {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  line-height: 1.25;
+  color: var(--color-ink-muted);
+  max-width: 14em;
+}
+.puzzle-hint .len {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+/* Answer boxes (the crossword strip) */
+.answer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.word-gap { width: 14px; }
+.box {
+  width: 42px; height: 50px;
+  border: 2.5px solid var(--color-ink);
+  border-radius: 9px;
+  background: var(--color-surface);
+  text-align: center;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 24px;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  caret-color: transparent;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+.box:focus {
+  outline: none;
+  border-color: transparent;
+  box-shadow: 0 0 0 2.5px transparent;
+  background:
+    linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
+    var(--gradient-accent) border-box;
+  border: 2.5px solid transparent;
+}
+.answer.is-good .box { border-color: var(--color-good); color: var(--color-good); }
+.answer.is-bad   .box { border-color: var(--color-bad); animation: shake 0.4s; }
+@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-7px)} 40%{transform:translateX(7px)}
+  60%{transform:translateX(-5px)} 80%{transform:translateX(5px)}
+}
+
+.feedback {
+  min-height: 24px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-good);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.feedback.show { opacity: 1; }
+.feedback.is-explain { color: var(--color-ink-muted); font-weight: 400; }
+
+.game-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.btn {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 15px;
+  border-radius: 999px;
+  padding: 14px 30px;
+  cursor: pointer;
+  border: 2px solid var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-bg);
+  transition: transform 0.2s var(--ease-spring), opacity 0.2s ease;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: scale(0.97); }
+.btn.ghost {
+  background: transparent;
+  color: var(--color-ink);
+}
+.btn.small { padding: 10px 20px; font-size: 13px; }
+
+/* ── End screen ────────────────────────────────────────────── */
+#screen-end { align-items: center; justify-content: center; text-align: center; gap: 18px; }
+.end-title { font-family: var(--font-serif); font-size: 56px; line-height: 1; }
+.end-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 40px;
+}
+.end-sub { color: var(--color-muted); font-size: 14px; }
+.name-row { display: flex; gap: 10px; margin-top: 6px; }
+.name-input {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid var(--color-muted-40);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  width: 180px;
+}
+.name-input:focus { outline: none; border-color: var(--color-ink); }
+
+/* ── Leaderboard ───────────────────────────────────────────── */
+#screen-board { gap: 16px; }
+.board-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.board-head h2 { font-family: var(--font-serif); font-weight: 400; font-size: 38px; }
+.board-list {
+  list-style: none;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+.board-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-muted-15);
+}
+.board-row.is-me {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
+    var(--gradient-accent) border-box;
+}
+.board-row .rank { font-weight: 700; color: var(--color-muted); font-variant-numeric: tabular-nums; }
+.board-row .who  { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-row .ms   { font-variant-numeric: tabular-nums; font-weight: 700; }
+.board-empty { color: var(--color-muted); text-align: center; padding: 40px 0; font-size: 14px; }
+
+.note {
+  font-size: 11px;
+  color: var(--color-muted);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.confetti-burst {
+  position: absolute;
+  font-size: 22px;
+  pointer-events: none;
+  z-index: 40;
+  will-change: transform, opacity;
+}
