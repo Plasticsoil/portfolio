@@ -111,7 +111,13 @@ A solver should turn a word into letters in **one hop**. Handy ones:
 | Answer | Type | Clue | Wiring |
 |---|---|---|---|
 | **BMW** (3) | Container | "A motorway cuts straight through the greyscale car." | M (motorway) inside BW (greyscale) → B(M)W · def = car |
-| **MONET** (5) | Charade | "After a mo the spider's net caught a famous painter." | MO (a mo) + NET (spider's net) · def = famous painter |
+| **MONET** (5) | Charade | "After a mo the 🕷️'s net caught a famous painter." | MO (a mo) + NET (the 🕷️'s net) · def = famous painter |
+
+### Two ways an emoji can work in a clue
+1. **Surface flavour** — the emoji just *pictures* a word, and the letters still come from text. e.g. 🕷️ = "spider" in MONET; the fodder is still the word **net**.
+2. **Fodder** — the emoji itself supplies the letters/sound the wordplay needs:
+   🌊 = C (sea) · 🐝 = B (bee) · 🍵 = T (tea) · 👁️ = I (eye) · 👑 = Q (queen) · 4️⃣ = "for/four" · 🥅 = NET.
+   *(Goal for harder clues: let the emoji do real work, not just decorate.)*
 
 ---
 

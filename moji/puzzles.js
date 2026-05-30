@@ -22,9 +22,9 @@ window.MOJI_PUZZLES = [
     explain: "def: car · motorway = M · greyscale = BW (black & white) · 'cuts through' puts M inside BW → B(M)W",
   },
   {
-    clue: "After a mo the spider's net caught a famous painter.",
+    clue: "After a mo the 🕷️'s net caught a famous painter.",
     answer: "MONET",
     type: "charade",
-    explain: "def: famous painter · a mo = MO · the spider's net = NET → MO·NET",
+    explain: "def: famous painter · a mo = MO · the 🕷️ (spider)'s net = NET → MO·NET",
   },
 ];
