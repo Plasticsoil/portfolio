@@ -384,40 +384,86 @@
     explode(els.endTime, 42, screens.end);
   }
 
-  // ── Leaderboard (localStorage) ───────────────────────────
-  function loadBoard() {
+  // ── Leaderboard ──────────────────────────────────────────
+  // Global board via the /api/leaderboard function (Netlify Blobs).
+  // Falls back to a local board if the network/API isn't available
+  // (e.g. opening the file directly while developing).
+  const API = '/api/leaderboard';
+  let boardCache = [];        // the rows currently shown (today)
+  let boardIsGlobal = false;  // did the last fetch reach the server?
+
+  function loadLocal() {
     try { return JSON.parse(localStorage.getItem(LB_KEY)) || []; }
     catch (e) { return []; }
   }
-  function saveBoard(list) {
+  function saveLocal(list) {
     try { localStorage.setItem(LB_KEY, JSON.stringify(list)); } catch (e) {}
   }
+  function localTop(date) {
+    return loadLocal().filter((r) => r.dateStr === date).sort((a, b) => a.ms - b.ms).slice(0, 24);
+  }
+
+  async function fetchBoard(date) {
+    try {
+      const res = await fetch(`${API}?date=${date}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('bad status');
+      const data = await res.json();
+      boardIsGlobal = true;
+      return data.top || [];
+    } catch (e) {
+      boardIsGlobal = false;
+      return localTop(date);
+    }
+  }
+
+  async function postScore(entry) {
+    try {
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: entry.name, ms: entry.ms, date: entry.dateStr }),
+      });
+      if (!res.ok) throw new Error('bad status');
+      const data = await res.json();
+      boardIsGlobal = true;
+      if (data.you && data.you.ts) lastEntry.ts = data.you.ts; // match server's row id
+      return data.top || [];
+    } catch (e) {
+      boardIsGlobal = false;
+      // Keep a local copy so the board still works offline.
+      const list = loadLocal();
+      list.push(entry);
+      saveLocal(list);
+      return localTop(entry.dateStr);
+    }
+  }
+
   function submitScore() {
     const name = (nameBuf || 'Anon').trim().slice(0, NAME_MAX) || 'Anon';
     const dateStr = todayStr();
     const entry = { name, ms: elapsed, dateStr, ts: Date.now() };
 
     try { localStorage.setItem(DAILY_KEY, JSON.stringify({ date: dateStr, ms: elapsed, name, ts: entry.ts })); } catch (e) {}
-    const list = loadBoard();
-    list.push(entry);
-    list.sort((a, b) => a.ms - b.ms);
-    saveBoard(list);
 
     lastEntry = entry;
     Sound.publish();
     buzz([0, 30, 40, 30, 40, 70]);
-    showBoard(false);
+    showBoard(false);   // renders immediately, then refreshes with the server's list
   }
 
   function currentRank() {
     if (!lastEntry) return 0;
-    const today = todayStr();
-    const list = loadBoard().filter((r) => r.dateStr === today).sort((a, b) => a.ms - b.ms);
-    const i = list.findIndex((r) => r.ts === lastEntry.ts);
+    const i = boardCache.findIndex((r) => r.ts === lastEntry.ts);
     return i >= 0 ? i + 1 : 0;
   }
 
-  function showBoard(alreadyDone) {
+  async function showBoard(alreadyDone) {
+    const date = todayStr();
+    // Submitting? send the score; otherwise just read the board.
+    boardCache = (!alreadyDone && lastEntry && lastEntry.dateStr === date)
+      ? await postScore(lastEntry)
+      : await fetchBoard(date);
+
     renderBoard();
     const rank = currentRank();
     if (els.boardCallout) {
@@ -427,29 +473,22 @@
       els.boardCallout.style.display = rank ? '' : 'none';
     }
     els.boardNote.textContent = alreadyDone
-      ? "You've already solved today's moji — come back tomorrow for a new one."
+      ? "You've already solved today's moji. Come back tomorrow for a new one."
       : 'Solved! Come back tomorrow for a fresh clue.';
     show('board');
   }
 
   function renderBoard() {
-    // Daily board: only today's runs (same clue), fastest first.
-    const today = todayStr();
-    const list = loadBoard()
-      .filter((r) => r.dateStr === today)
-      .sort((a, b) => a.ms - b.ms)
-      .slice(0, 25);
-
     els.boardDate.textContent = prettyDate();
     els.boardList.innerHTML = '';
-    if (!list.length) {
+    if (!boardCache.length) {
       const li = document.createElement('li');
       li.className = 'board-empty';
-      li.textContent = 'No scores yet — be the first';
+      li.textContent = 'No scores yet. Be the first';
       els.boardList.appendChild(li);
       return;
     }
-    list.forEach((row, i) => {
+    boardCache.forEach((row, i) => {
       const li = document.createElement('li');
       li.className = 'board-row';
       if (lastEntry && row.ts === lastEntry.ts) li.classList.add('is-me');
