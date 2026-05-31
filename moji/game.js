@@ -96,6 +96,7 @@
     boardList: $('#board-list'),
     boardDate: $('#board-date'),
     boardNote: $('#board-note'),
+    boardScope: $('#board-scope'),
   };
 
   // ── Daily helpers ────────────────────────────────────────
@@ -480,6 +481,10 @@
 
   function renderBoard() {
     els.boardDate.textContent = prettyDate();
+    if (els.boardScope) {
+      els.boardScope.textContent = boardIsGlobal ? '🌍 Global board' : '📵 Offline — this device only';
+      els.boardScope.classList.toggle('is-offline', !boardIsGlobal);
+    }
     els.boardList.innerHTML = '';
     if (!boardCache.length) {
       const li = document.createElement('li');
