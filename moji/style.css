@@ -631,6 +631,7 @@ body {
 .keyboard.is-visible { display: flex; }
 .kb-row { display: flex; justify-content: center; gap: clamp(4px, 1.6vw, 10px); }
 .kb-key {
+  position: relative;
   font-family: var(--font-sans);
   font-size: clamp(18px, 5.4vw, 26px);
   font-weight: 400;
@@ -647,3 +648,34 @@ body {
 }
 .kb-key:active { transform: scale(0.84); opacity: 0.85; }
 .kb-back { opacity: 0.3; }
+
+/* The press bubble — a soft serif chip floating above the key. */
+.key-pop {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 8px);
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  min-width: 1.5em;
+  padding: 0.16em 0.28em 0.24em;
+  border-radius: 14px;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-serif);
+  font-size: 1.45em;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: 0 8px 20px rgba(38, 37, 30, 0.18), 0 0 0 1px rgba(38, 37, 30, 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px) scale(0.6);
+  transform-origin: bottom center;
+  transition: transform 0.14s var(--ease-spring), opacity 0.12s ease;
+}
+.key-pop.is-up  { opacity: 1; transform: translate(-50%, -2px) scale(1); }
+.key-pop.is-out { opacity: 0; transform: translate(-50%, -10px) scale(0.94); }
+
+@media (prefers-reduced-motion: reduce) {
+  .key-pop { transition: opacity 0.1s ease; transform: translate(-50%, -2px) scale(1); }
+}

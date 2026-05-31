@@ -207,6 +207,20 @@
   }
 
   // ── On-screen keyboard ───────────────────────────────────
+  // iPhone-style press feedback, our way: a soft serif bubble
+  // pops just above the key the moment it's pressed.
+  function keyPop(keyEl, ch) {
+    const pop = document.createElement('span');
+    pop.className = 'key-pop';
+    pop.textContent = ch;
+    keyEl.appendChild(pop);
+    requestAnimationFrame(() => pop.classList.add('is-up'));
+    setTimeout(() => {
+      pop.classList.add('is-out');
+      setTimeout(() => pop.remove(), 150);
+    }, 120);
+  }
+
   function buildKeyboard() {
     els.keyboard.innerHTML = '';
     KB_ROWS.forEach((row, ri) => {
@@ -217,6 +231,7 @@
         k.className = 'kb-key';
         k.type = 'button';
         k.textContent = ch;
+        k.addEventListener('pointerdown', () => keyPop(k, ch));
         k.addEventListener('click', () => { typeLetter(ch); k.blur(); });
         rowEl.appendChild(k);
       });
