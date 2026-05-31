@@ -11,6 +11,19 @@
   'use strict';
 
   const PUZZLES = window.MOJI_PUZZLES || [];
+
+  // Cryptic device → tag label. Colours live in style.css (.clue-tag[data-type]).
+  const CLUE_TYPES = {
+    double:    'Double',
+    anagram:   'Anagram',
+    hidden:    'Hidden',
+    homophone: 'Homophone',
+    charade:   'Charade',
+    container: 'Container',
+    reversal:  'Reversal',
+    deletion:  'Deletion',
+    complex:   'Complex',
+  };
   const LB_KEY = 'moji_leaderboard_v1';   // history of daily solves
   const DAILY_KEY = 'moji_daily_v1';      // today's locked-in result
   const STREAK_KEY = 'moji_streak_v1';    // consecutive-day streak
@@ -30,6 +43,8 @@
   let currentTarget = '';     // today's answer, upper-cased, no spaces
   let answerLocked = false;   // true once solved, until we move on
   let nameBuf = '';           // name being typed on the end screen
+  let dayStages = [];         // today's three clues, easy → hard
+  let stageIdx = 0;           // which of the three we're on (0-based)
 
   // ── Sound — synthesized juice, no asset files, works offline ──
   const Sound = (function () {
@@ -85,6 +100,8 @@
     timer: $('#timer-val'),
     gameBody: $('#screen-game .game-body'),
     clue: $('#puzzle-clue'),
+    clueTag: $('#clue-tag'),
+    stageProgress: $('#stage-progress'),
     answer: $('#answer'),
     endTime: $('#end-time'),
     streak: $('#streak'),
@@ -246,15 +263,29 @@
     }
   }
 
-  // ── Render today's puzzle ────────────────────────────────
+  // ── Render the current stage ─────────────────────────────
   function renderPuzzle() {
-    const p = PUZZLES[dayIndex()];
+    const p = dayStages[stageIdx];
     currentTarget = p.answer.replace(/\s+/g, '').toUpperCase();
     guess = [];
     letterCells = [];
     answerLocked = false;
 
+    if (els.stageProgress) {
+      els.stageProgress.textContent = `${stageIdx + 1}/${dayStages.length}`;
+    }
+
     els.clue.innerHTML = p.clue;
+    if (els.clueTag) {
+      const label = CLUE_TYPES[p.type];
+      if (label) {
+        els.clueTag.textContent = label;
+        els.clueTag.dataset.type = p.type;
+        els.clueTag.hidden = false;
+      } else {
+        els.clueTag.hidden = true;
+      }
+    }
     els.answer.className = 'answer';
     els.answer.innerHTML = '';
     p.answer.split('').forEach((ch) => {
@@ -296,12 +327,13 @@
         }, i * step);
       });
       const done = letterCells.length * step;
+      const lastStage = stageIdx >= dayStages.length - 1;
       setTimeout(() => {
         Sound.correct();
         buzz([0, 30, 40, 70]);
-        explode(els.answer, 30, screens.game);
+        explode(els.answer, lastStage ? 30 : 18, screens.game);
       }, done);
-      setTimeout(finishGame, done + 780);
+      setTimeout(lastStage ? finishGame : advanceStage, done + 780);
     } else {
       // Wrong — colour, shake and sound say it all; no words.
       els.answer.classList.add('is-bad');
@@ -327,6 +359,13 @@
   }
 
   // ── Flow ─────────────────────────────────────────────────
+  // Each correct answer climbs one rung; the timer runs across
+  // all three. The day is done only when the last is solved.
+  function advanceStage() {
+    stageIdx++;
+    renderPuzzle();
+  }
+
   function beginGame() {
     const done = solvedToday();
     Sound.resume();
@@ -339,6 +378,8 @@
         lastEntry = { name: done.name, ms: done.ms, dateStr: done.date, ts: done.ts };
         showBoard(true);
       } else {
+        dayStages = PUZZLES[dayIndex()];
+        stageIdx = 0;
         show('game');
         renderPuzzle();
         startTimer();
