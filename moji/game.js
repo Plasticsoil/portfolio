@@ -11,6 +11,19 @@
   'use strict';
 
   const PUZZLES = window.MOJI_PUZZLES || [];
+
+  // Cryptic device → tag label. Colours live in style.css (.clue-tag[data-type]).
+  const CLUE_TYPES = {
+    double:    'Double',
+    anagram:   'Anagram',
+    hidden:    'Hidden',
+    homophone: 'Homophone',
+    charade:   'Charade',
+    container: 'Container',
+    reversal:  'Reversal',
+    deletion:  'Deletion',
+    complex:   'Complex',
+  };
   const LB_KEY = 'moji_leaderboard_v1';   // history of daily solves
   const DAILY_KEY = 'moji_daily_v1';      // today's locked-in result
   const STREAK_KEY = 'moji_streak_v1';    // consecutive-day streak
@@ -85,6 +98,7 @@
     timer: $('#timer-val'),
     gameBody: $('#screen-game .game-body'),
     clue: $('#puzzle-clue'),
+    clueTag: $('#clue-tag'),
     answer: $('#answer'),
     endTime: $('#end-time'),
     streak: $('#streak'),
@@ -255,6 +269,16 @@
     answerLocked = false;
 
     els.clue.innerHTML = p.clue;
+    if (els.clueTag) {
+      const label = CLUE_TYPES[p.type];
+      if (label) {
+        els.clueTag.textContent = label;
+        els.clueTag.dataset.type = p.type;
+        els.clueTag.hidden = false;
+      } else {
+        els.clueTag.hidden = true;
+      }
+    }
     els.answer.className = 'answer';
     els.answer.innerHTML = '';
     p.answer.split('').forEach((ch) => {

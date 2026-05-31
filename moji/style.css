@@ -259,6 +259,39 @@ body {
   letter-spacing: 0.01em;
 }
 
+/* Clue-type tag — small pill, top-right. One colour per device;
+   background is the same colour at 15%. */
+.clue-tag {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 12px;
+  border-radius: 5400px;
+  font-family: 'Inter', var(--font-sans);
+  font-size: 12px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  text-transform: capitalize;
+  white-space: nowrap;
+  color: var(--tag, #8a8a8a);
+  background: color-mix(in srgb, var(--tag-bg, var(--tag, #8a8a8a)) 15%, transparent);
+}
+.clue-tag[hidden] { display: none; }
+
+.clue-tag[data-type="double"]    { --tag: #FF00B3; }
+.clue-tag[data-type="anagram"]   { --tag: #EE9F00; --tag-bg: #FFAA00; }
+.clue-tag[data-type="hidden"]    { --tag: #0900FF; }
+.clue-tag[data-type="homophone"] { --tag: #009DFF; }
+.clue-tag[data-type="charade"]   { --tag: #FF7B00; }
+.clue-tag[data-type="container"] { --tag: #FF0000; }
+.clue-tag[data-type="reversal"]  { --tag: #6F3AFF; }
+.clue-tag[data-type="deletion"]  { --tag: #24C600; }
+.clue-tag[data-type="complex"]   { --tag: #24D0CA; }
+
 /* Timer sits near the top; the clue + word are centred in the
    space above the keyboard, which rests lower down. */
 #screen-game { padding-top: 34px; }
