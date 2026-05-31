@@ -106,12 +106,19 @@ A solver should turn a word into letters in **one hop**. Handy ones:
 
 ---
 
-## The bank (finished clues)
+## The day is a ladder of three
 
-| Answer | Type | Clue | Wiring |
+Each day in `puzzles.js` is `[stage1, stage2, stage3]`, getting harder as
+you climb. The timer runs across all three; the day is done at the top.
+
+| Stage | Feel | Shape | Example |
 |---|---|---|---|
-| **BMW** (3) | Container | "A motorway cuts straight through the greyscale car." | M (motorway) inside BW (greyscale) → B(M)W · def = car |
-| **MONET** (5) | Charade | "After a mo the 🕷️'s net caught a famous painter." | MO (a mo) + NET (the 🕷️'s net) · def = famous painter |
+| **1** | easy | two emoji glued into one word (charade) | STARFISH = ⭐🐟 |
+| **2** | mid | a 3-letter cryptic, simple anagram or reversal | TAR ← 🐀 (RAT) thrashing about |
+| **3** | hard | a fuller cryptic (container, deletion, homophone, reversal, combo) | SCARE = 🚗 (CAR) inside SE |
+
+Every stage carries at least one emoji that does real work.
+The live bank (7 days, 21 clues) lives in `puzzles.js` with full wiring in each `explain`.
 
 ### Two ways an emoji can work in a clue
 1. **Surface flavour** — the emoji just *pictures* a word, and the letters still come from text. e.g. 🕷️ = "spider" in MONET; the fodder is still the word **net**.
