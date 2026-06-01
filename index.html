@@ -3409,6 +3409,8 @@
   <script src="blocks.js"></script>
   <script src="hero/hero-config.js"></script>
   <script src="projects/index.js"></script>
+  <script src="projects/sphere/project.js"></script>
+  <script src="projects/moji/project.js"></script>
   <script src="projects/placeholder-1/project.js"></script>
   <script src="projects/placeholder-2/project.js"></script>
   <script src="projects/placeholder-3/project.js"></script>
@@ -4152,7 +4154,7 @@
       if (project.cursorImage) {
         card.dataset.cursorImage = project.cursorImage;
       } else {
-        card.dataset.cursorTooltip = 'See More';
+        card.dataset.cursorTooltip = project.cursorTooltip || 'See More';
       }
 
       // Card body (image / video / 3D — clicks handled on .card-b)
@@ -4306,6 +4308,10 @@
       // Whole card (media + footer text) opens the overlay
       document.querySelectorAll('.card-b').forEach(el => {
         el.addEventListener('click', () => {
+          // Link-out projects (e.g. sphere, moji) navigate to their own page
+          // instead of opening the in-page case-study overlay.
+          const proj = window.__PROJECTS__ && window.__PROJECTS__[el.dataset.project];
+          if (proj && proj.link) { window.location.href = proj.link; return; }
           openOverlay(el.dataset.project);
         });
       });
