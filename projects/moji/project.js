@@ -12,5 +12,5 @@ window.__PROJECTS__['moji'] = {
   // Clicking the card navigates to the page where it lives
   link: '/moji/',
   // Hover cursor hint (instead of the default "See More")
-  cursorTooltip: 'Open ↗'
+  cursorTooltip: 'Visit ↗'
 };
