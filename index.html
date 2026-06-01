@@ -719,7 +719,7 @@
       place-items: center;
       pointer-events: none;
       z-index: 2;
-      color: #fff;
+      color: #FF8FF4;
     }
     .card-sphere-logo svg {
       width: 200px;
@@ -727,12 +727,10 @@
       filter: drop-shadow(0 3px 16px rgba(0,0,0,0.85)) drop-shadow(0 0 3px rgba(0,0,0,0.7));
     }
 
-    /* White cursor over dark cards (data-cursor-light) — black-on-black is invisible */
-    #cursor-tooltip.cursor-tooltip--light svg path,
-    #cursor-tooltip.cursor-tooltip--light svg circle {
-      stroke: #fff !important;
-      fill: #fff !important;
-    }
+    /* White cursor over dark cards (data-cursor-light) — black-on-black is invisible.
+       Whiten everything (dot + text glyphs), and strokes for any bracket paths. */
+    #cursor-tooltip.cursor-tooltip--light svg * { fill: #fff !important; }
+    #cursor-tooltip.cursor-tooltip--light svg path { stroke: #fff !important; }
     #cursor-tooltip.cursor-tooltip--light { filter: drop-shadow(0 1px 4px rgba(0,0,0,0.55)); }
 
     .card-grain {
