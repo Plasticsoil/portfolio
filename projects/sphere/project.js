@@ -6,7 +6,9 @@ window.__PROJECTS__['sphere'] = {
   tags: ['Vibecoding', 'Experimental'],
   overlayTags: ['Vibecoding', 'Experimental'],
 
-  // Static thumbnail: wireframe sphere on black
+  // Live, slowly-rotating, hover-responsive wireframe sphere (see sphere-card.js).
+  // The static PNG stays as a fallback poster if WebGL is unavailable.
+  liveSphere: true,
   thumbnail: 'projects/sphere/assets/thumb.png',
 
   // Clicking the card navigates to the page where it lives
