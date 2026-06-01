@@ -727,32 +727,6 @@
       filter: drop-shadow(0 3px 16px rgba(0,0,0,0.85)) drop-shadow(0 0 3px rgba(0,0,0,0.7));
     }
 
-    /* Decorative parameter chips around the sphere — same language as the /sphere app */
-    .sphere-chips { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
-    .sphere-chip {
-      position: absolute;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 5px 8px;
-      border-radius: 3px;
-      background: rgba(10, 10, 10, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.32);
-      box-shadow: inset 0 0 0 1px rgba(255, 143, 244, 0.18);
-      color: #fff;
-      font-family: 'Inter', sans-serif;
-      font-size: 9px;
-      font-weight: 400;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      white-space: nowrap;
-      -webkit-backdrop-filter: blur(8px);
-      backdrop-filter: blur(8px);
-    }
-    .sphere-chip-ico { width: 12px; height: 12px; flex-shrink: 0; display: block; }
-    .sphere-chip--tr { top: 13%; right: 6px; }
-    .sphere-chip--l  { top: 47%; left: 6px; }
-    .sphere-chip--br { bottom: 15%; right: 12%; }
 
     /* White cursor over dark cards (data-cursor-light) — black-on-black is invisible.
        Whiten everything (dot + text glyphs), and strokes for any bracket paths. */
@@ -3300,7 +3274,7 @@
       <h2 class="contact-heading">Get in touch</h2>
       <p class="contact-tagline">Let's create something meaningful together</p>
       <div class="contact-btn-row">
-        <a class="contact-btn" href="mailto:yamlivnat@gmail.com" data-cursor-tooltip="mailto // yamlivnat@gmail.com">email</a>
+        <a class="contact-btn" href="mailto:yamlivnat95@gmail.com" data-cursor-tooltip="mailto // yamlivnat95@gmail.com">email</a>
         <a class="contact-btn" href="tel:+972528229418" data-cursor-tooltip="tel // +972-52-822-9418">phone</a>
       </div>
     </div>
@@ -4248,14 +4222,6 @@
         const logo = document.createElement('div');
         logo.className = 'card-sphere-logo';
         body.appendChild(logo);
-        // Decorative control chips (real /sphere app icons) — Grid / Noise / Spin
-        const chips = document.createElement('div');
-        chips.className = 'sphere-chips';
-        chips.innerHTML =
-          '<div class="sphere-chip sphere-chip--tr"><svg class="sphere-chip-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M2 2h12v12H2z"/><path d="M2 6h12M2 10h12M6 2v12M10 2v12"/></svg><span>Grid</span></div>' +
-          '<div class="sphere-chip sphere-chip--l"><svg class="sphere-chip-ico" viewBox="0 0 16 16" fill="currentColor" stroke="none"><rect x="2" y="3" width="1.5" height="1.5"/><rect x="6" y="2" width="1.5" height="1.5"/><rect x="11" y="4" width="1.5" height="1.5"/><rect x="4" y="7" width="1.5" height="1.5"/><rect x="9" y="6" width="1.5" height="1.5"/><rect x="12" y="8" width="1.5" height="1.5"/><rect x="2" y="11" width="1.5" height="1.5"/><rect x="7" y="10" width="1.5" height="1.5"/><rect x="11" y="12" width="1.5" height="1.5"/></svg><span>Noise</span></div>' +
-          '<div class="sphere-chip sphere-chip--br"><svg class="sphere-chip-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M11 3l2 2-2 2"/><path d="M5 9l-2 2 2 2"/><path d="M13 5c0-1-2-3-5-3S3 4 3 5"/><path d="M3 11c0 1 2 3 5 3s5-2 5-3"/></svg><span>Spin</span></div>';
-        body.appendChild(chips);
       }
       // 3D GLB turntable (same spin clock as hero .ring-card-model)
       else if (project.turntableModel) {
