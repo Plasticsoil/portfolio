@@ -8,6 +8,8 @@
 ════════════════════════════════════════════════════════════════ */
 
 window.PROJECTS_ORDER = [
+  'sphere',
+  'moji',
   'shltr',
   'radiant',
   'placeholder-1',

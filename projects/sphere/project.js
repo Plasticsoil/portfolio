@@ -1,0 +1,16 @@
+/* Sphere — vibecoded experiment. Lives at /sphere as its own page;
+   the card links out instead of opening an in-page case study. */
+window.__PROJECTS__['sphere'] = {
+  id: 'sphere',
+  title: 'Sphere',
+  tags: ['Vibecoding', 'Experimental'],
+  overlayTags: ['Vibecoding', 'Experimental'],
+
+  // Static thumbnail: wireframe sphere on black
+  thumbnail: 'projects/sphere/assets/thumb.png',
+
+  // Clicking the card navigates to the page where it lives
+  link: '/sphere/',
+  // Hover cursor hint (instead of the default "See More")
+  cursorTooltip: 'Open ↗'
+};
