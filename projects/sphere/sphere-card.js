@@ -84,7 +84,7 @@
     }));
     spin.add(mesh);
 
-    var R = 1.5, AMP = 0.18, FREQ = 1.6;
+    var R = 1.5, AMP = 0.30, FREQ = 1.8;           // stronger, lumpier noise
     var pos = geo.attributes.position.array;
     function deform(t) {
       for (var i = 0; i < units.length; i += 3) {
@@ -104,7 +104,7 @@
     if (window.ResizeObserver) new ResizeObserver(resize).observe(body);
     resize();
 
-    var hover = false, px = 0, py = 0, curSpeed = 0.0016;
+    var hover = false, px = 0, py = 0, curSpeed = 0.004;
     if (card) {
       card.addEventListener('pointerenter', function () { hover = true; });
       card.addEventListener('pointerleave', function () { hover = false; px = 0; py = 0; });
@@ -123,9 +123,9 @@
     function frame() {
       requestAnimationFrame(frame);
       if (!visible) return;
-      var t = performance.now() * 0.00065;          // noise morph speed
+      var t = performance.now() * 0.00095;          // noise morph speed (faster)
       deform(t);
-      var goal = hover ? 0.006 : 0.0016;             // spin: slow → faster on hover
+      var goal = hover ? 0.013 : 0.004;              // spin: faster, even more on hover
       curSpeed += (goal - curSpeed) * 0.05;
       spin.rotation.y += curSpeed;
       tilt.rotation.x += ((0.3 + (hover ? py * 0.45 : 0)) - tilt.rotation.x) * 0.06;
