@@ -696,6 +696,35 @@
       100% { background-position:   0%   0%; }
     }
 
+    /* Live sphere work-card */
+    .card-b-body--sphere {
+      background-color: #0a0a0a;
+      background-size: cover;
+      background-position: center;
+    }
+    .card-sphere-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
+    }
+    .card-sphere-logo {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      z-index: 2;
+      color: #fff;
+    }
+    .card-sphere-logo svg {
+      width: 150px;
+      height: auto;
+      filter: drop-shadow(0 3px 16px rgba(0,0,0,0.85)) drop-shadow(0 0 3px rgba(0,0,0,0.7));
+    }
+
     .card-grain {
       position: absolute;
       inset: 0;
@@ -3411,6 +3440,9 @@
   <script src="projects/index.js"></script>
   <script src="projects/sphere/project.js"></script>
   <script src="projects/moji/project.js"></script>
+  <!-- three.js (local) + the live sphere card renderer; deferred so they run after the grid is built -->
+  <script defer src="vendor/three.min.js"></script>
+  <script defer src="projects/sphere/sphere-card.js"></script>
   <script src="projects/placeholder-1/project.js"></script>
   <script src="projects/placeholder-2/project.js"></script>
   <script src="projects/placeholder-3/project.js"></script>
@@ -4161,8 +4193,23 @@
       const body = document.createElement('div');
       body.className                  = 'card-b-body';
 
+      // Live wireframe sphere (slow auto-rotate, hover-responsive). Nodes are
+      // created here; projects/sphere/sphere-card.js wires up three.js once loaded.
+      if (project.liveSphere) {
+        body.classList.add('card-b-body--sphere');
+        if (project.thumbnail) body.style.backgroundImage = 'url("' + project.thumbnail + '")';
+        const cv = document.createElement('canvas');
+        cv.className = 'card-sphere-canvas';
+        body.appendChild(cv);
+        const grain = document.createElement('div');
+        grain.className = 'card-grain';
+        body.appendChild(grain);
+        const logo = document.createElement('div');
+        logo.className = 'card-sphere-logo';
+        body.appendChild(logo);
+      }
       // 3D GLB turntable (same spin clock as hero .ring-card-model)
-      if (project.turntableModel) {
+      else if (project.turntableModel) {
         card.classList.add('card-b--turntable');
         body.classList.add('card-b-body--turntable');
         const mv = document.createElement('model-viewer');
