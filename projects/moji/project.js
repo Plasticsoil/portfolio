@@ -11,6 +11,7 @@ window.__PROJECTS__['moji'] = {
 
   // Clicking the card navigates to the page where it lives
   link: '/moji/',
+  linkBg: '#F8F6F3',          // grow-to-fullscreen transition colour (matches /moji)
   // Hover cursor hint (instead of the default "See More")
-  cursorTooltip: 'Visit ↗'
+  cursorTooltip: 'Visit →'
 };
