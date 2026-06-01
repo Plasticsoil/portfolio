@@ -701,6 +701,8 @@
       background-color: #0a0a0a;
       background-size: cover;
       background-position: center;
+      border-radius: 14px;
+      overflow: hidden;
     }
     .card-sphere-canvas {
       position: absolute;
@@ -720,10 +722,18 @@
       color: #fff;
     }
     .card-sphere-logo svg {
-      width: 150px;
+      width: 200px;
       height: auto;
       filter: drop-shadow(0 3px 16px rgba(0,0,0,0.85)) drop-shadow(0 0 3px rgba(0,0,0,0.7));
     }
+
+    /* White cursor over dark cards (data-cursor-light) — black-on-black is invisible */
+    #cursor-tooltip.cursor-tooltip--light svg path,
+    #cursor-tooltip.cursor-tooltip--light svg circle {
+      stroke: #fff !important;
+      fill: #fff !important;
+    }
+    #cursor-tooltip.cursor-tooltip--light { filter: drop-shadow(0 1px 4px rgba(0,0,0,0.55)); }
 
     .card-grain {
       position: absolute;
@@ -3885,6 +3895,10 @@
       else if (hit?.type === 'canPress') showCanPress();
       else if (hit?.type === 'action')   showAction();
       else                               showIdle();
+
+      // White cursor over dark cards so the tooltip stays visible
+      const light = e.target.closest && e.target.closest('[data-cursor-light]');
+      cursorTooltip.classList.toggle('cursor-tooltip--light', !!light);
     });
 
     document.addEventListener('mouseleave', () => {
@@ -4188,6 +4202,8 @@
       } else {
         card.dataset.cursorTooltip = project.cursorTooltip || 'See More';
       }
+      // Light cursor over dark cards (so the tooltip is visible on black)
+      if (project.cursorLight) card.dataset.cursorLight = '';
 
       // Card body (image / video / 3D — clicks handled on .card-b)
       const body = document.createElement('div');

@@ -14,5 +14,7 @@ window.__PROJECTS__['sphere'] = {
   // Clicking the card navigates to the page where it lives
   link: '/sphere/',
   // Hover cursor hint (instead of the default "See More")
-  cursorTooltip: 'Visit ↗'
+  cursorTooltip: 'Visit ↗',
+  // Dark card → render the cursor tooltip in white so it's visible
+  cursorLight: true
 };
