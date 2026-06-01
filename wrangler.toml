@@ -1,0 +1,12 @@
+################################################################
+# Cloudflare Pages config for the portfolio site.
+# Binds the KV namespace the moji leaderboard function uses.
+# functions/api/leaderboard.js reads/writes via env.LEADERBOARD.
+################################################################
+name = "portfolio"
+pages_build_output_dir = "."
+compatibility_date = "2024-11-06"
+
+[[kv_namespaces]]
+binding = "LEADERBOARD"
+id = "a06121a7f5e84decba02dbbb3b9d4059"
