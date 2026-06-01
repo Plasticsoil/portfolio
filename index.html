@@ -3619,7 +3619,7 @@
     const TEXT_Y       = 17;     // text baseline (visual centre of TOOLTIP_H)
     const PAD_RIGHT    = 10;     // right padding inside the SVG (after arrow)
     const ARROW_GAP    = 8;      // space between text end and triangle
-    const ARROW_W      = 6;      // horizontal span of right-pointing triangle
+    const ARROW_W      = 5;      // horizontal span of right-pointing triangle
 
     // Hidden SVG used solely to measure text width so we can
     // size the tooltip SVG tightly around its content.
@@ -4200,6 +4200,8 @@
         card.dataset.cursorImage = project.cursorImage;
       } else {
         card.dataset.cursorTooltip = project.cursorTooltip || 'See More';
+        // Custom-tooltip cards show the filled right-triangle caret
+        if (project.cursorTooltip) card.dataset.cursorTooltipArrow = '';
       }
       // Light cursor over dark cards (so the tooltip is visible on black)
       if (project.cursorLight) card.dataset.cursorLight = '';

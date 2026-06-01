@@ -13,5 +13,5 @@ window.__PROJECTS__['moji'] = {
   link: '/moji/',
   linkBg: '#F8F6F3',          // grow-to-fullscreen transition colour (matches /moji)
   // Hover cursor hint (instead of the default "See More")
-  cursorTooltip: 'Visit →'
+  cursorTooltip: 'Visit'
 };

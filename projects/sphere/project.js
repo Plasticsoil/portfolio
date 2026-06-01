@@ -15,7 +15,7 @@ window.__PROJECTS__['sphere'] = {
   link: '/sphere/',
   linkBg: '#0a0a0a',          // grow-to-fullscreen transition colour (matches /sphere)
   // Hover cursor hint (instead of the default "See More")
-  cursorTooltip: 'Visit →',
+  cursorTooltip: 'Visit',
   // Dark card → render the cursor tooltip in white so it's visible
   cursorLight: true
 };
