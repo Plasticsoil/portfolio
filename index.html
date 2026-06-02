@@ -697,7 +697,7 @@
     }
 
     /* moji interactive thumbnail card */
-    .card-b-body--mojithumb { background: #FFFFFF; overflow: hidden; }
+    .card-b-body--mojithumb { background: #FFFFFF; overflow: hidden; border-radius: 8px; }
     .mt-timer {
       position: absolute; left: 20px; top: 20px; z-index: 6;
       font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
@@ -736,17 +736,19 @@
       font-family: 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Emoji', sans-serif;
       transition: transform 0.45s cubic-bezier(0.34, 1.2, 0.64, 1);
     }
-    .mt-rainbow { left: calc(50% - 30px - 77px);  top: calc(50% - 21.5px - 97.5px); }
-    .mt-brain   { left: calc(50% - 30px + 138px); top: calc(50% - 21.5px - 60.5px); }
-    .mt-cherry  { left: calc(50% - 30px + 39px);  top: calc(50% - 21.5px - 48.5px); }
-    .mt-book    { left: calc(50% - 30px - 126px); top: calc(50% - 21.5px - 11.5px); }
-    .mt-fire    { left: calc(50% - 30px + 150px); top: calc(50% - 21.5px + 59.5px); }
-    .mt-devil   { left: calc(50% - 30px - 135px); top: calc(50% - 21.5px + 75.5px); }
-    .mt-hand    { left: calc(50% - 30px + 27px);  top: calc(50% - 21.5px + 90.5px); }
-    /* hover: emojis slide toward their nearest edge */
-    .card-b:hover .mt-rainbow, .card-b:hover .mt-book, .card-b:hover .mt-devil { transform: translateX(-16px); }
-    .card-b:hover .mt-brain, .card-b:hover .mt-cherry, .card-b:hover .mt-fire  { transform: translateX(16px); }
-    .card-b:hover .mt-hand { transform: translateY(16px); }
+    .mt-rainbow { left: calc(50% - 30px - 47px);  top: calc(50% - 21.5px - 107.5px); }
+    .mt-cherry  { left: calc(50% - 30px + 69px);  top: calc(50% - 21.5px - 68.5px); }
+    .mt-book    { left: calc(50% - 30px - 146px); top: calc(50% - 21.5px - 11.5px); }
+    .mt-fire    { left: calc(50% - 30px + 150px); top: calc(50% - 21.5px + 69.5px); }
+    .mt-devil   { left: calc(50% - 30px - 95px);  top: calc(50% - 21.5px + 78.5px); }
+    .mt-hand    { left: calc(50% - 30px + 27px);  top: calc(50% - 21.5px + 120.5px); }
+    /* hover: each emoji flies outward, away from the centre (radial), revealing the text */
+    .card-b:hover .mt-rainbow { transform: translate(-14px, -31px); }
+    .card-b:hover .mt-cherry  { transform: translate(24px, -24px); }
+    .card-b:hover .mt-book    { transform: translate(-34px, -3px); }
+    .card-b:hover .mt-fire    { transform: translate(31px, 14px); }
+    .card-b:hover .mt-devil   { transform: translate(-26px, 22px); }
+    .card-b:hover .mt-hand    { transform: translate(7px, 33px); }
     /* hover: EMOJI cells cascade to green (like solving the word) */
     .card-b:hover .mt-cells { border-color: #2FB877; }
     .card-b:hover .mt-cell { color: #2FB877; border-color: #2FB877; animation: mtPop 0.4s ease both; animation-delay: calc(var(--i) * 70ms); }
@@ -4284,8 +4286,10 @@
       // moji interactive thumbnail (hover: emojis slide to edges + EMOJI cells cascade green)
       else if (project.mojiThumb) {
         body.classList.add('card-b-body--mojithumb');
+        const _d = new Date();
+        const _date = _d.getDate() + '/' + (_d.getMonth() + 1);   // today's date, e.g. 2/6
         body.innerHTML =
-          '<div class="mt-timer">03:28</div>' +
+          '<div class="mt-timer">' + _date + '</div>' +
           '<div class="mt-tag">Word Puzzle</div>' +
           '<div class="mt-frame">' +
             '<div class="mt-head">Read between the</div>' +
@@ -4298,7 +4302,6 @@
             '</div>' +
           '</div>' +
           '<div class="mt-em mt-rainbow">🌈</div>' +
-          '<div class="mt-em mt-brain">🧠</div>' +
           '<div class="mt-em mt-cherry">🍒</div>' +
           '<div class="mt-em mt-book">📖</div>' +
           '<div class="mt-em mt-fire">🔥</div>' +
