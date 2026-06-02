@@ -485,4 +485,466 @@ window.MOJI_PUZZLES = [
       explain: "def: the dessert topping · 😱 = SCREAM · 'head removed' = drop first letter → CREAM",
     },
   ],
+
+  /* ── Day 22 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "A glowing insect in the summer dark: 🔥🪰",
+      answer: "FIREFLY",
+      type: "charade",
+      explain: "def: a glowing summer insect · 🔥 = FIRE · 🪰 = FLY → FIRE+FLY",
+    },
+    {
+      clue: "A 🦌 reshuffled into a marsh plant.",
+      answer: "REED",
+      type: "anagram",
+      explain: "def: a marsh plant · 🦌 = DEER · 'reshuffled' = anagram → REED",
+    },
+    {
+      clue: "A 🔑 needs a 🕳️ to do its job.",
+      answer: "KEYHOLE",
+      type: "charade",
+      explain: "def: where the key goes · 🔑 = KEY · 🕳️ = HOLE → KEY+HOLE",
+    },
+  ],
+
+  /* ── Day 23 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "A blade-nosed swimmer: 🗡️🐟",
+      answer: "SWORDFISH",
+      type: "charade",
+      explain: "def: a blade-nosed swimmer · 🗡️ = SWORD · 🐟 = FISH → SWORD+FISH",
+    },
+    {
+      clue: "A 🥄 stirred up starts to pry.",
+      answer: "SNOOP",
+      type: "anagram",
+      explain: "def: to pry · 🥄 = SPOON · 'stirred up' = anagram → SNOOP",
+    },
+    {
+      clue: "A 🍯 store shaped by the bees, neat as a 🪮.",
+      answer: "HONEYCOMB",
+      type: "charade",
+      explain: "def: the bees' waxy store · 🍯 = HONEY · 🪮 = COMB → HONEY+COMB",
+    },
+  ],
+
+  /* ── Day 24 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "A faint glow from far across the sky: ⭐💡",
+      answer: "STARLIGHT",
+      type: "charade",
+      explain: "def: a faint glow from the sky · ⭐ = STAR · 💡 = LIGHT → STAR+LIGHT",
+    },
+    {
+      clue: "A 🍞 kneaded about into facial hair.",
+      answer: "BEARD",
+      type: "anagram",
+      explain: "def: facial hair · 🍞 = BREAD · 'kneaded about' = anagram → BEARD",
+    },
+    {
+      clue: "Too long under the ☀️ and you 🔥 red.",
+      answer: "SUNBURN",
+      type: "charade",
+      explain: "def: what too much beach leaves on your skin · ☀️ = SUN · 🔥 = BURN → SUN+BURN",
+    },
+  ],
+
+  /* ── Day 25 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "Shades for a bright day: ☀️👓",
+      answer: "SUNGLASSES",
+      type: "charade",
+      explain: "def: shades for a bright day · ☀️ = SUN · 👓 = GLASSES → SUN+GLASSES",
+    },
+    {
+      clue: "A 🐎 galloping all over the place reaches the coast.",
+      answer: "SHORE",
+      type: "anagram",
+      explain: "def: the coast · 🐎 = HORSE · 'all over the place' = anagram → SHORE",
+    },
+    {
+      clue: "Liquor brewed by the 🌙 with a guilty ✨.",
+      answer: "MOONSHINE",
+      type: "charade",
+      explain: "def: illicit homemade liquor · 🌙 = MOON · ✨ = SHINE → MOON+SHINE",
+    },
+  ],
+
+  /* ── Day 26 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "What keeps you dry in a downpour: 🌧️🧥",
+      answer: "RAINCOAT",
+      type: "charade",
+      explain: "def: what keeps you dry in a downpour · 🌧️ = RAIN · 🧥 = COAT → RAIN+COAT",
+    },
+    {
+      clue: "A 🧂 knocked about into a thin strip of wood.",
+      answer: "SLAT",
+      type: "anagram",
+      explain: "def: a thin strip of wood · 🧂 = SALT · 'knocked about' = anagram → SLAT",
+    },
+    {
+      clue: "A 🎀 worn as a 👔 to the gala.",
+      answer: "BOWTIE",
+      type: "charade",
+      explain: "def: formal neckwear · 🎀 = BOW · 👔 = TIE → BOW+TIE",
+    },
+  ],
+
+  /* ── Day 27 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "A sticky trap strung in the corner: 🕷️🕸️",
+      answer: "SPIDERWEB",
+      type: "charade",
+      explain: "def: a sticky corner trap · 🕷️ = SPIDER · 🕸️ = WEB → SPIDER+WEB",
+    },
+    {
+      clue: "A 🐺 turned about becomes a barnyard bird.",
+      answer: "FOWL",
+      type: "anagram",
+      explain: "def: a barnyard bird · 🐺 = WOLF · 'turned about' = anagram → FOWL",
+    },
+    {
+      clue: "A 🐶 wears one; a soldier's 🏷️ of identity.",
+      answer: "DOGTAG",
+      type: "charade",
+      explain: "def: a soldier's metal ID · 🐶 = DOG · 🏷️ = TAG → DOG+TAG",
+    },
+  ],
+
+  /* ── Day 28 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "A beacon that warns the ships: 💡🏠",
+      answer: "LIGHTHOUSE",
+      type: "charade",
+      explain: "def: a beacon that warns ships · 💡 = LIGHT · 🏠 = HOUSE → LIGHT+HOUSE",
+    },
+    {
+      clue: "A ⭐ turned right around reveals the vermin.",
+      answer: "RATS",
+      type: "reversal",
+      explain: "def: vermin · ⭐ = STAR · 'turned right around' = reversal → RATS",
+    },
+    {
+      clue: "Tuck a 🚗 between S and F for a winter neck-wrap.",
+      answer: "SCARF",
+      type: "container",
+      explain: "def: a winter neck-wrap · 🚗 = CAR · placed inside S_F → S(CAR)F",
+    },
+  ],
+
+  /* ── Day 29 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "Flat and flipped for breakfast: 🍳🍰",
+      answer: "PANCAKE",
+      type: "charade",
+      explain: "def: a flat breakfast flip · 🍳 = PAN · 🍰 = CAKE → PAN+CAKE",
+    },
+    {
+      clue: "A 🚪 rebuilt gives off a smell.",
+      answer: "ODOR",
+      type: "anagram",
+      explain: "def: a smell · 🚪 = DOOR · 'rebuilt' = anagram → ODOR",
+    },
+    {
+      clue: "Box a 🐀 between C and E for a wooden crate.",
+      answer: "CRATE",
+      type: "container",
+      explain: "def: a wooden box · 🐀 = RAT · placed inside C_E → C(RAT)E",
+    },
+  ],
+
+  /* ── Day 30 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "Where the hammer and nails live: 🛠️📦",
+      answer: "TOOLBOX",
+      type: "charade",
+      explain: "def: where the hammer lives · 🛠️ = TOOL · 📦 = BOX → TOOL+BOX",
+    },
+    {
+      clue: "A 🐐 shuffled about into a Roman robe.",
+      answer: "TOGA",
+      type: "anagram",
+      explain: "def: a Roman robe · 🐐 = GOAT · 'shuffled about' = anagram → TOGA",
+    },
+    {
+      clue: "Slip a 🐀 inside a pie to raise the Jolly Roger.",
+      answer: "PIRATE",
+      type: "container",
+      explain: "def: one who raises the Jolly Roger · 🐀 = RAT · inside PIE → PI(RAT)E",
+    },
+  ],
+
+  /* ── Day 31 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "A purse on your arm: ✋👜",
+      answer: "HANDBAG",
+      type: "charade",
+      explain: "def: a purse on the arm · ✋ = HAND · 👜 = BAG → HAND+BAG",
+    },
+    {
+      clue: "A 🍐 reshuffled, you start to trim.",
+      answer: "PARE",
+      type: "anagram",
+      explain: "def: to trim · 🍐 = PEAR · 'reshuffled' = anagram → PARE",
+    },
+    {
+      clue: "A 🪐 that loses its tail takes to the air.",
+      answer: "PLANE",
+      type: "deletion",
+      explain: "def: an aircraft · 🪐 = PLANET · 'loses its tail' = drop last letter → PLANE",
+    },
+  ],
+
+  /* ── Day 32 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "Twice-a-day tool for your smile: 🦷🖌️",
+      answer: "TOOTHBRUSH",
+      type: "charade",
+      explain: "def: a twice-a-day tool for the smile · 🦷 = TOOTH · 🖌️ = BRUSH → TOOTH+BRUSH",
+    },
+    {
+      clue: "A 🌹 rearranged leaves you aching.",
+      answer: "SORE",
+      type: "anagram",
+      explain: "def: aching · 🌹 = ROSE · 'rearranged' = anagram → SORE",
+    },
+    {
+      clue: "A 🪨 that loses its head turns into a musical pitch.",
+      answer: "TONE",
+      type: "deletion",
+      explain: "def: a musical pitch · 🪨 = STONE · 'loses its head' = drop first letter → TONE",
+    },
+  ],
+
+  /* ── Day 33 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "What you ride down a wave: 🏄🛹",
+      answer: "SURFBOARD",
+      type: "charade",
+      explain: "def: what you ride down a wave · 🏄 = SURF · 🛹 = BOARD → SURF+BOARD",
+    },
+    {
+      clue: "A plate of 🍝 all jumbled into Spanish nibbles.",
+      answer: "TAPAS",
+      type: "anagram",
+      explain: "def: Spanish small plates · 🍝 = PASTA · 'all jumbled' = anagram → TAPAS",
+    },
+    {
+      clue: "A 🔥 that loses its head leaves you feeble.",
+      answer: "LAME",
+      type: "deletion",
+      explain: "def: feeble · 🔥 = FLAME · 'loses its head' = drop first letter → LAME",
+    },
+  ],
+
+  /* ── Day 34 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "A spiral souvenir from the beach: 🌊🐚",
+      answer: "SEASHELL",
+      type: "charade",
+      explain: "def: a spiral beach souvenir · 🌊 = SEA · 🐚 = SHELL → SEA+SHELL",
+    },
+    {
+      clue: "A cut of 🥩 mixed up into a side that plays together.",
+      answer: "TEAM",
+      type: "anagram",
+      explain: "def: a side that plays together · 🥩 = MEAT · 'mixed up' = anagram → TEAM",
+    },
+    {
+      clue: "Behead a 🍞 and settle down to peruse a book.",
+      answer: "READ",
+      type: "deletion",
+      explain: "def: to peruse · 🍞 = BREAD · 'behead' = drop first letter → READ",
+    },
+  ],
+
+  /* ── Day 35 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "Logs split for the hearth: 🔥🪵",
+      answer: "FIREWOOD",
+      type: "charade",
+      explain: "def: logs for the hearth · 🔥 = FIRE · 🪵 = WOOD → FIRE+WOOD",
+    },
+    {
+      clue: "A pot of 🍲 stirred up points the compass.",
+      answer: "WEST",
+      type: "anagram",
+      explain: "def: a compass point · 🍲 = STEW · 'stirred up' = anagram → WEST",
+    },
+    {
+      clue: "Behead a 🦈 and listen!",
+      answer: "HARK",
+      type: "deletion",
+      explain: "def: listen! · 🦈 = SHARK · 'behead' = drop first letter → HARK",
+    },
+  ],
+
+  /* ── Day 36 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "Where the models strut: 🐱🚶",
+      answer: "CATWALK",
+      type: "charade",
+      explain: "def: where the models strut · 🐱 = CAT · 🚶 = WALK → CAT+WALK",
+    },
+    {
+      clue: "A 🐌 muddled up hammers them home.",
+      answer: "NAILS",
+      type: "anagram",
+      explain: "def: what the carpenter hammers home · 🐌 = SNAIL · 'muddled up' = anagram → NAILS",
+    },
+    {
+      clue: "A ☀️, by the sound of it, is a male child.",
+      answer: "SON",
+      type: "homophone",
+      explain: "def: a male child · ☀️ = SUN · 'by the sound of it' = homophone → SON",
+    },
+  ],
+
+  /* ── Day 37 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "Press it and someone answers: 🚪🔔",
+      answer: "DOORBELL",
+      type: "charade",
+      explain: "def: press it and someone answers · 🚪 = DOOR · 🔔 = BELL → DOOR+BELL",
+    },
+    {
+      clue: "A 🍇 reshuffled into an old-school beeper.",
+      answer: "PAGER",
+      type: "anagram",
+      explain: "def: an old-school beeper · 🍇 = GRAPE · 'reshuffled' = anagram → PAGER",
+    },
+    {
+      clue: "A 🌊, by the sound of it, is to look.",
+      answer: "SEE",
+      type: "homophone",
+      explain: "def: to look · 🌊 = SEA · 'by the sound of it' = homophone → SEE",
+    },
+  ],
+
+  /* ── Day 38 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "A guard with a loud bark: ⌚🐶",
+      answer: "WATCHDOG",
+      type: "charade",
+      explain: "def: a guard with a loud bark · ⌚ = WATCH · 🐶 = DOG → WATCH+DOG",
+    },
+    {
+      clue: "A 🪨 reshaped into a bottle stopper.",
+      answer: "CORK",
+      type: "anagram",
+      explain: "def: a bottle stopper · 🪨 = ROCK · 'reshaped' = anagram → CORK",
+    },
+    {
+      clue: "A 🐇, by the sound of it, is what grows on your head.",
+      answer: "HAIR",
+      type: "homophone",
+      explain: "def: what grows on your head · 🐇 = HARE · 'by the sound of it' = homophone → HAIR",
+    },
+  ],
+
+  /* ── Day 39 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "What fills the ocean, not the tap: 🧂💧",
+      answer: "SALTWATER",
+      type: "charade",
+      explain: "def: what fills the ocean · 🧂 = SALT · 💧 = WATER → SALT+WATER",
+    },
+    {
+      clue: "A 🍳 flipped over for a short sleep.",
+      answer: "NAP",
+      type: "reversal",
+      explain: "def: a short sleep · 🍳 = PAN · 'flipped over' = reversal → NAP",
+    },
+    {
+      clue: "A 🌸, by the sound of it, is a baking essential.",
+      answer: "FLOUR",
+      type: "homophone",
+      explain: "def: a baking essential · 🌸 = FLOWER · 'by the sound of it' = homophone → FLOUR",
+    },
+  ],
+
+  /* ── Day 40 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "Where you jot your ideas: 🎵📖",
+      answer: "NOTEBOOK",
+      type: "charade",
+      explain: "def: where you jot ideas · 🎵 = NOTE · 📖 = BOOK → NOTE+BOOK",
+    },
+    {
+      clue: "A 🌮 all wrapped up turns into a jacket.",
+      answer: "COAT",
+      type: "anagram",
+      explain: "def: a jacket · 🌮 = TACO · 'all wrapped up' = anagram → COAT",
+    },
+    {
+      clue: "A 😈 turned back to front simply existed.",
+      answer: "LIVED",
+      type: "reversal",
+      explain: "def: existed · 😈 = DEVIL · 'turned back to front' = reversal → LIVED",
+    },
+  ],
+
+  /* ── Day 41 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "A river leaping off a cliff: 💧🍂",
+      answer: "WATERFALL",
+      type: "charade",
+      explain: "def: a river leaping off a cliff · 💧 = WATER · 🍂 = FALL → WATER+FALL",
+    },
+    {
+      clue: "A 🐊 thrashed about into the thieves' slang.",
+      answer: "ARGOT",
+      type: "anagram",
+      explain: "def: thieves' slang · 🐊 = GATOR · 'thrashed about' = anagram → ARGOT",
+    },
+    {
+      clue: "An 🐘's nose, or the boot of your car.",
+      answer: "TRUNK",
+      type: "double-definition",
+      explain: "def 1: an elephant's nose · def 2: the car's boot · 🐘 hints both → TRUNK",
+    },
+  ],
+
+  /* ── Day 42 ───────────────────────────────────────────── */
+  [
+    {
+      clue: "Pull it for luck and make a wish: 🌠🦴",
+      answer: "WISHBONE",
+      type: "charade",
+      explain: "def: pull it for luck · 🌠 = WISH · 🦴 = BONE → WISH+BONE",
+    },
+    {
+      clue: "A 🛏️ flipped over reveals the season's debutante.",
+      answer: "DEB",
+      type: "reversal",
+      explain: "def: a society debutante · 🛏️ = BED · 'flipped over' = reversal → DEB",
+    },
+    {
+      clue: "A 🦭, or to shut something tight.",
+      answer: "SEAL",
+      type: "double-definition",
+      explain: "def 1: the flippered animal · def 2: to shut tight · 🦭 hints both → SEAL",
+    },
+  ],
 ];

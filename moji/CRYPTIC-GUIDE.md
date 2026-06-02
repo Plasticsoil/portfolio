@@ -118,7 +118,7 @@ you climb. The timer runs across all three; the day is done at the top.
 | **3** | hard | a fuller cryptic (container, deletion, homophone, reversal, combo) | SCARE = 🚗 (CAR) inside SE |
 
 Every stage carries at least one emoji that does real work.
-The live bank (21 days, 63 clues) lives in `puzzles.js` with full wiring in each `explain`.
+The live bank (42 days, 126 clues) lives in `puzzles.js` with full wiring in each `explain`.
 
 ### Two ways an emoji can work in a clue
 1. **Surface flavour** — the emoji just *pictures* a word, and the letters still come from text. e.g. 🕷️ = "spider" in MONET; the fodder is still the word **net**.
