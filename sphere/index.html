@@ -1790,6 +1790,7 @@
         <p>Allow motion sensors to control<br>the sphere with your phone?</p>
         <button id="gyro-allow">Enable</button>
         <button id="gyro-skip" class="btn-skip">Skip</button>
+        <p class="gyro-note" style="font-size:11px;opacity:0.5;margin:14px 0 0;line-height:1.5;">For the full experience, sphere is best explored on desktop.</p>
     </div>
 
     <div id="mobile-overlay" aria-hidden="true">
@@ -3146,6 +3147,23 @@ function setLineBaseColor(color) {
     });
 }
 
+// Shuffle/Random also picks a random view + a random colour for the mesh.
+// HSL with mid-high lightness + saturation keeps it bright and readable on
+// the black background (never a dark colour that would vanish).
+function randomizeViewAndColor() {
+    const VIEWS = ['out', 'in', 'cluster'];
+    setViewMode(VIEWS[Math.floor(Math.random() * VIEWS.length)]);
+    // Random bright, saturated mesh colour — drive the same path as the Mesh
+    // colour picker so every layer (lines, dots, surface, stars, rings) + the
+    // UI swatch all update together.
+    const c = new THREE.Color().setHSL(Math.random(), 0.72 + Math.random() * 0.22, 0.60 + Math.random() * 0.10);
+    fgHex = '#' + c.getHexString();
+    const inp = document.getElementById('fg-input'); if (inp) inp.value = fgHex;
+    const sw = document.getElementById('swatch-fg'); if (sw) sw.style.background = fgHex;
+    document.documentElement.style.setProperty('--fg', fgHex);
+    syncMeshColorToThree();
+}
+
 function handleEffect(id, isActive, btn) {
     switch (id) {
         case 'grid':
@@ -3549,6 +3567,7 @@ document.querySelector('[data-action="random"]').addEventListener('click', () =>
             syncEffect(btn);
         }
     });
+    randomizeViewAndColor();
 });
 
 
@@ -5158,6 +5177,7 @@ function buildMobileEffectsInto(container) {
                     syncEffect(ob);
                 }
             });
+            randomizeViewAndColor();
         } else if (id === 'wave') {
             const waveBtn = document.querySelector('.orbit-btn[data-id="wave"]');
             if (waveBtn) {
