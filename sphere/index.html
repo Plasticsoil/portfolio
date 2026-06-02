@@ -3712,6 +3712,21 @@ document.querySelectorAll('.view-opt').forEach(btn => {
     btn.addEventListener('click', () => setViewMode(btn.dataset.view));
 });
 
+// Tapping the logo cycles the view modes (Orbit → Core → Cluster). Handy on
+// mobile, where the bottom-left View switcher isn't directly accessible; the
+// logo icon already reflects the active mode, so this reads naturally.
+(function () {
+    const logo = document.getElementById('site-logo');
+    if (!logo) return;
+    const ORDER = ['out', 'in', 'cluster'];
+    logo.style.cursor = 'pointer';
+    logo.addEventListener('click', () => {
+        const active = document.querySelector('.view-opt.active');
+        const cur = active ? active.dataset.view : 'out';
+        setViewMode(ORDER[(ORDER.indexOf(cur) + 1) % ORDER.length]);
+    });
+})();
+
 // ============================================================
 // State Snapshot & Metadata
 // ============================================================
