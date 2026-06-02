@@ -6,8 +6,9 @@ window.__PROJECTS__['moji'] = {
   tags: ['Vibecoding', 'Experimental'],
   overlayTags: ['Vibecoding', 'Experimental'],
 
-  // Video thumbnail: the Start screen with the nudging 👉
-  video: 'projects/moji/assets/thumb.mp4',
+  // Interactive thumbnail (built in buildCard): "Read between the [EMOJI]" with
+  // emoji stickers; on hover they slide to the edges and the EMOJI cells cascade green.
+  mojiThumb: true,
 
   // Clicking the card navigates to the page where it lives
   link: '/moji/',
