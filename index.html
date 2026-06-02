@@ -706,7 +706,7 @@
     .mt-tag {
       position: absolute; right: 20px; top: 20px; z-index: 6;
       display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 6px;
-      background: rgba(255,0,179,0.15); color: #FF00B3;
+      background: rgba(47,184,119,0.15); color: #2FB877;
       font-family: 'Inter', sans-serif; font-size: 12px; line-height: 1; letter-spacing: -0.02em;
       text-transform: capitalize; white-space: nowrap;
     }
@@ -742,16 +742,17 @@
     .mt-fire    { left: calc(50% - 30px + 150px); top: calc(50% - 21.5px + 69.5px); }
     .mt-devil   { left: calc(50% - 30px - 95px);  top: calc(50% - 21.5px + 78.5px); }
     .mt-hand    { left: calc(50% - 30px + 27px);  top: calc(50% - 21.5px + 120.5px); }
-    /* hover: each emoji flies outward, away from the centre (radial), revealing the text */
-    .card-b:hover .mt-rainbow { transform: translate(-14px, -31px); }
-    .card-b:hover .mt-cherry  { transform: translate(46px, -42px); }
-    .card-b:hover .mt-book    { transform: translate(-34px, -3px); }
-    .card-b:hover .mt-fire    { transform: translate(31px, 14px); }
-    .card-b:hover .mt-devil   { transform: translate(-26px, 22px); }
-    .card-b:hover .mt-hand    { transform: translate(7px, 33px); }
-    /* hover: EMOJI cells cascade to green (like solving the word) */
-    .card-b:hover .mt-cells { border-color: #2FB877; }
-    .card-b:hover .mt-cell { color: #2FB877; border-color: #2FB877; animation: mtPop 0.4s ease both; animation-delay: calc(var(--i) * 70ms); }
+    /* hover (desktop) / auto-play (mobile, .is-mtplay): each emoji flies
+       outward, away from the centre (radial), revealing the text */
+    .card-b:hover .mt-rainbow, .card-b.is-mtplay .mt-rainbow { transform: translate(-14px, -31px); }
+    .card-b:hover .mt-cherry,  .card-b.is-mtplay .mt-cherry  { transform: translate(46px, -42px); }
+    .card-b:hover .mt-book,    .card-b.is-mtplay .mt-book    { transform: translate(-34px, -3px); }
+    .card-b:hover .mt-fire,    .card-b.is-mtplay .mt-fire    { transform: translate(31px, 14px); }
+    .card-b:hover .mt-devil,   .card-b.is-mtplay .mt-devil   { transform: translate(-26px, 22px); }
+    .card-b:hover .mt-hand,    .card-b.is-mtplay .mt-hand    { transform: translate(7px, 33px); }
+    /* hover/auto-play: EMOJI cells cascade to green (like solving the word) */
+    .card-b:hover .mt-cells, .card-b.is-mtplay .mt-cells { border-color: #2FB877; }
+    .card-b:hover .mt-cell, .card-b.is-mtplay .mt-cell { color: #2FB877; border-color: #2FB877; animation: mtPop 0.4s ease both; animation-delay: calc(var(--i) * 70ms); }
     @keyframes mtPop { 0% { transform: scale(1); } 45% { transform: scale(1.18); } 100% { transform: scale(1); } }
 
     /* Live sphere work-card */
@@ -4495,6 +4496,49 @@
     });
 
     renderCards();
+
+    /* ══════════════════════════════════════════════════════
+       moji thumbnail — mobile auto-play
+       There's no hover on touch devices, so the cute reveal
+       (emojis fly out + cells cascade green) would never fire.
+       On narrow viewports, pulse the .is-mtplay class on the
+       moji card every ~4s: hold it ~1.6s so the full animation
+       plays, then release so it springs back, and repeat.
+    ══════════════════════════════════════════════════════ */
+    (function initMojiThumbAutoPlay() {
+      const mq = window.matchMedia('(max-width: 640px)');
+      const PERIOD_MS = 4000;   // one play every 4 seconds
+      const HOLD_MS   = 1600;   // how long the "solved" state lingers
+      let timer = null, holdTimer = null;
+
+      const card = () => document.querySelector('.card-b[data-project="moji"]');
+
+      function play() {
+        const c = card();
+        if (!c) return;
+        c.classList.add('is-mtplay');
+        holdTimer = setTimeout(() => c.classList.remove('is-mtplay'), HOLD_MS);
+      }
+      function start() {
+        stop();
+        if (!card()) return;
+        play();                                  // fire once right away
+        timer = setInterval(play, PERIOD_MS);
+      }
+      function stop() {
+        if (timer) { clearInterval(timer); timer = null; }
+        if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+        const c = card(); if (c) c.classList.remove('is-mtplay');
+      }
+      function apply() { mq.matches ? start() : stop(); }
+
+      apply();
+      mq.addEventListener('change', apply);
+      // Pause while the tab is hidden so it isn't mid-animation on return.
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) stop(); else apply();
+      });
+    })();
 
 
     /* ══════════════════════════════════════════════════════
