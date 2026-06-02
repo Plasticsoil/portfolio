@@ -4470,6 +4470,7 @@
       const media = cardEl.querySelector('.card-b-body') || cardEl;
       const r = media.getBoundingClientRect();
       const ov = document.createElement('div');
+      ov.className = 'grow-overlay';
       ov.style.cssText =
         'position:fixed;z-index:100001;background:' + bg +
         ';left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height +
@@ -4484,6 +4485,14 @@
       });
       setTimeout(() => { window.location.href = url; }, 560);
     }
+
+    // When the browser restores this page from its back/forward cache (e.g.
+    // tapping Back after the grow-into-page transition), the full-screen
+    // overlay is still in the DOM and would cover the home page. Strip any
+    // leftover overlay whenever the page is shown so Back always lands home.
+    window.addEventListener('pageshow', () => {
+      document.querySelectorAll('.grow-overlay').forEach((o) => o.remove());
+    });
 
     renderCards();
 
