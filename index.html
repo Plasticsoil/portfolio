@@ -400,6 +400,65 @@
       -webkit-user-drag: none;
     }
 
+    /* ── moji + sphere silhouettes ───────────────────────────────
+       Same grey-silhouette (idle) → gradient-tint (hover) treatment
+       as .ring-card-model, applied to the moji emoji and the hero
+       wireframe sphere. Kept on their own classes so they don't get
+       swept into the model-viewer turntable/spin logic. */
+    .ring-card-emoji,
+    .ring-card-sphere {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 232px;
+      height: 248px;
+      filter: contrast(0) brightness(1.28);
+      transition: filter 0.35s ease;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .ring-card:hover .ring-card-emoji,
+    .ring-card:hover .ring-card-sphere {
+      filter: url(#mv-gradient-tint);
+    }
+    /* Long-press reveal → show true colours, matching the models. */
+    .ring-card.ring-card--model-revealed .ring-card-emoji,
+    .ring-card.ring-card--model-revealed .ring-card-sphere,
+    .ring-card.ring-card--model-revealed:hover .ring-card-emoji,
+    .ring-card.ring-card--model-revealed:hover .ring-card-sphere {
+      filter: none;
+    }
+
+    /* moji — pointing-hand emoji, centred, swaying like the /moji
+       start screen. Size is set per-entry (font-size) in applyHeroConfig. */
+    .ring-card-emoji {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Emoji', sans-serif;
+      font-size: 116px;
+      line-height: 1;
+    }
+    .ring-card-emoji .glyph {
+      display: inline-block;
+      animation: hero-emoji-nudge 1.3s ease-in-out infinite;
+    }
+    /* Mirrors moji/style.css @keyframes nudge (the start-screen hand). */
+    @keyframes hero-emoji-nudge {
+      0%, 100% { transform: translateX(-5px); }
+      50%      { transform: translateX(7px); }
+    }
+
+    /* Hero sphere canvas fills the stage; drawing handled by hero/hero-sphere.js. */
+    .ring-card-sphere { display: block; }
+
+    /* Phones: keep the original 2-object composition (SHLTR + Radiant).
+       moji + sphere (3rd/4th cards) are desktop-only for now — their
+       mobile placement is still TBD. */
+    @media (max-width: 640px) {
+      .hero-cards .ring-card:nth-child(n+3) { display: none; }
+    }
+
     /* Project name label — hidden idle, visible on hover (Figma Glow) */
     .ring-tag {
       position: absolute;
@@ -3507,6 +3566,7 @@
   ══════════════════════════════════════════════════════ -->
   <script src="blocks.js"></script>
   <script src="hero/hero-config.js"></script>
+  <script src="hero/hero-sphere.js"></script>
   <script src="projects/index.js"></script>
   <script src="projects/sphere/project.js"></script>
   <script src="projects/moji/project.js"></script>
@@ -3615,9 +3675,33 @@
       function applyOne(card, entry) {
         const stage = card.querySelector('.ring-card-stage');
         const existing = card.querySelector('.ring-card-model');
+        // Emoji variant (moji): swap in a swaying emoji glyph silhouette.
+        if (entry.emoji && stage) {
+          if (existing) existing.remove();
+          const wrap = document.createElement('div');
+          wrap.className = 'ring-card-emoji';
+          if (entry.scale) wrap.style.fontSize = Math.round(116 * entry.scale) + 'px';
+          const glyph = document.createElement('span');
+          glyph.className = 'glyph';
+          glyph.textContent = entry.emoji;
+          // sway defaults on; set sway:false to hold the glyph still.
+          if (entry.sway === false) glyph.style.animation = 'none';
+          wrap.appendChild(glyph);
+          stage.appendChild(wrap);
+        }
+        // Live wireframe sphere variant (hero/hero-sphere.js).
+        else if (entry.sphere && stage) {
+          if (existing) existing.remove();
+          const cv = document.createElement('canvas');
+          cv.className = 'ring-card-sphere';
+          stage.appendChild(cv);
+          if (typeof window.initHeroSphere === 'function') {
+            window.initHeroSphere(cv, entry.sphereOpts || {});
+          }
+        }
         // Static image variant: swap <model-viewer> for <img>; keeps the same
         // .ring-card-model class so the silhouette + hover-tint filters carry over.
-        if (entry.image && stage) {
+        else if (entry.image && stage) {
           if (existing) existing.remove();
           const img = document.createElement('img');
           img.className = 'ring-card-model';
@@ -3634,7 +3718,12 @@
           const project = entry.projectId && window.__PROJECTS__ && window.__PROJECTS__[entry.projectId];
           tagName.textContent = entry.label || (project && project.title) || tagName.textContent;
         }
-        if (entry.position && POSITIONS[entry.position]) {
+        // Position: explicit x/y offset from centre wins; else the left/right preset.
+        if (typeof entry.x === 'number' || typeof entry.y === 'number') {
+          const x = entry.x || 0, y = entry.y || 0;
+          card.setAttribute('style',
+            'left:calc(50% - 133.335px + ' + x + 'px); top:calc(50% - 88.235px + ' + y + 'px);');
+        } else if (entry.position && POSITIONS[entry.position]) {
           card.setAttribute('style', POSITIONS[entry.position]);
         }
         // Click on the card opens this entry's project overlay (handler in
@@ -4582,7 +4671,10 @@
       }
 
       function startCardCycle() {
-        const cards = Array.from(document.querySelectorAll('.hero-cards .ring-card'));
+        // Skip cards hidden at this breakpoint (moji + sphere are desktop-only),
+        // so the cycle has no dead beats. offsetParent is null when display:none.
+        const cards = Array.from(document.querySelectorAll('.hero-cards .ring-card'))
+          .filter(c => c.offsetParent !== null);
         if (!cards.length) return;
         let i = 0;
         const tick = () => {
@@ -5651,10 +5743,14 @@
           suppressOverlayClick = false;
           return;
         }
-        // Each hero ring-card opens its own project overlay. The project id
-        // is set on the card by applyHeroConfig (data-project="…"); fall back
-        // to 'shltr' for safety if no config has been applied yet.
-        openOverlay(card.dataset.project || 'shltr');
+        // Each hero ring-card opens its own project. The project id is set on
+        // the card by applyHeroConfig (data-project="…"); fall back to 'shltr'.
+        const pid = card.dataset.project || 'shltr';
+        // Link-out projects (moji, sphere) grow into their own page, matching
+        // the work-card behaviour, instead of opening an in-page overlay.
+        const proj = window.__PROJECTS__ && window.__PROJECTS__[pid];
+        if (proj && proj.link) { growIntoPage(card, proj.link, proj.linkBg || '#F8F6F3'); return; }
+        openOverlay(pid);
       });
     });
 
