@@ -771,6 +771,10 @@
       font-family: 'Inter', sans-serif; font-size: 12px; line-height: 1; letter-spacing: -0.02em;
       text-transform: capitalize; white-space: nowrap;
     }
+    /* Wrapper around the central composition (head + cells + emoji stickers),
+       so it can be scaled as one unit on small screens without touching the
+       corner timer/tag. Full-size on desktop (no transform). */
+    .mt-stage { position: absolute; inset: 0; }
     .mt-frame {
       position: absolute; left: calc(50% - 155px); top: calc(50% - 79px + 4px);
       width: 310px; height: 158px; z-index: 2;
@@ -2977,6 +2981,18 @@
         border: 1px solid rgba(163, 160, 155, 0.15);
         box-sizing: border-box;
       }
+      /* moji thumbnail: the composition is laid out for the 400px desktop
+         card. On the narrower mobile card the fixed-px head/cells/emoji would
+         crowd (and the 310px frame can overflow). Scale the whole central
+         composition down in proportion to the card's actual width so it keeps
+         the same breathing room as desktop, at any phone size.
+         100cqw = the card's own width (container); ÷400px = desktop design
+         width; capped at 1 so it never scales *up*. */
+      .card-b-body--mojithumb { container-type: inline-size; }
+      .card-b-body--mojithumb .mt-stage {
+        transform: scale(min(1, calc(100cqw / 400px)));
+        transform-origin: 50% 50%;
+      }
       /* Override desktop's fixed 467×607 turntable body so SHLTR's card
          scales to the mobile column width like every other card.
          The turntable body is also given a transparent bg + no border
@@ -4405,22 +4421,24 @@
         body.innerHTML =
           '<div class="mt-timer">' + _date + '</div>' +
           '<div class="mt-tag">Word Puzzle</div>' +
-          '<div class="mt-frame">' +
-            '<div class="mt-head">Read between the</div>' +
-            '<div class="mt-cells">' +
-              '<div class="mt-cell" style="--i:0">E</div>' +
-              '<div class="mt-cell" style="--i:1">M</div>' +
-              '<div class="mt-cell" style="--i:2">O</div>' +
-              '<div class="mt-cell" style="--i:3">J</div>' +
-              '<div class="mt-cell" style="--i:4">I</div>' +
+          '<div class="mt-stage">' +
+            '<div class="mt-frame">' +
+              '<div class="mt-head">Read between the</div>' +
+              '<div class="mt-cells">' +
+                '<div class="mt-cell" style="--i:0">E</div>' +
+                '<div class="mt-cell" style="--i:1">M</div>' +
+                '<div class="mt-cell" style="--i:2">O</div>' +
+                '<div class="mt-cell" style="--i:3">J</div>' +
+                '<div class="mt-cell" style="--i:4">I</div>' +
+              '</div>' +
             '</div>' +
-          '</div>' +
-          '<div class="mt-em mt-rainbow">🌈</div>' +
-          '<div class="mt-em mt-cherry">🍒</div>' +
-          '<div class="mt-em mt-book">📖</div>' +
-          '<div class="mt-em mt-fire">🔥</div>' +
-          '<div class="mt-em mt-devil">😈</div>' +
-          '<div class="mt-em mt-hand">👆</div>';
+            '<div class="mt-em mt-rainbow">🌈</div>' +
+            '<div class="mt-em mt-cherry">🍒</div>' +
+            '<div class="mt-em mt-book">📖</div>' +
+            '<div class="mt-em mt-fire">🔥</div>' +
+            '<div class="mt-em mt-devil">😈</div>' +
+            '<div class="mt-em mt-hand">👆</div>' +
+          '</div>';
       }
       // 3D GLB turntable (same spin clock as hero .ring-card-model)
       else if (project.turntableModel) {
