@@ -3718,6 +3718,28 @@
           const project = entry.projectId && window.__PROJECTS__ && window.__PROJECTS__[entry.projectId];
           tagName.textContent = entry.label || (project && project.title) || tagName.textContent;
         }
+        // Optional per-object nudge for the hover label, so "/ name" fits each
+        // shape (e.g. below the centred sphere; close to the small moji hand).
+        if (entry.tag) {
+          const tagEl = card.querySelector('.ring-tag');
+          if (tagEl) {
+            if (entry.tag.left != null) tagEl.style.left = entry.tag.left;
+            if (entry.tag.top  != null) tagEl.style.top  = entry.tag.top;
+          }
+        }
+        // Optional per-object hit-area size (kept centred on the card). Small
+        // objects — and the centred sphere — shrink their hit box so they don't
+        // hijack hover/clicks over the headline.
+        if (entry.hit) {
+          const hitEl = card.querySelector('.ring-card-hit');
+          if (hitEl) {
+            const w = entry.hit.w, h = entry.hit.h;
+            hitEl.style.width  = w + 'px';
+            hitEl.style.height = h + 'px';
+            hitEl.style.left = 'calc(50% - ' + (w / 2) + 'px)';
+            hitEl.style.top  = 'calc(50% - ' + (h / 2) + 'px)';
+          }
+        }
         // Position: explicit x/y offset from centre wins; else the left/right preset.
         if (typeof entry.x === 'number' || typeof entry.y === 'number') {
           const x = entry.x || 0, y = entry.y || 0;
