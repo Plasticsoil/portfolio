@@ -12,3 +12,6 @@ package-lock.json
 *.original.glb
 *.original.svg
 *.original.png
+
+# Local Netlify folder
+.netlify

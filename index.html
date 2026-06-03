@@ -452,12 +452,8 @@
     /* Hero sphere canvas fills the stage; drawing handled by hero/hero-sphere.js. */
     .ring-card-sphere { display: block; }
 
-    /* Phones: keep the original 2-object composition (SHLTR + Radiant).
-       moji + sphere (3rd/4th cards) are desktop-only for now — their
-       mobile placement is still TBD. */
-    @media (max-width: 640px) {
-      .hero-cards .ring-card:nth-child(n+3) { display: none; }
-    }
+    /* Phones: all four objects show as a scattered "scrapbook" collage —
+       see the mobile placement in the @media (max-width: 600px) band below. */
 
     /* Project name label — hidden idle, visible on hover (Figma Glow) */
     .ring-tag {
@@ -2765,10 +2761,9 @@
     }
 
     /* ── Mobile (≤600px) ──
-       Layout follows the Figma mobile design (360×3166, bg #F8F6F3):
-       same hero shapes as desktop but smaller and tucked around the
-       headline; single-column cards with 36px side padding; contact
-       stacked centred in order About → Get in touch → Explore More. */
+       Layout: pure-typography hero (decorative objects desktop-only);
+       single-column cards with 36px side padding; contact stacked centred
+       in order About → More to Explore → Get in touch (CTA last). */
     @media (max-width: 600px) {
       :root {
         --navbar-h: 52px;
@@ -2827,8 +2822,10 @@
          shapes around the title rather than two big standalone cards. */
       .hero {
         height: auto;
-        min-height: calc(100vh - 80px);
-        padding: 80px 20px 60px;
+        /* Shorter than the viewport so the "/ my work" label AND a glimpse of
+           the first project peek above the fold — a hint to scroll on. */
+        min-height: calc(100vh - 180px);
+        padding: 80px 20px 40px;
         position: relative;
       }
       .hero-text {
@@ -2841,10 +2838,29 @@
         pointer-events: auto;
       }
       .hero-headline {
-        font-size: 52px;
-        line-height: 120%;
+        font-size: 64px;
+        line-height: 118%;
         letter-spacing: -0.02em;
         text-align: center;
+      }
+      /* Entrance initial state — letters start lowered + invisible, then the
+         heroEntrance() JS staggers them up (rise + gradient sweep) and removes
+         .is-entering. The per-letter transition drives the rise/fade. */
+      .hero-headline.is-entering .letter {
+        opacity: 0;
+        transform: translateY(26px);
+        filter: blur(8px);
+      }
+      .hero-headline .letter {
+        display: inline-block;
+        transition: opacity 0.5s ease, transform 0.55s cubic-bezier(.2,.8,.2,1),
+                    color 0.2s ease, filter 0.45s ease;
+        will-change: opacity, transform, filter;
+      }
+      /* Contact headings + buttons swap grey↔accent in one step (no greyish
+         blend); this transition softens that swap as the spotlight passes. */
+      .contact-section .letter {
+        transition: color 0.28s ease;
       }
       /* Force the headline onto 3 lines per Figma:
          "Welcome / To My / Exhibition".
@@ -2861,65 +2877,11 @@
       .hero-labels {
         display: none;
       }
+      /* Mobile hero is pure typography — the four decorative objects are
+         desktop-only. (The card auto-cycle JS skips hidden cards, so nothing
+         else needs to change to silence it here.) */
       .hero-cards {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-      }
-      /* Override the desktop inline absolute positioning. Two ring-cards
-         (SHLTR + Radiant per HERO_CONFIG) flank the centered 3-line headline. */
-      .hero-cards .ring-card {
-        position: absolute !important;
-        width: 130px !important;
-        height: 130px !important;
-        margin: 0 !important;
-        transform: none !important;
-        pointer-events: auto;
-      }
-      /* SHLTR — left, vertically centered with the headline */
-      .hero-cards .ring-card:nth-child(1) {
-        left: 6px !important;
-        top: 50% !important;
-        right: auto !important;
-        bottom: auto !important;
-        transform: translateY(-50%) !important;
-      }
-      /* Radiant — top-right, above the headline */
-      .hero-cards .ring-card:nth-child(2) {
-        right: 14px !important;
-        top: 70px !important;
-        left: auto !important;
-        bottom: auto !important;
-      }
-      .ring-card-hit {
-        left: 0 !important;
-        top: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-      }
-
-      /* ── Auto-cycle highlight for hero cards ──
-         Mirrors the desktop :hover state: the silhouette mask brightens
-         and gets a soft blur, and the model swaps from grey to gradient
-         tint. .is-pulsing is added/removed by the cycle JS, and the
-         existing CSS transitions on opacity/filter handle the in/out
-         fade — no separate keyframes needed for the glow. */
-      .ring-card.is-pulsing .ring-card-mask {
-        opacity: 1;
-        filter: blur(3px);
-      }
-      .ring-card.is-pulsing .ring-card-model {
-        filter: url(#mv-gradient-tint);
-      }
-      .ring-card.is-pulsing .ring-card-stage {
-        animation: hero-card-pulse 2.6s ease-in-out;
-      }
-      @keyframes hero-card-pulse {
-        0%   { transform: scale(1); }
-        45%  { transform: scale(1.06); }
-        100% { transform: scale(1); }
+        display: none;
       }
 
       /* ── Cards section — single column, 36px side padding, 120px gap
@@ -2944,11 +2906,13 @@
       /* Two ".cards-col-header" labels exist (one per desktop column).
          Show only the first as the single "/ my work" header on mobile;
          hide the duplicate from the second column. */
+      /* Pull the first project up toward the "/ my work" label — the default
+         120px inter-item gap is too large between the header and project #1. */
       .cards-col-header {
         order: -1;
         height: auto;
         width: auto;
-        margin: 0;
+        margin: 0 0 -76px;
       }
       .cards-col:nth-of-type(2) .cards-col-header {
         display: none;
@@ -3051,7 +3015,7 @@
       }
 
       /* ── Contact section — three centred blocks per Figma:
-         About → Get in touch → Explore More.
+         About → More to Explore → Get in touch (CTA last).
          Section: padding 200px 36px 120px, gap 100px between blocks.
          Block: gap 24px between heading/body/buttons.
          Heading: Instrument Serif 52px, 0.4px stroke in muted tone.
@@ -3077,9 +3041,11 @@
         gap: 24px;
         box-sizing: border-box;
       }
+      /* Stack: About → More to Explore → Get in touch (LAST / bottom-most),
+         so the "Get in touch" CTA is the final text on the page. */
       .contact-col-left   { order: 0; }
-      .contact-bottom     { order: 1; }
-      .contact-col-right  { order: 2; align-items: center; }
+      .contact-col-right  { order: 1; align-items: center; }
+      .contact-bottom     { order: 2; }
 
       .contact-col-right .contact-btn-row,
       .contact-col-left  .contact-btn-row {
@@ -3121,10 +3087,13 @@
         font-size: 16px;
         text-decoration: none;
         letter-spacing: -0.01em;
-        transition: background 0.65s ease, color 0.65s ease;
+        transition: background 0.65s ease, color 0.25s ease;
       }
+      /* Spotlight glow behind the button, driven by the --glow var the JS sets
+         from the scroll mix (the text itself is left sharp). */
       .contact-btn::before {
-        transition: opacity 0.7s ease;
+        opacity: var(--glow, 0);
+        transition: opacity 0.2s ease;
       }
       /* "More to Explore" gets its text replaced by JS to "Explore More"
          on mobile (so the existing letter-wrap can split it into per-letter
@@ -4655,86 +4624,213 @@
 
 
     /* ══════════════════════════════════════════════════════
-       MOBILE HERO ANIMATION CYCLE
-       Replaces hover-driven hero behavior with two automatic
-       phases on touch / narrow viewports:
-         1. Letter wave — the headline characters bounce in
-            reading order on first paint (one-shot).
-         2. Highlight cycle — each hero card pulses in turn,
-            DOM-order = visual top-to-bottom on the stacked
-            mobile layout (clockwise on a future ring layout).
-       Pace is fixed per element (PACE_PER_CARD_MS), so adding
-       or removing cards keeps the same vibe — pace stays the
-       same, total cycle time scales with count.
+       MOBILE — HEADLINE GRADIENTS (entrance + scroll spotlight + pulse)
+       Mobile-only. Owns the per-letter colour of the serif headlines
+       (hero + contact) by driving the SAME .letter spans the desktop
+       hover uses. Three behaviours:
+         1. Hero entrance (one-shot): letters stagger up while the
+            pink→yellow→cyan accent sweeps through, then settle to grey.
+         2. Scroll spotlight: whichever headline is crossing the vertical
+            centre of the viewport lights up with the gradient; it fades
+            back to grey as it leaves centre.
+         3. "Get in touch" pulse: that heading sweeps the gradient
+            periodically. Per letter, finalMix = max(scrollMix, pulse).
+       Pure vanilla, reusing letterColor() — no library, no background-clip
+       (iOS Safari ignores background-attachment:fixed, so we colour the
+       letters directly).
     ══════════════════════════════════════════════════════ */
-    (function initMobileHeroCycle() {
-      const mq = window.matchMedia('(max-width: 640px)');
+    (function initMobileHeadlineGradients() {
+      const mq = window.matchMedia('(max-width: 600px)');
 
-      const LETTER_STAGGER_MS = 75;   // per-letter wave delay
-      const PACE_PER_CARD_MS  = 2800; // per-card pulse cadence
-      const POST_WAVE_PAUSE   = 600;  // breath before card cycle starts
+      const GREY            = [163, 160, 155]; // --color-muted #A3A09B
+      const BAND_FRAC       = 0.30;  // spotlight ramp half-height as a fraction of the viewport
+      const PLATEAU_PX      = 70;    // fully-lit zone around viewport centre (sharp + full colour)
+      const ENTER_STAGGER_MS= 70;    // hero entrance per-letter delay
+      const ENTER_HOLD_MS   = 600;   // how long a swept letter holds colour before settling
+      const PULSE_EVERY_MS  = 5000;  // "Get in touch" pulse cadence
+      const PULSE_SWEEP_MS  = 1150;  // duration of one left→right pulse sweep
+      const PULSE_WIDTH     = 0.5;   // width of the moving bright window (normalised letter space)
+      const MAXBLUR         = 8;     // peak blur (px), matches the desktop hover focus-pull
 
-      let cycleTimer = null;
+      // Headlines that react to the scroll spotlight (already letter-wrapped by
+      // the main wrap pass). The hero headline is intentionally excluded: it sits
+      // at the viewport centre at rest, so the spotlight would permanently override
+      // its entrance "settle to grey". It gets the one-shot entrance only; the
+      // spotlight is for elements that actually scroll THROUGH centre.
+      const HEADLINE_SELECTORS = ['.contact-about-heading',
+                                  '.contact-more-label', '.contact-heading'];
+      // Buttons under About + Explore get the spotlight as a coloured+blurred
+      // glow BEHIND them (the ::before frame) with the text flipping to black —
+      // the text itself is never wrapped or blurred (so it also stays title-case).
+      const BUTTON_SELECTORS = ['.contact-col-left .contact-btn',
+                                '.contact-col-right .contact-btn'];
 
-      function fireLetterWave() {
-        const letters = document.querySelectorAll('.hero-headline .letter');
-        if (!letters.length) return 0;
-        letters.forEach((s, i) => {
-          setTimeout(() => {
-            // Mirror the desktop hover behaviour: re-trigger the bounce
-            // animation via remove → reflow → add. Color/blur are skipped
-            // here so the wave reads as motion only (calm, not flashy).
-            s.classList.remove('bouncing');
-            void s.offsetWidth;
-            s.classList.add('bouncing');
-          }, i * LETTER_STAGGER_MS);
+      // grey → accent(t) blended by m∈[0,1]. '' means "inherit the CSS grey".
+      function mixed(t, m) {
+        if (m <= 0.001) return '';
+        const acc = (typeof letterColor === 'function') ? letterColor(t) : 'rgb(163,160,155)';
+        const p = acc.match(/\d+/g);
+        if (!p) return '';
+        const r = Math.round(GREY[0] + (p[0] - GREY[0]) * m);
+        const g = Math.round(GREY[1] + (p[1] - GREY[1]) * m);
+        const b = Math.round(GREY[2] + (p[2] - GREY[2]) * m);
+        return 'rgb(' + r + ',' + g + ',' + b + ')';
+      }
+
+      let groups = [];   // headings: per-letter gradient + blur
+      let buttons = [];  // buttons: glow frame behind + black text, sharp text
+      function collect() {
+        groups = [];
+        HEADLINE_SELECTORS.forEach(sel => {
+          const el = document.querySelector(sel);
+          if (!el) return;
+          const letters = Array.from(el.querySelectorAll('.letter'));
+          if (letters.length) groups.push({ el, letters, isContact: sel === '.contact-heading' });
         });
-        return letters.length * LETTER_STAGGER_MS + 900; // wave length + bounce duration
+        buttons = [];
+        BUTTON_SELECTORS.forEach(sel => {
+          document.querySelectorAll(sel).forEach(el => buttons.push(el));
+        });
       }
 
-      function startCardCycle() {
-        // Skip cards hidden at this breakpoint (moji + sphere are desktop-only),
-        // so the cycle has no dead beats. offsetParent is null when display:none.
-        const cards = Array.from(document.querySelectorAll('.hero-cards .ring-card'))
-          .filter(c => c.offsetParent !== null);
-        if (!cards.length) return;
-        let i = 0;
-        const tick = () => {
-          cards.forEach(c => c.classList.remove('is-pulsing'));
-          // Force reflow so the keyframe animation re-runs from frame 0
-          // even when the same card is targeted again on a single-card hero.
-          void cards[i].offsetWidth;
-          cards[i].classList.add('is-pulsing');
-          i = (i + 1) % cards.length;
-        };
-        tick(); // start immediately so the first pulse hits right after the wave
-        cycleTimer = setInterval(tick, PACE_PER_CARD_MS);
+      // Write per-letter colour + blur. Once a letter is "on" it gets the FULL,
+      // pure accent (never a grey→accent blend) and its muted text-stroke is
+      // zeroed — so no greyness shows through the colour. The spotlight ramp is
+      // carried entirely by the blur (proportional to the mix), and a CSS colour
+      // transition smooths the grey↔accent swap. Grey letters stay sharp.
+      function paint(letters, fn) {
+        const n = letters.length;
+        for (let i = 0; i < n; i++) {
+          const s = letters[i];
+          const t = n > 1 ? i / (n - 1) : 0.5;
+          const m = Math.max(0, Math.min(1, fn(i, n)));
+          const on = m > 0.06;
+          s.style.color = on ? mixed(t, 1) : '';   // full accent or inherit grey
+          s.style.webkitTextStrokeWidth = on ? '0' : '';
+          const b = m * MAXBLUR;
+          s.style.filter = b > 0.05 ? 'blur(' + b.toFixed(2) + 'px)' : '';
+        }
       }
 
-      function stopCardCycle() {
-        if (cycleTimer) { clearInterval(cycleTimer); cycleTimer = null; }
-        document.querySelectorAll('.hero-cards .ring-card.is-pulsing')
-          .forEach(c => c.classList.remove('is-pulsing'));
+      function scrollMixFor(el) {
+        const r = el.getBoundingClientRect();
+        const dist = Math.abs((r.top + r.height / 2) - window.innerHeight / 2);
+        const band = window.innerHeight * BAND_FRAC;
+        // PLATEAU px around dead-centre read as fully lit (mix=1) → the centred
+        // headline is sharp + full colour; blur only appears in the ramp zone.
+        return Math.max(0, 1 - Math.max(0, dist - PLATEAU_PX) / band);
       }
 
-      function activate() {
-        const waveDur = fireLetterWave();
-        setTimeout(startCardCycle, waveDur + POST_WAVE_PAUSE);
+      // Travelling bright window for the "Get in touch" pulse.
+      let pulseStart = -1;
+      function pulseEnvelope(i, n, now) {
+        if (pulseStart < 0) return 0;
+        const prog = (now - pulseStart) / PULSE_SWEEP_MS;       // 0..1
+        if (prog < 0 || prog > 1) return 0;
+        const pos = n > 1 ? i / (n - 1) : 0.5;
+        const head = prog * (1 + PULSE_WIDTH) - PULSE_WIDTH / 2; // window centre sweeps L→R
+        const win = Math.max(0, 1 - Math.abs(pos - head) / (PULSE_WIDTH / 2));
+        return win * Math.sin(prog * Math.PI);                  // fade the sweep in/out
       }
 
-      function handleChange() {
-        if (mq.matches) activate();
-        else stopCardCycle();
+      let rafPending = false;
+      let entranceActive = false;
+      function render() {
+        rafPending = false;
+        const now = performance.now();
+        for (const g of groups) {
+          if (g.el.classList.contains('hero-headline') && entranceActive) continue;
+          const sm = scrollMixFor(g.el);
+          paint(g.letters, (i, n) => g.isContact ? Math.max(sm, pulseEnvelope(i, n, now)) : sm);
+        }
+        // Buttons: the coloured+blurred glow lives behind them (::before, driven
+        // by --glow); the TEXT itself never blurs and just flips to black when lit.
+        for (const btn of buttons) {
+          const sm = scrollMixFor(btn);
+          btn.style.setProperty('--glow', sm.toFixed(3));
+          btn.style.color = sm > 0.4 ? 'var(--color-ink)' : '';
+        }
+        if (pulseStart >= 0) {
+          if (now - pulseStart > PULSE_SWEEP_MS) { pulseStart = -1; requestRender(); }
+          else requestRender();
+        }
+      }
+      function requestRender() {
+        if (!rafPending) { rafPending = true; requestAnimationFrame(render); }
       }
 
-      // Defer one frame so renderCards() finishes wiring the DOM first.
+      // ── Hero entrance (one-shot) ──
+      let entranceDone = false;
+      function heroEntrance() {
+        const hero = document.querySelector('.hero-headline');
+        if (!hero) return;
+        const letters = Array.from(hero.querySelectorAll('.letter'));
+        if (!letters.length) return;
+        entranceDone = true;
+        entranceActive = true;
+        hero.classList.add('is-entering'); // CSS: letters lowered + invisible
+        requestAnimationFrame(() => {
+          const n = letters.length;
+          letters.forEach((s, i) => {
+            const t = n > 1 ? i / (n - 1) : 0.5;
+            setTimeout(() => {
+              s.style.opacity = '1';
+              s.style.transform = 'translateY(0)';
+              s.style.filter = 'blur(' + MAXBLUR + 'px)'; // coloured → blurred (same rule as the spotlight)
+              s.style.color = mixed(t, 1);                // full accent on arrival
+              s.style.webkitTextStrokeWidth = '0';
+              setTimeout(() => {                       // settle to grey → sharpen
+                s.style.color = '';
+                s.style.webkitTextStrokeWidth = '';
+                s.style.filter = 'blur(0px)';
+              }, ENTER_HOLD_MS);
+            }, i * ENTER_STAGGER_MS);
+          });
+          setTimeout(() => {
+            hero.classList.remove('is-entering');
+            entranceActive = false;
+            requestRender();                           // hand off to the scroll spotlight
+          }, n * ENTER_STAGGER_MS + ENTER_HOLD_MS + 200);
+        });
+      }
+
+      // ── Lifecycle ──
+      let started = false;
+      let pulseTimer = null;
+      function start() {
+        collect();
+        if (!groups.length) return;
+        if (!entranceDone) heroEntrance();
+        requestRender();
+        window.addEventListener('scroll', requestRender, { passive: true });
+        window.addEventListener('resize', requestRender, { passive: true });
+        pulseTimer = setInterval(() => {
+          const contact = document.querySelector('.contact-heading');
+          if (!contact) return;
+          const r = contact.getBoundingClientRect();
+          if (r.bottom < 0 || r.top > window.innerHeight) return; // skip when off-screen
+          pulseStart = performance.now();
+          requestRender();
+        }, PULSE_EVERY_MS);
+        started = true;
+      }
+      function stop() {
+        window.removeEventListener('scroll', requestRender);
+        window.removeEventListener('resize', requestRender);
+        if (pulseTimer) { clearInterval(pulseTimer); pulseTimer = null; }
+        groups.forEach(g => g.letters.forEach(s => {
+          s.style.color = ''; s.style.webkitTextStrokeWidth = ''; s.style.filter = '';
+        }));
+        buttons.forEach(b => { b.style.removeProperty('--glow'); b.style.color = ''; });
+        started = false;
+      }
+      function apply() { if (mq.matches) { if (!started) start(); } else if (started) stop(); }
+
+      // Defer a frame so the letter-wrap pass has run first.
       requestAnimationFrame(() => {
-        if (mq.matches) activate();
-        // If the viewport flips between mobile/desktop later (devtools, rotate),
-        // start/stop the cycle accordingly. The letter wave only re-fires
-        // when crossing back into mobile (felt cleaner than firing every flip).
-        if (mq.addEventListener) mq.addEventListener('change', handleChange);
-        else mq.addListener(handleChange); // older Safari
+        apply();
+        if (mq.addEventListener) mq.addEventListener('change', apply);
+        else mq.addListener(apply);
       });
     })();
 
@@ -4750,7 +4846,10 @@
        blur-in/out + gradient color, then resets back.
     ══════════════════════════════════════════════════════ */
     (function initMobileContactCycle() {
-      const mq = window.matchMedia('(max-width: 600px)');
+      // DISABLED on mobile: the contact headings' per-letter colour is now owned
+      // by initMobileHeadlineGradients (scroll spotlight + "Get in touch" pulse).
+      // Stubbed mq (never matches) keeps this legacy breath-cycle from fighting it.
+      const mq = { matches: false, addEventListener() {}, addListener() {} };
       const STAGGER_MS              = 95;   // per-letter wave delay inside a heading
       const HEADING_TO_BUTTON_DELAY = 450;  // pause after a heading before the next button
       const BUTTON_TO_BUTTON_DELAY  = 350;  // pause between two buttons in the same row
