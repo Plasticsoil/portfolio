@@ -40,24 +40,31 @@ window.HERO_CONFIG = {
       position: 'right'
     },
     // moji — pointing-hand emoji, sways like the /moji start screen.
+    // Small hand; label sits close to it (not floating far above).
     {
       projectId: 'moji',
       emoji: '👉',
       sway: true,
       tooltip: 'See More',
       label: 'moji',
-      x: -545, y: -150,
-      scale: 0.8
+      x: -360, y: -150,
+      scale: 0.5,
+      tag: { left: '100px', top: '18px' },
+      hit: { w: 150, h: 170 }
     },
-    // sphere — live wireframe sphere: low line density, slightly thicker
-    // strokes than the work-card thumbnail, slow auto-rotation.
+    // sphere — live wireframe sphere, centred on screen as a faint backdrop:
+    // thinner lines so it doesn't compete with the headline, low density,
+    // slow auto-rotation. Hover label pushed BELOW the sphere (won't clash
+    // with the hero text above it).
     {
       projectId: 'sphere',
       sphere: true,
       tooltip: 'See More',
       label: 'Sphere',
-      x: 440, y: 170,
-      sphereOpts: { lat: 9, lon: 13, lineWidth: 2.2, speed: 0.004, scale: 0.55 }
+      x: 0, y: 0,
+      sphereOpts: { lat: 9, lon: 13, lineWidth: 1.3, speed: 0.004, scale: 0.55 },
+      tag: { left: '95px', top: '196px' },
+      hit: { w: 240, h: 240 }
     }
   ]
 };
