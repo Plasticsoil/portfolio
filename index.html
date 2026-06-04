@@ -4671,12 +4671,14 @@
          1. "Open up" entrance — letters stagger up with the accent gradient
             + blur, then settle to grey. The hero plays it on load; each contact
             heading plays it once when it scrolls into view (IntersectionObserver).
-         2. Buttons (navbar Contact / Resume / LinkedIn / Behance / Email /
-            Phone): rise in plain, then glow-flash in a periodic cascade
-            while on screen (first flash at the t=5s pulse tick, never on
-            arrival). Their glow is the coloured+blurred ::before frame
-            BEHIND the text, with the text flipping to ink — the button text
-            itself never blurs. Titles never pulse; they open up once.
+         2. CTA buttons (Resume / LinkedIn / Behance / Email / Phone): rise in
+            plain, then glow-flash in a periodic cascade while on screen (first
+            flash at the t=5s pulse tick, never on arrival). Their glow is the
+            coloured+blurred ::before frame BEHIND the text, with the text
+            flipping to ink — the button text itself never blurs. Titles never
+            pulse; they open up once.
+            The navbar Contact link is the exception: it drops in once and then
+            stays permanently lit (steady glow), it does NOT pulse.
     ══════════════════════════════════════════════════════ */
     (function initMobileHeadlines() {
       const mq = window.matchMedia('(max-width: 600px)');
@@ -4689,8 +4691,10 @@
       // Titles that "open up" then settle grey (hero on load; contact headings
       // when scrolled into view). Buttons keep a continuous glow behind them.
       const CONTACT_HEADINGS = ['.contact-about-heading', '.contact-more-label', '.contact-heading'];
-      const BUTTON_SELECTORS = ['.navbar .nav-link[href="#contact"]',
-                                '.contact-col-left .contact-btn', '.contact-col-right .contact-btn',
+      // The navbar Contact link stays permanently lit on mobile (steady glow,
+      // set in start()); it is intentionally NOT part of the pulsing cascade.
+      const NAV_CONTACT_SEL = '.navbar .nav-link[href="#contact"]';
+      const BUTTON_SELECTORS = ['.contact-col-left .contact-btn', '.contact-col-right .contact-btn',
                                 '.contact-bottom .contact-btn'];
 
       const accent = (t) => (typeof letterColor === 'function') ? letterColor(t) : 'rgb(163,160,155)';
@@ -4780,6 +4784,19 @@
           if (supportsIO) { el.classList.add('is-entering'); io.observe(el); }
         }));
 
+        // Navbar Contact: drop in once, then stay permanently lit (steady glow
+        // + ink text) — no pulsing. It's not in `buttons`, so the cascade below
+        // never touches it.
+        const navContact = document.querySelector(NAV_CONTACT_SEL);
+        if (navContact) {
+          navContact.classList.add('is-entering');          // pre-hide for the drop-in
+          setTimeout(() => {
+            navContact.classList.remove('is-entering');      // …rise in…
+            navContact.style.setProperty('--glow', '1');     // …and stay lit
+            navContact.style.color = 'var(--color-ink)';
+          }, 80);
+        }
+
         // Periodic pulse while on screen — the buttons (incl. the Email/Phone
         // CTAs) flash their glow in a small cascade. Titles don't pulse; they
         // only "open up" once. Skips anything still pre-hidden.
@@ -4811,6 +4828,12 @@
           b.style.removeProperty('--glow');
           b.style.color = '';
         });
+        const navContact = document.querySelector(NAV_CONTACT_SEL);
+        if (navContact) {
+          navContact.classList.remove('is-entering');
+          navContact.style.removeProperty('--glow');
+          navContact.style.color = '';
+        }
         started = false;
       }
       function apply() { if (mq.matches) { if (!started) start(); } else if (started) stop(); }
