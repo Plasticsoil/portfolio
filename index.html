@@ -2816,6 +2816,22 @@
       @media (hover: none) {
         .nav-logo::before, .nav-link::before { display: none; }
       }
+      /* The Contact nav link joins the CTA-button lifecycle on mobile:
+         it drops in on load and pulses the coloured+blurred glow frame
+         (driven by --glow from JS, like the contact buttons). */
+      .nav-link[href="#contact"] {
+        transition: background 0.65s ease, color 0.25s ease,
+                    opacity 0.5s ease, transform 0.55s cubic-bezier(.2,.8,.2,1);
+      }
+      .nav-link[href="#contact"].is-entering {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      .nav-link[href="#contact"]::before {
+        display: block;
+        opacity: var(--glow, 0);
+        transition: opacity 0.45s ease;
+      }
 
       /* ── Hero — same composition as desktop (cards flank headline)
          but the cards shrink and tuck close so they read as decorative
@@ -2843,24 +2859,26 @@
         letter-spacing: -0.02em;
         text-align: center;
       }
-      /* Entrance initial state — letters start lowered + invisible, then the
-         heroEntrance() JS staggers them up (rise + gradient sweep) and removes
-         .is-entering. The per-letter transition drives the rise/fade. */
-      .hero-headline.is-entering .letter {
+      /* Entrance initial state — letters start lowered + invisible + blurred,
+         then playEntrance() staggers them up (rise + gradient sweep) and removes
+         .is-entering. Shared by the hero (on load) and each contact heading
+         (when it scrolls into view) so they all "open up" the same way. */
+      .hero-headline.is-entering .letter,
+      .contact-about-heading.is-entering .letter,
+      .contact-more-label.is-entering .letter,
+      .contact-heading.is-entering .letter {
         opacity: 0;
         transform: translateY(26px);
         filter: blur(8px);
       }
-      .hero-headline .letter {
+      .hero-headline .letter,
+      .contact-about-heading .letter,
+      .contact-more-label .letter,
+      .contact-heading .letter {
         display: inline-block;
         transition: opacity 0.5s ease, transform 0.55s cubic-bezier(.2,.8,.2,1),
                     color 0.2s ease, filter 0.45s ease;
         will-change: opacity, transform, filter;
-      }
-      /* Contact headings + buttons swap grey↔accent in one step (no greyish
-         blend); this transition softens that swap as the spotlight passes. */
-      .contact-section .letter {
-        transition: color 0.28s ease;
       }
       /* Force the headline onto 3 lines per Figma:
          "Welcome / To My / Exhibition".
@@ -3087,13 +3105,19 @@
         font-size: 16px;
         text-decoration: none;
         letter-spacing: -0.01em;
-        transition: background 0.65s ease, color 0.25s ease;
+        transition: background 0.65s ease, color 0.25s ease,
+                    opacity 0.5s ease, transform 0.55s cubic-bezier(.2,.8,.2,1);
       }
-      /* Spotlight glow behind the button, driven by the --glow var the JS sets
-         from the scroll mix (the text itself is left sharp). */
+      /* Pre-hidden until revealed by the open-up (mirrors the headings). */
+      .contact-btn.is-entering {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+      /* Glow frame behind the button — flashed on by JS (open-up + periodic
+         pulse, same lifecycle as "Get in touch"); the text itself never blurs. */
       .contact-btn::before {
         opacity: var(--glow, 0);
-        transition: opacity 0.2s ease;
+        transition: opacity 0.45s ease;
       }
       /* "More to Explore" gets its text replaced by JS to "Explore More"
          on mobile (so the existing letter-wrap can split it into per-letter
@@ -4624,204 +4648,151 @@
 
 
     /* ══════════════════════════════════════════════════════
-       MOBILE — HEADLINE GRADIENTS (entrance + scroll spotlight + pulse)
-       Mobile-only. Owns the per-letter colour of the serif headlines
-       (hero + contact) by driving the SAME .letter spans the desktop
-       hover uses. Three behaviours:
-         1. Hero entrance (one-shot): letters stagger up while the
-            pink→yellow→cyan accent sweeps through, then settle to grey.
-         2. Scroll spotlight: whichever headline is crossing the vertical
-            centre of the viewport lights up with the gradient; it fades
-            back to grey as it leaves centre.
-         3. "Get in touch" pulse: that heading sweeps the gradient
-            periodically. Per letter, finalMix = max(scrollMix, pulse).
-       Pure vanilla, reusing letterColor() — no library, no background-clip
-       (iOS Safari ignores background-attachment:fixed, so we colour the
-       letters directly).
+       MOBILE — HEADLINE "OPEN UP" + BUTTON GLOW
+       Mobile-only, driving the existing .letter spans (no library).
+         1. "Open up" entrance — letters stagger up with the accent gradient
+            + blur, then settle to grey. The hero plays it on load; each contact
+            heading plays it once when it scrolls into view (IntersectionObserver).
+         2. Buttons (navbar Contact / Resume / LinkedIn / Behance / Email /
+            Phone): rise in plain, then glow-flash in a periodic cascade
+            while on screen (first flash at the t=5s pulse tick, never on
+            arrival). Their glow is the coloured+blurred ::before frame
+            BEHIND the text, with the text flipping to ink — the button text
+            itself never blurs. Titles never pulse; they open up once.
     ══════════════════════════════════════════════════════ */
-    (function initMobileHeadlineGradients() {
+    (function initMobileHeadlines() {
       const mq = window.matchMedia('(max-width: 600px)');
 
-      const GREY            = [163, 160, 155]; // --color-muted #A3A09B
-      const BAND_FRAC       = 0.30;  // spotlight ramp half-height as a fraction of the viewport
-      const PLATEAU_PX      = 70;    // fully-lit zone around viewport centre (sharp + full colour)
-      const ENTER_STAGGER_MS= 70;    // hero entrance per-letter delay
-      const ENTER_HOLD_MS   = 600;   // how long a swept letter holds colour before settling
-      const PULSE_EVERY_MS  = 5000;  // "Get in touch" pulse cadence
-      const PULSE_SWEEP_MS  = 1150;  // duration of one left→right pulse sweep
-      const PULSE_WIDTH     = 0.5;   // width of the moving bright window (normalised letter space)
-      const MAXBLUR         = 8;     // peak blur (px), matches the desktop hover focus-pull
+      const STAGGER_MS     = 70;    // entrance/pulse per-letter delay
+      const HOLD_MS        = 600;   // how long a swept letter holds colour before settling grey
+      const PULSE_EVERY_MS = 5000;  // "Get in touch" pulse cadence
+      const MAXBLUR        = 8;     // peak blur (px)
 
-      // Headlines that react to the scroll spotlight (already letter-wrapped by
-      // the main wrap pass). The hero headline is intentionally excluded: it sits
-      // at the viewport centre at rest, so the spotlight would permanently override
-      // its entrance "settle to grey". It gets the one-shot entrance only; the
-      // spotlight is for elements that actually scroll THROUGH centre.
-      const HEADLINE_SELECTORS = ['.contact-about-heading',
-                                  '.contact-more-label', '.contact-heading'];
-      // Buttons under About + Explore get the spotlight as a coloured+blurred
-      // glow BEHIND them (the ::before frame) with the text flipping to black —
-      // the text itself is never wrapped or blurred (so it also stays title-case).
-      const BUTTON_SELECTORS = ['.contact-col-left .contact-btn',
-                                '.contact-col-right .contact-btn'];
+      // Titles that "open up" then settle grey (hero on load; contact headings
+      // when scrolled into view). Buttons keep a continuous glow behind them.
+      const CONTACT_HEADINGS = ['.contact-about-heading', '.contact-more-label', '.contact-heading'];
+      const BUTTON_SELECTORS = ['.navbar .nav-link[href="#contact"]',
+                                '.contact-col-left .contact-btn', '.contact-col-right .contact-btn',
+                                '.contact-bottom .contact-btn'];
 
-      // grey → accent(t) blended by m∈[0,1]. '' means "inherit the CSS grey".
-      function mixed(t, m) {
-        if (m <= 0.001) return '';
-        const acc = (typeof letterColor === 'function') ? letterColor(t) : 'rgb(163,160,155)';
-        const p = acc.match(/\d+/g);
-        if (!p) return '';
-        const r = Math.round(GREY[0] + (p[0] - GREY[0]) * m);
-        const g = Math.round(GREY[1] + (p[1] - GREY[1]) * m);
-        const b = Math.round(GREY[2] + (p[2] - GREY[2]) * m);
-        return 'rgb(' + r + ',' + g + ',' + b + ')';
-      }
+      const accent = (t) => (typeof letterColor === 'function') ? letterColor(t) : 'rgb(163,160,155)';
 
-      let groups = [];   // headings: per-letter gradient + blur
-      let buttons = [];  // buttons: glow frame behind + black text, sharp text
-      function collect() {
-        groups = [];
-        HEADLINE_SELECTORS.forEach(sel => {
-          const el = document.querySelector(sel);
-          if (!el) return;
-          const letters = Array.from(el.querySelectorAll('.letter'));
-          if (letters.length) groups.push({ el, letters, isContact: sel === '.contact-heading' });
-        });
-        buttons = [];
-        BUTTON_SELECTORS.forEach(sel => {
-          document.querySelectorAll(sel).forEach(el => buttons.push(el));
-        });
-      }
-
-      // Write per-letter colour + blur. Once a letter is "on" it gets the FULL,
-      // pure accent (never a grey→accent blend) and its muted text-stroke is
-      // zeroed — so no greyness shows through the colour. The spotlight ramp is
-      // carried entirely by the blur (proportional to the mix), and a CSS colour
-      // transition smooths the grey↔accent swap. Grey letters stay sharp.
-      function paint(letters, fn) {
+      // ── One-shot "open up": letters sweep in with the accent gradient + blur,
+      //    then settle to grey. rise=true also raises + fades them in. ──
+      function playEntrance(el, rise) {
+        const letters = Array.from(el.querySelectorAll('.letter'));
+        if (!letters.length || el._animating) return;
+        el._animating = true;
         const n = letters.length;
-        for (let i = 0; i < n; i++) {
-          const s = letters[i];
-          const t = n > 1 ? i / (n - 1) : 0.5;
-          const m = Math.max(0, Math.min(1, fn(i, n)));
-          const on = m > 0.06;
-          s.style.color = on ? mixed(t, 1) : '';   // full accent or inherit grey
-          s.style.webkitTextStrokeWidth = on ? '0' : '';
-          const b = m * MAXBLUR;
-          s.style.filter = b > 0.05 ? 'blur(' + b.toFixed(2) + 'px)' : '';
-        }
-      }
-
-      function scrollMixFor(el) {
-        const r = el.getBoundingClientRect();
-        const dist = Math.abs((r.top + r.height / 2) - window.innerHeight / 2);
-        const band = window.innerHeight * BAND_FRAC;
-        // PLATEAU px around dead-centre read as fully lit (mix=1) → the centred
-        // headline is sharp + full colour; blur only appears in the ramp zone.
-        return Math.max(0, 1 - Math.max(0, dist - PLATEAU_PX) / band);
-      }
-
-      // Travelling bright window for the "Get in touch" pulse.
-      let pulseStart = -1;
-      function pulseEnvelope(i, n, now) {
-        if (pulseStart < 0) return 0;
-        const prog = (now - pulseStart) / PULSE_SWEEP_MS;       // 0..1
-        if (prog < 0 || prog > 1) return 0;
-        const pos = n > 1 ? i / (n - 1) : 0.5;
-        const head = prog * (1 + PULSE_WIDTH) - PULSE_WIDTH / 2; // window centre sweeps L→R
-        const win = Math.max(0, 1 - Math.abs(pos - head) / (PULSE_WIDTH / 2));
-        return win * Math.sin(prog * Math.PI);                  // fade the sweep in/out
-      }
-
-      let rafPending = false;
-      let entranceActive = false;
-      function render() {
-        rafPending = false;
-        const now = performance.now();
-        for (const g of groups) {
-          if (g.el.classList.contains('hero-headline') && entranceActive) continue;
-          const sm = scrollMixFor(g.el);
-          paint(g.letters, (i, n) => g.isContact ? Math.max(sm, pulseEnvelope(i, n, now)) : sm);
-        }
-        // Buttons: the coloured+blurred glow lives behind them (::before, driven
-        // by --glow); the TEXT itself never blurs and just flips to black when lit.
-        for (const btn of buttons) {
-          const sm = scrollMixFor(btn);
-          btn.style.setProperty('--glow', sm.toFixed(3));
-          btn.style.color = sm > 0.4 ? 'var(--color-ink)' : '';
-        }
-        if (pulseStart >= 0) {
-          if (now - pulseStart > PULSE_SWEEP_MS) { pulseStart = -1; requestRender(); }
-          else requestRender();
-        }
-      }
-      function requestRender() {
-        if (!rafPending) { rafPending = true; requestAnimationFrame(render); }
-      }
-
-      // ── Hero entrance (one-shot) ──
-      let entranceDone = false;
-      function heroEntrance() {
-        const hero = document.querySelector('.hero-headline');
-        if (!hero) return;
-        const letters = Array.from(hero.querySelectorAll('.letter'));
-        if (!letters.length) return;
-        entranceDone = true;
-        entranceActive = true;
-        hero.classList.add('is-entering'); // CSS: letters lowered + invisible
+        if (rise) el.classList.add('is-entering');
         requestAnimationFrame(() => {
-          const n = letters.length;
           letters.forEach((s, i) => {
             const t = n > 1 ? i / (n - 1) : 0.5;
             setTimeout(() => {
-              s.style.opacity = '1';
-              s.style.transform = 'translateY(0)';
-              s.style.filter = 'blur(' + MAXBLUR + 'px)'; // coloured → blurred (same rule as the spotlight)
-              s.style.color = mixed(t, 1);                // full accent on arrival
+              if (rise) { s.style.opacity = '1'; s.style.transform = 'translateY(0)'; }
+              s.style.color = accent(t);                  // full accent on arrival
+              s.style.filter = 'blur(' + MAXBLUR + 'px)'; // blurred on arrival
               s.style.webkitTextStrokeWidth = '0';
-              setTimeout(() => {                       // settle to grey → sharpen
+              setTimeout(() => {                          // settle: sharpen + grey
                 s.style.color = '';
-                s.style.webkitTextStrokeWidth = '';
                 s.style.filter = 'blur(0px)';
-              }, ENTER_HOLD_MS);
-            }, i * ENTER_STAGGER_MS);
+                s.style.webkitTextStrokeWidth = '';
+              }, HOLD_MS);
+            }, i * STAGGER_MS);
           });
           setTimeout(() => {
-            hero.classList.remove('is-entering');
-            entranceActive = false;
-            requestRender();                           // hand off to the scroll spotlight
-          }, n * ENTER_STAGGER_MS + ENTER_HOLD_MS + 200);
+            if (rise) el.classList.remove('is-entering');
+            el._animating = false;
+          }, n * STAGGER_MS + HOLD_MS + 220);
         });
       }
 
+      // ── Button glow flash (open-up + pulse — same lifecycle as "Get in touch").
+      //    The coloured+blurred frame (::before) fades on, the text flips to ink,
+      //    then both settle back. The button text itself never blurs. ──
+      let buttons = [];
+      function flashGlow(btn) {
+        if (btn._animating) return;
+        btn._animating = true;
+        btn.style.setProperty('--glow', '1');
+        btn.style.color = 'var(--color-ink)';
+        setTimeout(() => {
+          btn.style.setProperty('--glow', '0');
+          btn.style.color = '';
+          setTimeout(() => { btn._animating = false; }, 500);
+        }, HOLD_MS);
+      }
+
       // ── Lifecycle ──
-      let started = false;
-      let pulseTimer = null;
+      let started = false, heroDone = false, io = null, pulseTimer = null, headings = [];
       function start() {
-        collect();
-        if (!groups.length) return;
-        if (!entranceDone) heroEntrance();
-        requestRender();
-        window.addEventListener('scroll', requestRender, { passive: true });
-        window.addEventListener('resize', requestRender, { passive: true });
+        // Hero opens up once on load.
+        const hero = document.querySelector('.hero-headline');
+        if (hero && !heroDone && hero.querySelector('.letter')) { heroDone = true; playEntrance(hero, true); }
+
+        // Contact headings + buttons: pre-hide, then open up once when they
+        // scroll into view. Headings rise with the letter sweep; buttons rise
+        // in plain (their glow only fires on the periodic pulse).
+        headings = [];
+        buttons = [];
+        const supportsIO = 'IntersectionObserver' in window;
+        if (supportsIO) {
+          io = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+              if (!e.isIntersecting) return;
+              const el = e.target;
+              if (el.classList.contains('contact-btn') || el.classList.contains('nav-link')) {
+                el.classList.remove('is-entering');     // rise/fade in (CSS transition);
+                                                        // first glow comes from the 5s pulse
+              } else {
+                playEntrance(el, true);
+              }
+              io.unobserve(el);
+            });
+          }, { threshold: 0.01 });
+        }
+        CONTACT_HEADINGS.forEach(sel => {
+          const el = document.querySelector(sel);
+          if (!el || !el.querySelector('.letter')) return;
+          headings.push(el);
+          if (supportsIO) { el.classList.add('is-entering'); io.observe(el); }
+        });
+        BUTTON_SELECTORS.forEach(sel => document.querySelectorAll(sel).forEach(el => {
+          buttons.push(el);
+          if (supportsIO) { el.classList.add('is-entering'); io.observe(el); }
+        }));
+
+        // Periodic pulse while on screen — the buttons (incl. the Email/Phone
+        // CTAs) flash their glow in a small cascade. Titles don't pulse; they
+        // only "open up" once. Skips anything still pre-hidden.
         pulseTimer = setInterval(() => {
-          const contact = document.querySelector('.contact-heading');
-          if (!contact) return;
-          const r = contact.getBoundingClientRect();
-          if (r.bottom < 0 || r.top > window.innerHeight) return; // skip when off-screen
-          pulseStart = performance.now();
-          requestRender();
+          const inView = (el) => {
+            const r = el.getBoundingClientRect();
+            return r.bottom > 0 && r.top < window.innerHeight;
+          };
+          let k = 0;
+          buttons.forEach(btn => {
+            if (btn._animating || btn.classList.contains('is-entering') || !inView(btn)) return;
+            setTimeout(() => flashGlow(btn), 180 * k++);
+          });
         }, PULSE_EVERY_MS);
         started = true;
       }
       function stop() {
-        window.removeEventListener('scroll', requestRender);
-        window.removeEventListener('resize', requestRender);
         if (pulseTimer) { clearInterval(pulseTimer); pulseTimer = null; }
-        groups.forEach(g => g.letters.forEach(s => {
-          s.style.color = ''; s.style.webkitTextStrokeWidth = ''; s.style.filter = '';
-        }));
-        buttons.forEach(b => { b.style.removeProperty('--glow'); b.style.color = ''; });
+        if (io) { io.disconnect(); io = null; }
+        headings.forEach(el => {
+          el.classList.remove('is-entering');
+          el.querySelectorAll('.letter').forEach(s => {
+            s.style.color = ''; s.style.filter = ''; s.style.webkitTextStrokeWidth = '';
+            s.style.opacity = ''; s.style.transform = '';
+          });
+        });
+        buttons.forEach(b => {
+          b.classList.remove('is-entering');
+          b.style.removeProperty('--glow');
+          b.style.color = '';
+        });
         started = false;
       }
       function apply() { if (mq.matches) { if (!started) start(); } else if (started) stop(); }
