@@ -452,12 +452,8 @@
     /* Hero sphere canvas fills the stage; drawing handled by hero/hero-sphere.js. */
     .ring-card-sphere { display: block; }
 
-    /* Phones: keep the original 2-object composition (SHLTR + Radiant).
-       moji + sphere (3rd/4th cards) are desktop-only for now — their
-       mobile placement is still TBD. */
-    @media (max-width: 640px) {
-      .hero-cards .ring-card:nth-child(n+3) { display: none; }
-    }
+    /* Phones: all four objects show as a scattered "scrapbook" collage —
+       see the mobile placement in the @media (max-width: 600px) band below. */
 
     /* Project name label — hidden idle, visible on hover (Figma Glow) */
     .ring-tag {
@@ -2769,10 +2765,9 @@
     }
 
     /* ── Mobile (≤600px) ──
-       Layout follows the Figma mobile design (360×3166, bg #F8F6F3):
-       same hero shapes as desktop but smaller and tucked around the
-       headline; single-column cards with 36px side padding; contact
-       stacked centred in order About → Get in touch → Explore More. */
+       Layout: pure-typography hero (decorative objects desktop-only);
+       single-column cards with 36px side padding; contact stacked centred
+       in order About → More to Explore → Get in touch (CTA last). */
     @media (max-width: 600px) {
       :root {
         --navbar-h: 52px;
@@ -2825,14 +2820,32 @@
       @media (hover: none) {
         .nav-logo::before, .nav-link::before { display: none; }
       }
+      /* The Contact nav link joins the CTA-button lifecycle on mobile:
+         it drops in on load and pulses the coloured+blurred glow frame
+         (driven by --glow from JS, like the contact buttons). */
+      .nav-link[href="#contact"] {
+        transition: background 0.65s ease, color 0.25s ease,
+                    opacity 0.5s ease, transform 0.55s cubic-bezier(.2,.8,.2,1);
+      }
+      .nav-link[href="#contact"].is-entering {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      .nav-link[href="#contact"]::before {
+        display: block;
+        opacity: var(--glow, 0);
+        transition: opacity 0.45s ease;
+      }
 
       /* ── Hero — same composition as desktop (cards flank headline)
          but the cards shrink and tuck close so they read as decorative
          shapes around the title rather than two big standalone cards. */
       .hero {
         height: auto;
-        min-height: calc(100vh - 80px);
-        padding: 80px 20px 60px;
+        /* Shorter than the viewport so the "/ my work" label AND a glimpse of
+           the first project peek above the fold — a hint to scroll on. */
+        min-height: calc(100vh - 180px);
+        padding: 80px 20px 40px;
         position: relative;
       }
       .hero-text {
@@ -2845,10 +2858,31 @@
         pointer-events: auto;
       }
       .hero-headline {
-        font-size: 52px;
-        line-height: 120%;
+        font-size: 64px;
+        line-height: 118%;
         letter-spacing: -0.02em;
         text-align: center;
+      }
+      /* Entrance initial state — letters start lowered + invisible + blurred,
+         then playEntrance() staggers them up (rise + gradient sweep) and removes
+         .is-entering. Shared by the hero (on load) and each contact heading
+         (when it scrolls into view) so they all "open up" the same way. */
+      .hero-headline.is-entering .letter,
+      .contact-about-heading.is-entering .letter,
+      .contact-more-label.is-entering .letter,
+      .contact-heading.is-entering .letter {
+        opacity: 0;
+        transform: translateY(26px);
+        filter: blur(8px);
+      }
+      .hero-headline .letter,
+      .contact-about-heading .letter,
+      .contact-more-label .letter,
+      .contact-heading .letter {
+        display: inline-block;
+        transition: opacity 0.5s ease, transform 0.55s cubic-bezier(.2,.8,.2,1),
+                    color 0.2s ease, filter 0.45s ease;
+        will-change: opacity, transform, filter;
       }
       /* Force the headline onto 3 lines per Figma:
          "Welcome / To My / Exhibition".
@@ -2865,65 +2899,11 @@
       .hero-labels {
         display: none;
       }
+      /* Mobile hero is pure typography — the four decorative objects are
+         desktop-only. (The card auto-cycle JS skips hidden cards, so nothing
+         else needs to change to silence it here.) */
       .hero-cards {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-      }
-      /* Override the desktop inline absolute positioning. Two ring-cards
-         (SHLTR + Radiant per HERO_CONFIG) flank the centered 3-line headline. */
-      .hero-cards .ring-card {
-        position: absolute !important;
-        width: 130px !important;
-        height: 130px !important;
-        margin: 0 !important;
-        transform: none !important;
-        pointer-events: auto;
-      }
-      /* SHLTR — left, vertically centered with the headline */
-      .hero-cards .ring-card:nth-child(1) {
-        left: 6px !important;
-        top: 50% !important;
-        right: auto !important;
-        bottom: auto !important;
-        transform: translateY(-50%) !important;
-      }
-      /* Radiant — top-right, above the headline */
-      .hero-cards .ring-card:nth-child(2) {
-        right: 14px !important;
-        top: 70px !important;
-        left: auto !important;
-        bottom: auto !important;
-      }
-      .ring-card-hit {
-        left: 0 !important;
-        top: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-      }
-
-      /* ── Auto-cycle highlight for hero cards ──
-         Mirrors the desktop :hover state: the silhouette mask brightens
-         and gets a soft blur, and the model swaps from grey to gradient
-         tint. .is-pulsing is added/removed by the cycle JS, and the
-         existing CSS transitions on opacity/filter handle the in/out
-         fade — no separate keyframes needed for the glow. */
-      .ring-card.is-pulsing .ring-card-mask {
-        opacity: 1;
-        filter: blur(3px);
-      }
-      .ring-card.is-pulsing .ring-card-model {
-        filter: url(#mv-gradient-tint);
-      }
-      .ring-card.is-pulsing .ring-card-stage {
-        animation: hero-card-pulse 2.6s ease-in-out;
-      }
-      @keyframes hero-card-pulse {
-        0%   { transform: scale(1); }
-        45%  { transform: scale(1.06); }
-        100% { transform: scale(1); }
+        display: none;
       }
 
       /* ── Cards section — single column, 36px side padding, 120px gap
@@ -2948,11 +2928,13 @@
       /* Two ".cards-col-header" labels exist (one per desktop column).
          Show only the first as the single "/ my work" header on mobile;
          hide the duplicate from the second column. */
+      /* Pull the first project up toward the "/ my work" label — the default
+         120px inter-item gap is too large between the header and project #1. */
       .cards-col-header {
         order: -1;
         height: auto;
         width: auto;
-        margin: 0;
+        margin: 0 0 -76px;
       }
       .cards-col:nth-of-type(2) .cards-col-header {
         display: none;
@@ -3067,7 +3049,7 @@
       }
 
       /* ── Contact section — three centred blocks per Figma:
-         About → Get in touch → Explore More.
+         About → More to Explore → Get in touch (CTA last).
          Section: padding 200px 36px 120px, gap 100px between blocks.
          Block: gap 24px between heading/body/buttons.
          Heading: Instrument Serif 52px, 0.4px stroke in muted tone.
@@ -3093,9 +3075,11 @@
         gap: 24px;
         box-sizing: border-box;
       }
+      /* Stack: About → More to Explore → Get in touch (LAST / bottom-most),
+         so the "Get in touch" CTA is the final text on the page. */
       .contact-col-left   { order: 0; }
-      .contact-bottom     { order: 1; }
-      .contact-col-right  { order: 2; align-items: center; }
+      .contact-col-right  { order: 1; align-items: center; }
+      .contact-bottom     { order: 2; }
 
       .contact-col-right .contact-btn-row,
       .contact-col-left  .contact-btn-row {
@@ -3137,10 +3121,19 @@
         font-size: 16px;
         text-decoration: none;
         letter-spacing: -0.01em;
-        transition: background 0.65s ease, color 0.65s ease;
+        transition: background 0.65s ease, color 0.25s ease,
+                    opacity 0.5s ease, transform 0.55s cubic-bezier(.2,.8,.2,1);
       }
+      /* Pre-hidden until revealed by the open-up (mirrors the headings). */
+      .contact-btn.is-entering {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+      /* Glow frame behind the button — flashed on by JS (open-up + periodic
+         pulse, same lifecycle as "Get in touch"); the text itself never blurs. */
       .contact-btn::before {
-        transition: opacity 0.7s ease;
+        opacity: var(--glow, 0);
+        transition: opacity 0.45s ease;
       }
       /* "More to Explore" gets its text replaced by JS to "Explore More"
          on mobile (so the existing letter-wrap can split it into per-letter
@@ -4673,86 +4666,160 @@
 
 
     /* ══════════════════════════════════════════════════════
-       MOBILE HERO ANIMATION CYCLE
-       Replaces hover-driven hero behavior with two automatic
-       phases on touch / narrow viewports:
-         1. Letter wave — the headline characters bounce in
-            reading order on first paint (one-shot).
-         2. Highlight cycle — each hero card pulses in turn,
-            DOM-order = visual top-to-bottom on the stacked
-            mobile layout (clockwise on a future ring layout).
-       Pace is fixed per element (PACE_PER_CARD_MS), so adding
-       or removing cards keeps the same vibe — pace stays the
-       same, total cycle time scales with count.
+       MOBILE — HEADLINE "OPEN UP" + BUTTON GLOW
+       Mobile-only, driving the existing .letter spans (no library).
+         1. "Open up" entrance — letters stagger up with the accent gradient
+            + blur, then settle to grey. The hero plays it on load; each contact
+            heading plays it once when it scrolls into view (IntersectionObserver).
+         2. Buttons (navbar Contact / Resume / LinkedIn / Behance / Email /
+            Phone): rise in plain, then glow-flash in a periodic cascade
+            while on screen (first flash at the t=5s pulse tick, never on
+            arrival). Their glow is the coloured+blurred ::before frame
+            BEHIND the text, with the text flipping to ink — the button text
+            itself never blurs. Titles never pulse; they open up once.
     ══════════════════════════════════════════════════════ */
-    (function initMobileHeroCycle() {
-      const mq = window.matchMedia('(max-width: 640px)');
+    (function initMobileHeadlines() {
+      const mq = window.matchMedia('(max-width: 600px)');
 
-      const LETTER_STAGGER_MS = 75;   // per-letter wave delay
-      const PACE_PER_CARD_MS  = 2800; // per-card pulse cadence
-      const POST_WAVE_PAUSE   = 600;  // breath before card cycle starts
+      const STAGGER_MS     = 70;    // entrance/pulse per-letter delay
+      const HOLD_MS        = 600;   // how long a swept letter holds colour before settling grey
+      const PULSE_EVERY_MS = 5000;  // "Get in touch" pulse cadence
+      const MAXBLUR        = 8;     // peak blur (px)
 
-      let cycleTimer = null;
+      // Titles that "open up" then settle grey (hero on load; contact headings
+      // when scrolled into view). Buttons keep a continuous glow behind them.
+      const CONTACT_HEADINGS = ['.contact-about-heading', '.contact-more-label', '.contact-heading'];
+      const BUTTON_SELECTORS = ['.navbar .nav-link[href="#contact"]',
+                                '.contact-col-left .contact-btn', '.contact-col-right .contact-btn',
+                                '.contact-bottom .contact-btn'];
 
-      function fireLetterWave() {
-        const letters = document.querySelectorAll('.hero-headline .letter');
-        if (!letters.length) return 0;
-        letters.forEach((s, i) => {
+      const accent = (t) => (typeof letterColor === 'function') ? letterColor(t) : 'rgb(163,160,155)';
+
+      // ── One-shot "open up": letters sweep in with the accent gradient + blur,
+      //    then settle to grey. rise=true also raises + fades them in. ──
+      function playEntrance(el, rise) {
+        const letters = Array.from(el.querySelectorAll('.letter'));
+        if (!letters.length || el._animating) return;
+        el._animating = true;
+        const n = letters.length;
+        if (rise) el.classList.add('is-entering');
+        requestAnimationFrame(() => {
+          letters.forEach((s, i) => {
+            const t = n > 1 ? i / (n - 1) : 0.5;
+            setTimeout(() => {
+              if (rise) { s.style.opacity = '1'; s.style.transform = 'translateY(0)'; }
+              s.style.color = accent(t);                  // full accent on arrival
+              s.style.filter = 'blur(' + MAXBLUR + 'px)'; // blurred on arrival
+              s.style.webkitTextStrokeWidth = '0';
+              setTimeout(() => {                          // settle: sharpen + grey
+                s.style.color = '';
+                s.style.filter = 'blur(0px)';
+                s.style.webkitTextStrokeWidth = '';
+              }, HOLD_MS);
+            }, i * STAGGER_MS);
+          });
           setTimeout(() => {
-            // Mirror the desktop hover behaviour: re-trigger the bounce
-            // animation via remove → reflow → add. Color/blur are skipped
-            // here so the wave reads as motion only (calm, not flashy).
-            s.classList.remove('bouncing');
-            void s.offsetWidth;
-            s.classList.add('bouncing');
-          }, i * LETTER_STAGGER_MS);
+            if (rise) el.classList.remove('is-entering');
+            el._animating = false;
+          }, n * STAGGER_MS + HOLD_MS + 220);
         });
-        return letters.length * LETTER_STAGGER_MS + 900; // wave length + bounce duration
       }
 
-      function startCardCycle() {
-        // Skip cards hidden at this breakpoint (moji + sphere are desktop-only),
-        // so the cycle has no dead beats. offsetParent is null when display:none.
-        const cards = Array.from(document.querySelectorAll('.hero-cards .ring-card'))
-          .filter(c => c.offsetParent !== null);
-        if (!cards.length) return;
-        let i = 0;
-        const tick = () => {
-          cards.forEach(c => c.classList.remove('is-pulsing'));
-          // Force reflow so the keyframe animation re-runs from frame 0
-          // even when the same card is targeted again on a single-card hero.
-          void cards[i].offsetWidth;
-          cards[i].classList.add('is-pulsing');
-          i = (i + 1) % cards.length;
-        };
-        tick(); // start immediately so the first pulse hits right after the wave
-        cycleTimer = setInterval(tick, PACE_PER_CARD_MS);
+      // ── Button glow flash (open-up + pulse — same lifecycle as "Get in touch").
+      //    The coloured+blurred frame (::before) fades on, the text flips to ink,
+      //    then both settle back. The button text itself never blurs. ──
+      let buttons = [];
+      function flashGlow(btn) {
+        if (btn._animating) return;
+        btn._animating = true;
+        btn.style.setProperty('--glow', '1');
+        btn.style.color = 'var(--color-ink)';
+        setTimeout(() => {
+          btn.style.setProperty('--glow', '0');
+          btn.style.color = '';
+          setTimeout(() => { btn._animating = false; }, 500);
+        }, HOLD_MS);
       }
 
-      function stopCardCycle() {
-        if (cycleTimer) { clearInterval(cycleTimer); cycleTimer = null; }
-        document.querySelectorAll('.hero-cards .ring-card.is-pulsing')
-          .forEach(c => c.classList.remove('is-pulsing'));
-      }
+      // ── Lifecycle ──
+      let started = false, heroDone = false, io = null, pulseTimer = null, headings = [];
+      function start() {
+        // Hero opens up once on load.
+        const hero = document.querySelector('.hero-headline');
+        if (hero && !heroDone && hero.querySelector('.letter')) { heroDone = true; playEntrance(hero, true); }
 
-      function activate() {
-        const waveDur = fireLetterWave();
-        setTimeout(startCardCycle, waveDur + POST_WAVE_PAUSE);
-      }
+        // Contact headings + buttons: pre-hide, then open up once when they
+        // scroll into view. Headings rise with the letter sweep; buttons rise
+        // in plain (their glow only fires on the periodic pulse).
+        headings = [];
+        buttons = [];
+        const supportsIO = 'IntersectionObserver' in window;
+        if (supportsIO) {
+          io = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+              if (!e.isIntersecting) return;
+              const el = e.target;
+              if (el.classList.contains('contact-btn') || el.classList.contains('nav-link')) {
+                el.classList.remove('is-entering');     // rise/fade in (CSS transition);
+                                                        // first glow comes from the 5s pulse
+              } else {
+                playEntrance(el, true);
+              }
+              io.unobserve(el);
+            });
+          }, { threshold: 0.01 });
+        }
+        CONTACT_HEADINGS.forEach(sel => {
+          const el = document.querySelector(sel);
+          if (!el || !el.querySelector('.letter')) return;
+          headings.push(el);
+          if (supportsIO) { el.classList.add('is-entering'); io.observe(el); }
+        });
+        BUTTON_SELECTORS.forEach(sel => document.querySelectorAll(sel).forEach(el => {
+          buttons.push(el);
+          if (supportsIO) { el.classList.add('is-entering'); io.observe(el); }
+        }));
 
-      function handleChange() {
-        if (mq.matches) activate();
-        else stopCardCycle();
+        // Periodic pulse while on screen — the buttons (incl. the Email/Phone
+        // CTAs) flash their glow in a small cascade. Titles don't pulse; they
+        // only "open up" once. Skips anything still pre-hidden.
+        pulseTimer = setInterval(() => {
+          const inView = (el) => {
+            const r = el.getBoundingClientRect();
+            return r.bottom > 0 && r.top < window.innerHeight;
+          };
+          let k = 0;
+          buttons.forEach(btn => {
+            if (btn._animating || btn.classList.contains('is-entering') || !inView(btn)) return;
+            setTimeout(() => flashGlow(btn), 180 * k++);
+          });
+        }, PULSE_EVERY_MS);
+        started = true;
       }
+      function stop() {
+        if (pulseTimer) { clearInterval(pulseTimer); pulseTimer = null; }
+        if (io) { io.disconnect(); io = null; }
+        headings.forEach(el => {
+          el.classList.remove('is-entering');
+          el.querySelectorAll('.letter').forEach(s => {
+            s.style.color = ''; s.style.filter = ''; s.style.webkitTextStrokeWidth = '';
+            s.style.opacity = ''; s.style.transform = '';
+          });
+        });
+        buttons.forEach(b => {
+          b.classList.remove('is-entering');
+          b.style.removeProperty('--glow');
+          b.style.color = '';
+        });
+        started = false;
+      }
+      function apply() { if (mq.matches) { if (!started) start(); } else if (started) stop(); }
 
-      // Defer one frame so renderCards() finishes wiring the DOM first.
+      // Defer a frame so the letter-wrap pass has run first.
       requestAnimationFrame(() => {
-        if (mq.matches) activate();
-        // If the viewport flips between mobile/desktop later (devtools, rotate),
-        // start/stop the cycle accordingly. The letter wave only re-fires
-        // when crossing back into mobile (felt cleaner than firing every flip).
-        if (mq.addEventListener) mq.addEventListener('change', handleChange);
-        else mq.addListener(handleChange); // older Safari
+        apply();
+        if (mq.addEventListener) mq.addEventListener('change', apply);
+        else mq.addListener(apply);
       });
     })();
 
@@ -4768,7 +4835,10 @@
        blur-in/out + gradient color, then resets back.
     ══════════════════════════════════════════════════════ */
     (function initMobileContactCycle() {
-      const mq = window.matchMedia('(max-width: 600px)');
+      // DISABLED on mobile: the contact headings' per-letter colour is now owned
+      // by initMobileHeadlineGradients (scroll spotlight + "Get in touch" pulse).
+      // Stubbed mq (never matches) keeps this legacy breath-cycle from fighting it.
+      const mq = { matches: false, addEventListener() {}, addListener() {} };
       const STAGGER_MS              = 95;   // per-letter wave delay inside a heading
       const HEADING_TO_BUTTON_DELAY = 450;  // pause after a heading before the next button
       const BUTTON_TO_BUTTON_DELAY  = 350;  // pause between two buttons in the same row
