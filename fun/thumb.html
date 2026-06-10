@@ -21,20 +21,6 @@
         background: #FF7300;
         overflow: hidden;
       }
-
-      /* Full-iframe grain overlay — sits on top of EVERYTHING (stage, orange
-         letterbox bars, the lot) so the noise reads uniformly even on the
-         margins. mix-blend-mode + low opacity match the cornerPin grain. */
-      #thumb-grain {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        mix-blend-mode: overlay;
-        opacity: 0.5;
-        z-index: 2;
-      }
       /* OUTER wrap carries the fit transform. We can't put the transform on
          the stage itself because mountCornerPin overwrites stage.style.cssText
          on every mount, wiping our transform. The wrap stays untouched. */
@@ -53,18 +39,11 @@
         height: 1080px;
       }
     </style>
-    <script type="module" crossorigin src="/fun/assets/thumb-CXOpU-np.js"></script>
+    <script type="module" crossorigin src="/fun/assets/thumb-RFLyVZl3.js"></script>
     <link rel="modulepreload" crossorigin href="/fun/assets/easing-DE46m1uD.js">
     <link rel="modulepreload" crossorigin href="/fun/assets/cornerPinMesh-BJWXFvws.js">
   </head>
   <body>
     <div id="thumb-wrap"><div id="thumb-stage"></div></div>
-    <svg id="thumb-grain" viewBox="0 0 200 200" preserveAspectRatio="none" aria-hidden="true">
-      <filter id="thumb-grain-noise">
-        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" stitchTiles="stitch"/>
-        <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.65 0"/>
-      </filter>
-      <rect width="200" height="200" filter="url(#thumb-grain-noise)"/>
-    </svg>
   </body>
 </html>

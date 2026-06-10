@@ -1,8 +1,6 @@
-<svg width="171" height="171" viewBox="0 0 171 171" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="85.5" cy="85.5" r="80" stroke="#F58EE9" stroke-width="11"/>
-<ellipse cx="85.5" cy="85.5" rx="40" ry="80" stroke="#F58EE9" stroke-width="11"/>
-<line x1="155.5" y1="51" x2="15.5" y2="51" stroke="#F58EE9" stroke-width="11"/>
-<line x1="165.5" y1="91" x2="5.5" y2="91" stroke="#F58EE9" stroke-width="11"/>
-<line x1="155.5" y1="131" x2="15.5" y2="131" stroke="#F58EE9" stroke-width="11"/>
-<path d="M85.5 5.5L85.5 165.5" stroke="#F58EE9" stroke-width="11"/>
+<svg width="176" height="177" viewBox="0 0 176 177" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="88" cy="88.002" r="80" stroke="#F58EE9" stroke-width="16"/>
+<ellipse cx="88.0003" cy="88.0011" rx="40" ry="80" transform="rotate(-45 88.0003 88.0011)" stroke="#F58EE9" stroke-width="16"/>
+<path d="M31.4326 31.4336L144.57 144.571" stroke="#F58EE9" stroke-width="16"/>
+<path d="M144.568 31.4258L31.4313 144.563" stroke="#F58EE9" stroke-width="16"/>
 </svg>
