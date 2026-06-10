@@ -12,7 +12,7 @@ window.PROJECTS_ORDER = [
   'moji',
   'shltr',
   'radiant',
-  'placeholder-1',
+  'funtype',         // 5th — soft password-gated (see projects/funtype/project.js)
   'placeholder-2',
   'placeholder-3',
   'placeholder-4',

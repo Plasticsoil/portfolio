@@ -63,7 +63,7 @@ window.HERO_CONFIG = {
       label: 'Sphere',
       x: 0, y: 0,
       sphereOpts: { lat: 9, lon: 13, lineWidth: 1.3, speed: 0.0027, scale: 0.78 },
-      tag: { left: '95px', top: '196px' },
+      tag: { left: '95px', top: '226px' },
       hit: { w: 240, h: 240 }
     }
   ]

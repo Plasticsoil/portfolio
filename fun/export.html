@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FunType</title>
+    <link rel="icon" type="image/svg+xml" href="/fun/favicon.svg" />
+    <!-- Credit: PlasticSoil -->
+    <!-- Switzer is only the kinetic art type (the preview); the UI uses the
+         portfolio's language: Instrument Serif + Nimbus Sans, muted greys. -->
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@900,700,500,400&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" />
+    <style>
+      :root {
+        --bg:#f8f6f3; --ink:#a3a09b; --emph:#68645e;
+        --line:rgba(163,160,155,0.42); --fill:rgba(163,160,155,0.12); --card:#ffffff;
+        --serif:"Instrument Serif", Georgia, serif;
+        --sans:"Nimbus Sans","Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin:0; }
+      body {
+        background: var(--bg); color: var(--ink);
+        font-family: var(--sans); font-weight: 400;
+        padding: 22px clamp(16px,4vw,48px) 72px;
+        -webkit-font-smoothing: antialiased;
+      }
+      .lead { max-width:1060px; margin:0 auto; }
+
+      .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom: 30px; }
+
+      /* Fixed top-left "/ portfolio" breadcrumb (mirrors the studio page). */
+      .ft-back {
+        position: fixed;
+        top: clamp(20px, 4vw, 36px);
+        left: clamp(20px, 4vw, 36px);
+        z-index: 1000;
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        font-family: var(--sans);
+        font-size: 14px;
+        letter-spacing: 0.01em;
+        color: var(--ink);
+        text-decoration: none;
+        transition: color 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .ft-back-slash { color: rgba(163, 160, 155, 0.48); }
+      .ft-back:hover { color: var(--emph); transform: translateX(-3px); }
+      .ft-back:hover .ft-back-slash { color: var(--ink); }
+      .back {
+        display:inline-flex; align-items:center; gap:8px; text-decoration:none;
+        color:var(--ink); font-size:14px;
+        padding:8px 14px 8px 11px; border:1px solid var(--line); border-radius:999px; background:var(--card);
+        transition: border-color .15s, color .15s, transform .12s;
+      }
+      .back:hover { border-color:var(--emph); color:var(--emph); }
+      .back:active { transform: scale(.96); }
+      .brand { font-family:var(--serif); font-size:22px; color:var(--ink); }
+      .brand b { color:var(--emph); font-style:italic; font-weight:400; }
+
+      h1 { font-family:var(--serif); font-weight:400; font-size:clamp(42px,6vw,62px); line-height:1; margin:0 0 8px; color:var(--emph); }
+      .chip { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--ink);
+        border:1px solid var(--line); background:var(--card); border-radius:999px; padding:5px 13px; }
+      .chip b { color:var(--emph); font-weight:400; }
+
+      .grid { max-width:1060px; margin:30px auto 0; display:grid; grid-template-columns: minmax(0,1fr) 358px; gap:50px; align-items:start; }
+      @media (max-width:880px){ .grid{ grid-template-columns:1fr; gap:30px; } }
+
+      /* preview — frameless: just the visual, centred */
+      .stage { position:sticky; top:20px; display:flex; flex-direction:column; align-items:center; gap:16px; }
+      .frame { display:flex; align-items:center; justify-content:center; width:100%; min-height:300px; }
+      canvas#preview { border-radius:14px; box-shadow:0 26px 60px -30px rgba(80,70,55,.4); display:block; max-width:100%; max-height:64vh; height:auto; }
+      .meta { font-size:13px; color:var(--ink); }
+
+      /* control sections */
+      .panel { display:flex; flex-direction:column; gap:26px; }
+      .sect { display:flex; flex-direction:column; gap:12px; }
+      .sect > .head { display:flex; align-items:center; justify-content:space-between; }
+      .sect h2 { margin:0; font-family:var(--serif); font-size:22px; font-weight:400; color:var(--emph); line-height:1; }
+      label.fld { font-size:12.5px; color:var(--ink); }
+
+      input[type=text], select {
+        font:inherit; font-size:15px; padding:11px 13px; border:1px solid var(--line);
+        border-radius:12px; background:var(--card); color:var(--emph);
+      }
+      input[type=text]:focus, select:focus { outline:none; border-color:var(--emph); }
+      #word { width:12ch; }                       /* ≈ the 12-character limit */
+
+      /* swatches — one connected unit (rounded only at top & bottom) */
+      .swatches { display:flex; flex-direction:column; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--card); }
+      .swatch { display:flex; align-items:center; gap:12px; padding:9px 11px; border-bottom:1px solid var(--line); }
+      .swatch:last-child { border-bottom:0; }
+      .swatch .chip2 { position:relative; width:28px; height:28px; border-radius:8px; flex:none;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,.07); overflow:hidden; cursor:pointer; }
+      .swatch .chip2 input { position:absolute; inset:-6px; width:150%; height:150%; border:0; padding:0; opacity:0; cursor:pointer; }
+      .swatch .role { flex:1; font-size:14px; color:var(--emph); }
+      .swatch .hex { font-size:12.5px; color:var(--ink); font-variant-numeric:tabular-nums; letter-spacing:.02em; }
+
+      /* subtle pill buttons (palette / seed shuffle) */
+      .iconbtn { display:inline-flex; align-items:center; justify-content:center; gap:8px;
+        font:inherit; font-size:13.5px; cursor:pointer;
+        background:var(--card); color:var(--ink); border:1px solid var(--line); border-radius:999px; padding:7px 13px;
+        transition: border-color .15s, color .15s, transform .12s; }
+      .iconbtn:hover { border-color:var(--emph); color:var(--emph); }
+      .iconbtn:active { transform: scale(.95); }
+      .iconbtn.round { width:34px; height:34px; padding:0; }
+      .iconbtn svg { width:16px; height:16px; }
+
+      /* segmented controls */
+      .seg { display:flex; gap:6px; }
+      .seg button { flex:1; font:inherit; font-size:13px; cursor:pointer;
+        padding:10px 6px; border:1px solid var(--line); border-radius:11px; background:var(--card); color:var(--ink);
+        display:flex; flex-direction:column; align-items:center; gap:6px; transition:border-color .15s, background .15s, color .15s; }
+      .seg button .ic { width:20px; height:15px; display:flex; align-items:center; justify-content:center; }
+      .seg button .ic i { display:block; border:1.4px solid currentColor; background:transparent; border-radius:2px; }
+      .seg button:hover { border-color:var(--emph); color:var(--emph); }
+      .seg button[aria-pressed=true] { background:var(--fill); color:var(--emph); border-color:var(--emph); }
+
+      .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+      .two .fld { display:block; margin-bottom:6px; }
+      .two select { width:100%; }
+
+      .download { width:100%; font:inherit; font-size:16px; cursor:pointer;
+        padding:14px; border:1.5px solid var(--emph); border-radius:14px; color:var(--emph); background:transparent;
+        transition: background .15s, color .15s, transform .12s; }
+      .download:hover { background:var(--emph); color:var(--bg); }
+      .download:active { transform: scale(.985); }
+      .download:disabled { opacity:.45; cursor:default; }
+
+      #status { font-size:13px; color:var(--ink); min-height:18px; }
+      .hint { font-size:12px; color:rgba(163,160,155,.7); line-height:1.5; margin:0; }
+    </style>
+    <script type="module" crossorigin src="/fun/assets/export-Cxzi34Uj.js"></script>
+    <link rel="modulepreload" crossorigin href="/fun/assets/easing-DE46m1uD.js">
+    <link rel="modulepreload" crossorigin href="/fun/assets/palette-C8yzVK3E.js">
+  </head>
+  <body>
+    <!-- Same fixed top-left "/ portfolio" breadcrumb as the studio page. -->
+    <a class="ft-back" href="/" aria-label="Back to yamliv.net">
+      <span class="ft-back-slash">/</span>
+      <span class="ft-back-label">portfolio</span>
+    </a>
+
+    <div class="topbar lead">
+      <a class="back" href="./" id="back">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        Studio
+      </a>
+      <span class="brand"><b>Fun</b>Type</span>
+    </div>
+
+    <div class="lead">
+      <h1>Export</h1>
+      <span class="chip">Preset · <b id="effName">Corner</b></span>
+    </div>
+
+    <div class="grid">
+      <div class="stage">
+        <div class="frame"><canvas id="preview" width="540" height="540"></canvas></div>
+        <p class="meta" id="meta">12 fps · seamless loop</p>
+      </div>
+
+      <div class="panel">
+        <div class="sect">
+          <div class="head"><h2>Text</h2></div>
+          <input id="word" type="text" value="Corner" maxlength="12" placeholder="Type a word…" />
+        </div>
+
+        <div class="sect">
+          <div class="head">
+            <h2>Colour</h2>
+            <button class="iconbtn round" id="shuffle" title="Shuffle palette" aria-label="Shuffle palette">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/></svg>
+            </button>
+          </div>
+          <div class="swatches" id="swatches"></div>
+          <div id="seedWrap" style="display:none;">
+            <button class="iconbtn" id="seedShuffle" title="Shuffle corner positions">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 3l-7.5 7.5"/><path d="M3 21l7.5-7.5"/><path d="M16 21h5v-5"/></svg>
+              Shuffle corners
+            </button>
+          </div>
+        </div>
+
+        <div class="sect">
+          <div class="head"><h2>Output</h2></div>
+          <label class="fld">Orientation</label>
+          <div class="seg" id="orient">
+            <button data-o="square" aria-pressed="true"><span class="ic"><i style="width:14px;height:14px"></i></span>Square</button>
+            <button data-o="portrait" aria-pressed="false"><span class="ic"><i style="width:9px;height:15px"></i></span>Portrait</button>
+            <button data-o="landscape" aria-pressed="false"><span class="ic"><i style="width:18px;height:10px"></i></span>Landscape</button>
+          </div>
+          <div class="two">
+            <div>
+              <label class="fld" for="format">Format</label>
+              <select id="format">
+                <option value="webm" selected>WebM</option>
+                <option value="mp4">MP4</option>
+                <option value="gif">GIF</option>
+                <option value="png">PNG sequence</option>
+              </select>
+            </div>
+            <div>
+              <label class="fld" for="size">Resolution</label>
+              <select id="size">
+                <option value="720">720 · social</option>
+                <option value="1080" selected>1080 · HD</option>
+                <option value="1440">1440 · large screens</option>
+                <option value="2160">2160 · 4K</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="sect">
+          <button class="download" id="download">Download</button>
+          <p id="status">Loading…</p>
+          <p class="hint" id="formatHint"></p>
+        </div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,70 @@
+<!doctype html>
+<!--
+  FunType thumbnail — bare Corner-effect mount used as the portfolio
+  card preview. Auto-cycles "COMING" → "SOON". No chrome, no controls,
+  no fonts loaded beyond Switzer (the only thing the effect uses).
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FunType — thumb</title>
+    <link
+      rel="stylesheet"
+      href="https://api.fontshare.com/v2/css?f[]=switzer@900,700,500,400&display=swap"
+    />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #FF7300;
+        overflow: hidden;
+      }
+
+      /* Full-iframe grain overlay — sits on top of EVERYTHING (stage, orange
+         letterbox bars, the lot) so the noise reads uniformly even on the
+         margins. mix-blend-mode + low opacity match the cornerPin grain. */
+      #thumb-grain {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        mix-blend-mode: overlay;
+        opacity: 0.5;
+        z-index: 2;
+      }
+      /* OUTER wrap carries the fit transform. We can't put the transform on
+         the stage itself because mountCornerPin overwrites stage.style.cssText
+         on every mount, wiping our transform. The wrap stays untouched. */
+      #thumb-wrap {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1080px;
+        height: 1080px;
+        transform-origin: 0 0;
+        will-change: transform;
+      }
+      #thumb-stage {
+        position: relative;
+        width: 1080px;
+        height: 1080px;
+      }
+    </style>
+    <script type="module" crossorigin src="/fun/assets/thumb-CXOpU-np.js"></script>
+    <link rel="modulepreload" crossorigin href="/fun/assets/easing-DE46m1uD.js">
+    <link rel="modulepreload" crossorigin href="/fun/assets/cornerPinMesh-BJWXFvws.js">
+  </head>
+  <body>
+    <div id="thumb-wrap"><div id="thumb-stage"></div></div>
+    <svg id="thumb-grain" viewBox="0 0 200 200" preserveAspectRatio="none" aria-hidden="true">
+      <filter id="thumb-grain-noise">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" stitchTiles="stitch"/>
+        <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.65 0"/>
+      </filter>
+      <rect width="200" height="200" filter="url(#thumb-grain-noise)"/>
+    </svg>
+  </body>
+</html>

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title>Yam Livnat</title>
   <meta name="description" content="Yam Livnat — motion, brand, web & 3D designer. A portfolio of selected work and playful experiments.">
   <!-- Social share preview — uses the Radiant project thumbnail -->
@@ -756,6 +757,42 @@
       80%  { background-position:   3%  35%; }
       90%  { background-position: -10%  10%; }
       100% { background-position:   0%   0%; }
+    }
+
+    /* ── FunType thumbnail card ─────────────────────────────────
+       Embeds /fun/thumb.html (live Corner effect, COMING↔SOON cycle).
+       The iframe is pointer-events:none so card clicks pass through to
+       the password gate; a small lock icon sits in the top-right. */
+    .card-b-body--funtype {
+      position: relative;
+      overflow: hidden;
+      border-radius: 8px;
+      /* Orange placeholder matches the iframe bg so there's no flash
+         while the iframe loads. */
+      background: #FF7300;
+    }
+    .card-b-body--funtype .ft-preview {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      pointer-events: none;
+      display: block;
+    }
+    .card-b-body--funtype .ft-lock-icon {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 2;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFF;
+      pointer-events: none;
+      filter: drop-shadow(0 1px 2px rgba(38, 37, 30, 0.25));
     }
 
     /* moji interactive thumbnail card */
@@ -2113,6 +2150,133 @@
     .video-fs-modal-mute[aria-pressed="false"] .icon-muted   { display: none; }
     .video-fs-modal-mute[aria-pressed="false"] .icon-unmuted { display: inline-block; }
 
+    /* ── Unlock gate modal ──
+       Soft password prompt — light card on a muted blurred backdrop,
+       restrained colour palette to match the rest of the site. */
+    .unlock-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 9700;             /* above overlay (9000) + share (9500) */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .unlock-modal[hidden] { display: none; }
+    .unlock-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(38, 37, 30, 0.32);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity: 0;
+      transition: opacity 0.32s ease;
+    }
+    .unlock-modal.open .unlock-backdrop { opacity: 1; }
+
+    .unlock-card {
+      position: relative;
+      width: min(380px, 100%);
+      background: var(--color-surface, #FBFAF9);
+      border: 1px solid rgba(163, 160, 155, 0.18);
+      border-radius: 14px;
+      padding: 28px 28px 22px;
+      box-shadow: 0 18px 42px rgba(38, 37, 30, 0.18);
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      transform: translateY(8px) scale(0.985);
+      transition: opacity 0.32s ease, transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .unlock-modal.open .unlock-card {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .unlock-title {
+      margin: 0 0 6px;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 28px;
+      line-height: 1.1;
+      color: var(--color-ink, #26251E);
+    }
+    .unlock-body {
+      margin: 0 0 18px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--color-muted, #A3A09B);
+    }
+
+    .unlock-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px 14px;
+      border: 1px solid rgba(163, 160, 155, 0.35);
+      border-radius: 999px;
+      background: transparent;
+      font-family: var(--font-sans);
+      font-size: 15px;
+      color: var(--color-ink, #26251E);
+      letter-spacing: 0.02em;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .unlock-input::placeholder {
+      color: rgba(163, 160, 155, 0.7);
+    }
+    .unlock-input:focus {
+      border-color: rgba(163, 160, 155, 0.65);
+      box-shadow: 0 0 0 3px rgba(163, 160, 155, 0.12);
+    }
+
+    .unlock-error {
+      min-height: 18px;
+      margin: 8px 4px 14px;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: #C84A4A;
+      letter-spacing: 0.02em;
+    }
+
+    .unlock-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .unlock-btn {
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+    .unlock-btn-ghost {
+      background: transparent;
+      color: var(--color-muted, #A3A09B);
+    }
+    .unlock-btn-ghost:hover {
+      color: var(--color-ink, #26251E);
+    }
+    .unlock-btn-primary {
+      background: var(--color-ink, #26251E);
+      color: #FBFAF9;
+    }
+    .unlock-btn-primary:hover {
+      background: #3a382f;
+    }
+
+    /* Shake on wrong password — short, restrained. */
+    @keyframes unlock-shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    .unlock-card.shake { animation: unlock-shake 0.36s cubic-bezier(.36,.07,.19,.97); }
+
     .share-modal {
       position: fixed;
       inset: 0;
@@ -2773,6 +2937,19 @@
       transition: opacity 0.5s ease, transform 0.55s cubic-bezier(.2,.8,.2,1),
                   color 0.2s ease, filter 0.45s ease;
       will-change: opacity, transform, filter;
+    }
+
+    /* ── Hero entrance, part 1 — anti-flash ──
+       Hide the headline parent by default. The init code waits for
+       document.fonts.ready before revealing it (adding .ready) so the
+       text never shows in the fallback font, nor un-animated as raw
+       grey text. Once revealed, individual letters stay hidden via the
+       .is-entering rule until playEntrance reveals them per-letter. */
+    .hero-headline {
+      opacity: 0;
+    }
+    .hero-headline.ready {
+      opacity: 1;
     }
 
     /* ── Hero entrance, parts 2 + 3 ──
@@ -3561,6 +3738,27 @@
     <video class="video-fs-modal-video" playsinline loop></video>
   </div>
 
+  <!-- ══════════════════════════════════════════════════
+       UNLOCK GATE — soft password modal
+       Triggered when a project card has requirePassword. The check is
+       client-side only (visible to anyone who reads the source) — it's
+       a gentle "private" sign, not real auth. A correct entry is cached
+       in sessionStorage so the same tab doesn't re-prompt.
+  ══════════════════════════════════════════════════════ -->
+  <div id="unlock-modal" class="unlock-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="unlock-title">
+    <div class="unlock-backdrop"></div>
+    <form class="unlock-card" id="unlock-form" novalidate>
+      <h3 class="unlock-title" id="unlock-title">This piece is private.</h3>
+      <p class="unlock-body">Drop the password to step inside.</p>
+      <input type="password" class="unlock-input" id="unlock-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="password" aria-label="Password" />
+      <span class="unlock-error" id="unlock-error" aria-live="polite"></span>
+      <div class="unlock-actions">
+        <button type="button" class="unlock-btn unlock-btn-ghost" id="unlock-cancel">Cancel</button>
+        <button type="submit" class="unlock-btn unlock-btn-primary">Unlock</button>
+      </div>
+    </form>
+  </div>
+
   <div id="share-modal" class="share-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
     <div class="share-modal-backdrop"></div>
     <div class="share-modal-panel" role="document">
@@ -3647,7 +3845,7 @@
   <!-- three.js (local) + the live sphere card renderer; deferred so they run after the grid is built -->
   <script defer src="vendor/three.min.js"></script>
   <script defer src="projects/sphere/sphere-card.js"></script>
-  <script src="projects/placeholder-1/project.js"></script>
+  <script src="projects/funtype/project.js"></script>
   <script src="projects/placeholder-2/project.js"></script>
   <script src="projects/placeholder-3/project.js"></script>
   <script src="projects/placeholder-4/project.js"></script>
@@ -4471,6 +4669,40 @@
         logo.className = 'card-sphere-logo';
         body.appendChild(logo);
       }
+      // FunType — live Corner-effect preview embedded via iframe from /fun/
+      // thumb.html (typewriter cycle COMING ↔ SOON). The iframe is
+      // pointer-events:none so card clicks still reach the password gate;
+      // mouse motion is forwarded over postMessage so the in-thumb hover-
+      // pull animation still feels live. A small lock icon sits top-right.
+      else if (project.funtypeThumb) {
+        body.classList.add('card-b-body--funtype');
+        body.innerHTML =
+          '<iframe class="ft-preview" src="/fun/thumb.html" title="FunType preview" loading="lazy" tabindex="-1" aria-hidden="true"></iframe>' +
+          '<div class="ft-lock-icon" aria-label="Private">' +
+            '<svg width="16" height="18" viewBox="0 0 16 18" fill="none">' +
+              '<rect x="2" y="8" width="12" height="9" rx="1.6" stroke="currentColor" stroke-width="1.4"/>' +
+              '<path d="M4.5 8V5.2C4.5 3.21 6.07 1.6 8 1.6C9.93 1.6 11.5 3.21 11.5 5.2V8" stroke="currentColor" stroke-width="1.4"/>' +
+            '</svg>' +
+          '</div>';
+
+        // Forward host mouse motion into the iframe — it receives no native
+        // events while pointer-events:none, so the thumb listens for these
+        // postMessages and replays them as synthetic events on its stage.
+        const iframe = body.querySelector('.ft-preview');
+        const post = (type, e) => {
+          const w = iframe && iframe.contentWindow;
+          if (!w) return;
+          if (e) {
+            const r = iframe.getBoundingClientRect();
+            w.postMessage({ type, x: e.clientX - r.left, y: e.clientY - r.top }, '*');
+          } else {
+            w.postMessage({ type }, '*');
+          }
+        };
+        body.addEventListener('mouseenter', e => post('thumb-enter', e));
+        body.addEventListener('mousemove',  e => post('thumb-move',  e));
+        body.addEventListener('mouseleave', () => post('thumb-leave'));
+      }
       // moji interactive thumbnail (hover: emojis slide to edges + EMOJI cells cascade green)
       else if (project.mojiThumb) {
         body.classList.add('card-b-body--mojithumb');
@@ -4645,13 +4877,103 @@
       // Whole card (media + footer text) opens the overlay
       document.querySelectorAll('.card-b').forEach(el => {
         el.addEventListener('click', () => {
-          // Link-out projects (e.g. sphere, moji) navigate to their own page
-          // instead of opening the in-page case-study overlay.
+          // Link-out projects (e.g. sphere, moji, funtype) navigate to their
+          // own page instead of opening the in-page case-study overlay.
+          // navigateLinkProject also handles the soft password gate
+          // (requirePassword on the project entry) before growing.
           const proj = window.__PROJECTS__ && window.__PROJECTS__[el.dataset.project];
-          if (proj && proj.link) { growIntoPage(el, proj.link, proj.linkBg || '#F8F6F3'); return; }
+          if (proj && proj.link) { navigateLinkProject(el, proj); return; }
           openOverlay(el.dataset.project);
         });
       });
+    }
+
+    /* ══════════════════════════════════════════════════════
+       UNLOCK GATE
+       Soft password modal for projects with requirePassword set in
+       their project.js. Clientside only — visible to anyone who
+       reads the source — so it's a "private" sign, not real auth.
+       A correct unlock is cached in sessionStorage so the same tab
+       skips the prompt on subsequent clicks.
+
+       Public API: window.openUnlockGate(project, onSuccess)
+    ══════════════════════════════════════════════════════ */
+    (function initUnlockGate() {
+      const modal  = document.getElementById('unlock-modal');
+      const card   = document.getElementById('unlock-form');
+      const input  = document.getElementById('unlock-input');
+      const cancel = document.getElementById('unlock-cancel');
+      const errEl  = document.getElementById('unlock-error');
+      if (!modal) return;
+
+      let pendingCb = null;
+      let expected  = null;
+      let pid       = null;
+
+      const keyFor = id => 'unlock-' + id;
+
+      function open(project, onSuccess) {
+        if (!project || !project.requirePassword) { onSuccess && onSuccess(); return; }
+        // Already unlocked in this session — skip the prompt entirely.
+        if (sessionStorage.getItem(keyFor(project.id)) === '1') { onSuccess && onSuccess(); return; }
+
+        expected  = project.requirePassword;
+        pendingCb = onSuccess;
+        pid       = project.id;
+        input.value = '';
+        errEl.textContent = '';
+        modal.hidden = false;
+        modal.removeAttribute('aria-hidden');
+        // Lock body scroll while the gate is up.
+        document.body.style.overflow = 'hidden';
+        requestAnimationFrame(() => modal.classList.add('open'));
+        setTimeout(() => input.focus(), 80);
+      }
+
+      function close() {
+        modal.classList.remove('open');
+        setTimeout(() => {
+          modal.hidden = true;
+          modal.setAttribute('aria-hidden', 'true');
+          document.body.style.overflow = '';
+          pendingCb = null; expected = null; pid = null;
+        }, 280);
+      }
+
+      card.addEventListener('submit', e => {
+        e.preventDefault();
+        if (input.value === expected) {
+          if (pid) sessionStorage.setItem(keyFor(pid), '1');
+          const cb = pendingCb;
+          close();
+          // Wait for the modal to fade before triggering grow-into-page so
+          // the two animations don't fight for the same paint frames.
+          setTimeout(() => cb && cb(), 300);
+        } else {
+          errEl.textContent = 'Not quite. Try again.';
+          card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
+          input.select();
+        }
+      });
+      cancel.addEventListener('click', close);
+      modal.querySelector('.unlock-backdrop').addEventListener('click', close);
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && !modal.hidden) close();
+      });
+
+      window.openUnlockGate = open;
+    })();
+
+    /* Resolve a link-card click: opens the unlock gate first if the project
+       has requirePassword, then grows into the page. Used by both the work
+       grid and the hero ring-cards. */
+    function navigateLinkProject(cardEl, proj) {
+      const go = () => growIntoPage(cardEl, proj.link, proj.linkBg || '#F8F6F3');
+      if (proj.requirePassword && typeof window.openUnlockGate === 'function') {
+        window.openUnlockGate(proj, go);
+      } else {
+        go();
+      }
     }
 
     /* Link cards open by growing the card's media area to fill the screen,
@@ -4905,30 +5227,48 @@
 
       // Defer a frame so the letter-wrap pass has run first.
       requestAnimationFrame(() => {
-        // Hero entrance plays on EVERY viewport (desktop + mobile). The rest
-        // of the lifecycle — contact-heading entrances + button glow cascade —
-        // stays mobile-only inside apply(). heroDone guards against a double
-        // play if the breakpoint matches and start() runs immediately after.
-        const hero = document.querySelector('.hero-headline');
-        if (hero && !heroDone && hero.querySelector('.letter')) {
-          heroDone = true;
-          playEntrance(hero, true);
-          // Secondary text rises in mid-wave; the ring-card objects pop from
-          // the centre outward shortly after. Order + per-card delay live in
-          // the .hero-cards.is-entered CSS rules (sphere → moji → shltr →
-          // radiant). Both elements are display:none on mobile, so adding
-          // .is-entered is a no-op there.
-          const labels = document.querySelector('.hero-labels');
-          const cards  = document.querySelector('.hero-cards');
-          // Spaced out for a meditative cadence: secondary text breathes in
-          // after the headline starts to settle; the four objects then fade
-          // up one by one (320ms gap each — see the CSS stagger above).
-          setTimeout(() => { if (labels) labels.classList.add('is-entered'); }, 1100);
-          setTimeout(() => { if (cards)  cards.classList.add('is-entered');  }, 1700);
-        }
-        apply();
-        if (mq.addEventListener) mq.addEventListener('change', apply);
-        else mq.addListener(apply);
+        // Wait for the headline's serif font before triggering the entrance
+        // — otherwise the user briefly sees the wrong-font fallback while
+        // Instrument Serif loads (FOUT). Capped at 1500ms in case fonts.ready
+        // never resolves (network failure, blocked CDN, etc.) so the page
+        // can never get stuck with the headline permanently invisible.
+        const fontsReady = (document.fonts && document.fonts.ready)
+          ? document.fonts.ready
+          : Promise.resolve();
+        const safety = new Promise(r => setTimeout(r, 1500));
+
+        Promise.race([fontsReady, safety]).then(() => {
+          // Hero entrance plays on EVERY viewport (desktop + mobile). The rest
+          // of the lifecycle — contact-heading entrances + button glow cascade —
+          // stays mobile-only inside apply(). heroDone guards against a double
+          // play if the breakpoint matches and start() runs immediately after.
+          const hero = document.querySelector('.hero-headline');
+          if (hero && !heroDone && hero.querySelector('.letter')) {
+            heroDone = true;
+            // Order matters: add .is-entering first so letters are hidden
+            // inside the parent BEFORE .ready makes the parent visible.
+            // Both class changes happen in the same tick, so the browser
+            // never paints a frame with bare grey letters showing.
+            hero.classList.add('is-entering');
+            hero.classList.add('ready');
+            playEntrance(hero, true);
+            // Secondary text rises in mid-wave; the ring-card objects pop from
+            // the centre outward shortly after. Order + per-card delay live in
+            // the .hero-cards.is-entered CSS rules (sphere → moji → shltr →
+            // radiant). Both elements are display:none on mobile, so adding
+            // .is-entered is a no-op there.
+            const labels = document.querySelector('.hero-labels');
+            const cards  = document.querySelector('.hero-cards');
+            // Spaced out for a meditative cadence: secondary text breathes in
+            // after the headline starts to settle; the four objects then fade
+            // up one by one (320ms gap each — see the CSS stagger above).
+            setTimeout(() => { if (labels) labels.classList.add('is-entered'); }, 1100);
+            setTimeout(() => { if (cards)  cards.classList.add('is-entered');  }, 1700);
+          }
+          apply();
+          if (mq.addEventListener) mq.addEventListener('change', apply);
+          else mq.addListener(apply);
+        });
       });
     })();
 
@@ -5965,10 +6305,11 @@
         // Each hero ring-card opens its own project. The project id is set on
         // the card by applyHeroConfig (data-project="…"); fall back to 'shltr'.
         const pid = card.dataset.project || 'shltr';
-        // Link-out projects (moji, sphere) grow into their own page, matching
-        // the work-card behaviour, instead of opening an in-page overlay.
+        // Link-out projects (moji, sphere, funtype) grow into their own
+        // page — same behaviour as the work cards, with the unlock gate
+        // applied first if requirePassword is set.
         const proj = window.__PROJECTS__ && window.__PROJECTS__[pid];
-        if (proj && proj.link) { growIntoPage(card, proj.link, proj.linkBg || '#F8F6F3'); return; }
+        if (proj && proj.link) { navigateLinkProject(card, proj); return; }
         openOverlay(pid);
       });
     });
