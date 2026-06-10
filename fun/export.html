@@ -109,6 +109,19 @@
       /* Match the swatches column — the input is the full panel width. */
       #word { width:100%; }
 
+      /* Replace the OS-native select chevron with a custom one tucked away
+         from the right edge — the native arrow was butting against the
+         frame border. appearance:none strips the default; the background
+         SVG renders our chevron with proper padding. */
+      select {
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='%2368645e' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        padding-right: 36px;
+      }
+
       /* swatches — one connected unit (rounded only at top & bottom) */
       .swatches { display:flex; flex-direction:column; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--card); }
       .swatch { display:flex; align-items:center; gap:12px; padding:9px 11px; border-bottom:1px solid var(--line); }

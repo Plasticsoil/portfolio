@@ -2191,7 +2191,7 @@
       background: var(--color-surface, #FBFAF9);
       border: 1px solid rgba(163, 160, 155, 0.18);
       border-radius: 18px;
-      padding: 38px 34px 28px;
+      padding: 44px 36px 32px;
       box-shadow: 0 18px 48px rgba(38, 37, 30, 0.18);
       display: flex;
       flex-direction: column;
@@ -2205,22 +2205,9 @@
     }
 
     /* Mini-hero headline — same Instrument Serif treatment as the page
-       hero, just smaller. Eyebrow slash on top mirrors the site nav. */
-    .unlock-eyebrow {
-      display: inline-flex;
-      align-items: baseline;
-      gap: 6px;
-      margin-bottom: 8px;
-      font-family: var(--font-sans);
-      font-style: italic;
-      font-size: 13px;
-      letter-spacing: 0.01em;
-      color: var(--color-muted, #A3A09B);
-    }
-    .unlock-eyebrow-slash { color: rgba(163, 160, 155, 0.48); }
-
+       hero, just smaller. */
     .unlock-title {
-      margin: 0 0 12px;
+      margin: 0 0 10px;
       font-family: var(--font-serif);
       font-weight: 400;
       font-size: 44px;
@@ -2229,7 +2216,7 @@
       letter-spacing: -0.01em;
     }
     .unlock-body {
-      margin: 0 0 22px;
+      margin: 0 0 24px;
       font-family: var(--font-sans);
       font-style: italic;
       font-size: 14px;
@@ -2240,7 +2227,7 @@
     .unlock-input {
       width: 100%;
       box-sizing: border-box;
-      padding: 14px 18px;
+      padding: 14px 20px;
       border: 1px solid rgba(163, 160, 155, 0.35);
       border-radius: 999px;
       background: transparent;
@@ -2262,79 +2249,83 @@
 
     .unlock-error {
       min-height: 18px;
-      margin: 10px 4px 16px;
+      margin: 12px 4px 18px;
       font-family: var(--font-sans);
       font-style: italic;
       font-size: 12px;
       color: var(--color-muted, #A3A09B);
       letter-spacing: 0.02em;
     }
-    .unlock-error:not(:empty)::before {
-      content: '/ ';
-      color: rgba(163, 160, 155, 0.5);
-    }
 
-    .unlock-actions {
-      display: flex;
-      gap: 22px;
-      justify-content: flex-end;
-      align-items: center;
-    }
-    /* Buttons borrow the contact-btn language: italic sans, lowercase
-       slash prefix, gradient-blur glow on hover/active. The primary
-       Unlock button shows the glow at rest so it reads as the call to
-       action; the ghost Cancel stays quiet until hovered. */
-    .unlock-btn {
-      position: relative;
-      isolation: isolate;
+    /* Close (X) — top-right ghost icon button. Quiet at rest, ink on hover. */
+    .unlock-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 32px;
+      height: 32px;
       display: inline-flex;
-      align-items: baseline;
-      gap: 6px;
-      padding: 8px 18px;
+      align-items: center;
+      justify-content: center;
       border: none;
-      border-radius: 999px;
       background: transparent;
-      font-family: var(--font-sans);
-      font-style: italic;
-      font-size: 15px;
-      letter-spacing: -0.01em;
-      cursor: pointer;
       color: var(--color-muted, #A3A09B);
+      cursor: pointer;
+      border-radius: 999px;
       transition: color 0.2s ease, background 0.2s ease;
     }
-    .unlock-btn::before {
+    .unlock-close:hover,
+    .unlock-close:focus-visible {
+      color: var(--color-ink, #26251E);
+      background: rgba(38, 37, 30, 0.06);
+      outline: none;
+    }
+
+    /* Submit (→) — circular pill with the gradient-blur glow at rest.
+       Aligned to the right end of the card. Same glow language as the
+       contact buttons elsewhere on the site. */
+    .unlock-btn-primary {
+      position: relative;
+      isolation: isolate;
+      align-self: flex-end;
+      margin-top: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.15);
+      color: var(--color-ink, #26251E);
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .unlock-btn-primary::before {
       content: '';
       position: absolute;
-      inset: 0;
+      /* Bleed a touch outside the button bounds so the blurred edge stays
+         saturated right up to the pill's edge instead of fading off. */
+      inset: -4px;
       border-radius: 999px;
       background: var(--gradient-accent, linear-gradient(90deg, #FF6EFD, #F8FF7B, #60FBFF));
-      filter: blur(11px);
-      opacity: 0;
+      filter: blur(9px);
+      opacity: 0.9;
       transition: opacity 0.2s ease;
       pointer-events: none;
       z-index: -1;
     }
-    .unlock-btn .btn-slash { color: rgba(163, 160, 155, 0.48); }
-    .unlock-btn:hover,
-    .unlock-btn:active {
-      color: var(--color-ink, #26251E);
-      background: rgba(255, 255, 255, 0.15);
-    }
-    .unlock-btn:hover::before,
-    .unlock-btn:active::before {
-      opacity: 1;
-    }
-    /* Primary CTA: gentle gradient glow at rest so it reads as the
-       default action even before hover. */
-    .unlock-btn-primary {
-      color: var(--color-ink, #26251E);
-    }
-    .unlock-btn-primary::before {
-      opacity: 0.55;
-    }
     .unlock-btn-primary:hover::before,
-    .unlock-btn-primary:active::before {
+    .unlock-btn-primary:focus-visible::before {
       opacity: 1;
+    }
+    .unlock-btn-primary:active { transform: scale(0.95); }
+    .unlock-btn-primary:focus-visible { outline: none; }
+    /* When Cancel/X is hovered, fade the arrow's glow so only one button
+       claims attention at any moment. */
+    .unlock-card:has(.unlock-close:hover) .unlock-btn-primary::before,
+    .unlock-card:has(.unlock-close:focus-visible) .unlock-btn-primary::before {
+      opacity: 0;
     }
 
     /* Shake on wrong password — short, restrained. */
@@ -3816,21 +3807,20 @@
   <div id="unlock-modal" class="unlock-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="unlock-title">
     <div class="unlock-backdrop"></div>
     <form class="unlock-card" id="unlock-form" novalidate>
-      <span class="unlock-eyebrow">
-        <span class="unlock-eyebrow-slash" aria-hidden="true">/</span> private piece
-      </span>
+      <button type="button" class="unlock-close" id="unlock-cancel" aria-label="Close">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </button>
       <h3 class="unlock-title" id="unlock-title">This piece is private.</h3>
       <p class="unlock-body">Drop the password to step inside.</p>
-      <input type="password" class="unlock-input" id="unlock-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="password" aria-label="Password" />
+      <input type="text" class="unlock-input" id="unlock-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="password" aria-label="Password" />
       <span class="unlock-error" id="unlock-error" aria-live="polite"></span>
-      <div class="unlock-actions">
-        <button type="button" class="unlock-btn unlock-btn-ghost" id="unlock-cancel">
-          <span class="btn-slash" aria-hidden="true">/</span><span>cancel</span>
-        </button>
-        <button type="submit" class="unlock-btn unlock-btn-primary">
-          <span class="btn-slash" aria-hidden="true">/</span><span>unlock</span>
-        </button>
-      </div>
+      <button type="submit" class="unlock-btn unlock-btn-primary" aria-label="Unlock">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </form>
   </div>
 
