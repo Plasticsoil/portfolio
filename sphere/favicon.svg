@@ -1,6 +1,7 @@
 <svg width="176" height="177" viewBox="0 0 176 177" fill="none" xmlns="http://www.w3.org/2000/svg">
 <circle cx="88" cy="88.002" r="80" stroke="#F58EE9" stroke-width="16"/>
-<ellipse cx="88.0003" cy="88.0011" rx="40" ry="80" transform="rotate(-45 88.0003 88.0011)" stroke="#F58EE9" stroke-width="16"/>
-<path d="M31.4326 31.4336L144.57 144.571" stroke="#F58EE9" stroke-width="16"/>
-<path d="M144.568 31.4258L31.4313 144.563" stroke="#F58EE9" stroke-width="16"/>
+<ellipse cx="88.001" cy="88.0059" rx="40" ry="80" stroke="#F58EE9" stroke-width="16"/>
+<path d="M88 8.00586L88 168.006" stroke="#F58EE9" stroke-width="16"/>
+<path d="M168.006 63L8.00586 63" stroke="#F58EE9" stroke-width="16"/>
+<path d="M168.006 113L8.00586 113" stroke="#F58EE9" stroke-width="16"/>
 </svg>
