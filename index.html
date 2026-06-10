@@ -417,9 +417,14 @@
       z-index: 0;
       pointer-events: none;
     }
-    .ring-card:hover .ring-card-emoji,
     .ring-card:hover .ring-card-sphere {
       filter: url(#mv-gradient-tint);
+    }
+    /* moji hand silhouette uses the compact-stops variant so the cyan and
+       pink edges of the gradient stay visible on the small glyph (see the
+       #mv-gradient-tint-moji filter definition above). */
+    .ring-card:hover .ring-card-emoji {
+      filter: url(#mv-gradient-tint-moji);
     }
     /* Long-press reveal → show true colours, matching the models. */
     .ring-card.ring-card--model-revealed .ring-card-emoji,
@@ -441,7 +446,7 @@
     }
     .ring-card-emoji .glyph {
       display: inline-block;
-      animation: hero-emoji-nudge 1.3s ease-in-out infinite;
+      animation: hero-emoji-nudge 2.2s ease-in-out infinite;
     }
     /* Mirrors moji/style.css @keyframes nudge (the start-screen hand). */
     @keyframes hero-emoji-nudge {
@@ -2746,6 +2751,69 @@
       animation: letter-float 0.9s ease-in-out forwards;
     }
 
+    /* ── Entrance animation (universal — desktop + mobile) ──
+       playEntrance() in JS staggers each letter through a rise + gradient sweep
+       on page load (hero) or when the heading scrolls into view (contact).
+       The .is-entering class on the parent pre-hides the letters until JS
+       releases them per-letter; the transition rule below drives the actual
+       motion. Previously scoped to mobile only — promoted out so the hero
+       "opens up" on desktop too. */
+    .hero-headline.is-entering .letter,
+    .contact-about-heading.is-entering .letter,
+    .contact-more-label.is-entering .letter,
+    .contact-heading.is-entering .letter {
+      opacity: 0;
+      transform: translateY(26px);
+      filter: blur(8px);
+    }
+    .hero-headline .letter,
+    .contact-about-heading .letter,
+    .contact-more-label .letter,
+    .contact-heading .letter {
+      transition: opacity 0.5s ease, transform 0.55s cubic-bezier(.2,.8,.2,1),
+                  color 0.2s ease, filter 0.45s ease;
+      will-change: opacity, transform, filter;
+    }
+
+    /* ── Hero entrance, parts 2 + 3 ──
+       Secondary text + ring-card objects pop in after the headline letter wave
+       starts, in display order from the centre outward. JS in initMobileHeadlines
+       adds .is-entered to release them. Both are display:none on mobile, so this
+       is desktop-only in practice. Pre-hide via opacity + scale; release via the
+       transitions below. */
+    .hero-labels {
+      opacity: 0;
+      transform: translateY(10px);
+      /* Slow + smooth ease-out (easeOutQuart) — meditative, no bounce. */
+      transition: opacity 1.4s ease, transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .hero-labels.is-entered {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hero-cards .ring-card {
+      opacity: 0;
+      /* transform-origin defaults to 50% 50% — each card scales from its own
+         centre, which is wherever applyHeroConfig placed it. The scale here is
+         independent of the inner .ring-card-stage hero-card-pulse animation. */
+      transform: scale(0.7);
+      /* Long, soft ease-out — feels like the object is settling into place,
+         not jumping. cubic-bezier(.22,1,.36,1) is easeOutQuart, no overshoot. */
+      transition: opacity 1.6s ease, transform 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .hero-cards.is-entered .ring-card {
+      opacity: 1;
+      transform: scale(1);
+    }
+    /* Stagger: from-the-centre outward — sphere first (it IS the centre),
+       then the small moji hand, then the original SHLTR + Radiant pair.
+       Wider gaps between objects so each gets a moment to breathe. */
+    .hero-cards.is-entered .ring-card[data-project="sphere"]  { transition-delay: 0ms; }
+    .hero-cards.is-entered .ring-card[data-project="moji"]    { transition-delay: 320ms; }
+    .hero-cards.is-entered .ring-card[data-project="shltr"]   { transition-delay: 640ms; }
+    .hero-cards.is-entered .ring-card[data-project="radiant"] { transition-delay: 960ms; }
+
     /* ══════════════════════════════════════════════════════════════
        MOBILE — Phase 1 + 2
        Tablet  ≤ 900px  : compact desktop layout (gentle scaling)
@@ -2863,27 +2931,8 @@
         letter-spacing: -0.02em;
         text-align: center;
       }
-      /* Entrance initial state — letters start lowered + invisible + blurred,
-         then playEntrance() staggers them up (rise + gradient sweep) and removes
-         .is-entering. Shared by the hero (on load) and each contact heading
-         (when it scrolls into view) so they all "open up" the same way. */
-      .hero-headline.is-entering .letter,
-      .contact-about-heading.is-entering .letter,
-      .contact-more-label.is-entering .letter,
-      .contact-heading.is-entering .letter {
-        opacity: 0;
-        transform: translateY(26px);
-        filter: blur(8px);
-      }
-      .hero-headline .letter,
-      .contact-about-heading .letter,
-      .contact-more-label .letter,
-      .contact-heading .letter {
-        display: inline-block;
-        transition: opacity 0.5s ease, transform 0.55s cubic-bezier(.2,.8,.2,1),
-                    color 0.2s ease, filter 0.45s ease;
-        will-change: opacity, transform, filter;
-      }
+      /* Entrance initial state + transition now live in the universal block
+         above (look for "Entrance animation (universal — desktop + mobile)"). */
       /* Force the headline onto 3 lines per Figma:
          "Welcome / To My / Exhibition".
          Each .letter-space has a data-space-idx (1, 2, 3) set by the
@@ -3203,6 +3252,22 @@
         <feImage x="0" y="0" width="1" height="1" preserveAspectRatio="none"
                  result="grad"
                  href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' preserveAspectRatio='none'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0.1' stop-color='%2360FBFF'/><stop offset='0.5' stop-color='%23F8FF7B'/><stop offset='0.9' stop-color='%23FF6EFD'/></linearGradient></defs><rect width='100' height='100' fill='url(%23g)'/></svg>"/>
+        <feComposite in="grad" in2="SourceAlpha" operator="in"/>
+      </filter>
+
+      <!-- Compact-stops variant of the gradient — same three colours, but the
+           stops sit closer to the centre (0.3/0.5/0.7 instead of 0.1/0.5/0.9).
+           Used on the moji hand silhouette, which only fills a small central
+           band of the 232×248 ring-card bounding box: with the original wide
+           stops the visible slice is almost entirely yellow. Tighter stops let
+           the cyan and pink edges read on the small glyph. -->
+      <filter id="mv-gradient-tint-moji"
+              x="0" y="0" width="1" height="1"
+              filterUnits="objectBoundingBox"
+              primitiveUnits="objectBoundingBox">
+        <feImage x="0" y="0" width="1" height="1" preserveAspectRatio="none"
+                 result="grad"
+                 href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' preserveAspectRatio='none'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0.3' stop-color='%2360FBFF'/><stop offset='0.5' stop-color='%23F8FF7B'/><stop offset='0.7' stop-color='%23FF6EFD'/></linearGradient></defs><rect width='100' height='100' fill='url(%23g)'/></svg>"/>
         <feComposite in="grad" in2="SourceAlpha" operator="in"/>
       </filter>
     </defs>
@@ -4840,6 +4905,27 @@
 
       // Defer a frame so the letter-wrap pass has run first.
       requestAnimationFrame(() => {
+        // Hero entrance plays on EVERY viewport (desktop + mobile). The rest
+        // of the lifecycle — contact-heading entrances + button glow cascade —
+        // stays mobile-only inside apply(). heroDone guards against a double
+        // play if the breakpoint matches and start() runs immediately after.
+        const hero = document.querySelector('.hero-headline');
+        if (hero && !heroDone && hero.querySelector('.letter')) {
+          heroDone = true;
+          playEntrance(hero, true);
+          // Secondary text rises in mid-wave; the ring-card objects pop from
+          // the centre outward shortly after. Order + per-card delay live in
+          // the .hero-cards.is-entered CSS rules (sphere → moji → shltr →
+          // radiant). Both elements are display:none on mobile, so adding
+          // .is-entered is a no-op there.
+          const labels = document.querySelector('.hero-labels');
+          const cards  = document.querySelector('.hero-cards');
+          // Spaced out for a meditative cadence: secondary text breathes in
+          // after the headline starts to settle; the four objects then fade
+          // up one by one (320ms gap each — see the CSS stagger above).
+          setTimeout(() => { if (labels) labels.classList.add('is-entered'); }, 1100);
+          setTimeout(() => { if (cards)  cards.classList.add('is-entered');  }, 1700);
+        }
         apply();
         if (mq.addEventListener) mq.addEventListener('change', apply);
         else mq.addListener(apply);

@@ -122,8 +122,10 @@
         var zMid = (a[2] + b[2]) / 2;                 // -1 (back) … +1 (front)
         var t = (zMid + 1) / 2;
         // Alpha carries depth; the grey filter keeps alpha, so back lines stay
-        // fainter even once flattened. RGB is irrelevant (contrast(0) greys it).
-        ctx.strokeStyle = 'rgba(38,37,30,' + (0.30 + 0.65 * t).toFixed(3) + ')';
+        // fainter even once flattened. Base RGB picks up only in the long-press
+        // reveal state (filters removed) — we use the same pink (#FF8FF4) as the
+        // /sphere project's default accent so the unfiltered sphere matches.
+        ctx.strokeStyle = 'rgba(255,143,244,' + (0.30 + 0.65 * t).toFixed(3) + ')';
         ctx.lineWidth   = LINE * (0.72 + 0.5 * t);    // front strokes a touch thicker
         ctx.beginPath();
         ctx.moveTo(cx + a[0] * R, cy - a[1] * R);
