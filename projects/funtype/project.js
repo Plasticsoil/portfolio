@@ -5,8 +5,8 @@
 window.__PROJECTS__['funtype'] = {
   id: 'funtype',
   title: 'FunType',
-  tags: ['Kinetic Typography', 'Vibecoding'],
-  overlayTags: ['Kinetic Typography', 'Vibecoding'],
+  tags: ['Tool', 'Type', 'Vibecoding'],
+  overlayTags: ['Tool', 'Type', 'Vibecoding'],
 
   // Custom in-page thumbnail (built in buildCard): cream card with serif
   // "FunType" wordmark + small lock indicator.
