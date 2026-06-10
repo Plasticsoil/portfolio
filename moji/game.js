@@ -449,6 +449,68 @@
   let boardCache = [];        // the rows currently shown (today)
   let boardIsGlobal = false;  // did the last fetch reach the server?
 
+  // ── Ambient (fake) leaderboard ───────────────────────────
+  // Keeps the daily board looking alive even with zero real players.
+  // The roster is deterministic per calendar day (seeded by the date),
+  // so it's stable if you refresh, but completely fresh each day. Entries
+  // are "released" gradually through the day, so the board fills up and the
+  // ranking shifts as the hours pass — it reads as live activity even when
+  // nobody is actually playing. Real scores are merged in and ranked among
+  // them (and a same-name collision drops the fake, so you never see double).
+  const FAKE_NAMES = [
+    'maya', 'noa', 'omri', 'leo', 'yuki', 'sam', 'ava', 'ben', 'tom', 'lia',
+    'kai', 'zoe', 'ivy', 'max', 'ari', 'dana', 'ron', 'gal', 'shir', 'amit',
+    'noam', 'tal', 'roni', 'ido', 'yael', 'adi', 'lior', 'ella', 'mika', 'jonas',
+    'lina', 'pablo', 'sofia', 'luca', 'emma', 'theo', 'nina', 'milo', 'iris', 'remy',
+    'june', 'cleo', 'vera', 'otto', 'rosa', 'finn', 'alma', 'hugo', 'wren', 'ezra',
+    'dee', 'koa', 'suki', 'bex', 'nil', 'ravi', 'mae', 'ono', 'pip', 'taz',
+  ];
+
+  function seedFrom(str) {                 // tiny FNV-1a string → uint32
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return h >>> 0;
+  }
+  function mulberry32(a) {                  // seeded PRNG → [0,1)
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function fakeBoard(date) {
+    const rnd = mulberry32(seedFrom('moji|' + date));
+    const names = FAKE_NAMES.slice();      // daily shuffle of the roster
+    for (let i = names.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      const tmp = names[i]; names[i] = names[j]; names[j] = tmp;
+    }
+    const total = 18 + Math.floor(rnd() * 5);          // 18–22 players for the day
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const rows = [];
+    for (let i = 0; i < total; i++) {
+      // believable solve time, rounded to the second (≈ 9s–104s).
+      const ms = Math.round((9000 + rnd() * 95000) / 1000) * 1000;
+      // ~9 are present from midnight so it's never empty; the rest trickle in
+      // through the day (by ~21:30), which is what creates the live "movement".
+      const releaseMin = i < 9 ? 0 : Math.floor(rnd() * (21 * 60 + 30));
+      if (releaseMin <= nowMin) {
+        rows.push({ name: names[i % names.length], ms, fake: true, ts: 'f' + date + '_' + i });
+      }
+    }
+    return rows;
+  }
+
+  // Merge real rows with the ambient roster, sorted by time, capped at 24.
+  function withFakes(realRows, date) {
+    const taken = new Set(realRows.map((r) => String(r.name || '').toLowerCase()));
+    const fakes = fakeBoard(date).filter((f) => !taken.has(f.name.toLowerCase()));
+    return realRows.concat(fakes).sort((a, b) => a.ms - b.ms).slice(0, 24);
+  }
+
   function loadLocal() {
     try { return JSON.parse(localStorage.getItem(LB_KEY)) || []; }
     catch (e) { return []; }
@@ -520,6 +582,7 @@
     boardCache = (!alreadyDone && lastEntry && lastEntry.dateStr === date)
       ? await postScore(lastEntry)
       : await fetchBoard(date);
+    boardCache = withFakes(boardCache, date);   // pad with the ambient roster
 
     renderBoard();
     const rank = currentRank();
