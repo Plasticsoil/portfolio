@@ -2999,16 +2999,18 @@
     }
 
     /* ── Hero entrance, part 1 — anti-flash ──
-       Hide the headline parent by default. The init code waits for
-       document.fonts.ready before revealing it (adding .ready) so the
-       text never shows in the fallback font, nor un-animated as raw
-       grey text. Once revealed, individual letters stay hidden via the
-       .is-entering rule until playEntrance reveals them per-letter. */
+       Hide the headline parent by default. The h1 itself ships with a
+       data-text attribute instead of textContent, so the element is
+       genuinely empty until the letter-wrap pass populates it with
+       spans. These rules keep the wrapped spans hidden until the JS
+       entrance fires .ready in sync with document.fonts.ready. */
     .hero-headline {
       opacity: 0;
+      visibility: hidden;
     }
     .hero-headline.ready {
       opacity: 1;
+      visibility: visible;
     }
 
     /* ── Hero entrance, parts 2 + 3 ──
@@ -3648,7 +3650,13 @@
     </div>
 
     <div class="hero-text">
-      <h1 class="hero-headline">Welcome to my exhibition</h1>
+      <!-- TRUE anti-flash: the headline text lives in data-text instead of
+           textContent, so the element is genuinely empty at first paint.
+           The letter-wrap pass reads from data-text, then the entrance JS
+           reveals the wrapped spans on cue. Nothing visible can flash
+           because there is no text content for the browser to render
+           before the wave begins. -->
+      <h1 class="hero-headline" data-text="Welcome to my exhibition"></h1>
       <div class="hero-labels">
         <span>Selected works</span>
         <span>creative explorations</span>
@@ -4564,7 +4572,11 @@
     ['.hero-headline', '.contact-heading', '.contact-about-heading', '.contact-more-label'].forEach(sel => {
       const el = document.querySelector(sel);
       if (!el) return;
-      const raw = el.textContent;
+      // Prefer data-text when present (used on .hero-headline to keep the
+      // element genuinely empty at first paint — there is no text content
+      // to flash). Falls back to textContent for headings that don't ship
+      // with a data-text attribute.
+      const raw = el.dataset.text || el.textContent;
       el.textContent = '';
 
       // Pass 1: create a <span> per character, collect non-space letter spans.
@@ -5310,12 +5322,11 @@
           const hero = document.querySelector('.hero-headline');
           if (hero && !heroDone && hero.querySelector('.letter')) {
             heroDone = true;
-            // Order matters: add .is-entering first so letters are hidden
-            // inside the parent BEFORE .ready makes the parent visible.
-            // Both class changes happen in the same tick, so the browser
-            // never paints a frame with bare grey letters showing.
-            hero.classList.add('is-entering');
-            hero.classList.add('ready');
+            // Atomic reveal: both classes added in a single classList.add
+            // call so the browser performs one style recalc — the parent
+            // becomes visible and the letters become masked (.is-entering
+            // hides them) in the same frame, so nothing flashes.
+            hero.classList.add('is-entering', 'ready');
             playEntrance(hero, true);
             // Secondary text rises in mid-wave; the ring-card objects pop from
             // the centre outward shortly after. Order + per-card delay live in
