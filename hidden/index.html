@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <!-- Hidden page: keep it out of search engines and crawlers -->
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#14121a">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>Hidden — a drawing game for three</title>
+  <meta name="description" content="A pass-and-play drawing game for three players. Two share a secret word, one is the odd one out. A vibecoded toy by Yam Livnat.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #14121a;
+      --bg-2: #1c1925;
+      --ink: #f3f0ea;
+      --muted: #9a93a8;
+      --line: rgba(255,255,255,.10);
+      --p1: #ff6b6b;
+      --p2: #4ecdc4;
+      --p3: #ffd166;
+      --safe-t: env(safe-area-inset-top, 0px);
+      --safe-b: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: radial-gradient(120% 90% at 50% -10%, #221d2e 0%, var(--bg) 60%);
+      color: var(--ink);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* breadcrumb back home — matches the rest of the site */
+    .back {
+      position: fixed;
+      top: calc(14px + var(--safe-t));
+      left: 16px;
+      z-index: 30;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 14px;
+      letter-spacing: .01em;
+      opacity: .8;
+      transition: opacity .2s;
+    }
+    .back:hover { opacity: 1; }
+    .back-slash { color: var(--ink); font-weight: 600; }
+
+    .wrap {
+      flex: 1;
+      width: 100%;
+      max-width: 560px;
+      margin: 0 auto;
+      padding: calc(60px + var(--safe-t)) 20px calc(20px + var(--safe-b));
+      display: flex;
+      flex-direction: column;
+    }
+
+    header { text-align: center; margin-bottom: 6px; }
+    h1 {
+      font-family: 'Instrument Serif', serif;
+      font-weight: 400;
+      font-size: clamp(38px, 12vw, 58px);
+      line-height: 1;
+      margin: 0;
+      letter-spacing: .01em;
+    }
+    h1 em { font-style: italic; color: var(--p2); }
+    .tagline {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 10px 0 0;
+      line-height: 1.5;
+    }
+
+    .round-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 22px 0 6px;
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .round-bar b { color: var(--ink); font-weight: 600; }
+
+    .players {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 16px;
+      padding: 14px 0;
+    }
+
+    .player {
+      --c: var(--p1);
+      position: relative;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--bg-2), #18151f);
+      color: var(--ink);
+      border-radius: 22px;
+      padding: 26px 22px;
+      font: inherit;
+      font-size: 22px;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      transition: transform .12s ease, border-color .2s, box-shadow .2s;
+      overflow: hidden;
+    }
+    .player::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 6px;
+      background: var(--c);
+    }
+    .player:active { transform: scale(.985); }
+    .player:hover { border-color: color-mix(in srgb, var(--c) 55%, transparent); box-shadow: 0 8px 30px -16px var(--c); }
+    .player[data-i="0"] { --c: var(--p1); }
+    .player[data-i="1"] { --c: var(--p2); }
+    .player[data-i="2"] { --c: var(--p3); }
+
+    .pdot {
+      flex: none;
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-family: 'Instrument Serif', serif;
+      font-size: 24px;
+      color: #14121a;
+      background: var(--c);
+    }
+    .pmeta { display: flex; flex-direction: column; gap: 3px; }
+    .pmeta .name { font-size: 20px; }
+    .pmeta .hint {
+      font-size: 13px; font-weight: 400; color: var(--muted);
+    }
+    .player.seen .pmeta .hint { color: color-mix(in srgb, var(--c) 80%, white); }
+    .player .check {
+      margin-left: auto;
+      font-size: 22px;
+      opacity: 0;
+      transform: scale(.6);
+      transition: opacity .2s, transform .2s;
+      color: var(--c);
+    }
+    .player.seen .check { opacity: 1; transform: scale(1); }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .btn {
+      flex: 1;
+      border: 1px solid var(--line);
+      background: var(--bg-2);
+      color: var(--ink);
+      font: inherit;
+      font-weight: 600;
+      font-size: 16px;
+      padding: 16px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: transform .12s, background .2s, border-color .2s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn.primary {
+      background: var(--ink);
+      color: #14121a;
+      border-color: var(--ink);
+    }
+    .btn:hover { border-color: rgba(255,255,255,.28); }
+
+    .footnote {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 14px;
+      line-height: 1.5;
+    }
+    .footnote a { color: var(--muted); }
+
+    /* ── reveal overlay ─────────────────────────────── */
+    .reveal {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: calc(28px + var(--safe-t)) 28px calc(28px + var(--safe-b));
+      background: #0e0c13;
+    }
+    .reveal.open { display: flex; animation: fade .18s ease; }
+    @keyframes fade { from { opacity: 0; } }
+    .reveal::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(80% 60% at 50% 38%, color-mix(in srgb, var(--c) 26%, transparent), transparent 70%);
+      pointer-events: none;
+    }
+    .reveal .who {
+      position: relative;
+      color: var(--c);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .reveal .label {
+      position: relative;
+      color: var(--muted);
+      font-size: 15px;
+      margin-bottom: 22px;
+    }
+    .reveal .word {
+      position: relative;
+      font-family: 'Instrument Serif', serif;
+      font-size: clamp(56px, 20vw, 110px);
+      line-height: 1.02;
+      margin: 0;
+      color: var(--ink);
+    }
+    .reveal .emoji { position: relative; font-size: clamp(60px, 22vw, 120px); margin-bottom: 8px; line-height: 1; }
+    .reveal .dismiss {
+      position: relative;
+      margin-top: 38px;
+      border: 1px solid var(--c);
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 600;
+      font-size: 16px;
+      padding: 16px 40px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .reveal .dismiss:active { transform: scale(.97); }
+    .reveal .privacy {
+      position: relative;
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: 12.5px;
+      max-width: 280px;
+      line-height: 1.5;
+    }
+
+    /* pre-reveal guard so a peeking neighbour can't catch the word */
+    .guard { display: flex; }
+    .guard.hidden { display: none; }
+    .word-stage.hidden { display: none; }
+    .guard .lockicon { position: relative; font-size: 64px; margin-bottom: 14px; }
+    .guard .gtitle { position: relative; font-family:'Instrument Serif',serif; font-size: 34px; margin: 0 0 6px; }
+    .guard .gsub { position: relative; color: var(--muted); font-size: 15px; max-width: 300px; line-height:1.5; }
+
+    @media (max-height: 680px) {
+      .player { padding: 20px; font-size: 20px; }
+      .pdot { width: 40px; height: 40px; }
+      h1 { font-size: clamp(34px, 11vw, 50px); }
+    }
+  </style>
+</head>
+<body>
+  <a class="back" href="/" aria-label="Back to yamliv.net">
+    <span class="back-slash">/</span><span>portfolio</span>
+  </a>
+
+  <div class="wrap">
+    <header>
+      <h1><em>Hidden</em></h1>
+      <p class="tagline">Two of you share a secret word. One of you is the odd one out — and nobody knows who. Draw it together and sniff out the faker.</p>
+    </header>
+
+    <div class="round-bar">Round <b id="round-num">1</b></div>
+
+    <div class="players" id="players">
+      <button class="player" data-i="0">
+        <span class="pdot">1</span>
+        <span class="pmeta"><span class="name">Player 1</span><span class="hint">Tap to peek at your word</span></span>
+        <span class="check">✓</span>
+      </button>
+      <button class="player" data-i="1">
+        <span class="pdot">2</span>
+        <span class="pmeta"><span class="name">Player 2</span><span class="hint">Tap to peek at your word</span></span>
+        <span class="check">✓</span>
+      </button>
+      <button class="player" data-i="2">
+        <span class="pdot">3</span>
+        <span class="pmeta"><span class="name">Player 3</span><span class="hint">Tap to peek at your word</span></span>
+        <span class="check">✓</span>
+      </button>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="reset-btn">Reset peeks</button>
+      <button class="btn primary" id="next-btn">New round →</button>
+    </div>
+
+    <p class="footnote">Pass the phone around. Each player taps their own button privately, peeks, then hides it before passing on.</p>
+  </div>
+
+  <!-- full-screen private reveal -->
+  <div class="reveal" id="reveal">
+    <div class="guard" id="guard">
+      <span class="lockicon">🤫</span>
+      <h2 class="gtitle" id="guard-name">Player 1</h2>
+      <p class="gsub">Make sure no one else can see the screen, then reveal your secret word.</p>
+      <button class="dismiss" id="guard-go">Reveal my word</button>
+    </div>
+
+    <div class="word-stage hidden" id="word-stage">
+      <div class="who" id="reveal-who">Player 1</div>
+      <div class="emoji" id="reveal-emoji">🐱</div>
+      <div class="label">Your secret word is</div>
+      <h2 class="word" id="reveal-word">Cat</h2>
+      <button class="dismiss" id="reveal-close">Got it — hide</button>
+      <p class="privacy">Remember it, don't say it. Hide before you pass the phone.</p>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    /* Pairs of fun, easy-to-draw words. Each pair is two related things so the
+       odd one out can blend in. The "majority" word goes to two players; the
+       "minority" word goes to the odd player. Which of the pair is which, and
+       who is odd, is randomized every round. */
+    var PAIRS = [
+      [['Cat', '🐱'], ['Dog', '🐶']],
+      [['Sun', '☀️'], ['Moon', '🌙']],
+      [['Apple', '🍎'], ['Orange', '🍊']],
+      [['Car', '🚗'], ['Bus', '🚌']],
+      [['Boat', '⛵'], ['Ship', '🚢']],
+      [['House', '🏠'], ['Tent', '⛺']],
+      [['Tree', '🌳'], ['Bush', '🌿']],
+      [['Fish', '🐟'], ['Whale', '🐳']],
+      [['Star', '⭐'], ['Heart', '❤️']],
+      [['Cup', '🥤'], ['Mug', '☕']],
+      [['Hat', '🎩'], ['Cap', '🧢']],
+      [['Shoe', '👞'], ['Boot', '🥾']],
+      [['Snake', '🐍'], ['Worm', '🪱']],
+      [['Bee', '🐝'], ['Fly', '🪰']],
+      [['Duck', '🦆'], ['Swan', '🦢']],
+      [['Frog', '🐸'], ['Turtle', '🐢']],
+      [['Pizza', '🍕'], ['Pie', '🥧']],
+      [['Cake', '🎂'], ['Donut', '🍩']],
+      [['Owl', '🦉'], ['Penguin', '🐧']],
+      [['Flower', '🌸'], ['Mushroom', '🍄']],
+      [['Umbrella', '☂️'], ['Kite', '🪁']],
+      [['Clock', '🕒'], ['Watch', '⌚']],
+      [['Key', '🔑'], ['Lock', '🔒']],
+      [['Banana', '🍌'], ['Carrot', '🥕']],
+      [['Crown', '👑'], ['Ring', '💍']],
+      [['Glasses', '👓'], ['Mask', '🎭']],
+      [['Spider', '🕷️'], ['Crab', '🦀']],
+      [['Rabbit', '🐰'], ['Mouse', '🐭']],
+      [['Balloon', '🎈'], ['Lollipop', '🍭']],
+      [['Guitar', '🎸'], ['Violin', '🎻']],
+      [['Rocket', '🚀'], ['Plane', '✈️']],
+      [['Ghost', '👻'], ['Cloud', '☁️']],
+      [['Snowman', '⛄'], ['Robot', '🤖']],
+      [['Candle', '🕯️'], ['Lamp', '💡']],
+      [['Ice cream', '🍦'], ['Popsicle', '🍡']],
+      [['Strawberry', '🍓'], ['Cherry', '🍒']],
+      [['Sock', '🧦'], ['Glove', '🧤']],
+      [['Camera', '📷'], ['Phone', '📱']],
+      [['Anchor', '⚓'], ['Bell', '🔔']],
+      [['Cactus', '🌵'], ['Palm tree', '🌴']]
+    ];
+
+    var rand = function (n) { return Math.floor(Math.random() * n); };
+
+    var state = {
+      round: 0,
+      words: [null, null, null], // per-player [word, emoji]
+      seen: [false, false, false]
+    };
+
+    var playerEls = Array.prototype.slice.call(document.querySelectorAll('.player'));
+    var roundNum = document.getElementById('round-num');
+
+    var reveal = document.getElementById('reveal');
+    var guard = document.getElementById('guard');
+    var guardName = document.getElementById('guard-name');
+    var guardGo = document.getElementById('guard-go');
+    var wordStage = document.getElementById('word-stage');
+    var revealWho = document.getElementById('reveal-who');
+    var revealWord = document.getElementById('reveal-word');
+    var revealEmoji = document.getElementById('reveal-emoji');
+    var revealClose = document.getElementById('reveal-close');
+
+    var activePlayer = -1;
+
+    function newRound() {
+      state.round++;
+      roundNum.textContent = state.round;
+
+      var pair = PAIRS[rand(PAIRS.length)];
+      // randomize which word in the pair is the majority vs the odd one
+      if (rand(2)) pair = [pair[1], pair[0]];
+      var majority = pair[0];
+      var minority = pair[1];
+
+      var odd = rand(3); // who gets the different word this round
+      for (var i = 0; i < 3; i++) {
+        state.words[i] = (i === odd) ? minority : majority;
+        state.seen[i] = false;
+      }
+      refreshPlayers();
+    }
+
+    function refreshPlayers() {
+      playerEls.forEach(function (el, i) {
+        var hint = el.querySelector('.hint');
+        if (state.seen[i]) {
+          el.classList.add('seen');
+          hint.textContent = 'Seen — tap to peek again';
+        } else {
+          el.classList.remove('seen');
+          hint.textContent = 'Tap to peek at your word';
+        }
+      });
+    }
+
+    function setColorVar(i) {
+      var colors = ['var(--p1)', 'var(--p2)', 'var(--p3)'];
+      reveal.style.setProperty('--c', colors[i]);
+    }
+
+    function openReveal(i) {
+      activePlayer = i;
+      setColorVar(i);
+      guardName.textContent = 'Player ' + (i + 1);
+      // always start behind the privacy guard
+      guard.classList.remove('hidden');
+      wordStage.classList.add('hidden');
+      reveal.classList.add('open');
+    }
+
+    function showWord() {
+      var i = activePlayer;
+      var w = state.words[i];
+      revealWho.textContent = 'Player ' + (i + 1);
+      revealWord.textContent = w[0];
+      revealEmoji.textContent = w[1];
+      guard.classList.add('hidden');
+      wordStage.classList.remove('hidden');
+    }
+
+    function closeReveal() {
+      if (activePlayer >= 0) {
+        state.seen[activePlayer] = true;
+        refreshPlayers();
+      }
+      reveal.classList.remove('open');
+      activePlayer = -1;
+    }
+
+    playerEls.forEach(function (el, i) {
+      el.addEventListener('click', function () { openReveal(i); });
+    });
+
+    guardGo.addEventListener('click', showWord);
+    revealClose.addEventListener('click', closeReveal);
+    // tapping the dim backdrop also hides, in case of a quick pass-off
+    reveal.addEventListener('click', function (e) {
+      if (e.target === reveal) closeReveal();
+    });
+
+    document.getElementById('next-btn').addEventListener('click', newRound);
+    document.getElementById('reset-btn').addEventListener('click', function () {
+      for (var i = 0; i < 3; i++) state.seen[i] = false;
+      refreshPlayers();
+    });
+
+    newRound();
+  })();
+  </script>
+</body>
+</html>
