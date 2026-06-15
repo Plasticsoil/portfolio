@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>Hidden</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #fff;
+      color: #111;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      -webkit-user-select: none;
+      user-select: none;
+      padding: env(safe-area-inset-top) 18px env(safe-area-inset-bottom);
+    }
+
+    .players {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 16px;
+      max-width: 520px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .player {
+      border: 1px solid #ddd;
+      background: #fafafa;
+      color: #111;
+      border-radius: 16px;
+      padding: 28px 22px;
+      font: inherit;
+      font-size: 22px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+    }
+    .player:active { background: #f0f0f0; }
+    .player.seen { color: #999; }
+
+    .next {
+      max-width: 520px;
+      width: 100%;
+      margin: 16px auto 8px;
+      border: 1px solid #111;
+      background: #111;
+      color: #fff;
+      border-radius: 14px;
+      padding: 16px;
+      font: inherit;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .next:active { opacity: .85; }
+
+    /* full-screen private reveal */
+    .reveal {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 28px;
+      background: #fff;
+    }
+    .reveal.open { display: flex; }
+    .reveal .emoji { font-size: clamp(70px, 26vw, 140px); line-height: 1; margin-bottom: 10px; }
+    .reveal .word { font-size: clamp(44px, 16vw, 96px); font-weight: 700; margin: 0; }
+    .reveal .btn {
+      margin-top: 40px;
+      border: 1px solid #111;
+      background: #fff;
+      color: #111;
+      font: inherit;
+      font-weight: 600;
+      font-size: 16px;
+      padding: 16px 40px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .word-stage.hidden { display: none; }
+    .guard.hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="players" id="players">
+    <button class="player" data-i="0">Player 1</button>
+    <button class="player" data-i="1">Player 2</button>
+    <button class="player" data-i="2">Player 3</button>
+  </div>
+  <button class="next" id="next-btn">New round</button>
+
+  <div class="reveal" id="reveal">
+    <div class="guard" id="guard">
+      <p class="word" id="guard-name" style="font-size:clamp(28px,9vw,48px)">Player 1</p>
+      <button class="btn" id="guard-go">Reveal my word</button>
+    </div>
+    <div class="word-stage hidden" id="word-stage">
+      <div class="emoji" id="reveal-emoji">🐱</div>
+      <h2 class="word" id="reveal-word">Cat</h2>
+      <button class="btn" id="reveal-close">Hide</button>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    var PAIRS = [
+      [['Cat', '🐱'], ['Dog', '🐶']],
+      [['Sun', '☀️'], ['Moon', '🌙']],
+      [['Apple', '🍎'], ['Orange', '🍊']],
+      [['Car', '🚗'], ['Bus', '🚌']],
+      [['Boat', '⛵'], ['Ship', '🚢']],
+      [['House', '🏠'], ['Tent', '⛺']],
+      [['Tree', '🌳'], ['Bush', '🌿']],
+      [['Fish', '🐟'], ['Whale', '🐳']],
+      [['Star', '⭐'], ['Heart', '❤️']],
+      [['Cup', '🥤'], ['Mug', '☕']],
+      [['Hat', '🎩'], ['Cap', '🧢']],
+      [['Shoe', '👞'], ['Boot', '🥾']],
+      [['Snake', '🐍'], ['Worm', '🪱']],
+      [['Bee', '🐝'], ['Fly', '🪰']],
+      [['Duck', '🦆'], ['Swan', '🦢']],
+      [['Frog', '🐸'], ['Turtle', '🐢']],
+      [['Pizza', '🍕'], ['Pie', '🥧']],
+      [['Cake', '🎂'], ['Donut', '🍩']],
+      [['Owl', '🦉'], ['Penguin', '🐧']],
+      [['Flower', '🌸'], ['Mushroom', '🍄']],
+      [['Umbrella', '☂️'], ['Kite', '🪁']],
+      [['Clock', '🕒'], ['Watch', '⌚']],
+      [['Key', '🔑'], ['Lock', '🔒']],
+      [['Banana', '🍌'], ['Carrot', '🥕']],
+      [['Crown', '👑'], ['Ring', '💍']],
+      [['Glasses', '👓'], ['Mask', '🎭']],
+      [['Spider', '🕷️'], ['Crab', '🦀']],
+      [['Rabbit', '🐰'], ['Mouse', '🐭']],
+      [['Balloon', '🎈'], ['Lollipop', '🍭']],
+      [['Guitar', '🎸'], ['Violin', '🎻']],
+      [['Rocket', '🚀'], ['Plane', '✈️']],
+      [['Ghost', '👻'], ['Cloud', '☁️']],
+      [['Snowman', '⛄'], ['Robot', '🤖']],
+      [['Candle', '🕯️'], ['Lamp', '💡']],
+      [['Ice cream', '🍦'], ['Popsicle', '🍡']],
+      [['Strawberry', '🍓'], ['Cherry', '🍒']],
+      [['Sock', '🧦'], ['Glove', '🧤']],
+      [['Camera', '📷'], ['Phone', '📱']],
+      [['Anchor', '⚓'], ['Bell', '🔔']],
+      [['Cactus', '🌵'], ['Palm tree', '🌴']]
+    ];
+
+    var rand = function (n) { return Math.floor(Math.random() * n); };
+
+    var words = [null, null, null];
+    var playerEls = Array.prototype.slice.call(document.querySelectorAll('.player'));
+
+    var reveal = document.getElementById('reveal');
+    var guard = document.getElementById('guard');
+    var guardName = document.getElementById('guard-name');
+    var wordStage = document.getElementById('word-stage');
+    var revealWord = document.getElementById('reveal-word');
+    var revealEmoji = document.getElementById('reveal-emoji');
+    var active = -1;
+
+    function newRound() {
+      var pair = PAIRS[rand(PAIRS.length)];
+      if (rand(2)) pair = [pair[1], pair[0]];
+      var odd = rand(3);
+      for (var i = 0; i < 3; i++) words[i] = (i === odd) ? pair[1] : pair[0];
+      playerEls.forEach(function (el) { el.classList.remove('seen'); });
+    }
+
+    function openReveal(i) {
+      active = i;
+      guardName.textContent = 'Player ' + (i + 1);
+      guard.classList.remove('hidden');
+      wordStage.classList.add('hidden');
+      reveal.classList.add('open');
+    }
+
+    function showWord() {
+      var w = words[active];
+      revealWord.textContent = w[0];
+      revealEmoji.textContent = w[1];
+      guard.classList.add('hidden');
+      wordStage.classList.remove('hidden');
+    }
+
+    function closeReveal() {
+      if (active >= 0) playerEls[active].classList.add('seen');
+      reveal.classList.remove('open');
+      active = -1;
+    }
+
+    playerEls.forEach(function (el, i) {
+      el.addEventListener('click', function () { openReveal(i); });
+    });
+    document.getElementById('guard-go').addEventListener('click', showWord);
+    document.getElementById('reveal-close').addEventListener('click', closeReveal);
+    document.getElementById('next-btn').addEventListener('click', newRound);
+
+    newRound();
+  })();
+  </script>
+</body>
+</html>
