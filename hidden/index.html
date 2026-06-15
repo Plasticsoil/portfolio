@@ -3,67 +3,229 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <!-- Hidden page: keep it out of search engines and crawlers -->
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#F8F6F3">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <title>Hidden</title>
+  <title>Hidden — a drawing game for three</title>
+  <meta name="description" content="A pass-and-play drawing game for three. Two share a secret word, one is the odd one out — and every pair looks alike but means something different. A vibecoded toy by Yam Livnat.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
   <style>
+    :root {
+      /* ── pulled straight from the yamliv.net home page ── */
+      --color-bg:        #F8F6F3;
+      --color-surface:   #FBFAF9;
+      --color-white:     #FFFFFF;
+      --color-ink:       #26251E;
+      --color-ink-muted: #68645E;
+      --color-muted:     #A3A09B;
+      --color-muted-15:  rgba(163, 160, 155, 0.15);
+      --color-muted-50:  rgba(163, 160, 155, 0.50);
+      --font-sans:  'Inter', 'Helvetica Neue', Arial, sans-serif;
+      --font-serif: 'Instrument Serif', serif;
+      --gradient-accent: linear-gradient(90deg, #FF6EFD -0.24%, #F8FF7B 55.18%, #60FBFF 88.92%);
+      --ease-spring: cubic-bezier(0.34, 1.2, 0.64, 1);
+      /* the three accent stops double as the three player colours */
+      --p1: #FF6EFD;
+      --p2: #60C6FF;
+      --p3: #E8B100;
+      --safe-t: env(safe-area-inset-top, 0px);
+      --safe-b: env(safe-area-inset-bottom, 0px);
+    }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body { height: 100%; margin: 0; }
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #fff;
-      color: #111;
+      font-family: var(--font-sans);
+      background: var(--color-bg);
+      color: var(--color-ink);
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
       -webkit-user-select: none;
       user-select: none;
-      padding: env(safe-area-inset-top) 18px env(safe-area-inset-bottom);
     }
+
+    /* ── breadcrumb back home — matches every other sub-page ── */
+    .back {
+      position: fixed;
+      top: clamp(20px, 4vw, 36px);
+      left: clamp(20px, 4vw, 36px);
+      z-index: 1000;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      letter-spacing: 0.01em;
+      color: rgba(38, 37, 30, 0.7);
+      text-decoration: none;
+      transition: color 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .back-slash { color: rgba(38, 37, 30, 0.4); }
+    .back:hover { color: var(--color-ink); transform: translateX(-3px); }
+    .back:hover .back-slash { color: rgba(38, 37, 30, 0.7); }
+
+    .wrap {
+      flex: 1;
+      width: 100%;
+      max-width: 540px;
+      margin: 0 auto;
+      padding: calc(72px + var(--safe-t)) 22px calc(22px + var(--safe-b));
+      display: flex;
+      flex-direction: column;
+    }
+
+    header { text-align: center; margin-bottom: 4px; }
+    h1 {
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: clamp(46px, 15vw, 72px);
+      line-height: 1;
+      margin: 0;
+      letter-spacing: 0.01em;
+    }
+    /* accent-gradient underline lifted from the home nav glow */
+    .h1-rule {
+      width: 64px;
+      height: 4px;
+      border-radius: 100px;
+      margin: 14px auto 0;
+      background: var(--gradient-accent);
+    }
+    .tagline {
+      color: var(--color-ink-muted);
+      font-size: 14.5px;
+      line-height: 1.55;
+      margin: 16px auto 0;
+      max-width: 380px;
+    }
+
+    .round-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 26px 0 4px;
+      color: var(--color-muted);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .round-bar b { color: var(--color-ink); font-weight: 600; }
 
     .players {
       flex: 1;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      gap: 16px;
-      max-width: 520px;
-      width: 100%;
-      margin: 0 auto;
+      gap: 14px;
+      padding: 12px 0;
     }
+
     .player {
-      border: 1px solid #ddd;
-      background: #fafafa;
-      color: #111;
-      border-radius: 16px;
-      padding: 28px 22px;
+      --c: var(--p1);
+      position: relative;
+      border: 1px solid var(--color-muted-15);
+      background: var(--color-surface);
+      color: var(--color-ink);
+      border-radius: 20px;
+      padding: 22px 22px;
       font: inherit;
-      font-size: 22px;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      overflow: visible;
+      transition: transform 0.14s var(--ease-spring), border-color 0.2s, box-shadow 0.2s;
+    }
+    /* soft accent glow on hover, echoing the home-page nav pills */
+    .player::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      background: var(--gradient-accent);
+      filter: blur(13px);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+      z-index: -1;
+    }
+    .player:hover::before { opacity: 0.32; }
+    .player:hover { border-color: var(--color-muted-50); }
+    .player:active { transform: scale(0.985); }
+    .player[data-i="0"] { --c: var(--p1); }
+    .player[data-i="1"] { --c: var(--p2); }
+    .player[data-i="2"] { --c: var(--p3); }
+
+    .pdot {
+      flex: none;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-family: var(--font-serif);
+      font-size: 24px;
+      color: var(--color-white);
+      background: var(--c);
+    }
+    .pmeta { display: flex; flex-direction: column; gap: 2px; }
+    .pmeta .name { font-size: 20px; font-weight: 600; }
+    .pmeta .hint { font-size: 13px; font-weight: 400; color: var(--color-muted); }
+    .player.seen .pmeta .hint { color: var(--color-ink-muted); }
+    .player .check {
+      margin-left: auto;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 14px;
+      color: var(--color-white);
+      background: var(--c);
+      opacity: 0;
+      transform: scale(0.5);
+      transition: opacity 0.2s, transform 0.2s var(--ease-spring);
+    }
+    .player.seen .check { opacity: 1; transform: scale(1); }
+
+    .controls { display: flex; gap: 10px; margin-top: 2px; }
+    .btn {
+      flex: 1;
+      border: 1px solid var(--color-muted-15);
+      background: var(--color-surface);
+      color: var(--color-ink-muted);
+      font: inherit;
       font-weight: 600;
+      font-size: 15px;
+      padding: 15px;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: transform 0.14s var(--ease-spring), color 0.2s, border-color 0.2s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:hover { color: var(--color-ink); border-color: var(--color-muted-50); }
+    .btn.primary {
+      flex: 2;
+      background: var(--color-ink);
+      color: var(--color-bg);
+      border-color: var(--color-ink);
+    }
+    .btn.primary:hover { color: var(--color-bg); }
+
+    .footnote {
       text-align: center;
-      cursor: pointer;
+      color: var(--color-muted);
+      font-size: 12px;
+      margin-top: 14px;
+      line-height: 1.5;
     }
-    .player:active { background: #f0f0f0; }
-    .player.seen { color: #999; }
 
-    .next {
-      max-width: 520px;
-      width: 100%;
-      margin: 16px auto 8px;
-      border: 1px solid #111;
-      background: #111;
-      color: #fff;
-      border-radius: 14px;
-      padding: 16px;
-      font: inherit;
-      font-weight: 600;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .next:active { opacity: .85; }
-
-    /* full-screen private reveal */
+    /* ── full-screen private reveal ─────────────────── */
     .reveal {
       position: fixed;
       inset: 0;
@@ -73,45 +235,135 @@
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 28px;
-      background: #fff;
+      padding: calc(28px + var(--safe-t)) 28px calc(28px + var(--safe-b));
+      background: var(--color-bg);
     }
-    .reveal.open { display: flex; }
-    .reveal .emoji { font-size: clamp(70px, 26vw, 140px); line-height: 1; margin-bottom: 10px; }
-    .reveal .word { font-size: clamp(44px, 16vw, 96px); font-weight: 700; margin: 0; }
-    .reveal .btn {
-      margin-top: 40px;
-      border: 1px solid #111;
-      background: #fff;
-      color: #111;
+    .reveal.open { display: flex; animation: fade 0.18s ease; }
+    @keyframes fade { from { opacity: 0; } }
+    .reveal::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(70% 50% at 50% 40%, color-mix(in srgb, var(--c) 22%, transparent), transparent 72%);
+      pointer-events: none;
+    }
+    .reveal .who {
+      position: relative;
+      color: var(--c);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .reveal .emoji { position: relative; font-size: clamp(64px, 24vw, 128px); line-height: 1; margin-bottom: 6px; }
+    .reveal .label { position: relative; color: var(--color-muted); font-size: 14px; margin-bottom: 14px; }
+    .reveal .word {
+      position: relative;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: clamp(54px, 19vw, 104px);
+      line-height: 1.02;
+      margin: 0;
+      color: var(--color-ink);
+    }
+    .reveal .dismiss {
+      position: relative;
+      margin-top: 36px;
+      border: 1px solid var(--color-ink);
+      background: var(--color-ink);
+      color: var(--color-bg);
       font: inherit;
       font-weight: 600;
-      font-size: 16px;
-      padding: 16px 40px;
-      border-radius: 999px;
+      font-size: 15px;
+      padding: 15px 40px;
+      border-radius: 100px;
       cursor: pointer;
+      transition: transform 0.14s var(--ease-spring);
     }
-    .word-stage.hidden { display: none; }
+    .reveal .dismiss:active { transform: scale(0.97); }
+    .reveal .privacy {
+      position: relative;
+      margin-top: 18px;
+      color: var(--color-muted);
+      font-size: 12.5px;
+      max-width: 300px;
+      line-height: 1.5;
+    }
+
+    /* pre-reveal privacy guard */
+    .guard { display: flex; flex-direction: column; align-items: center; }
     .guard.hidden { display: none; }
+    .word-stage { display: flex; flex-direction: column; align-items: center; }
+    .word-stage.hidden { display: none; }
+    .guard .lockicon { position: relative; font-size: 60px; margin-bottom: 12px; }
+    .guard .gtitle { position: relative; font-family: var(--font-serif); font-weight: 400; font-size: 36px; margin: 0 0 8px; color: var(--color-ink); }
+    .guard .gsub { position: relative; color: var(--color-ink-muted); font-size: 14.5px; max-width: 300px; line-height: 1.55; margin: 0; }
+
+    @media (max-height: 700px) {
+      .player { padding: 16px 18px; }
+      .pdot { width: 38px; height: 38px; }
+      h1 { font-size: clamp(40px, 13vw, 56px); }
+      .tagline { font-size: 13.5px; }
+    }
   </style>
 </head>
 <body>
-  <div class="players" id="players">
-    <button class="player" data-i="0">Player 1</button>
-    <button class="player" data-i="1">Player 2</button>
-    <button class="player" data-i="2">Player 3</button>
-  </div>
-  <button class="next" id="next-btn">New round</button>
+  <a class="back" href="/" aria-label="Back to yamliv.net">
+    <span class="back-slash">/</span><span>portfolio</span>
+  </a>
 
+  <div class="wrap">
+    <header>
+      <h1>Hidden</h1>
+      <div class="h1-rule"></div>
+      <p class="tagline">Two of you share a secret word. One has a different one — and every pair looks alike but means something else. Draw it together and sniff out the odd one.</p>
+    </header>
+
+    <div class="round-bar">Round <b id="round-num">1</b></div>
+
+    <div class="players" id="players">
+      <button class="player" data-i="0">
+        <span class="pdot">1</span>
+        <span class="pmeta"><span class="name">Player 1</span><span class="hint">Tap to peek at your word</span></span>
+        <span class="check">✓</span>
+      </button>
+      <button class="player" data-i="1">
+        <span class="pdot">2</span>
+        <span class="pmeta"><span class="name">Player 2</span><span class="hint">Tap to peek at your word</span></span>
+        <span class="check">✓</span>
+      </button>
+      <button class="player" data-i="2">
+        <span class="pdot">3</span>
+        <span class="pmeta"><span class="name">Player 3</span><span class="hint">Tap to peek at your word</span></span>
+        <span class="check">✓</span>
+      </button>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="reset-btn">Reset peeks</button>
+      <button class="btn primary" id="next-btn">New round →</button>
+    </div>
+
+    <p class="footnote">Pass the phone around. Each player taps their own button privately, peeks, then hides it before passing on.</p>
+  </div>
+
+  <!-- full-screen private reveal -->
   <div class="reveal" id="reveal">
     <div class="guard" id="guard">
-      <p class="word" id="guard-name" style="font-size:clamp(28px,9vw,48px)">Player 1</p>
-      <button class="btn" id="guard-go">Reveal my word</button>
+      <span class="lockicon">🤫</span>
+      <h2 class="gtitle" id="guard-name">Player 1</h2>
+      <p class="gsub">Make sure no one else can see the screen, then reveal your secret word.</p>
+      <button class="dismiss" id="guard-go">Reveal my word</button>
     </div>
+
     <div class="word-stage hidden" id="word-stage">
-      <div class="emoji" id="reveal-emoji">🐱</div>
-      <h2 class="word" id="reveal-word">Cat</h2>
-      <button class="btn" id="reveal-close">Hide</button>
+      <div class="who" id="reveal-who">Player 1</div>
+      <div class="emoji" id="reveal-emoji">🍐</div>
+      <div class="label">Your secret word is</div>
+      <h2 class="word" id="reveal-word">Pear</h2>
+      <button class="dismiss" id="reveal-close">Got it — hide</button>
+      <p class="privacy">Remember it, don't say it. Hide before you pass the phone.</p>
     </div>
   </div>
 
@@ -119,72 +371,102 @@
   (function () {
     'use strict';
 
+    /* "Shape-twin" pairs: the two words look alike when you draw them but mean
+       totally different things, so the odd one out can blend right in. The
+       majority word goes to two players, the minority word to the odd player —
+       which word is which, and who is odd, is randomized every round. */
     var PAIRS = [
-      [['Cat', '🐱'], ['Dog', '🐶']],
-      [['Sun', '☀️'], ['Moon', '🌙']],
-      [['Apple', '🍎'], ['Orange', '🍊']],
-      [['Car', '🚗'], ['Bus', '🚌']],
-      [['Boat', '⛵'], ['Ship', '🚢']],
-      [['House', '🏠'], ['Tent', '⛺']],
-      [['Tree', '🌳'], ['Bush', '🌿']],
-      [['Fish', '🐟'], ['Whale', '🐳']],
-      [['Star', '⭐'], ['Heart', '❤️']],
-      [['Cup', '🥤'], ['Mug', '☕']],
-      [['Hat', '🎩'], ['Cap', '🧢']],
-      [['Shoe', '👞'], ['Boot', '🥾']],
-      [['Snake', '🐍'], ['Worm', '🪱']],
-      [['Bee', '🐝'], ['Fly', '🪰']],
-      [['Duck', '🦆'], ['Swan', '🦢']],
-      [['Frog', '🐸'], ['Turtle', '🐢']],
-      [['Pizza', '🍕'], ['Pie', '🥧']],
-      [['Cake', '🎂'], ['Donut', '🍩']],
-      [['Owl', '🦉'], ['Penguin', '🐧']],
-      [['Flower', '🌸'], ['Mushroom', '🍄']],
-      [['Umbrella', '☂️'], ['Kite', '🪁']],
-      [['Clock', '🕒'], ['Watch', '⌚']],
-      [['Key', '🔑'], ['Lock', '🔒']],
-      [['Banana', '🍌'], ['Carrot', '🥕']],
-      [['Crown', '👑'], ['Ring', '💍']],
-      [['Glasses', '👓'], ['Mask', '🎭']],
-      [['Spider', '🕷️'], ['Crab', '🦀']],
-      [['Rabbit', '🐰'], ['Mouse', '🐭']],
-      [['Balloon', '🎈'], ['Lollipop', '🍭']],
-      [['Guitar', '🎸'], ['Violin', '🎻']],
-      [['Rocket', '🚀'], ['Plane', '✈️']],
-      [['Ghost', '👻'], ['Cloud', '☁️']],
-      [['Snowman', '⛄'], ['Robot', '🤖']],
-      [['Candle', '🕯️'], ['Lamp', '💡']],
-      [['Ice cream', '🍦'], ['Popsicle', '🍡']],
-      [['Strawberry', '🍓'], ['Cherry', '🍒']],
-      [['Sock', '🧦'], ['Glove', '🧤']],
-      [['Camera', '📷'], ['Phone', '📱']],
-      [['Anchor', '⚓'], ['Bell', '🔔']],
-      [['Cactus', '🌵'], ['Palm tree', '🌴']]
+      [['Pear', '🍐'], ['Light bulb', '💡']],
+      [['Banana', '🍌'], ['Moon', '🌙']],
+      [['Cloud', '☁️'], ['Sheep', '🐑']],
+      [['Mushroom', '🍄'], ['Umbrella', '☂️']],
+      [['Broccoli', '🥦'], ['Tree', '🌳']],
+      [['Cactus', '🌵'], ['Hand', '✋']],
+      [['Octopus', '🐙'], ['Spider', '🕷️']],
+      [['Jellyfish', '🪼'], ['Hot-air balloon', '🎈']],
+      [['Carrot', '🥕'], ['Ice cream', '🍦']],
+      [['Ghost', '👻'], ['Tooth', '🦷']],
+      [['Donut', '🍩'], ['Life ring', '🛟']],
+      [['Lollipop', '🍭'], ['Magnifying glass', '🔍']],
+      [['Strawberry', '🍓'], ['Heart', '❤️']],
+      [['Sun', '☀️'], ['Sunflower', '🌻']],
+      [['Kite', '🪁'], ['Diamond', '💎']],
+      [['Butterfly', '🦋'], ['Bat', '🦇']],
+      [['Guitar', '🎸'], ['Seal', '🦭']],
+      [['Anchor', '⚓'], ['Airplane', '✈️']],
+      [['Tomato', '🍅'], ['Apple', '🍎']],
+      [['Snowflake', '❄️'], ['Star', '⭐']],
+      [['Cherry', '🍒'], ['Headphones', '🎧']],
+      [['Pizza', '🍕'], ['Watermelon', '🍉']],
+      [['Ladybug', '🐞'], ['Cookie', '🍪']],
+      [['Basketball', '🏀'], ['Pumpkin', '🎃']],
+      [['Snail', '🐌'], ['Cinnamon roll', '🥯']],
+      [['Volcano', '🌋'], ['Party hat', '🎉']],
+      [['Egg', '🥚'], ['Balloon', '🎈']],
+      [['Crescent moon', '🌙'], ['Croissant', '🥐']]
     ];
 
     var rand = function (n) { return Math.floor(Math.random() * n); };
 
-    var words = [null, null, null];
+    var state = {
+      round: 0,
+      words: [null, null, null],
+      seen: [false, false, false]
+    };
+
     var playerEls = Array.prototype.slice.call(document.querySelectorAll('.player'));
+    var roundNum = document.getElementById('round-num');
 
     var reveal = document.getElementById('reveal');
     var guard = document.getElementById('guard');
     var guardName = document.getElementById('guard-name');
+    var guardGo = document.getElementById('guard-go');
     var wordStage = document.getElementById('word-stage');
+    var revealWho = document.getElementById('reveal-who');
     var revealWord = document.getElementById('reveal-word');
     var revealEmoji = document.getElementById('reveal-emoji');
-    var active = -1;
+    var revealClose = document.getElementById('reveal-close');
+
+    var activePlayer = -1;
 
     function newRound() {
+      state.round++;
+      roundNum.textContent = state.round;
+
       var pair = PAIRS[rand(PAIRS.length)];
-      if (rand(2)) pair = [pair[1], pair[0]];
-      var odd = rand(3);
-      for (var i = 0; i < 3; i++) words[i] = (i === odd) ? pair[1] : pair[0];
-      playerEls.forEach(function (el) { el.classList.remove('seen'); });
+      if (rand(2)) pair = [pair[1], pair[0]]; // randomize majority vs odd word
+      var majority = pair[0];
+      var minority = pair[1];
+
+      var odd = rand(3); // who gets the different word this round
+      for (var i = 0; i < 3; i++) {
+        state.words[i] = (i === odd) ? minority : majority;
+        state.seen[i] = false;
+      }
+      refreshPlayers();
+    }
+
+    function refreshPlayers() {
+      playerEls.forEach(function (el, i) {
+        var hint = el.querySelector('.hint');
+        if (state.seen[i]) {
+          el.classList.add('seen');
+          hint.textContent = 'Seen — tap to peek again';
+        } else {
+          el.classList.remove('seen');
+          hint.textContent = 'Tap to peek at your word';
+        }
+      });
+    }
+
+    function setColorVar(i) {
+      var colors = ['var(--p1)', 'var(--p2)', 'var(--p3)'];
+      reveal.style.setProperty('--c', colors[i]);
     }
 
     function openReveal(i) {
-      active = i;
+      activePlayer = i;
+      setColorVar(i);
       guardName.textContent = 'Player ' + (i + 1);
       guard.classList.remove('hidden');
       wordStage.classList.add('hidden');
@@ -192,7 +474,9 @@
     }
 
     function showWord() {
-      var w = words[active];
+      var i = activePlayer;
+      var w = state.words[i];
+      revealWho.textContent = 'Player ' + (i + 1);
       revealWord.textContent = w[0];
       revealEmoji.textContent = w[1];
       guard.classList.add('hidden');
@@ -200,17 +484,29 @@
     }
 
     function closeReveal() {
-      if (active >= 0) playerEls[active].classList.add('seen');
+      if (activePlayer >= 0) {
+        state.seen[activePlayer] = true;
+        refreshPlayers();
+      }
       reveal.classList.remove('open');
-      active = -1;
+      activePlayer = -1;
     }
 
     playerEls.forEach(function (el, i) {
       el.addEventListener('click', function () { openReveal(i); });
     });
-    document.getElementById('guard-go').addEventListener('click', showWord);
-    document.getElementById('reveal-close').addEventListener('click', closeReveal);
+
+    guardGo.addEventListener('click', showWord);
+    revealClose.addEventListener('click', closeReveal);
+    reveal.addEventListener('click', function (e) {
+      if (e.target === reveal) closeReveal();
+    });
+
     document.getElementById('next-btn').addEventListener('click', newRound);
+    document.getElementById('reset-btn').addEventListener('click', function () {
+      for (var i = 0; i < 3; i++) state.seen[i] = false;
+      refreshPlayers();
+    });
 
     newRound();
   })();
