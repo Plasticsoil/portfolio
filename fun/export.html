@@ -9,7 +9,7 @@
     <!-- Switzer is only the kinetic art type (the preview); the UI uses the
          portfolio's language: Instrument Serif + Nimbus Sans, muted greys. -->
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@900,700,500,400&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400&display=swap" />
     <style>
       :root {
         --bg:#f8f6f3; --ink:#a3a09b; --emph:#68645e;
@@ -85,7 +85,9 @@
       canvas#preview { border-radius:14px; box-shadow:0 26px 60px -30px rgba(80,70,55,.4); display:block; max-width:100%; max-height:100%; height:auto; width:auto; }
       .meta { font-size:13px; color:var(--ink); }
 
-      /* control sections — sans uppercase labels (matches the rest of the UI). */
+      /* Control sections — desktop keeps the labelled "Text / Colour /
+         Output" structure (label-style small caps, not all-caps content).
+         Mobile collapses these via the @media block far below. */
       .panel { display:flex; flex-direction:column; gap:18px; }
       .sect { display:flex; flex-direction:column; gap:10px; }
       .sect > .head { display:flex; align-items:center; justify-content:space-between; }
@@ -106,8 +108,60 @@
         border-radius:12px; background:var(--card); color:var(--emph);
       }
       input[type=text]:focus, select:focus { outline:none; border-color:var(--emph); }
-      /* Match the swatches column — the input is the full panel width. */
       #word { width:100%; }
+
+      /* Info icon — a small "i" pill that holds the meta + hint text
+         in a tap-tooltip so they don't burn vertical space on mobile.
+         Hidden on desktop (the .meta + .hint paragraphs read fine). */
+      .info-ic { display: none; }
+      .info-ic[data-tip]::after {
+        content: attr(data-tip);
+        position: absolute;
+        /* Anchor to the RIGHT edge of the icon so the tooltip grows
+           leftward — the icon sits next to the Download button at the
+           panel's right edge, so a centred bubble would spill off the
+           viewport (and through the panel frame). */
+        top: 130%; right: 0;
+        white-space: pre-line;
+        background: var(--card);
+        color: var(--emph);
+        border: 1px solid var(--line);
+        font-family: var(--sans); font-style: normal; font-size: 12px; line-height: 1.45;
+        padding: 8px 12px; border-radius: 10px;
+        width: max-content; max-width: 240px;
+        box-shadow: 0 10px 24px -12px rgba(38,37,30,0.20);
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.15s ease;
+        z-index: 100;
+      }
+      .info-ic.show::after,
+      .info-ic:hover::after { opacity: 1; }
+
+      /* Mobile close X — JUST the icon, no white circle. Sits in the
+         top-right corner of the page. */
+      .ft-close {
+        display: none;
+        position: fixed;
+        top: clamp(16px, 4vw, 24px);
+        right: clamp(16px, 4vw, 24px);
+        z-index: 1000;
+        width: 32px; height: 32px;
+        align-items: center; justify-content: center;
+        border: none;
+        background: transparent;
+        color: var(--emph);
+        cursor: pointer;
+        padding: 0;
+        transition: color 0.15s ease, transform 0.18s ease;
+      }
+      .ft-close:hover { color: var(--ink); }
+      .ft-close:active { transform: scale(0.9); }
+
+      /* Download row — button + tiny "i" icon side by side. The icon
+         is intentionally small so it doesn't claim layout — it's just
+         a tap-target for the meta + format hint. */
+      .download-row { display: flex; align-items: center; gap: 10px; }
+      .download-row .download { flex: 1; }
 
       /* Replace the OS-native select chevron with a custom one tucked away
          from the right edge — the native arrow was butting against the
@@ -122,7 +176,9 @@
         padding-right: 36px;
       }
 
-      /* swatches — one connected unit (rounded only at top & bottom) */
+      /* Swatches — desktop = one connected unit, four rows stacked
+         vertically (chip · role · HEX). Mobile collapses these into a
+         compact horizontal row of just the chips. */
       .swatches { display:flex; flex-direction:column; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--card); }
       .swatch { display:flex; align-items:center; gap:12px; padding:9px 11px; border-bottom:1px solid var(--line); }
       .swatch:last-child { border-bottom:0; }
@@ -183,10 +239,129 @@
 
       #status { font-size:13px; color:var(--ink); min-height:18px; }
       .hint { font-size:12px; color:rgba(163,160,155,.7); line-height:1.5; margin:0; }
+
+      /* ═══════════════════════════════════════════════════════════════
+         MOBILE export overrides (≤880px)
+         ═══════════════════════════════════════════════════════════════
+         • Hide breadcrumb, show the X close at top-right
+         • "Export" title centred + a touch larger, with an inline "i"
+           icon that holds the meta (fps · loop · dims) + format hint
+         • Hide ALL section h2s + Format / Resolution field labels —
+           the controls speak for themselves
+         • Colour swatches: ONE rounded frame divided into 4 segments
+           (no gap between chips, no HEX, no role text). Shuffle button
+           sits to the RIGHT of the swatch group
+         • Hide the .meta text below the preview + the .hint paragraph
+           below the Download button — both surface in the "i" tooltip */
+      @media (max-width: 880px) {
+        .ft-back { display: none; }
+        .ft-close { display: inline-flex; }
+
+        body { padding-top: 64px; padding-bottom: 24px; }
+
+        /* Hide the "Export" title — the panel itself, the X close in
+           the top corner and the URL all say "export". The big title
+           was just claiming vertical space on a phone. */
+        .title-row { display: none; }
+
+        /* Preview — fills available height so portrait gets tall +
+           narrow, landscape gets short + wide (and the controls below
+           shift up). max-height keys off viewport height so the panel
+           always has room. */
+        .stage { gap: 14px; }
+        .frame { max-height: 56vh; }
+        canvas#preview { max-height: 56vh; max-width: 100%; }
+
+        /* Tiny "i" icon next to Download — small enough not to take
+           meaningful layout space. */
+        .info-ic {
+          display: inline-flex;
+          position: relative;
+          width: 18px; height: 18px;
+          align-items: center; justify-content: center;
+          border: 1px solid var(--line);
+          border-radius: 50%;
+          background: transparent;
+          color: var(--ink);
+          font-family: var(--serif); font-style: italic; font-size: 11px; line-height: 1;
+          cursor: help;
+          opacity: 0.7;
+        }
+        .info-ic::before { content: "i"; }
+        .info-ic:hover { opacity: 1; }
+
+        .panel { gap: 22px; }
+        .sect { gap: 12px; }
+
+        /* Hide section headers — Text / Colour / Output. The controls
+           themselves are enough on a phone. */
+        .sect h2 { display: none; }
+        /* Hide Format / Resolution + Orientation field labels — the
+           select options are obvious. Specificity has to beat the
+           desktop rule `.two .fld { display: block }` further up. */
+        .fld, .two .fld { display: none; }
+
+        /* Colour section layout (head row collapses + reorders so the
+           shuffle button sits to the RIGHT of the swatch group): */
+        .sect:has(> .swatches) {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          column-gap: 10px;
+          row-gap: 8px;
+          align-items: center;
+        }
+        .sect:has(> .swatches) > .head { display: contents; }
+        .sect:has(> .swatches) > .head > h2 { display: none; }
+        .sect:has(> .swatches) > .swatches { grid-column: 1; grid-row: 1; }
+        .sect:has(> .swatches) > .head > #shuffle { grid-column: 2; grid-row: 1; }
+        .sect:has(> .swatches) > #seedWrap { grid-column: 1 / -1; grid-row: 2; }
+
+        /* Swatches: ONE rounded frame, divided into 4 connected
+           segments. No HEX, no role text — just colour. */
+        .swatches {
+          display: flex;
+          flex-direction: row;
+          gap: 0;
+          padding: 0;
+          background: var(--card);
+          border: 1px solid var(--line);
+          border-radius: 12px;
+          overflow: hidden;
+        }
+        .swatch {
+          position: relative;
+          flex: 1;
+          padding: 0;
+          height: 44px;
+          border: none;
+          border-bottom: none;
+          border-right: 1px solid var(--line);
+        }
+        .swatch:last-child { border-right: none; }
+        .swatch .chip2 {
+          position: absolute; inset: 0;
+          width: 100%; height: 100%;
+          border-radius: 0;
+          box-shadow: none;
+        }
+        .swatch .chip2 input { inset: 0; width: 100%; height: 100%; }
+        .swatch .role, .swatch .hex { display: none; }
+
+        /* Format + size: two selects side by side, no labels above. */
+        .two { gap: 8px; }
+
+        /* Meta below preview + hint below Download fold into the tiny
+           "i" tap-tooltip — neither takes layout space here. The
+           #status line stays so encoding progress is still visible,
+           but starts empty (the "Ready" init text is dropped in JS). */
+        .meta { display: none; }
+        .hint { display: none; }
+        #status { font-size: 12px; text-align: center; min-height: 0; }
+      }
     </style>
-    <script type="module" crossorigin src="/fun/assets/export-DTy6m1Cl.js"></script>
+    <script type="module" crossorigin src="/fun/assets/export-C5yGdvdx.js"></script>
     <link rel="modulepreload" crossorigin href="/fun/assets/easing-DE46m1uD.js">
-    <link rel="modulepreload" crossorigin href="/fun/assets/palette-Gk9oQpsJ.js">
+    <link rel="modulepreload" crossorigin href="/fun/assets/palette-DluSPlSL.js">
   </head>
   <body>
     <!-- Fixed top-left breadcrumb: portfolio → FunType. The Export title
@@ -204,7 +379,15 @@
 
     <div class="topbar lead"></div>
 
-    <div class="lead">
+    <!-- Mobile close button — replaces the breadcrumb on phones with a
+         single X at top-right that just steps back through history. -->
+    <button class="ft-close" id="ftClose" type="button" aria-label="Close">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 6 6 18M6 6l12 12"/>
+      </svg>
+    </button>
+
+    <div class="lead title-row">
       <h1>Export</h1>
     </div>
 
@@ -267,8 +450,11 @@
         </div>
 
         <div class="sect">
-          <button class="download" id="download">Download</button>
-          <p id="status">Loading…</p>
+          <div class="download-row">
+            <button class="download" id="download">Download</button>
+            <span class="info-ic" id="exportInfo" data-tip=""></span>
+          </div>
+          <p id="status"></p>
           <p class="hint" id="formatHint"></p>
         </div>
       </div>
