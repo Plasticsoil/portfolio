@@ -94,10 +94,10 @@
       .sect h2 {
         margin:0;
         font-family:var(--sans);
-        font-size:12px;
+        font-size:13px;
         font-weight:500;
-        letter-spacing:0.08em;
-        text-transform:uppercase;
+        letter-spacing:0;
+        text-transform:none;          /* no force-uppercase on chrome labels */
         color:var(--emph);
         line-height:1;
       }
@@ -359,10 +359,10 @@
         #status { font-size: 12px; text-align: center; min-height: 0; }
       }
     </style>
-    <script type="module" crossorigin src="/fun/assets/export-Xh4o9GOZ.js"></script>
+    <script type="module" crossorigin src="/fun/assets/export-DxAcrXCr.js"></script>
     <link rel="modulepreload" crossorigin href="/fun/assets/easing-DE46m1uD.js">
-    <link rel="modulepreload" crossorigin href="/fun/assets/palette-DluSPlSL.js">
-</head>
+    <link rel="modulepreload" crossorigin href="/fun/assets/palette-KZeIhCnj.js">
+  </head>
   <body>
     <!-- Fixed top-left breadcrumb: portfolio → FunType. The Export title
          below makes the third step implicit, so this collapses cleanly. -->
@@ -435,6 +435,7 @@
                 <option value="mp4">MP4</option>
                 <option value="gif">GIF</option>
                 <option value="png">PNG sequence</option>
+                <option value="svg">SVG (static)</option>
               </select>
             </div>
             <div>
