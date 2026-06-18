@@ -159,6 +159,18 @@
     #cursor-inner {
       display: block;
     }
+    /* Click feedback — cursor squishes on mousedown and springs back on
+       mouseup. We scale the inner CHILDREN of #cursor-inner (the idle
+       brackets, canpress, tooltip, action and image), NOT #cursor-inner
+       itself: the inner wrapper carries an inline anchor-translate
+       transform that JS rewrites every mousemove, which would override
+       any CSS transform we put on it. The children have no inline
+       transform, so a CSS class on the outer #cursor cleanly scales
+       whichever child is currently visible. */
+    #cursor > #cursor-inner > * {
+      transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #cursor.down > #cursor-inner > * { transform: scale(0.65); }
 
 
     /* Plain paragraph tooltips (case-study QR): same type stack as default tooltip (Inter 16 / #26251E) + card + shadow */
@@ -4421,6 +4433,16 @@
     document.addEventListener('mouseleave', () => {
       cursor.style.opacity = '0';
     });
+
+    // Click feedback — toggle .down on the cursor wrapper for the full
+    // mouse press, so every click anywhere on the page registers a
+    // small squish-and-spring on the custom cursor. Listening on
+    // document covers buttons, links, canvas, plain background — all of
+    // them. mouseup also catches releases that drift off the original
+    // element (drag-and-release would otherwise leave .down stuck on).
+    document.addEventListener('mousedown', () => cursor.classList.add('down'));
+    document.addEventListener('mouseup',   () => cursor.classList.remove('down'));
+    document.addEventListener('mouseleave',() => cursor.classList.remove('down'));
 
 
     /* ══════════════════════════════════════════════════════
