@@ -300,6 +300,9 @@
   .kfl-name{flex:1;} .kfl-n{color:var(--faint);}
   .kfl-arr{width:20px;height:20px;border:1px solid var(--line12);background:var(--fill4);color:var(--soft);border-radius:3px;cursor:pointer;font-size:9px;padding:0;}
   .kfl-arr:hover{color:var(--fg);border-color:var(--muted);}
+  .kfl-del{width:20px;height:20px;border:1px solid var(--line12);background:var(--fill4);color:var(--soft);border-radius:3px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;}
+  .kfl-del svg{width:12px;height:12px;}
+  .kfl-del:hover{color:#ff6b6b;border-color:#ff6b6b;}
   .dropdown{position:relative;}
   .dd-btn{width:100%;text-align:left;background:var(--surface);color:var(--soft);border:1px solid var(--line12);border-radius:3px;padding:8px 10px;font-family:'Inter';font-size:11px;cursor:pointer;}
   .dd-btn:hover{color:var(--fg);border-color:var(--muted);}
@@ -832,8 +835,10 @@ function jumpKeyOf(key,dir){ const a=keyframes[key]; if(!a||!a.length)return; co
   tl.time=nt; applyAnim(); }
 function refreshKfList(){ const el=document.getElementById('kf-list'); if(!el)return; const keys=animatedKeys();
   if(!keys.length){ el.innerHTML='<div class="kf-empty">no keyframes yet — ◆ next to any value</div>'; return; }
-  el.innerHTML=keys.map(k=>`<div class="kf-litem"><span class="kfl-name">${labelOf(k)}</span><span class="kfl-n">${keyframes[k].length}</span><button class="kfl-arr" data-k="${k}" data-d="-1">◀</button><button class="kfl-arr" data-k="${k}" data-d="1">▶</button></div>`).join('');
-  el.querySelectorAll('.kfl-arr').forEach(b=>b.onclick=()=>jumpKeyOf(b.dataset.k,+b.dataset.d)); }
+  el.innerHTML=keys.map(k=>`<div class="kf-litem"><span class="kfl-name">${labelOf(k)}</span><span class="kfl-n">${keyframes[k].length}</span><button class="kfl-arr" data-k="${k}" data-d="-1">◀</button><button class="kfl-arr" data-k="${k}" data-d="1">▶</button><button class="kfl-del" data-k="${k}" title="Delete these keyframes"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M6.4 4.5V3h3.2v1.5M4.8 4.5l.6 8.5h5.2l.6-8.5"/></svg></button></div>`).join('');
+  el.querySelectorAll('.kfl-arr').forEach(b=>b.onclick=()=>jumpKeyOf(b.dataset.k,+b.dataset.d));
+  el.querySelectorAll('.kfl-del').forEach(b=>b.onclick=()=>delKeyframesOf(b.dataset.k)); }
+function delKeyframesOf(k){ delete keyframes[k]; renderTimeline(); refreshKfList(); updateKeyBtns(); applyAnim(); pushState(); }
 function buildKfNav(){ const el=document.getElementById('kf-nav'); if(!el)return;
   el.innerHTML='<div id="kf-list"></div>';
   refreshKfList(); }
