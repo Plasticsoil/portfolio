@@ -1,0 +1,62 @@
+<!doctype html>
+<!--
+  FunType embeddable viewer — designed to be loaded inside an <iframe>
+  on any other site. The host page passes the effect, the word and the
+  palette through the URL, and we mount the live effect (with hover +
+  click interactivity) fitted to whatever iframe size is set.
+
+  Example:
+    <iframe src="https://yamliv.net/fun/embed.html?effect=pack
+                 &word=hello
+                 &pal=FFFFFF,C8F06E,3FB4F0,5BE03A"
+            width="600" height="600" frameborder="0"></iframe>
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FunType embed</title>
+    <link rel="preconnect" href="https://api.fontshare.com" />
+    <link
+      rel="stylesheet"
+      href="https://api.fontshare.com/v2/css?f[]=switzer@900,700,500,400,300&display=swap"
+    />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body {
+        margin: 0; padding: 0;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+      }
+      /* Centred 1080×1080 stage, scaled (via transform) to fit whatever
+         viewport size the host iframe gives us. transform-origin sits
+         at the centre so the scale shrinks toward the visual middle. */
+      #embed-wrap {
+        position: absolute; inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      #embed-stage {
+        width: 1080px;
+        height: 1080px;
+        flex: none;
+        position: relative;
+        transform-origin: center center;
+        will-change: transform;
+      }
+    </style>
+    <script type="module" crossorigin src="/fun/assets/embed-JMt5kPTE.js"></script>
+    <link rel="modulepreload" crossorigin href="/fun/assets/render-DjvHEEDd.js">
+    <link rel="modulepreload" crossorigin href="/fun/assets/cornerPinMesh-zyDRKMHj.js">
+    <link rel="modulepreload" crossorigin href="/fun/assets/palette-Dh5Ghml-.js">
+    <link rel="modulepreload" crossorigin href="/fun/assets/pack-DHdYzhOx.js">
+  </head>
+  <body>
+    <div id="embed-wrap">
+      <div id="embed-stage"></div>
+    </div>
+  </body>
+</html>
