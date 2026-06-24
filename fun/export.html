@@ -10,6 +10,9 @@
          portfolio's language: Instrument Serif + Nimbus Sans, muted greys. -->
     <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@900,700,500,400&display=swap" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400&display=swap" />
+    <!-- Hebrew fallback for the kinetic letters (Switzer has no Hebrew).
+         Google's CSS2 endpoint auto-includes the Hebrew subset. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap" />
     <style>
       :root {
         --bg:#f8f6f3; --ink:#a3a09b; --emph:#68645e;
@@ -240,27 +243,42 @@
       #status { font-size:13px; color:var(--ink); min-height:18px; }
       .hint { font-size:12px; color:rgba(163,160,155,.7); line-height:1.5; margin:0; }
 
-      /* Embed section — readonly textarea with the iframe snippet
-         that auto-updates as the user tweaks word / palette / size,
-         plus a one-click Copy button. The textarea is monospace to
-         signal "this is code", and clickable as a whole — clicking
-         it selects everything for easy manual copy too. */
-      #embedCode {
-        width: 100%;
-        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-        font-size: 12px;
-        line-height: 1.5;
-        padding: 10px 12px;
-        border: 1px solid var(--line);
-        border-radius: 12px;
+      /* Centred light toast for transient confirmations (currently the
+         embed copy success). Sits above everything else; auto-fades
+         after a short hold. Tiny green dot mirrors the studio's toast. */
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 28px;
+        transform: translateX(-50%) translateY(20px);
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
         background: var(--card);
         color: var(--emph);
-        resize: none;
-        cursor: text;
-        word-break: break-all;
+        font-family: var(--sans);
+        font-size: 14px;
+        line-height: 1.1;
+        padding: 12px 22px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        box-shadow: 0 14px 36px -14px rgba(38, 37, 30, 0.32);
+        opacity: 0;
+        pointer-events: none;
+        z-index: 9000;
+        transition: opacity 0.22s ease, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
-      #embedCode:focus { outline: none; border-color: var(--emph); }
-      #copyEmbed { align-self: flex-start; }
+      .toast::before {
+        content: "";
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: #5BE03A;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
 
       /* ═══════════════════════════════════════════════════════════════
          MOBILE export overrides (≤880px)
@@ -381,9 +399,9 @@
         #status { font-size: 12px; text-align: center; min-height: 0; }
       }
     </style>
-    <script type="module" crossorigin src="/fun/assets/export-CKMSwo4U.js"></script>
+    <script type="module" crossorigin src="/fun/assets/export-BMwVc-sd.js"></script>
     <link rel="modulepreload" crossorigin href="/fun/assets/render-DjvHEEDd.js">
-    <link rel="modulepreload" crossorigin href="/fun/assets/palette-Dh5Ghml-.js">
+    <link rel="modulepreload" crossorigin href="/fun/assets/palette-BQ67uqqh.js">
   </head>
   <body>
     <!-- Fixed top-left breadcrumb: portfolio → FunType. The Export title
@@ -422,7 +440,7 @@
       <div class="panel">
         <div class="sect">
           <div class="head"><h2>Text</h2></div>
-          <input id="word" type="text" value="Corner" maxlength="12" placeholder="Type a word…" />
+          <input id="word" type="text" value="Corner" maxlength="60" placeholder="Type a word…" />
         </div>
 
         <div class="sect">
@@ -458,6 +476,7 @@
                 <option value="gif">GIF</option>
                 <option value="png">PNG sequence</option>
                 <option value="svg">SVG (static)</option>
+                <option value="embed">Embed (iframe)</option>
               </select>
             </div>
             <div>
@@ -479,16 +498,6 @@
           </div>
           <p id="status"></p>
           <p class="hint" id="formatHint"></p>
-        </div>
-
-        <!-- Embed snippet — live iframe code, ready to paste anywhere -->
-        <div class="sect">
-          <div class="head"><h2>Embed</h2></div>
-          <textarea id="embedCode" readonly rows="3" spellcheck="false"></textarea>
-          <button class="iconbtn" id="copyEmbed" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            Copy embed code
-          </button>
         </div>
       </div>
     </div>
