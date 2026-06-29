@@ -131,7 +131,7 @@
   .cswatch{flex:1;height:34px;border:1px solid var(--hair);background:none;border-radius:4px;cursor:pointer;padding:2px;}
   .shape-row{display:flex;flex-wrap:wrap;gap:6px;}
   .modebar{display:flex;gap:5px;margin:2px 0 12px;background:var(--fill4);border:1px solid var(--line12);border-radius:7px;padding:4px;}
-  .modebar button{flex:1;padding:9px 0;font-family:'Inter';font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--soft);background:transparent;border:none;border-radius:5px;cursor:pointer;transition:.15s;}
+  .modebar button{flex:1;min-width:0;padding:9px 2px;font-family:'Inter';font-size:10px;font-weight:600;letter-spacing:.01em;white-space:nowrap;color:var(--soft);background:transparent;border:none;border-radius:5px;cursor:pointer;transition:.15s;}
   .modebar button:hover{color:var(--fg);}
   .modebar button.active{color:var(--bg);background:var(--fg);}
   .checkrow{display:flex;align-items:center;gap:8px;cursor:pointer;}
@@ -443,6 +443,7 @@ const params={
   mode:'repeater',
   uavSpan:760, uavSweep:18, uavChord:150, uavTaper:0.45, uavThick:18, uavDihedral:6,
   uavFuseLen:430, uavFuseR:30, uavNose:90, uavTailSpan:260, uavFinH:80, uavCam:0, uavRibs:4, uavSub:1, uavRound:0, uavProp:2,
+  centralN:6, mirPetals:0, mirEllip:0.42, mirReach:300, mirTurns:1, mirTwist:0, mirDome:140, mirWaves:3, mirWaveH:45,
   layerMode:'wire', heatGrad:'Thermal', heatThresh:0, heatBlur:16, heatAmt:0,
   rings:3, height:360, profile:0,
   sides:9, sidesStart:9, sidesEnd:9, linkShape:true, aspect:1, noise:0, noiseSeed:1, topo:false, topoSeed:1, topoDetail:11,
@@ -478,12 +479,13 @@ const GRADS={
 function sampleGrad(st,t){ t=clamp(t,0,1); for(let i=1;i<st.length;i++){ if(t<=st[i][0]){ const a=st[i-1],b=st[i],f=(t-a[0])/((b[0]-a[0])||1); return hex2rgb(lerpHex(a[1],b[1],f)); } } return hex2rgb(st[st.length-1][1]); }
 function curGrad(){ const s=(params.heatStops&&params.heatStops.length>=2)?params.heatStops:GRADS.Thermal.map(o=>({p:o[0],c:o[1]}));
   return s.slice().sort((a,b)=>a.p-b.p).map(o=>[o.p,o.c]); }
-function heatFilter(FW,FH,bl){ bl=bl||(params.heatBlur||16); const st=curGrad(), N=24, thr=params.heatThresh||0, r=[],g=[],b=[];
+function heatFilter(FW,FH,bl){ bl=bl||(params.heatBlur||16); const st=curGrad().slice(); st[0]=[st[0][0],params.bg];   // force field bottom = scene bg → no jump at Heat 0
+  const N=24, thr=params.heatThresh||0, r=[],g=[],b=[];
   for(let i=0;i<N;i++){ let t=i/(N-1); t=t<=thr?0:(t-thr)/(1-thr||1); const c=sampleGrad(st,t); r.push((c[0]/255).toFixed(3)); g.push((c[1]/255).toFixed(3)); b.push((c[2]/255).toFixed(3)); }
   const gain=(1+bl*0.09).toFixed(2);   // boost so glow doesn't fade, but not blow to pure white
   const mx=FW*0.25, my=FH*0.25;
   return `<filter id="heat" filterUnits="userSpaceOnUse" x="${(-mx).toFixed(0)}" y="${(-my).toFixed(0)}" width="${(FW+2*mx).toFixed(0)}" height="${(FH+2*my).toFixed(0)}" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceGraphic" stdDeviation="${bl}" result="b"/><feComponentTransfer in="b" result="a"><feFuncR type="linear" slope="${gain}"/><feFuncG type="linear" slope="${gain}"/><feFuncB type="linear" slope="${gain}"/></feComponentTransfer><feComponentTransfer in="a"><feFuncR type="table" tableValues="${r.join(' ')}"/><feFuncG type="table" tableValues="${g.join(' ')}"/><feFuncB type="table" tableValues="${b.join(' ')}"/><feFuncA type="table" tableValues="1 1"/></feComponentTransfer></filter>`; }
-params.heatStops=[{p:0,c:'#000000'},{p:0.5,c:'#4d15f4'},{p:1,c:'#ffffff'}];
+params.heatStops=[{p:0,c:'#131314'},{p:0.5,c:'#4d15f4'},{p:1,c:'#ffffff'}];
 function buildGradEditor(host){ if(!host)return; host.innerHTML='';
   const ed=document.createElement('div'); ed.className='grad-ed';
   const handles=document.createElement('div'); handles.className='grad-handles';
@@ -498,11 +500,10 @@ function buildGradEditor(host){ if(!host)return; host.innerHTML='';
       h.appendChild(inp);
       h.addEventListener('pointerdown',e=>{ if(e.button!==0)return; e.preventDefault(); e.stopPropagation();
         sel=i; handles.querySelectorAll('.grad-stop').forEach((el,j)=>el.classList.toggle('sel',j===i));
-        try{ h.setPointerCapture(e.pointerId); }catch(_){}
         const r=bar.getBoundingClientRect(), sx=e.clientX; let moved=false;
         const mv=ev=>{ if(!moved&&Math.abs(ev.clientX-sx)>3)moved=true; if(moved){ o.p=clamp((ev.clientX-r.left)/r.width,0,1); h.style.left=(o.p*100)+'%'; bar.style.background=cssg(); render(); } };
-        const up=()=>{ h.removeEventListener('pointermove',mv); h.removeEventListener('pointerup',up); if(moved){ pushState(); draw(); } else { inp.click(); } };
-        h.addEventListener('pointermove',mv); h.addEventListener('pointerup',up); });
+        const up=()=>{ window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); if(moved){ pushState(); draw(); } else { inp.click(); } };
+        window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up); });
       handles.appendChild(h); });
   }
   host._add=()=>{ const s=stops().slice().sort((a,b)=>a.p-b.p); let gap=-1,gp=0.5; for(let i=1;i<s.length;i++){ const d=s[i].p-s[i-1].p; if(d>gap){gap=d;gp=(s[i].p+s[i-1].p)/2;} }
@@ -562,14 +563,15 @@ function setEase(key,idx,e){ keyframes[key][idx].ease=e; renderTimeline(); apply
 /* ---------- controls (modular) ---------- */
 const controlsEl=document.getElementById('controls'), rightEl=document.getElementById('controls-right');
 const els={}, segs={}, colorEls={};
-let radRow=null, shapeSec=null, formSec=null, uavSec=null, modeRows={};
+let radRow=null, shapeSec=null, formSec=null, uavSec=null, centralSec=null, modeRows={};
 function updateMarkerUI(){ if(radRow) radRow.style.display = (params.markerMode==='points')?'none':''; }
-function updateTopoUI(){ const m=params.mode||'repeater', rep=m==='repeater', topo=m==='topo', uav=m==='uav';
+function updateTopoUI(){ const m=params.mode||'repeater', rep=m==='repeater', topo=m==='topo', uav=m==='uav', cen=m==='central';
   const sh=(el,b)=>{ if(el) el.style.display=b?'':'none'; };
-  sh(shapeSec,rep); sh(uavSec,uav); sh(formSec,!uav);
+  sh(shapeSec,rep); sh(uavSec,uav); sh(centralSec,cen); sh(formSec,!uav&&!cen);
   [modeRows.funnel,modeRows.rot,modeRows.spacing].forEach(r=>sh(r,rep));
   [modeRows.detail,modeRows.seed].forEach(r=>sh(r,topo));
-  [modeRows.lines,modeRows.size,modeRows.height,modeRows.noise,modeRows.noiseSeed].forEach(r=>sh(r,!uav)); }
+  [modeRows.lines,modeRows.size,modeRows.height].forEach(r=>sh(r,!uav&&!cen));
+  [modeRows.noise,modeRows.noiseSeed].forEach(r=>sh(r,!uav)); }
 function group(panel,icon,title){
   const sec=document.createElement('div'); sec.className='gsec';
   const head=document.createElement('div'); head.className='group-title';
@@ -815,7 +817,7 @@ function buildControls(){
   let g;
   // ===== mode toggle (Repeater / Topography / UAV) =====
   const modebar=document.createElement('div'); modebar.className='modebar';
-  [['repeater','Repeater'],['topo','Topography'],['uav','UAV']].forEach(([v,t])=>{ const b=document.createElement('button'); b.textContent=t;
+  [['repeater','Repeater'],['topo','Topography'],['uav','UAV'],['central','Mirror']].forEach(([v,t])=>{ const b=document.createElement('button'); b.textContent=t;
     b.classList.toggle('active',(params.mode||'repeater')===v);
     b.onclick=()=>{ params.mode=v; params.topo=(v==='topo'); modebar.querySelectorAll('button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); updateTopoUI(); render(); pushState(); };
     modebar.appendChild(b); });
@@ -855,6 +857,19 @@ function buildControls(){
   addStepper(g,{key:'uavProp',label:'Propeller blades',min:0,max:5,nokey:true,ic:'<circle cx="8" cy="8" r="1.5"/><path d="M8 6.5V2M9.3 8.7l3.8 2.2M6.7 8.7l-3.8 2.2"/>'});
   addStepper(g,{key:'uavRibs',label:'Ribs (structure)',min:0,max:12,nokey:true,ic:'<path d="M4 3v10M7 3v10M10 3v10M13 3v10"/>'});
   addStepper(g,{key:'uavSub',label:'Subdivide',min:0,max:3,nokey:true,ic:'<rect x="2.5" y="2.5" width="11" height="11"/><path d="M8 2.5v11M2.5 8h11"/>'});
+
+  // ===== Mirror — 3D radial/mandala symmetry (central only) =====
+  g=group(controlsEl,'','Mirror'); centralSec=g.parentElement;
+  addStepper(g,{key:'centralN',label:'Symmetry',min:1,max:36,ic:'<circle cx="8" cy="8" r="1.6"/><path d="M8 2v2.5M8 11.5V14M2 8h2.5M11.5 8H14M3.8 3.8l1.8 1.8M10.4 10.4l1.8 1.8M12.2 3.8l-1.8 1.8M5.6 10.4l-1.8 1.8"/>'});
+  addStepper(g,{key:'mirPetals',label:'Petals',min:0,max:16,ic:'<path d="M8 8c0-3 2-5 0-6-2 1 0 3 0 6M8 8c0 3 2 5 0 6-2-1 0-3 0-6M8 8c3 0 5 2 6 0-1-2-3 0-6 0M8 8c-3 0-5 2-6 0 1-2 3 0 6 0"/>'});
+  addSlider(g,{key:'mirEllip',label:'Ellipse %',min:0,max:1,step:0.01,curve:1,pct:true,ic:'<ellipse cx="8" cy="8" rx="6" ry="3"/>'});
+  addSlider(g,{key:'mirReach',label:'Reach',min:40,max:600,step:1,curve:1,ic:'<path d="M8 8h6M11 6l3 2-3 2"/><circle cx="3" cy="8" r="1.4"/>'});
+  addSlider(g,{key:'mirTurns',label:'Turns',min:0.25,max:6,step:0.05,curve:1,ic:'<path d="M8 3a5 5 0 1 1-3.5 1.5"/><path d="M8 3v3M8 3l-2 1"/>'});
+  addSlider(g,{key:'mirTwist',label:'Twist °',min:-360,max:360,step:1,curve:1,ic:'<path d="M3 5c4-2 6-2 10 0M3 11c4 2 6 2 10 0M3 5v6M13 5v6"/>'});
+  addSlider(g,{key:'mirDome',label:'Dome (3D)',min:-500,max:500,step:1,curve:1,ic:'<path d="M2 12a6 6 0 0 1 12 0"/><path d="M2 12h12"/>'});
+  addStepper(g,{key:'mirWaves',label:'Waves',min:0,max:16,ic:'<path d="M1.5 8c1.2-4 2.4-4 3.6 0s2.4 4 3.6 0 2.4-4 3.6 0"/>'});
+  addSlider(g,{key:'mirWaveH',label:'Wave height',min:0,max:300,step:1,curve:1.2,ic:'<path d="M2 11c2-6 4-6 6 0M8 11c2-6 4-6 6 0"/>'});
+  addStepper(g,{key:'rings',label:'Layers',min:1,max:12,ic:'<path d="M8 2l6 3-6 3-6-3z"/><path d="M2 8l6 3 6-3M2 11l6 3 6-3"/>'});
 
   // ===== Surface — line rendering & noise =====
   g=group(controlsEl,'','Surface');
@@ -996,7 +1011,7 @@ function project(x,y,z){ const a=params.camYaw*PI/180,p=params.camPitch*PI/180;
   return {X,Y}; }
 function polyR(r,s,th){ if(s<3) return r; const a=2*PI/s, ap=r*Math.cos(PI/s), n=Math.round((th-a/2)/a)*a+a/2; return ap/Math.cos(th-n); }
 
-function buildSVG(){
+function buildSVG(transparent){
   ensureMarkers();
   const N=Math.round(params.rings), A=params.aspect;
   const FW=Math.round(params.frameW),FH=Math.round(params.frameH),Z=params.zoom;
@@ -1061,6 +1076,24 @@ function buildSVG(){
       const hub=[]; for(let i=0;i<=12;i++){ const a=i/12*2*PI; hub.push([Math.cos(a)*R*0.22, Math.sin(a)*R*0.22, pz]); } add(hub);
       for(let b=0;b<prop;b++){ const a=b/prop*2*PI; add([[0,0,pz],[Math.cos(a)*pr, Math.sin(a)*pr, pz]]); } }
     if(params.stroke>0) P.forEach(pts=>{ let d=''; pts.forEach((p,i)=>{ const c=map(project(p[0],p[1],p[2])); d+=(i?'L':'M')+c[0]+' '+c[1]+' '; }); lines+=`<path d="${d.trim()}"/>\n`; });
+    M=0;
+  } else if(params.mode==='central'){
+    // ---- Mirror: 3D mandala — a base orbit/rose curve mirrored N-fold around the central axis ----
+    const Nc=Math.max(1,Math.round(params.centralN||6)), pet=Math.round(params.mirPetals||0),
+          ellip=params.mirEllip!=null?params.mirEllip:1, reach=params.mirReach||300, turns=Math.max(0.1,params.mirTurns||1),
+          twist=(params.mirTwist||0)*PI/180, dome=params.mirDome||0, waves=Math.round(params.mirWaves||0),
+          waveH=params.mirWaveH||0, layers=Math.max(1,Math.round(params.rings));
+    const steps=Math.min(900,Math.max(90,Math.round(150*turns+pet*16)));
+    if(params.stroke>0){
+      for(let l=0;l<layers;l++){ const lf=layers>1?l/(layers-1):0, sc=1-lf*0.5, yL=layers>1?(lf-0.5)*reach*0.55:0, rotL=twist*lf, re=reach*sc;
+        for(let c=0;c<Nc;c++){ const th=c/Nc*2*PI+rotL, ct=Math.cos(th), st=Math.sin(th); let d='';
+          for(let i=0;i<=steps;i++){ const ph=i/steps*2*PI*turns, rho=re*(pet>0?Math.abs(Math.cos(pet*ph)):1)*noiseFactor(ph,lf);
+            const lx=rho*Math.cos(ph), lz=rho*Math.sin(ph)*ellip, rp=Math.hypot(lx,lz);
+            const y=yL + dome*(1-rp/Math.max(1,re)) + waveH*Math.sin(waves*ph);
+            const wx=lx*ct-lz*st, wz=lx*st+lz*ct, cp=map(project(wx,y,wz)); d+=(i?'L':'M')+cp[0]+' '+cp[1]+' '; }
+          lines+=`<path d="${d.trim()}"/>\n`; }
+      }
+    }
     M=0;
   } else if(params.topo){
     // ---- true contour iso-lines of a multi-peak height field (marching squares) ----
@@ -1147,7 +1180,7 @@ function buildSVG(){
   const heatAmt=clamp(params.heatAmt||0,0,1), heatOn=heatAmt>0.002, lineOp=params.lineOpacity!=null?params.lineOpacity:1;
   const wireMarks=mkArr.map(m=>markerEl(m.shp,m.x,m.y,m.sz,m.rx,m.col)).join('');
   let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${FW}" height="${FH}" viewBox="0 0 ${FW} ${FH}">
-<rect width="${FW}" height="${FH}" fill="${params.bg}"/>
+${transparent?'':`<rect width="${FW}" height="${FH}" fill="${params.bg}"/>`}
 <g fill="none" stroke="${params.line}" stroke-opacity="${lineOp}" stroke-width="${params.stroke}" stroke-linejoin="round" stroke-linecap="round">
 ${lines}</g>
 <g>
@@ -1278,10 +1311,11 @@ function shuffle(){
   }
   syncControls(); render(); pushState(); }
 function resetAll(){ const fw=params.frameW, fh=params.frameH; Object.assign(params,JSON.parse(JSON.stringify(DEFAULTS))); params.frameW=fw; params.frameH=fh; markerData=[]; keyframes={}; tl.time=0; regenMarkers(); syncControls(); renderTimeline(); updateKeyBtns(); render(); pushState(); }
-function exportSVG(){ const {svg}=buildSVG(); const b=new Blob([svg],{type:'image/svg+xml'}),u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download='litevision-rings.svg'; a.click(); URL.revokeObjectURL(u); }
-function exportPNG(){ const {svg,FW,FH}=buildSVG(); const b=new Blob([svg],{type:'image/svg+xml'}),u=URL.createObjectURL(b); const img=new Image();
-  img.onload=()=>{ const c=document.createElement('canvas'); c.width=FW;c.height=FH; const x=c.getContext('2d'); x.fillStyle=params.bg;x.fillRect(0,0,FW,FH); x.drawImage(img,0,0); URL.revokeObjectURL(u);
-    c.toBlob(bl=>{const u2=URL.createObjectURL(bl);const a=document.createElement('a');a.href=u2;a.download='litevision-rings.png';a.click();URL.revokeObjectURL(u2);}); }; img.src=u; }
+function askName(base,ext){ let n=prompt('Save as:', base+'.'+ext); if(n===null)return null; n=n.trim(); if(!n)n=base+'.'+ext; if(ext&&!n.toLowerCase().endsWith('.'+ext)) n+='.'+ext; return n; }
+function exportSVG(){ const name=askName('litevision-rings','svg'); if(!name)return; const {svg}=buildSVG(); const b=new Blob([svg],{type:'image/svg+xml'}),u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=name; a.click(); URL.revokeObjectURL(u); }
+function exportPNG(){ const name=askName('litevision-rings','png'); if(!name)return; const {svg,FW,FH}=buildSVG(true); const b=new Blob([svg],{type:'image/svg+xml'}),u=URL.createObjectURL(b); const img=new Image();
+  img.onload=()=>{ const c=document.createElement('canvas'); c.width=FW;c.height=FH; const x=c.getContext('2d'); x.drawImage(img,0,0); URL.revokeObjectURL(u);
+    c.toBlob(bl=>{const u2=URL.createObjectURL(bl);const a=document.createElement('a');a.href=u2;a.download=name;a.click();URL.revokeObjectURL(u2);}); }; img.src=u; }
 function downloadBlob(data,name,type){ const b=new Blob([data],{type}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=name; a.click(); URL.revokeObjectURL(u); }
 
 /* ---------- presets (localStorage) ---------- */
@@ -1303,16 +1337,17 @@ function savePreset(){ const n=prompt('Preset name (shape + all parameters):'); 
 function loadPreset(n){ const d=lsGet('lv_presets')[n]; if(!d)return; Object.assign(params,d.params); keyframes=d.keyframes||{}; markerData=d.markerData||[]; ensureMarkers();
   syncControls(); renderTimeline(); updateKeyBtns(); render(); pushState(); }
 function delPreset(n){ if(!n)return; const p=lsGet('lv_presets'); delete p[n]; lsSet('lv_presets',p); refreshPresets(); }
-function exportWeb(){ const F=Math.min(160,Math.max(24,Math.round(tl.dur*30))); const frames=[]; const save=tl.time;
+function exportWeb(){ const name=askName('litevision-anim','html'); if(!name)return; const F=Math.min(160,Math.max(24,Math.round(tl.dur*30))); const frames=[]; const save=tl.time;
   for(let i=0;i<F;i++){ tl.time=tl.dur*i/(F-1); animatedKeys().forEach(k=>params[k]=valueAt(k,tl.time)); frames.push(buildSVG().svg); }
   tl.time=save; animatedKeys().forEach(k=>params[k]=valueAt(k,tl.time));
   const html='<!doctype html><meta charset=utf-8><title>litevision</title><style>html,body{margin:0;height:100%;background:#000;display:flex;align-items:center;justify-content:center}#f svg{max-width:100vw;max-height:100vh;display:block}</style><div id=f></div><script>var F='+JSON.stringify(frames)+',M='+JSON.stringify(tl.mode)+',i=0,d=1,el=document.getElementById("f");function s(){el.innerHTML=F[i];i+=d;if(M=="pingpong"){if(i>=F.length){i=F.length-1;d=-1}else if(i<0){i=0;d=1}}else if(M=="once"){if(i>=F.length){i=F.length-1;return}}else{if(i>=F.length)i=0}setTimeout(function(){requestAnimationFrame(s)},33)}s();<\/script>';
-  downloadBlob(html,'litevision-anim.html','text/html'); }
+  downloadBlob(html,name,'text/html'); }
 function exportVideo(){ const {FW,FH}=buildSVG(); const c=document.createElement('canvas'); c.width=FW;c.height=FH; const cx=c.getContext('2d');
   if(!window.MediaRecorder){ alert('Video recording not supported in this browser'); return; }
   const stream=c.captureStream(30); const mime=MediaRecorder.isTypeSupported('video/mp4')?'video/mp4':'video/webm';
+  const name=askName('litevision-anim',mime.includes('mp4')?'mp4':'webm'); if(!name)return;
   const rec=new MediaRecorder(stream,{mimeType:mime}),chunks=[]; rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
-  rec.onstop=()=>{ const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='litevision-anim.'+(mime.includes('mp4')?'mp4':'webm'); a.click(); };
+  rec.onstop=()=>{ const blob=new Blob(chunks,{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); };
   const save=tl.time, dur=tl.dur, fps=30, total=Math.round(dur*fps); let i=0; rec.start();
   (function frame(){ const tt=dur*i/total; animatedKeys().forEach(k=>params[k]=valueAt(k,tt)); const svg=buildSVG().svg;
     const img=new Image(); img.onload=()=>{ cx.fillStyle='#000';cx.fillRect(0,0,FW,FH); cx.drawImage(img,0,0); i++;
@@ -1324,7 +1359,7 @@ function wireExport(){ const xt=document.getElementById('x-toggle'), xm=document
   document.addEventListener('click',e=>{ if(!e.target.closest('#export-menu')&&!e.target.closest('#x-toggle')) xm.classList.remove('open'); });
   xm.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ const x=b.dataset.x; xm.classList.remove('open');
     if(x==='svg')exportSVG(); else if(x==='png')exportPNG(); else if(x==='web')exportWeb(); else if(x==='video')exportVideo(); })); }
-function saveProject(){ downloadBlob(JSON.stringify({v:1,params,keyframes,markerData,dur:tl.dur}),'litevision-project.json','application/json'); }
+function saveProject(){ const name=askName('litevision-project','json'); if(!name)return; downloadBlob(JSON.stringify({v:1,params,keyframes,markerData,dur:tl.dur}),name,'application/json'); }
 function loadProject(file){ const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.params)Object.assign(params,d.params); keyframes=d.keyframes||{}; markerData=d.markerData||[]; if(d.dur)tl.dur=d.dur; ensureMarkers(); buildControls(); applyColors(); renderTimeline(); updateKeyBtns(); updateTime(); render(); pushState(); }catch(err){ alert('Could not load file'); } }; r.readAsText(file); }
 function setColors(bg,line){ params.bg=bg; params.line=line; applyColors(); render(); pushState(); }
 function wireSettings(){ const sp=document.getElementById('settings-pop');
