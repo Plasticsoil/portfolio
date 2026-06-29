@@ -187,6 +187,23 @@
   #cam-toggle.on{color:var(--fg);border-color:var(--muted);background:var(--fill8);}
   #cam-toggle svg{width:18px;height:18px;}
   #cam-panel.open{display:block;}
+  #layers-panel{position:absolute;top:54px;left:10px;z-index:20;width:236px;background:var(--pop);border:1px solid var(--line12);border-radius:9px;padding:12px 12px 6px;display:none;backdrop-filter:blur(14px);max-height:calc(100% - 76px);overflow-y:auto;}
+  #layers-panel.open{display:block;}
+  #layers-toggle{position:absolute;top:10px;left:10px;z-index:25;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:var(--pop);border:1px solid var(--faint);border-radius:7px;color:var(--mid);cursor:pointer;backdrop-filter:blur(8px);transition:.15s;}
+  #layers-toggle:hover{color:var(--fg);border-color:var(--muted);}
+  #layers-toggle.on{color:var(--fg);border-color:var(--muted);background:var(--fill8);}
+  #layers-toggle svg{width:18px;height:18px;}
+  .grad-preset{width:auto;flex:0 0 auto;margin:0;padding:4px 6px;font-size:10px;}
+  .grad-btns{display:flex;gap:5px;}
+  .grad-btns .mini-btn{width:22px;height:22px;font-size:14px;}
+  .grad-host{margin-top:8px;}
+  .grad-ed{position:relative;}
+  .grad-handles{position:relative;height:16px;}
+  .grad-bar{height:22px;border-radius:5px;border:1px solid var(--line12);cursor:copy;}
+  .grad-handles{height:18px;}
+  .grad-stop{position:absolute;top:1px;width:16px;height:16px;transform:translateX(-50%);border-radius:4px;border:2px solid var(--bg);box-shadow:0 0 0 1px rgba(255,255,255,.55);cursor:grab;touch-action:none;}
+  .grad-stop:active{cursor:grabbing;}
+  .grad-color{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
   .cam-head{display:flex;align-items:center;justify-content:space-between;margin:-2px 0 8px;}
   .cam-head span{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);}
   .cam-close{background:none;border:none;color:var(--soft);cursor:pointer;padding:2px;display:flex;}
@@ -364,6 +381,8 @@
     <div id="live">—</div>
     <button id="cam-toggle" title="Camera (gizmo)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M8 1.8l6 3.2v6L8 14.2 2 11V5z"/><path d="M2 5l6 3 6-3M8 8v6.2"/></svg></button>
     <div id="cam-panel" class="open"></div>
+    <button id="layers-toggle" title="Layers"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M8 2l6 3-6 3-6-3z"/><path d="M2 8l6 3 6-3M2 11l6 3 6-3"/></svg></button>
+    <div id="layers-panel"></div>
   </main>
 
   <aside id="workbar-right"><div class="controls" id="controls-right"></div></aside>
@@ -421,16 +440,20 @@ const PALETTE_DEF='#ffffff';
 
 /* ---------- state ---------- */
 const params={
+  mode:'repeater',
+  uavSpan:760, uavSweep:18, uavChord:150, uavTaper:0.45, uavThick:18, uavDihedral:6,
+  uavFuseLen:430, uavFuseR:30, uavNose:90, uavTailSpan:260, uavFinH:80, uavCam:0, uavRibs:4, uavSub:1, uavRound:0, uavProp:2,
+  layerMode:'wire', heatGrad:'Thermal', heatThresh:0, heatBlur:16, heatAmt:0,
   rings:3, height:360, profile:0,
-  sides:9, sidesStart:9, sidesEnd:9, linkShape:true, aspect:1, noise:0, noiseSeed:1, topo:false, topoSeed:1, topoDetail:6,
+  sides:9, sidesStart:9, sidesEnd:9, linkShape:true, aspect:1, noise:0, noiseSeed:1, topo:false, topoSeed:1, topoDetail:11,
   rotStart:0, rotEnd:0, linkRot:true,
   meridianPer:0,
   markers:3, markerSize:16, markerMode:'line', markerOffset:0, markerScatter:0, markerRadius:0,
-  shapes:['square'], colorCount:1,
-  col0:PALETTE_DEF, col1:PALETTE_DEF, col2:PALETTE_DEF, col3:PALETTE_DEF, col4:PALETTE_DEF, col5:PALETTE_DEF, col6:PALETTE_DEF, col7:PALETTE_DEF,
-  stroke:1,
+  shapes:['square'], colorCount:3,
+  col0:'#7d6dd5', col1:'#74a5ff', col2:'#4d15f4', col3:PALETTE_DEF, col4:PALETTE_DEF, col5:PALETTE_DEF, col6:PALETTE_DEF, col7:PALETTE_DEF,
+  stroke:0.5, lineOpacity:1,
   camYaw:0, camPitch:45, camRoll:0, coreAmt:0, coreDepth:120,
-  frameW:1000, frameH:1000, zoom:1, panX:0, panY:0, bg:'#000000', line:'#ffffff',
+  frameW:1000, frameH:1000, zoom:1, panX:0, panY:0, bg:'#131314', line:'#ffffff',
   spacingEase:0, ex1:0.33, ey1:0.33, ex2:0.66, ey2:0.66
 };
 
@@ -443,6 +466,50 @@ function regenMarkers(){ markerData=[]; ensureMarkers(); }
 const hex2rgb=h=>{ h=h.replace('#',''); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; };
 const rgb2hex=a=>'#'+a.map(v=>clamp(Math.round(v),0,255).toString(16).padStart(2,'0')).join('');
 const lerpHex=(a,b,t)=>{ const x=hex2rgb(a),y=hex2rgb(b); return rgb2hex(x.map((v,i)=>v+(y[i]-v)*t)); };
+/* ---------- heatmap gradients (Layers) ---------- */
+const GRADS={
+  'Thermal':[[0,'#220707'],[.32,'#7a160b'],[.52,'#e8431a'],[.7,'#ff8a3d'],[.85,'#bcd3e6'],[1,'#eef5ff']],
+  'Inferno':[[0,'#000004'],[.25,'#420a68'],[.5,'#932667'],[.7,'#dd513a'],[.85,'#fca50a'],[1,'#fcffa4']],
+  'Plasma':[[0,'#0d0887'],[.5,'#cc4778'],[1,'#f0f921']],
+  'Viridis':[[0,'#440154'],[.5,'#21918c'],[1,'#fde725']],
+  'Ice':[[0,'#04121f'],[.5,'#2f7fb8'],[.8,'#9fd3e6'],[1,'#ffffff']],
+  'Mono':[[0,'#000000'],[1,'#ffffff']]
+};
+function sampleGrad(st,t){ t=clamp(t,0,1); for(let i=1;i<st.length;i++){ if(t<=st[i][0]){ const a=st[i-1],b=st[i],f=(t-a[0])/((b[0]-a[0])||1); return hex2rgb(lerpHex(a[1],b[1],f)); } } return hex2rgb(st[st.length-1][1]); }
+function curGrad(){ const s=(params.heatStops&&params.heatStops.length>=2)?params.heatStops:GRADS.Thermal.map(o=>({p:o[0],c:o[1]}));
+  return s.slice().sort((a,b)=>a.p-b.p).map(o=>[o.p,o.c]); }
+function heatFilter(FW,FH,bl){ bl=bl||(params.heatBlur||16); const st=curGrad(), N=24, thr=params.heatThresh||0, r=[],g=[],b=[];
+  for(let i=0;i<N;i++){ let t=i/(N-1); t=t<=thr?0:(t-thr)/(1-thr||1); const c=sampleGrad(st,t); r.push((c[0]/255).toFixed(3)); g.push((c[1]/255).toFixed(3)); b.push((c[2]/255).toFixed(3)); }
+  const gain=(1+bl*0.09).toFixed(2);   // boost so glow doesn't fade, but not blow to pure white
+  const mx=FW*0.25, my=FH*0.25;
+  return `<filter id="heat" filterUnits="userSpaceOnUse" x="${(-mx).toFixed(0)}" y="${(-my).toFixed(0)}" width="${(FW+2*mx).toFixed(0)}" height="${(FH+2*my).toFixed(0)}" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceGraphic" stdDeviation="${bl}" result="b"/><feComponentTransfer in="b" result="a"><feFuncR type="linear" slope="${gain}"/><feFuncG type="linear" slope="${gain}"/><feFuncB type="linear" slope="${gain}"/></feComponentTransfer><feComponentTransfer in="a"><feFuncR type="table" tableValues="${r.join(' ')}"/><feFuncG type="table" tableValues="${g.join(' ')}"/><feFuncB type="table" tableValues="${b.join(' ')}"/><feFuncA type="table" tableValues="1 1"/></feComponentTransfer></filter>`; }
+params.heatStops=[{p:0,c:'#000000'},{p:0.5,c:'#4d15f4'},{p:1,c:'#ffffff'}];
+function buildGradEditor(host){ if(!host)return; host.innerHTML='';
+  const ed=document.createElement('div'); ed.className='grad-ed';
+  const handles=document.createElement('div'); handles.className='grad-handles';
+  const bar=document.createElement('div'); bar.className='grad-bar';
+  ed.appendChild(handles); ed.appendChild(bar); host.appendChild(ed);
+  let sel=-1; const stops=()=>params.heatStops;
+  const cssg=()=>'linear-gradient(90deg,'+stops().slice().sort((a,b)=>a.p-b.p).map(o=>o.c+' '+(o.p*100).toFixed(1)+'%').join(',')+')';
+  function draw(){ bar.style.background=cssg(); handles.innerHTML='';
+    stops().forEach((o,i)=>{ const h=document.createElement('div'); h.className='grad-stop'+(i===sel?' sel':''); h.style.left=(o.p*100)+'%'; h.style.background=o.c; h.title='click to recolour · drag to move';
+      const inp=document.createElement('input'); inp.type='color'; inp.value=/^#[0-9a-f]{6}$/i.test(o.c)?o.c:'#ffffff'; inp.className='grad-color';
+      inp.oninput=()=>{ o.c=inp.value; h.style.background=o.c; bar.style.background=cssg(); render(); }; inp.onchange=()=>pushState();
+      h.appendChild(inp);
+      h.addEventListener('pointerdown',e=>{ if(e.button!==0)return; e.preventDefault(); e.stopPropagation();
+        sel=i; handles.querySelectorAll('.grad-stop').forEach((el,j)=>el.classList.toggle('sel',j===i));
+        try{ h.setPointerCapture(e.pointerId); }catch(_){}
+        const r=bar.getBoundingClientRect(), sx=e.clientX; let moved=false;
+        const mv=ev=>{ if(!moved&&Math.abs(ev.clientX-sx)>3)moved=true; if(moved){ o.p=clamp((ev.clientX-r.left)/r.width,0,1); h.style.left=(o.p*100)+'%'; bar.style.background=cssg(); render(); } };
+        const up=()=>{ h.removeEventListener('pointermove',mv); h.removeEventListener('pointerup',up); if(moved){ pushState(); draw(); } else { inp.click(); } };
+        h.addEventListener('pointermove',mv); h.addEventListener('pointerup',up); });
+      handles.appendChild(h); });
+  }
+  host._add=()=>{ const s=stops().slice().sort((a,b)=>a.p-b.p); let gap=-1,gp=0.5; for(let i=1;i<s.length;i++){ const d=s[i].p-s[i-1].p; if(d>gap){gap=d;gp=(s[i].p+s[i-1].p)/2;} }
+    const c=rgb2hex(sampleGrad(curGrad(),gp)); stops().push({p:gp,c}); sel=stops().length-1; draw(); render(); pushState(); };
+  host._del=()=>{ if(stops().length>2){ const i=(sel>=0&&sel<stops().length)?sel:1; stops().splice(i,1); sel=-1; draw(); render(); pushState(); } };
+  draw();
+}
 
 /* ---------- easing (cubic bezier, editable) ---------- */
 const bezX=(s,x1,x2)=>3*(1-s)*(1-s)*s*x1+3*(1-s)*s*s*x2+s*s*s;
@@ -495,12 +562,14 @@ function setEase(key,idx,e){ keyframes[key][idx].ease=e; renderTimeline(); apply
 /* ---------- controls (modular) ---------- */
 const controlsEl=document.getElementById('controls'), rightEl=document.getElementById('controls-right');
 const els={}, segs={}, colorEls={};
-let radRow=null, topoRows=[], topoOnlyRows=[], shapeSec=null;
+let radRow=null, shapeSec=null, formSec=null, uavSec=null, modeRows={};
 function updateMarkerUI(){ if(radRow) radRow.style.display = (params.markerMode==='points')?'none':''; }
-function updateTopoUI(){ const on=!!params.topo;
-  topoRows.forEach(r=>{ if(r) r.style.display=on?'none':''; });
-  topoOnlyRows.forEach(r=>{ if(r) r.style.display=on?'':'none'; });
-  if(shapeSec) shapeSec.style.display=on?'none':''; }
+function updateTopoUI(){ const m=params.mode||'repeater', rep=m==='repeater', topo=m==='topo', uav=m==='uav';
+  const sh=(el,b)=>{ if(el) el.style.display=b?'':'none'; };
+  sh(shapeSec,rep); sh(uavSec,uav); sh(formSec,!uav);
+  [modeRows.funnel,modeRows.rot,modeRows.spacing].forEach(r=>sh(r,rep));
+  [modeRows.detail,modeRows.seed].forEach(r=>sh(r,topo));
+  [modeRows.lines,modeRows.size,modeRows.height,modeRows.noise,modeRows.noiseSeed].forEach(r=>sh(r,!uav)); }
 function group(panel,icon,title){
   const sec=document.createElement('div'); sec.className='gsec';
   const head=document.createElement('div'); head.className='group-title';
@@ -741,13 +810,14 @@ function buildControls(){
   controlsEl.innerHTML=''; rightEl.innerHTML=''; const _br=document.getElementById('cam-panel'); if(_br)_br.innerHTML='';
   for(const k in els) delete els[k]; for(const k in segs) delete segs[k]; for(const k in keyBtns) delete keyBtns[k]; for(const k in colorEls) delete colorEls[k];
   const _fp0=document.getElementById('frame-pop'); if(_fp0)_fp0.innerHTML='';
+  const _lp0=document.getElementById('layers-panel'); if(_lp0)_lp0.innerHTML='';
 
   let g;
-  // ===== mode toggle (Repeater / Topography) =====
+  // ===== mode toggle (Repeater / Topography / UAV) =====
   const modebar=document.createElement('div'); modebar.className='modebar';
-  [['repeater','Repeater'],['topo','Topography']].forEach(([v,t])=>{ const b=document.createElement('button'); b.textContent=t;
-    b.classList.toggle('active',(params.topo?'topo':'repeater')===v);
-    b.onclick=()=>{ params.topo=(v==='topo'); modebar.querySelectorAll('button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); updateTopoUI(); render(); pushState(); };
+  [['repeater','Repeater'],['topo','Topography'],['uav','UAV']].forEach(([v,t])=>{ const b=document.createElement('button'); b.textContent=t;
+    b.classList.toggle('active',(params.mode||'repeater')===v);
+    b.onclick=()=>{ params.mode=v; params.topo=(v==='topo'); modebar.querySelectorAll('button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); updateTopoUI(); render(); pushState(); };
     modebar.appendChild(b); });
   controlsEl.appendChild(modebar);
 
@@ -757,24 +827,40 @@ function buildControls(){
   addSlider(g,{key:'aspect',label:'Shape ratio %',min:0.2,max:5,step:0.01,curve:1,pct:true,ic:'<ellipse cx="8" cy="8" rx="6" ry="3.2"/>'});
 
   // ===== Form — the body built from the shape =====
-  g=group(controlsEl,'','Form');
-  addPair(g,'Lines',{key:'rings',cap:'steps',min:1,max:32,step:1,curve:1},{key:'meridianPer',cap:'verts',min:0,max:4,step:0.05,curve:1},null,'<path d="M2 6h12M2 10h12M6 2v12M10 2v12"/>');
-  addPair(g,'Size',{key:'startSize',cap:'top',min:0,max:600,step:1,curve:2},{key:'endSize',cap:'bottom',min:0,max:600,step:1,curve:2},'linkSize','<path d="M3 7V3h4M13 9v4h-4M3 3l4 4M13 13l-4-4"/>');
-  addSlider(g,{key:'height',label:'Height (±)',min:-1400,max:1400,step:1,curve:1,ic:'<path d="M8 2v12M5 5l3-3 3 3M5 11l3 3 3-3"/>'});
-  const funnelRow=addSlider(g,{key:'profile',label:'Funnel %',min:-1,max:1,step:0.01,curve:1,pct:true,ic:'<path d="M2.5 3.5h11L9.2 8.6v4.9l-2.4-1.4V8.6z"/>'});
-  const rotRow=addPair(g,'Rotation',{key:'rotStart',cap:'top',min:-360,max:360,step:1,curve:1},{key:'rotEnd',cap:'bottom',min:-360,max:360,step:1,curve:1},'linkRot','<path d="M13 8a5 5 0 1 1-1.5-3.5"/><path d="M13 3v2.5h-2.5"/>');
-  const spacingRow=addSlider(g,{key:'spacingEase',label:'Spacing ease %',min:-1,max:1,step:0.01,curve:1,pct:true,ic:'<path d="M2 13C7 13 7 3 14 3"/>'});
-  const detailRow=addStepper(g,{key:'topoDetail',label:'Detail',min:1,max:24,nokey:true,ic:'<path d="M1.5 13l3.5-6 2.5 3.2 2-3 2.5 5.8z"/><path d="M9 13l2.5-4.5 3 4.5z"/>'});
-  const seedRow=addStepper(g,{key:'topoSeed',label:'Terrain seed',min:1,max:999,nokey:true,ic:'<rect x="2.5" y="2.5" width="11" height="11" rx="2.5"/><circle cx="5.6" cy="5.6" r="1" fill="currentColor"/><circle cx="10.4" cy="10.4" r="1" fill="currentColor"/><circle cx="8" cy="8" r="1" fill="currentColor"/>'});
+  g=group(controlsEl,'','Form'); formSec=g.parentElement;
+  modeRows.lines=addPair(g,'Lines',{key:'rings',cap:'steps',min:1,max:32,step:1,curve:1},{key:'meridianPer',cap:'verts',min:0,max:4,step:0.05,curve:1},null,'<path d="M2 6h12M2 10h12M6 2v12M10 2v12"/>');
+  modeRows.size=addPair(g,'Size',{key:'startSize',cap:'top',min:0,max:600,step:1,curve:2},{key:'endSize',cap:'bottom',min:0,max:600,step:1,curve:2},'linkSize','<path d="M3 7V3h4M13 9v4h-4M3 3l4 4M13 13l-4-4"/>');
+  modeRows.height=addSlider(g,{key:'height',label:'Height (±)',min:-1400,max:1400,step:1,curve:1,ic:'<path d="M8 2v12M5 5l3-3 3 3M5 11l3 3 3-3"/>'});
+  modeRows.funnel=addSlider(g,{key:'profile',label:'Funnel %',min:-1,max:1,step:0.01,curve:1,pct:true,ic:'<path d="M2.5 3.5h11L9.2 8.6v4.9l-2.4-1.4V8.6z"/>'});
+  modeRows.rot=addPair(g,'Rotation',{key:'rotStart',cap:'top',min:-360,max:360,step:1,curve:1},{key:'rotEnd',cap:'bottom',min:-360,max:360,step:1,curve:1},'linkRot','<path d="M13 8a5 5 0 1 1-1.5-3.5"/><path d="M13 3v2.5h-2.5"/>');
+  modeRows.spacing=addSlider(g,{key:'spacingEase',label:'Spacing ease %',min:-1,max:1,step:0.01,curve:1,pct:true,ic:'<path d="M2 13C7 13 7 3 14 3"/>'});
+  modeRows.detail=addStepper(g,{key:'topoDetail',label:'Detail',min:1,max:24,nokey:true,ic:'<path d="M1.5 13l3.5-6 2.5 3.2 2-3 2.5 5.8z"/><path d="M9 13l2.5-4.5 3 4.5z"/>'});
+  modeRows.seed=addStepper(g,{key:'topoSeed',label:'Terrain seed',min:1,max:999,nokey:true,ic:'<rect x="2.5" y="2.5" width="11" height="11" rx="2.5"/><circle cx="5.6" cy="5.6" r="1" fill="currentColor"/><circle cx="10.4" cy="10.4" r="1" fill="currentColor"/><circle cx="8" cy="8" r="1" fill="currentColor"/>'});
 
-  // ===== Surface — line rendering & noise (both modes) =====
+  // ===== UAV — parametric fixed-wing wireframe (uav only) =====
+  g=group(controlsEl,'','UAV'); uavSec=g.parentElement;
+  addSlider(g,{key:'uavSpan',label:'Wingspan',min:200,max:1400,step:1,curve:1,ic:'<path d="M1 8h14M3 6l-2 2 2 2M13 6l2 2-2 2"/>'});
+  addSlider(g,{key:'uavSweep',label:'Wing sweep °',min:0,max:60,step:0.5,curve:1,ic:'<path d="M8 13V4M8 4l-5 4M8 4l5 4"/>'});
+  addSlider(g,{key:'uavChord',label:'Wing chord',min:40,max:400,step:1,curve:1,ic:'<path d="M2 5h12M2 11h12"/>'});
+  addSlider(g,{key:'uavTaper',label:'Taper %',min:0.1,max:1,step:0.01,curve:1,pct:true,ic:'<path d="M2 4h12l-4 8H6z"/>'});
+  addSlider(g,{key:'uavThick',label:'Wing thickness',min:2,max:60,step:1,curve:1,ic:'<path d="M2 6.5c5-2 7-2 12 0M2 9.5c5 2 7 2 12 0"/>'});
+  addSlider(g,{key:'uavRound',label:'Round tip %',min:0,max:1,step:0.01,curve:1,pct:true,ic:'<path d="M3 13V9a6 6 0 0 1 6-6h4"/>'});
+  addSlider(g,{key:'uavDihedral',label:'Dihedral °',min:-15,max:30,step:0.5,curve:1,ic:'<path d="M2 11l6-4 6 4"/>'});
+  addSlider(g,{key:'uavFuseLen',label:'Fuselage length',min:150,max:900,step:1,curve:1,ic:'<path d="M2 8h12M2 6v4M14 6v4"/>'});
+  addSlider(g,{key:'uavFuseR',label:'Body width',min:8,max:80,step:1,curve:1,ic:'<ellipse cx="8" cy="8" rx="6" ry="3.5"/>'});
+  addSlider(g,{key:'uavNose',label:'Nose length',min:20,max:250,step:1,curve:1,ic:'<path d="M2 8h8M10 5l4 3-4 3z"/>'});
+  addSlider(g,{key:'uavTailSpan',label:'Tail span',min:60,max:500,step:1,curve:1,ic:'<path d="M4 8h8M5 6l-2 2 2 2M11 6l2 2-2 2"/>'});
+  addSlider(g,{key:'uavFinH',label:'Fin height',min:0,max:200,step:1,curve:1,ic:'<path d="M5 13l3-9 3 9"/>'});
+  addSlider(g,{key:'uavCam',label:'Camera ball',min:0,max:100,step:1,curve:1,ic:'<circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.6"/>'});
+  addStepper(g,{key:'uavProp',label:'Propeller blades',min:0,max:5,nokey:true,ic:'<circle cx="8" cy="8" r="1.5"/><path d="M8 6.5V2M9.3 8.7l3.8 2.2M6.7 8.7l-3.8 2.2"/>'});
+  addStepper(g,{key:'uavRibs',label:'Ribs (structure)',min:0,max:12,nokey:true,ic:'<path d="M4 3v10M7 3v10M10 3v10M13 3v10"/>'});
+  addStepper(g,{key:'uavSub',label:'Subdivide',min:0,max:3,nokey:true,ic:'<rect x="2.5" y="2.5" width="11" height="11"/><path d="M8 2.5v11M2.5 8h11"/>'});
+
+  // ===== Surface — line rendering & noise =====
   g=group(controlsEl,'','Surface');
   addSlider(g,{key:'stroke',label:'Stroke width',min:0,max:8,step:0.1,curve:1.5,ic:'<path d="M2 11c4-7 8-7 12 0"/>'});
-  addSlider(g,{key:'noise',label:'Noise %',min:0,max:2.5,step:0.01,curve:1,pct:true,ic:'<path d="M1.5 8c1-3 1.8-3 2.6 0s1.6 5 2.6 0 1.8-4 2.6 0 1.6 3 2.6 0 1.8-2 2.6 0"/>'});
-  addStepper(g,{key:'noiseSeed',label:'Noise seed',min:1,max:999,nokey:true,ic:'<path d="M8 14V8"/><path d="M8 9.5C8 6.5 5 5.5 2.5 5.5 2.5 9 5 9.5 8 9.5z"/><path d="M8 8.5c0-2.6 2.6-3.6 4.8-3.6C12.8 7.6 10.4 8.5 8 8.5z"/>'});
-
-  topoRows=[funnelRow,rotRow,spacingRow];
-  topoOnlyRows=[detailRow,seedRow];
+  modeRows.noise=addSlider(g,{key:'noise',label:'Noise %',min:0,max:2.5,step:0.01,curve:1,pct:true,ic:'<path d="M1.5 8c1-3 1.8-3 2.6 0s1.6 5 2.6 0 1.8-4 2.6 0 1.6 3 2.6 0 1.8-2 2.6 0"/>'});
+  modeRows.noiseSeed=addStepper(g,{key:'noiseSeed',label:'Noise seed',min:1,max:999,nokey:true,ic:'<path d="M8 14V8"/><path d="M8 9.5C8 6.5 5 5.5 2.5 5.5 2.5 9 5 9.5 8 9.5z"/><path d="M8 8.5c0-2.6 2.6-3.6 4.8-3.6C12.8 7.6 10.4 8.5 8 8.5z"/>'});
 
   // ===== RIGHT — points (3 sections) =====
   g=group(rightEl,'<circle cx="4.5" cy="4.5" r="1.6"/><circle cx="11.5" cy="4.5" r="1.6"/><circle cx="4.5" cy="11.5" r="1.6"/><circle cx="11.5" cy="11.5" r="1.6"/>','Markers');
@@ -819,6 +905,22 @@ function buildControls(){
   addTriple(brEl,'Rotation',[{key:'camYaw',cap:'X',min:-180,max:180},{key:'camPitch',cap:'Y',min:-89,max:89},{key:'camRoll',cap:'Z',min:-180,max:180}],'<path d="M13 8a5 5 0 1 1-1.5-3.5"/><path d="M13 3v2.5h-2.5"/>');
   addSlider(brEl,{key:'coreAmt',label:'Orbit ↔ Core',min:0,max:1,step:0.01,curve:1,pct:true,ic:'<circle cx="8" cy="8" r="2"/><ellipse cx="8" cy="8" rx="6.5" ry="3" transform="rotate(-20 8 8)"/>'});
   addSlider(brEl,{key:'coreDepth',label:'Core depth',min:1,max:600,step:1,curve:1.4,ic:'<path d="M3 6l5-3 5 3-5 3z"/><path d="M3 6v4l5 3 5-3V6"/>'});
+
+  // ===== Layers — floating viewport panel (left) =====
+  const lp=document.getElementById('layers-panel');
+  if(lp){ const lh=document.createElement('div'); lh.className='cam-head';
+    lh.innerHTML=`<span>Layers</span><button class="cam-close" title="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>`;
+    lh.querySelector('.cam-close').onclick=()=>{ lp.classList.remove('open'); const lt=document.getElementById('layers-toggle'); if(lt)lt.classList.remove('on'); };
+    lp.appendChild(lh);
+    addSlider(lp,{key:'heatAmt',label:'Heat',min:0,max:1,step:0.01,curve:1,pct:true,ic:'<path d="M5.5 13c-2.5-2.5 .5-4.5 .5-7 0 0 2.5 1.5 2.5 4M10 13c2-2 0-4 0-5.5 0 0 2 1 2 3"/>'});
+    addSlider(lp,{key:'heatBlur',label:'Glow',min:2,max:60,step:1,curve:1.2,ic:'<circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r="6" opacity="0.4"/>'});
+    const gp=document.createElement('div'); gp.className='param';
+    gp.innerHTML=`<div class="top"><span class="btn-label">Gradient</span><div class="grad-btns"><button class="mini-btn" id="grad-del" title="Remove colour">−</button><button class="mini-btn" id="grad-add" title="Add colour">+</button></div></div><div class="grad-host"></div>`;
+    lp.appendChild(gp);
+    const ghost=gp.querySelector('.grad-host'); buildGradEditor(ghost);
+    gp.querySelector('#grad-add').onclick=()=>ghost._add();
+    gp.querySelector('#grad-del').onclick=()=>ghost._del();
+  }
 
   const ppop=document.getElementById('presets-pop');
   if(ppop){ ppop.innerHTML=`<div class="sublabel">Presets</div><select class="lv-select" id="preset-sel"></select><div class="preset-btns"><button id="preset-save">Save preset</button><button id="preset-del">Delete</button></div>`;
@@ -887,7 +989,8 @@ function project(x,y,z){ const a=params.camYaw*PI/180,p=params.camPitch*PI/180;
   const x1=x*Math.cos(a)+z*Math.sin(a), z1=-x*Math.sin(a)+z*Math.cos(a), y1=y;
   const y2=y1*Math.cos(p)-z1*Math.sin(p), z2=y1*Math.sin(p)+z1*Math.cos(p);
   let X,Y; const ca=params.coreAmt||0;
-  if(ca>0){ const f=600, gain=1+ca*ca*7, d=Math.max(1,f+(z2+params.coreDepth)*gain); const sc=(1-ca)+ca*(f/d); X=x1*sc; Y=-y2*sc; }
+  if(ca>0){ const f=600, gain=1+ca*ca*7; let d=f+(z2+params.coreDepth)*gain; d=Math.max(f*0.12,d);   // clamp denom so fly-in can't invert/explode
+    let sc=(1-ca)+ca*(f/d); sc=clamp(sc,0,7); X=x1*sc; Y=-y2*sc; }
   else { X=x1; Y=-y2; }
   const rr=(params.camRoll||0)*PI/180; if(rr){ const cr=Math.cos(rr),sr=Math.sin(rr); const nx=X*cr-Y*sr, ny=X*sr+Y*cr; X=nx; Y=ny; }
   return {X,Y}; }
@@ -900,9 +1003,66 @@ function buildSVG(){
   const PX=params.panX||0, PY=params.panY||0;
   const map=p=>[ (p.X*Z+FW/2+PX).toFixed(2),(p.Y*Z+FH/2+PY).toFixed(2) ];
   const S=params.markerScatter, shapes=params.shapes, cc=Math.max(1,Math.round(params.colorCount));
-  let lines='', marks='', M=0;
+  let lines='', M=0; const mkArr=[];
 
-  if(params.topo){
+  if(params.mode==='uav'){
+    // ---- parametric fixed-wing UAV as a subdividable quad mesh ----
+    const P=[]; const add=pts=>P.push(pts);
+    const span=params.uavSpan, sweep=params.uavSweep*PI/180, chord=params.uavChord, taper=params.uavTaper,
+          thick=params.uavThick, dih=params.uavDihedral*PI/180, fuseLen=params.uavFuseLen, R=params.uavFuseR,
+          nose=params.uavNose, tailSpan=params.uavTailSpan, finH=params.uavFinH, camR=params.uavCam,
+          ribs=Math.round(params.uavRibs), sub=Math.round(params.uavSub||0), rnd=params.uavRound||0, prop=Math.round(params.uavProp||0);
+    const subF=Math.pow(2,sub);                                   // each level → every face splits into 4
+    const lerp3=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+    const grid=(S,nu,nv)=>{ for(let i=0;i<=nu;i++){const u=i/nu,p=[];for(let j=0;j<=nv;j++)p.push(S(u,j/nv));add(p);}
+                            for(let j=0;j<=nv;j++){const v=j/nv,p=[];for(let i=0;i<=nu;i++)p.push(S(i/nu,v));add(p);} };
+    const zB=fuseLen/2, zF=-fuseLen/2, zNose=zF-nose, total=zB-zNose, tn=nose/total, tt=0.82;
+    const bodyR=t=>{ if(t<tn){ const u=t/tn, blunt=0.2; return R*(blunt+(1-blunt)*Math.pow(u,0.55)); }   // nose always lightly blunt (independent of tip round)
+      if(t>tt){ const u=(t-tt)/(1-tt); return R*(1-0.72*u); } return R; };
+    // fuselage tube mesh
+    grid((u,v)=>{ const z=zNose+v*total, r=Math.max(0.4,bodyR(v)), a=u*2*PI; return [r*Math.cos(a), r*Math.sin(a), z]; },
+         Math.min(64,6*subF), Math.min(48,5*subF));
+    // wing / tail surface (top+bottom skins, rounded tip cap, cross-section ribs = real faces)
+    function wing(rootLE,tipLE,ch,tipCh,th,nr,rr,lvl){
+      lvl=(lvl===undefined)?sub:lvl; const sfw=Math.pow(2,lvl);
+      const rTE=[rootLE[0],rootLE[1],rootLE[2]+ch], tTE=[tipLE[0],tipLE[1],tipLE[2]+tipCh];
+      const Sf=(u,v,h)=>{ const le=lerp3(rootLE,tipLE,u), te=lerp3(rTE,tTE,u), b=lerp3(le,te,v); return [b[0],b[1]+h,b[2]]; };
+      const ns=Math.min(48,2*sfw), nc=Math.min(32,2*sfw);
+      grid((u,v)=>Sf(u,v,th/2),ns,nc); grid((u,v)=>Sf(u,v,-th/2),ns,nc);
+      const dir=Math.sign(tipLE[0])||1, midZ=tipLE[2]+tipCh/2, bulge=rr*tipCh*0.5, cap=Math.max(2,2+lvl*3);
+      for(const h of [th/2,-th/2]){ const p=[]; for(let j=0;j<=cap;j++){ const ang=-PI/2+PI*(j/cap);
+        p.push([tipLE[0]+dir*Math.cos(ang)*bulge, tipLE[1]+h, midZ+Math.sin(ang)*tipCh/2]); } add(p); }
+      for(let i=0;i<=nr+1;i++){ const f=i/(nr+1), le=lerp3(rootLE,tipLE,f), te=lerp3(rTE,tTE,f);   // ribs = chordwise faces
+        add([[le[0],le[1]+th/2,le[2]],[te[0],te[1]+th/2,te[2]],[te[0],te[1]-th/2,te[2]],[le[0],le[1]-th/2,le[2]],[le[0],le[1]+th/2,le[2]]]); }
+    }
+    const wLEz=-chord*0.35, half=span/2, ytip=(half-R)*Math.tan(dih);
+    for(const s of [-1,1]) wing([s*R,0,wLEz],[s*half,ytip,wLEz+(half-R)*Math.tan(sweep)],chord,chord*taper,thick,ribs,rnd);
+    const tc=chord*0.5, ztLE=zB-tc-6, tailLvl=Math.max(0,sub-1);
+    for(const s of [-1,1]) wing([0,R*0.4,ztLE],[s*tailSpan/2,finH,ztLE+(tailSpan/2)*Math.tan(sweep*0.6)],tc,tc*0.7,Math.min(thick*0.5,8),Math.min(2,ribs),rnd*0.7,tailLvl);
+    if(camR>0){ const cz=zNose+nose*0.65, ct=(cz-zNose)/total, cy=-(bodyR(ct)+camR*0.7), C=[0,cy,cz];
+      const norm=v=>{const L=Math.hypot(v[0],v[1],v[2])||1;return[v[0]/L,v[1]/L,v[2]/L];};
+      const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+      // gimbal sphere
+      grid((u,v)=>{ const a=u*2*PI, ph=(v-0.5)*PI, cp=Math.cos(ph); return [cp*Math.cos(a)*camR, cy+Math.sin(ph)*camR, cz+cp*Math.sin(a)*camR]; },
+           Math.min(40,4*subF), Math.min(24,3*subF));
+      // lens barrel (cylinder) aimed forward + down, with aperture
+      const dir=norm([0,-0.45,-1]), rt=norm(cross(dir,[0,1,0])), up2=cross(rt,dir);
+      const NR=Math.min(36,12+sub*8), bR=camR*0.55, d0=camR*0.72, d1=d0+camR*0.9;
+      const lensRing=(dist,r)=>{ const c=[C[0]+dir[0]*dist,C[1]+dir[1]*dist,C[2]+dir[2]*dist], p=[];
+        for(let i=0;i<=NR;i++){ const a=i/NR*2*PI, co=Math.cos(a)*r, si=Math.sin(a)*r;
+          p.push([c[0]+rt[0]*co+up2[0]*si, c[1]+rt[1]*co+up2[1]*si, c[2]+rt[2]*co+up2[2]*si]); } return p; };
+      add(lensRing(d0,bR)); add(lensRing(d1,bR)); add(lensRing(d1,bR*0.55));   // barrel + aperture
+      const long=Math.max(6,4*subF); for(let k=0;k<long;k++){ const a=k/long*2*PI, co=Math.cos(a)*bR, si=Math.sin(a)*bR;
+        add([[C[0]+dir[0]*d0+rt[0]*co+up2[0]*si,C[1]+dir[1]*d0+rt[1]*co+up2[1]*si,C[2]+dir[2]*d0+rt[2]*co+up2[2]*si],
+             [C[0]+dir[0]*d1+rt[0]*co+up2[0]*si,C[1]+dir[1]*d1+rt[1]*co+up2[1]*si,C[2]+dir[2]*d1+rt[2]*co+up2[2]*si]]); }
+      add([[0,-bodyR(ct),cz],[0,cy+camR*0.92,cz]]);   // mount stalk
+    }
+    if(prop>0){ const pz=zB+R*0.18, pr=Math.max(R*1.25, span*0.05);
+      const hub=[]; for(let i=0;i<=12;i++){ const a=i/12*2*PI; hub.push([Math.cos(a)*R*0.22, Math.sin(a)*R*0.22, pz]); } add(hub);
+      for(let b=0;b<prop;b++){ const a=b/prop*2*PI; add([[0,0,pz],[Math.cos(a)*pr, Math.sin(a)*pr, pz]]); } }
+    if(params.stroke>0) P.forEach(pts=>{ let d=''; pts.forEach((p,i)=>{ const c=map(project(p[0],p[1],p[2])); d+=(i?'L':'M')+c[0]+' '+c[1]+' '; }); lines+=`<path d="${d.trim()}"/>\n`; });
+    M=0;
+  } else if(params.topo){
     // ---- true contour iso-lines of a multi-peak height field (marching squares) ----
     const R=Math.max(params.startSize,params.endSize,60), peaks=topoPeaks(R), nsd=(params.noiseSeed||1);
     const hAtRaw=(x,z)=>{ let h=0; for(const p of peaks){ const dx=x-p.x,dz=z-p.z; h+=p.a*Math.exp(-(dx*dx+dz*dz)/(p.s*p.s)); }
@@ -952,7 +1112,7 @@ function buildSVG(){
         const x=Math.cos(th)*rr, z=Math.sin(th)*rr, c=map(project(x*A, lv*yScale, z)), sz=params.markerSize;
         const col=params['col'+(Math.floor(mk.cr*cc)%cc)], rx=(sz*params.markerRadius/100).toFixed(2);
         const shp=shapes[Math.floor((mk.sh||0)*shapes.length)%shapes.length];
-        marks+=markerEl(shp,+c[0],+c[1],sz,rx,col); }); }
+        mkArr.push({shp,x:+c[0],y:+c[1],sz,rx,col}); }); }
   } else {
     // ---- stacked rings ----
     const rg=[], pk=Math.pow(2,params.profile*3);
@@ -980,15 +1140,31 @@ function buildSVG(){
       const c=map(project(ax,ay,az)), sz=params.markerSize;
       const col=params['col'+(Math.floor(mk.cr*cc)%cc)], rx=(sz*params.markerRadius/100).toFixed(2);
       const shp=shapes[Math.floor((mk.sh||0)*shapes.length)%shapes.length];
-      marks+=markerEl(shp,+c[0],+c[1],sz,rx,col); }); }
+      mkArr.push({shp,x:+c[0],y:+c[1],sz,rx,col}); }); }
   }
 
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${FW}" height="${FH}" viewBox="0 0 ${FW} ${FH}">
+  // Heat amount crossfades wireframe (0 = exactly wireframe) → blob heatmap (1)
+  const heatAmt=clamp(params.heatAmt||0,0,1), heatOn=heatAmt>0.002, lineOp=params.lineOpacity!=null?params.lineOpacity:1;
+  const wireMarks=mkArr.map(m=>markerEl(m.shp,m.x,m.y,m.sz,m.rx,m.col)).join('');
+  let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${FW}" height="${FH}" viewBox="0 0 ${FW} ${FH}">
 <rect width="${FW}" height="${FH}" fill="${params.bg}"/>
-<g fill="none" stroke="${params.line}" stroke-width="${params.stroke}" stroke-linejoin="round" stroke-linecap="round">
+<g fill="none" stroke="${params.line}" stroke-opacity="${lineOp}" stroke-width="${params.stroke}" stroke-linejoin="round" stroke-linecap="round">
 ${lines}</g>
 <g>
-${marks}</g>
+${wireMarks}</g>`;
+  if(heatOn){ const eb=Math.max(0.5,heatAmt*(params.heatBlur||30)), hs=1+heatAmt*2.4, hw=Math.max(0.6,params.stroke)*(1+heatAmt*6), mx=FW*0.25, my=FH*0.25;
+    const heatMarks=mkArr.map(m=>markerEl(m.shp,m.x,m.y,m.sz*hs,m.rx,'#ffffff')).join('');
+    svg+=`
+<defs>${heatFilter(FW,FH,eb)}</defs>
+<g filter="url(#heat)">
+<rect x="${(-mx).toFixed(0)}" y="${(-my).toFixed(0)}" width="${(FW+2*mx).toFixed(0)}" height="${(FH+2*my).toFixed(0)}" fill="#000000"/>
+<g fill="none" stroke="#ffffff" stroke-width="${hw}" stroke-linejoin="round" stroke-linecap="round">
+${lines}</g>
+<g>
+${heatMarks}</g>
+</g>`;
+  }
+  svg+=`
 </svg>`;
   return {svg,N,M,FW,FH};
 }
@@ -1079,11 +1255,28 @@ function updateNav(){ document.getElementById('b-undo').disabled=hi<=0; document
 
 /* ---------- actions ---------- */
 const rpick=a=>a[Math.floor(Math.random()*a.length)], rrange=(a,b)=>a+Math.random()*(b-a);
-function shuffle(){ const set=[3,4,6,80]; const ss=rpick(set),se=Math.random()<0.6?ss:rpick(set);
-  params.rings=rpick([2,3,3,4,5]); params.sides=ss;
-  params.startSize=Math.round(rrange(220,320)); params.endSize=Math.random()<0.5?params.startSize:Math.round(rrange(0,300));
-  params.height=Math.round(rrange(220,520)); params.rotStart=0; params.rotEnd=rpick([0,0,45,90]); params.linkRot=(params.rotEnd===0);
-  params.meridianPer=rpick([0,0,1]); params.markers=rpick([0,3,3,4]); regenMarkers(); syncControls(); render(); pushState(); }
+function shuffle(){
+  // shuffle only the current tab's parameters — never switch tabs
+  if(params.mode==='uav'){
+    params.uavSpan=Math.round(rrange(420,1200)); params.uavSweep=Math.round(rrange(0,45));
+    params.uavChord=Math.round(rrange(90,260)); params.uavTaper=parseFloat(rrange(0.25,0.9).toFixed(2));
+    params.uavThick=Math.round(rrange(8,34)); params.uavDihedral=Math.round(rrange(-4,18));
+    params.uavFuseLen=Math.round(rrange(300,640)); params.uavFuseR=Math.round(rrange(18,46));
+    params.uavNose=Math.round(rrange(60,180)); params.uavTailSpan=Math.round(rrange(140,360));
+    params.uavFinH=Math.round(rrange(30,140)); params.uavRibs=rpick([0,2,3,4,5]); params.uavProp=rpick([0,2,2,3]);
+  } else if(params.mode==='topo'){
+    params.rings=rpick([6,8,10,12,16]); params.meridianPer=rpick([0,0,1,2]);
+    params.topoDetail=rpick([3,4,5,6,8]); params.topoSeed=1+Math.floor(rrange(0,60)); params.noiseSeed=1+Math.floor(rrange(0,60));
+    params.noise=rpick([0,0.3,0.6,1]); params.height=Math.round(rrange(160,500));
+    params.startSize=Math.round(rrange(220,360)); params.endSize=params.startSize;
+  } else {
+    const set=[3,4,6,80]; const ss=rpick(set);
+    params.rings=rpick([2,3,3,4,5]); params.sides=ss;
+    params.startSize=Math.round(rrange(220,320)); params.endSize=Math.random()<0.5?params.startSize:Math.round(rrange(0,300));
+    params.height=Math.round(rrange(220,520)); params.rotStart=0; params.rotEnd=rpick([0,0,45,90]); params.linkRot=(params.rotEnd===0);
+    params.meridianPer=rpick([0,0,1]); params.markers=rpick([0,3,3,4]); regenMarkers();
+  }
+  syncControls(); render(); pushState(); }
 function resetAll(){ const fw=params.frameW, fh=params.frameH; Object.assign(params,JSON.parse(JSON.stringify(DEFAULTS))); params.frameW=fw; params.frameH=fh; markerData=[]; keyframes={}; tl.time=0; regenMarkers(); syncControls(); renderTimeline(); updateKeyBtns(); render(); pushState(); }
 function exportSVG(){ const {svg}=buildSVG(); const b=new Blob([svg],{type:'image/svg+xml'}),u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download='litevision-rings.svg'; a.click(); URL.revokeObjectURL(u); }
 function exportPNG(){ const {svg,FW,FH}=buildSVG(); const b=new Blob([svg],{type:'image/svg+xml'}),u=URL.createObjectURL(b); const img=new Image();
@@ -1146,6 +1339,8 @@ function wireSettings(){ const sp=document.getElementById('settings-pop');
   const campnl=document.getElementById('cam-panel'), camtog=document.getElementById('cam-toggle');
   camtog.classList.toggle('on',campnl.classList.contains('open'));
   camtog.onclick=e=>{ e.stopPropagation(); const open=campnl.classList.toggle('open'); camtog.classList.toggle('on',open); };
+  const lpnl=document.getElementById('layers-panel'), ltog=document.getElementById('layers-toggle');
+  ltog.onclick=e=>{ e.stopPropagation(); const open=lpnl.classList.toggle('open'); ltog.classList.toggle('on',open); };
   const sb=document.getElementById('set-bg'), sl=document.getElementById('set-line'), sd=document.getElementById('set-dur');
   sb.addEventListener('input',()=>{ params.bg=sb.value; applyColors(); render(); }); sb.addEventListener('change',pushState);
   sl.addEventListener('input',()=>{ params.line=sl.value; render(); }); sl.addEventListener('change',pushState);
