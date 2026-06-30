@@ -170,7 +170,7 @@
   #stage{width:100%;height:100%;display:flex;align-items:center;justify-content:center;cursor:grab;padding:24px 24px 14px;}
   #stage:active{cursor:grabbing;}
   #stage svg{display:block;max-width:92%;max-height:92%;outline:1px solid #161616;}
-  #hint{position:absolute;bottom:8px;left:12px;z-index:15;font-size:10px;color:var(--faint);letter-spacing:0.08em;pointer-events:none;}
+  #hint{position:absolute;bottom:10px;left:56px;z-index:15;font-size:10px;color:var(--faint);letter-spacing:0.08em;pointer-events:none;}
 
   /* export — top center */
   #export-top{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:40;display:flex;gap:8px;align-items:flex-start;}
@@ -193,6 +193,14 @@
   #layers-toggle:hover{color:var(--fg);border-color:var(--muted);}
   #layers-toggle.on{color:var(--fg);border-color:var(--muted);background:var(--fill8);}
   #layers-toggle svg{width:18px;height:18px;}
+  #ease-toggle{position:absolute;bottom:10px;left:10px;z-index:25;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:var(--pop);border:1px solid var(--faint);border-radius:7px;color:var(--mid);cursor:pointer;backdrop-filter:blur(8px);transition:.15s;}
+  #ease-toggle:hover{color:var(--fg);border-color:var(--muted);}
+  #ease-toggle.on{color:var(--fg);border-color:var(--muted);background:var(--fill8);}
+  #ease-toggle svg{width:18px;height:18px;}
+  #ease-panel{position:absolute;bottom:54px;left:10px;z-index:20;width:236px;background:var(--pop);border:1px solid var(--line12);border-radius:9px;padding:12px;display:none;backdrop-filter:blur(14px);}
+  #ease-panel.open{display:block;}
+  #ease-panel .curve-wrap svg{height:170px;}
+  #ease-panel .ease-hint{font-size:10px;color:var(--faint);letter-spacing:.04em;margin-top:8px;line-height:1.5;}
   .grad-preset{width:auto;flex:0 0 auto;margin:0;padding:4px 6px;font-size:10px;}
   .grad-btns{display:flex;gap:5px;}
   .grad-btns .mini-btn{width:22px;height:22px;font-size:14px;}
@@ -268,6 +276,7 @@
   .kf.kf-inout{transform:translate(-50%,-50%);border-radius:50%;}
   .kf.kf-in{border-radius:60% 0 0 0;}
   .kf.kf-out{border-radius:0 0 60% 0;}
+  .kf.kf-bezier{transform:translate(-50%,-50%);border-radius:60% 0 60% 0;}
   #tl-playhead{position:absolute;top:0;bottom:0;width:1px;background:var(--fg);pointer-events:none;left:0;}
   #tl-playhead::before{content:'';position:absolute;top:-1px;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--fg);}
   .kf-acts{display:flex;gap:6px;margin-bottom:12px;}
@@ -348,6 +357,7 @@
       <button class="topbtn" id="x-save" title="Save project"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M3 2h8l2 2v10H3z"/><path d="M5 2v4h5V2M5 14v-4h6v4"/></svg></button>
       <button class="topbtn" id="x-load" title="Load project"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 4h4l1.5 2H14v8H2z"/></svg></button>
       <input type="file" id="load-input" accept=".json,application/json" style="display:none">
+      <input type="file" id="svg-input" accept=".svg,image/svg+xml" style="display:none">
       <button class="topbtn" id="x-presets" title="Presets"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M8 2l6 3-6 3-6-3z"/><path d="M2 8l6 3 6-3"/><path d="M2 11l6 3 6-3"/></svg></button>
       <div id="presets-pop"></div>
       <button class="topbtn" id="x-frame" title="Frame & resolution"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><rect x="2.5" y="3.5" width="11" height="9" rx="1"/><path d="M5.5 1.5v2M10.5 1.5v2M5.5 12.5v2M10.5 12.5v2M1.5 5.5h2M1.5 10.5h2M12.5 5.5h2M12.5 10.5h2"/></svg></button>
@@ -383,6 +393,8 @@
     <div id="cam-panel" class="open"></div>
     <button id="layers-toggle" title="Layers"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M8 2l6 3-6 3-6-3z"/><path d="M2 8l6 3 6-3M2 11l6 3 6-3"/></svg></button>
     <div id="layers-panel"></div>
+    <button id="ease-toggle" title="Easing graph"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13C5 13 5 4 8 4s3 9 6 9"/></svg></button>
+    <div id="ease-panel"></div>
   </main>
 
   <aside id="workbar-right"><div class="controls" id="controls-right"></div></aside>
@@ -407,6 +419,7 @@
         <button class="tl-ico" data-ease="out" title="Ease out"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 0 1 0 10z"/></svg></button>
         <button class="tl-ico" data-ease="inout" title="Ease in-out"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 3h8l-4 5 4 5H4l4-5z"/></svg></button>
         <button class="tl-ico" data-ease="hold" title="Hold"><svg viewBox="0 0 16 16" fill="currentColor"><rect x="4" y="4" width="8" height="8"/></svg></button>
+        <button class="tl-ico" data-ease="bezier" title="Custom curve (opens graph)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 13C5 13 5 4 8 4s3 9 6 9"/></svg></button>
       </div>
       <span id="tl-time" style="margin-left:auto;">0.00 / 4.00s</span>
       <button id="tl-help" class="tl-btn" style="padding:7px 12px;" title="Shortcuts">⋯</button>
@@ -443,7 +456,9 @@ const params={
   mode:'repeater',
   uavSpan:760, uavSweep:18, uavChord:150, uavTaper:0.45, uavThick:18, uavDihedral:6,
   uavFuseLen:430, uavFuseR:30, uavNose:90, uavTailSpan:260, uavFinH:80, uavCam:0, uavRibs:4, uavSub:1, uavRound:0, uavProp:2,
-  centralN:6, mirPetals:0, mirEllip:0.42, mirReach:300, mirTurns:1, mirTwist:0, mirDome:140, mirWaves:3, mirWaveH:45,
+  centralN:64, mirSides:2, mirReach:320, mirInner:0, mirCover:1, mirSpin:0, mirTwist:0, mirLayers:1,
+  exMode:'extrude', exScale:300, exDepth:300, exSegs:6, exWalls:24, exTwist:0, exTaper:1,
+  exFill:'none', exFillN:14, exBulge:120, svgShape:null,
   layerMode:'wire', heatGrad:'Thermal', heatThresh:0, heatBlur:16, heatAmt:0,
   rings:3, height:360, profile:0,
   sides:9, sidesStart:9, sidesEnd:9, linkShape:true, aspect:1, noise:0, noiseSeed:1, topo:false, topoSeed:1, topoDetail:11,
@@ -515,6 +530,9 @@ function buildGradEditor(host){ if(!host)return; host.innerHTML='';
 /* ---------- easing (cubic bezier, editable) ---------- */
 const bezX=(s,x1,x2)=>3*(1-s)*(1-s)*s*x1+3*(1-s)*s*s*x2+s*s*s;
 const bezY=(s,y1,y2)=>3*(1-s)*(1-s)*s*y1+3*(1-s)*s*s*y2+s*s*s;
+// cubic-bezier easing: solve s where Bx(s)=t (bisection), return By(s) — custom per-keyframe curve
+function bezEase(bez,t){ if(!bez) return t; t=clamp(t,0,1); let lo=0,hi=1,s=t;
+  for(let i=0;i<22;i++){ s=(lo+hi)/2; (bezX(s,bez[0],bez[2])<t)?lo=s:hi=s; } return bezY(s,bez[1],bez[3]); }
 function ease(t){ if(!params.spacingEase) return t; const k=Math.pow(2,params.spacingEase*3); return Math.pow(clamp(t,0,1),k); }
 
 /* ---------- keyframes ---------- */
@@ -522,17 +540,62 @@ const META={}, NAME={};
 let keyframes={};
 let defaultEase='linear';
 function applyEase(name){ defaultEase=name; let any=false;
-  Object.values(keyframes).forEach(a=>{ if(a)a.forEach(o=>{ if(o.sel){o.ease=name;any=true;} }); });
+  Object.values(keyframes).forEach(a=>{ if(a)a.forEach(o=>{ if(o.sel){ o.ease=name; if(name==='bezier'&&!o.bez)o.bez=[0.33,0.33,0.66,0.66]; any=true; } }); });
   document.querySelectorAll('#ease-group button').forEach(b=>b.classList.toggle('on',b.dataset.ease===name));
+  if(name==='bezier') openEasePanel();
   if(any){ renderTimeline(); applyAnim(); } pushState(); }
+/* ---------- easing graph (custom cubic-bezier per keyframe) ---------- */
+let easeSvg=null;
+function easeSel(){ const out=[]; Object.values(keyframes).forEach(a=>a&&a.forEach(o=>{ if(o.sel)out.push(o); })); return out; }
+function curEaseBez(){ const sel=easeSel(); if(sel.length){ let k=sel.find(o=>o.bez)||sel[0]; if(!k.bez)k.bez=[0.33,0.33,0.66,0.66]; return k.bez; }
+  if(!params.easeBez)params.easeBez=[0.33,0.33,0.66,0.66]; return params.easeBez; }
+function setEaseHandle(h,x,y){ x=clamp(x,0,1); y=clamp(y,-0.5,1.5); const apply=b=>{ if(h==='1'){b[0]=x;b[1]=y;}else{b[2]=x;b[3]=y;} };
+  const sel=easeSel(); if(sel.length) sel.forEach(o=>{ if(!o.bez)o.bez=[0.33,0.33,0.66,0.66]; o.ease='bezier'; apply(o.bez); });
+  if(!params.easeBez)params.easeBez=[0.33,0.33,0.66,0.66]; apply(params.easeBez); }
+function highlightEase(name){ document.querySelectorAll('#ease-group button').forEach(b=>b.classList.toggle('on',b.dataset.ease===name)); }
+// reflect the current selection: mark its ease in the toolbar + draw its curve in the panel
+function syncEaseUI(){ const sel=easeSel();
+  if(!sel.length) highlightEase(defaultEase);
+  else { const e0=sel[0].ease||'linear', mixed=sel.some(o=>(o.ease||'linear')!==e0); highlightEase(mixed?null:e0); }
+  easeDraw(); }
+function easeDraw(){ if(!easeSvg)return; const X=v=>(v*100).toFixed(1), Y=v=>(100-v*100).toFixed(1);
+  const sel=easeSel(); let ease, bez=null, mixed=false, count=sel.length;
+  if(sel.length){ ease=sel[0].ease||'linear'; mixed=sel.some(o=>(o.ease||'linear')!==ease);
+    if(ease==='bezier'){ const k=sel.find(o=>o.bez); bez=k?k.bez:(params.easeBez||(params.easeBez=[0.33,0.33,0.66,0.66])); } }
+  else { ease='bezier'; bez=params.easeBez||(params.easeBez=[0.33,0.33,0.66,0.66]); }   // nothing selected → scratch curve
+  const isBez=!mixed && ease==='bezier';
+  let body=`<rect x="0" y="0" width="100" height="100" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="0.7"/>
+    <line x1="0" y1="100" x2="100" y2="0" stroke="rgba(255,255,255,.12)" stroke-width="0.7"/>`;
+  if(mixed){ body+=`<text x="50" y="54" fill="rgba(255,255,255,.45)" font-size="10" text-anchor="middle">mixed</text>`; }
+  else { let d;
+    if(isBez){ d=`M0 100`; for(let i=1;i<=30;i++){ const s=i/30; d+=` L${(bezX(s,bez[0],bez[2])*100).toFixed(1)} ${(100-bezY(s,bez[1],bez[3])*100).toFixed(1)}`; } }
+    else { d=`M0 ${Y(easeFn(ease,0))}`; for(let i=1;i<=40;i++){ const x=i/40; d+=` L${X(x)} ${Y(easeFn(ease,x))}`; } if(ease==='hold') d+=` L100 0`; }
+    body+=`<path d="${d}" fill="none" stroke="#fff" stroke-width="1.6"/>`;
+    if(isBez) body+=`<line x1="0" y1="100" x2="${X(bez[0])}" y2="${Y(bez[1])}" stroke="rgba(255,255,255,.35)" stroke-width="0.8"/>
+      <line x1="100" y1="0" x2="${X(bez[2])}" y2="${Y(bez[3])}" stroke="rgba(255,255,255,.35)" stroke-width="0.8"/>
+      <circle class="ch" data-h="1" cx="${X(bez[0])}" cy="${Y(bez[1])}" r="4" fill="#fff"/>
+      <circle class="ch" data-h="2" cx="${X(bez[2])}" cy="${Y(bez[3])}" r="4" fill="#fff"/>`;
+  }
+  easeSvg.innerHTML=body;
+  const st=document.getElementById('ease-status');
+  if(st) st.textContent = count ? `${mixed?'mixed':ease} · ${count} sel` : 'Easing';
+  const hint=document.getElementById('ease-hint-txt');
+  if(hint) hint.textContent = isBez ? 'Drag the two handles to shape the curve.' : (mixed? 'Selected keyframes use different easings.' : (count? 'Read-only — pick “curve” to make it editable.' : 'Select keyframe(s) to edit their easing.')); }
+function easeWire(svg){ easeSvg=svg; let dragH=null;
+  const toN=e=>{ const r=svg.getBoundingClientRect(); return [(e.clientX-r.left)/r.width, 1.5-2*(e.clientY-r.top)/r.height]; };
+  svg.addEventListener('pointerdown',e=>{ const t=e.target; if(t.classList&&t.classList.contains('ch')){ dragH=t.dataset.h; svg.setPointerCapture(e.pointerId); } });
+  svg.addEventListener('pointermove',e=>{ if(!dragH)return; const [x,y]=toN(e); setEaseHandle(dragH,x,y); easeDraw(); applyAnim(); });
+  svg.addEventListener('pointerup',()=>{ if(dragH){ dragH=null; renderTimeline(); pushState(); } });
+  easeDraw(); }
+function openEasePanel(){ const ep=document.getElementById('ease-panel'), et=document.getElementById('ease-toggle'); if(ep){ ep.classList.add('open'); if(et)et.classList.add('on'); syncEaseUI(); } }
 const tl={dur:4,mode:'loop',dir:1,in:0,out:4,playing:false,time:0,raf:null,last:0};
-const EASES=['linear','in','out','inout','hold'];
+const EASES=['linear','in','out','inout','hold','bezier'];
 function easeFn(n,t){ switch(n){case'in':return t*t;case'out':return 1-(1-t)*(1-t);case'inout':return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;case'hold':return 0;default:return t;} }
 function animatedKeys(){ return Object.keys(keyframes).filter(k=>keyframes[k]&&keyframes[k].length); }
 function valueAt(key,time){ const a=keyframes[key]; if(!a||!a.length) return params[key];
   if(time<=a[0].t) return a[0].value; if(time>=a[a.length-1].t) return a[a.length-1].value;
   let i=0; while(i<a.length-1 && !(a[i].t<=time && time<a[i+1].t)) i++;
-  const k0=a[i],k1=a[i+1],dt=(k1.t-k0.t)||1,e=easeFn(k0.ease,(time-k0.t)/dt);
+  const k0=a[i],k1=a[i+1],dt=(k1.t-k0.t)||1,frac=(time-k0.t)/dt,e=k0.ease==='bezier'?bezEase(k0.bez,frac):easeFn(k0.ease,frac);
   if(META[key]&&META[key].color) return lerpHex(k0.value,k1.value,e);
   if(typeof k0.value==='string') return k0.value;   // step (e.g. view mode)
   let v=k0.value+(k1.value-k0.value)*e; if(META[key]&&META[key].int) v=Math.round(v); return v; }
@@ -558,20 +621,24 @@ function addKey(key){ const arr=keyframes[key]||(keyframes[key]=[]); const ex=ar
   if(ex) ex.value=params[key]; else { arr.push({t:parseFloat(tl.time.toFixed(3)),value:params[key],ease:defaultEase}); arr.sort((a,b)=>a.t-b.t); }
   renderTimeline(); updateKeyBtns(); pushState(); }
 function removeKey(key,idx){ keyframes[key].splice(idx,1); if(!keyframes[key].length) delete keyframes[key]; renderTimeline(); updateKeyBtns(); pushState(); }
-function setEase(key,idx,e){ keyframes[key][idx].ease=e; renderTimeline(); applyAnim(); pushState(); }
+function setEase(key,idx,e){ const kf=keyframes[key][idx]; kf.ease=e; if(e==='bezier'){ if(!kf.bez)kf.bez=[0.33,0.33,0.66,0.66]; openEasePanel(); } renderTimeline(); applyAnim(); pushState(); }
 
 /* ---------- controls (modular) ---------- */
 const controlsEl=document.getElementById('controls'), rightEl=document.getElementById('controls-right');
 const els={}, segs={}, colorEls={};
-let radRow=null, shapeSec=null, formSec=null, uavSec=null, centralSec=null, modeRows={};
+let radRow=null, shapeSec=null, formSec=null, uavSec=null, centralSec=null, extrudeSec=null, modeRows={};
 function updateMarkerUI(){ if(radRow) radRow.style.display = (params.markerMode==='points')?'none':''; }
-function updateTopoUI(){ const m=params.mode||'repeater', rep=m==='repeater', topo=m==='topo', uav=m==='uav', cen=m==='central';
+function updateTopoUI(){ const m=params.mode||'repeater', rep=m==='repeater', topo=m==='topo', uav=m==='uav', cen=m==='central', ext=m==='extrude';
   const sh=(el,b)=>{ if(el) el.style.display=b?'':'none'; };
-  sh(shapeSec,rep); sh(uavSec,uav); sh(centralSec,cen); sh(formSec,!uav&&!cen);
+  sh(shapeSec,rep); sh(uavSec,uav); sh(centralSec,cen); sh(extrudeSec,ext); sh(formSec,rep||topo);
   [modeRows.funnel,modeRows.rot,modeRows.spacing].forEach(r=>sh(r,rep));
   [modeRows.detail,modeRows.seed].forEach(r=>sh(r,topo));
-  [modeRows.lines,modeRows.size,modeRows.height].forEach(r=>sh(r,!uav&&!cen));
-  [modeRows.noise,modeRows.noiseSeed].forEach(r=>sh(r,!uav)); }
+  [modeRows.lines,modeRows.size,modeRows.height].forEach(r=>sh(r,rep||topo));
+  [modeRows.noise,modeRows.noiseSeed].forEach(r=>sh(r,rep||topo)); updateExtrudeUI(); }
+function updateExtrudeUI(){ const inf=params.exMode==='inflate', sh=(el,b)=>{ if(el) el.style.display=b?'':'none'; };
+  sh(modeRows.exDepth,!inf); sh(modeRows.exSegs,!inf); sh(modeRows.exWalls,!inf); sh(modeRows.exTwist,!inf); sh(modeRows.exTaper,!inf);
+  sh(modeRows.exBulge,inf);
+  sh(modeRows.exFillN, inf || (params.exFill && params.exFill!=='none')); }
 function group(panel,icon,title){
   const sec=document.createElement('div'); sec.className='gsec';
   const head=document.createElement('div'); head.className='group-title';
@@ -783,7 +850,16 @@ function addGizmo(tgt){
   g.addEventListener('pointerup',e=>{ if(!drag)return; drag=false; if(moved){ autoKeyOrPush('camYaw'); autoKeyOrPush('camPitch'); } else { const s=toSvg(e), i=nearest(s.x,s.y); if(i>=0){ const h=gizmoHots[i]; setCam(h.yaw,h.pitch); } } });
   drawGizmo();
 }
-function orbit(dx,dy){ params.camYaw=((params.camYaw+dx*0.5)%360); params.camPitch=clamp(params.camPitch-dy*0.5,-89,89);
+// light magnetic snap to clean angles (multiples of 15° → 30/45/90/… ) when within a few degrees
+function snapAng(a){ const m=15, t=3.5, n=Math.round(a/m)*m; return Math.abs(a-n)<t ? n : a; }
+const wrap180=a=>((a+540)%360)-180;
+// raw (unsnapped) accumulator so the magnet doesn't trap the drag at a snap angle; reseeded if yaw/pitch change elsewhere
+let camRawY=0, camRawP=0, lastSY=null, lastSP=null;
+function orbit(dx,dy){
+  if(params.camYaw!==lastSY) camRawY=params.camYaw;
+  if(params.camPitch!==lastSP) camRawP=params.camPitch;
+  camRawY=wrap180(camRawY+dx*0.5); camRawP=wrap180(camRawP-dy*0.5);
+  params.camYaw=snapAng(camRawY); params.camPitch=snapAng(camRawP); lastSY=params.camYaw; lastSP=params.camPitch;
   if(els.camYaw){els.camYaw.num.value=fmtNum(params.camYaw);els.camYaw.rng.value=valToPos(els.camYaw.s,params.camYaw);}
   if(els.camPitch){els.camPitch.num.value=fmtNum(params.camPitch);els.camPitch.rng.value=valToPos(els.camPitch.s,params.camPitch);}
   drawGizmo(); render(); }
@@ -817,7 +893,7 @@ function buildControls(){
   let g;
   // ===== mode toggle (Repeater / Topography / UAV) =====
   const modebar=document.createElement('div'); modebar.className='modebar';
-  [['repeater','Repeater'],['topo','Topography'],['uav','UAV'],['central','Mirror']].forEach(([v,t])=>{ const b=document.createElement('button'); b.textContent=t;
+  [['repeater','Repeater'],['topo','Topography'],['uav','UAV'],['central','Mirror'],['extrude','Extrude']].forEach(([v,t])=>{ const b=document.createElement('button'); b.textContent=t;
     b.classList.toggle('active',(params.mode||'repeater')===v);
     b.onclick=()=>{ params.mode=v; params.topo=(v==='topo'); modebar.querySelectorAll('button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); updateTopoUI(); render(); pushState(); };
     modebar.appendChild(b); });
@@ -858,18 +934,34 @@ function buildControls(){
   addStepper(g,{key:'uavRibs',label:'Ribs (structure)',min:0,max:12,nokey:true,ic:'<path d="M4 3v10M7 3v10M10 3v10M13 3v10"/>'});
   addStepper(g,{key:'uavSub',label:'Subdivide',min:0,max:3,nokey:true,ic:'<rect x="2.5" y="2.5" width="11" height="11"/><path d="M8 2.5v11M2.5 8h11"/>'});
 
-  // ===== Mirror — 3D radial/mandala symmetry (central only) =====
+  // ===== Mirror — 3D mandala: one base object (line→polygon) copied N-fold around the central axis =====
   g=group(controlsEl,'','Mirror'); centralSec=g.parentElement;
-  addStepper(g,{key:'centralN',label:'Symmetry',min:1,max:36,ic:'<circle cx="8" cy="8" r="1.6"/><path d="M8 2v2.5M8 11.5V14M2 8h2.5M11.5 8H14M3.8 3.8l1.8 1.8M10.4 10.4l1.8 1.8M12.2 3.8l-1.8 1.8M5.6 10.4l-1.8 1.8"/>'});
-  addStepper(g,{key:'mirPetals',label:'Petals',min:0,max:16,ic:'<path d="M8 8c0-3 2-5 0-6-2 1 0 3 0 6M8 8c0 3 2 5 0 6-2-1 0-3 0-6M8 8c3 0 5 2 6 0-1-2-3 0-6 0M8 8c-3 0-5 2-6 0 1-2 3 0 6 0"/>'});
-  addSlider(g,{key:'mirEllip',label:'Ellipse %',min:0,max:1,step:0.01,curve:1,pct:true,ic:'<ellipse cx="8" cy="8" rx="6" ry="3"/>'});
-  addSlider(g,{key:'mirReach',label:'Reach',min:40,max:600,step:1,curve:1,ic:'<path d="M8 8h6M11 6l3 2-3 2"/><circle cx="3" cy="8" r="1.4"/>'});
-  addSlider(g,{key:'mirTurns',label:'Turns',min:0.25,max:6,step:0.05,curve:1,ic:'<path d="M8 3a5 5 0 1 1-3.5 1.5"/><path d="M8 3v3M8 3l-2 1"/>'});
+  addStepper(g,{key:'centralN',label:'Symmetry',min:1,max:200,ic:'<circle cx="8" cy="8" r="1.6"/><path d="M8 2v2.5M8 11.5V14M2 8h2.5M11.5 8H14M3.8 3.8l1.8 1.8M10.4 10.4l1.8 1.8M12.2 3.8l-1.8 1.8M5.6 10.4l-1.8 1.8"/>'});
+  addStepper(g,{key:'mirSides',label:'Vertices',min:2,max:24,ic:'<path d="M8 2l5.2 3.8-2 6.2H4.8l-2-6.2z"/>'});
+  addSlider(g,{key:'mirReach',label:'Reach',min:40,max:700,step:1,curve:1,ic:'<path d="M8 8h6M11 6l3 2-3 2"/><circle cx="3" cy="8" r="1.4"/>'});
+  addSlider(g,{key:'mirInner',label:'Inner %',min:0,max:0.95,step:0.01,curve:1,pct:true,ic:'<circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.4"/>'});
+  addSlider(g,{key:'mirCover',label:'Coverage',min:0,max:1,step:0.01,curve:1,pct:true,ic:'<circle cx="8" cy="8" r="6"/><path d="M8 2v12M2 8h12M3.5 4.2c2.4 1.4 6.6 1.4 9 0M3.5 11.8c2.4-1.4 6.6-1.4 9 0"/>'});
+  addSlider(g,{key:'mirSpin',label:'Spin °',min:-180,max:180,step:1,curve:1,ic:'<path d="M13 8a5 5 0 1 1-1.5-3.6"/><path d="M13 2.5V6h-3.5"/>'});
   addSlider(g,{key:'mirTwist',label:'Twist °',min:-360,max:360,step:1,curve:1,ic:'<path d="M3 5c4-2 6-2 10 0M3 11c4 2 6 2 10 0M3 5v6M13 5v6"/>'});
-  addSlider(g,{key:'mirDome',label:'Dome (3D)',min:-500,max:500,step:1,curve:1,ic:'<path d="M2 12a6 6 0 0 1 12 0"/><path d="M2 12h12"/>'});
-  addStepper(g,{key:'mirWaves',label:'Waves',min:0,max:16,ic:'<path d="M1.5 8c1.2-4 2.4-4 3.6 0s2.4 4 3.6 0 2.4-4 3.6 0"/>'});
-  addSlider(g,{key:'mirWaveH',label:'Wave height',min:0,max:300,step:1,curve:1.2,ic:'<path d="M2 11c2-6 4-6 6 0M8 11c2-6 4-6 6 0"/>'});
-  addStepper(g,{key:'rings',label:'Layers',min:1,max:12,ic:'<path d="M8 2l6 3-6 3-6-3z"/><path d="M2 8l6 3 6-3M2 11l6 3 6-3"/>'});
+  addStepper(g,{key:'mirLayers',label:'Layers',min:1,max:16,ic:'<path d="M8 2l6 3-6 3-6-3z"/><path d="M2 8l6 3 6-3M2 11l6 3 6-3"/>'});
+
+  // ===== Extrude — import an SVG and extrude it into a wireframe (extrude only) =====
+  g=group(controlsEl,'','Extrude'); extrudeSec=g.parentElement;
+  const impRow=document.createElement('div'); impRow.className='param';
+  impRow.innerHTML=`<button class="mini-btn" id="svg-import" style="width:100%;padding:7px 0">Import SVG…</button><div id="svg-name" style="opacity:.6;font-size:11px;margin-top:5px;text-align:center"></div>`;
+  g.appendChild(impRow);
+  impRow.querySelector('#svg-import').onclick=()=>document.getElementById('svg-input').click();
+  { const nm=impRow.querySelector('#svg-name'); nm.textContent = (params.svgShape&&params.svgShape.name) ? params.svgShape.name : 'no file — import a vector outline'; }
+  addSegmented(g,'exMode','Build',[{v:'extrude',t:'Extrude'},{v:'inflate',t:'Inflate'}],false,'<path d="M3 8h10M10 5l3 3-3 3"/><rect x="1.5" y="4" width="3" height="8"/>',updateExtrudeUI);
+  addSlider(g,{key:'exScale',label:'Size',min:20,max:700,step:1,curve:1,ic:'<path d="M3 7V3h4M13 9v4h-4M3 3l4 4M13 13l-4-4"/>'});
+  modeRows.exDepth=addSlider(g,{key:'exDepth',label:'Depth',min:0,max:1000,step:1,curve:1,ic:'<path d="M5 5h6v6H5z"/><path d="M5 5l3-3h6v6l-3 3M11 5l3-3"/>'});
+  modeRows.exSegs=addStepper(g,{key:'exSegs',label:'Sections',min:1,max:80,ic:'<path d="M2 4h12M2 8h12M2 12h12"/>'});
+  modeRows.exWalls=addStepper(g,{key:'exWalls',label:'Wall lines',min:0,max:240,ic:'<path d="M3 2v12M6.5 2v12M10 2v12M13.5 2v12"/>'});
+  modeRows.exTwist=addSlider(g,{key:'exTwist',label:'Twist °',min:-720,max:720,step:1,curve:1,ic:'<path d="M3 5c4-2 6-2 10 0M3 11c4 2 6 2 10 0M3 5v6M13 5v6"/>'});
+  modeRows.exTaper=addSlider(g,{key:'exTaper',label:'Taper %',min:0,max:2,step:0.01,curve:1,pct:true,ic:'<path d="M2 4h12l-4 8H6z"/>'});
+  modeRows.exBulge=addSlider(g,{key:'exBulge',label:'Volume',min:10,max:500,step:1,curve:1,ic:'<path d="M2 11a6 5 0 0 1 12 0"/><path d="M2 11h12"/>'});
+  addSegmented(g,'exFill','Fill',[{v:'none',t:'None'},{v:'horiz',t:'Horiz'},{v:'vert',t:'Vert'},{v:'grid',t:'Grid'}],false,'<rect x="2.5" y="2.5" width="11" height="11"/><path d="M2.5 6h11M2.5 9.5h11"/>',updateExtrudeUI);
+  modeRows.exFillN=addStepper(g,{key:'exFillN',label:'Fill density',min:1,max:120,ic:'<path d="M2 3h12M2 6h12M2 9h12M2 12h12"/>'});
 
   // ===== Surface — line rendering & noise =====
   g=group(controlsEl,'','Surface');
@@ -917,7 +1009,7 @@ function buildControls(){
   camHead.querySelector('.cam-close').onclick=()=>{ brEl.classList.remove('open'); const ct=document.getElementById('cam-toggle'); if(ct)ct.classList.remove('on'); };
   brEl.appendChild(camHead);
   addGizmo(brEl);
-  addTriple(brEl,'Rotation',[{key:'camYaw',cap:'X',min:-180,max:180},{key:'camPitch',cap:'Y',min:-89,max:89},{key:'camRoll',cap:'Z',min:-180,max:180}],'<path d="M13 8a5 5 0 1 1-1.5-3.5"/><path d="M13 3v2.5h-2.5"/>');
+  addTriple(brEl,'Rotation',[{key:'camYaw',cap:'X',min:-360,max:360},{key:'camPitch',cap:'Y',min:-360,max:360},{key:'camRoll',cap:'Z',min:-360,max:360}],'<path d="M13 8a5 5 0 1 1-1.5-3.5"/><path d="M13 3v2.5h-2.5"/>');
   addSlider(brEl,{key:'coreAmt',label:'Orbit ↔ Core',min:0,max:1,step:0.01,curve:1,pct:true,ic:'<circle cx="8" cy="8" r="2"/><ellipse cx="8" cy="8" rx="6.5" ry="3" transform="rotate(-20 8 8)"/>'});
   addSlider(brEl,{key:'coreDepth',label:'Core depth',min:1,max:600,step:1,curve:1.4,ic:'<path d="M3 6l5-3 5 3-5 3z"/><path d="M3 6v4l5 3 5-3V6"/>'});
 
@@ -935,6 +1027,18 @@ function buildControls(){
     const ghost=gp.querySelector('.grad-host'); buildGradEditor(ghost);
     gp.querySelector('#grad-add').onclick=()=>ghost._add();
     gp.querySelector('#grad-del').onclick=()=>ghost._del();
+  }
+
+  // ===== Easing graph — floating viewport panel (bottom-left) =====
+  const ep=document.getElementById('ease-panel');
+  if(ep){ ep.innerHTML=''; const eh=document.createElement('div'); eh.className='cam-head';
+    eh.innerHTML=`<span id="ease-status">Easing</span><div style="display:flex;gap:6px"><button class="mini-btn" id="ease-reset" title="Reset to linear" style="width:24px;height:24px">↺</button><button class="cam-close" title="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>`;
+    eh.querySelector('.cam-close').onclick=()=>{ ep.classList.remove('open'); const et=document.getElementById('ease-toggle'); if(et)et.classList.remove('on'); };
+    ep.appendChild(eh);
+    const cw=document.createElement('div'); cw.className='curve-wrap'; cw.innerHTML='<svg viewBox="0 -50 100 200" preserveAspectRatio="none"></svg>'; ep.appendChild(cw);
+    const eHint=document.createElement('div'); eHint.className='ease-hint'; eHint.id='ease-hint-txt'; eHint.textContent='Select keyframe(s) on the timeline, then drag the two handles.'; ep.appendChild(eHint);
+    eh.querySelector('#ease-reset').onclick=()=>{ setEaseHandle('1',0.33,0.33); setEaseHandle('2',0.66,0.66); easeDraw(); renderTimeline(); applyAnim(); pushState(); };
+    easeWire(cw.querySelector('svg'));
   }
 
   const ppop=document.getElementById('presets-pop');
@@ -1078,20 +1182,108 @@ function buildSVG(transparent){
     if(params.stroke>0) P.forEach(pts=>{ let d=''; pts.forEach((p,i)=>{ const c=map(project(p[0],p[1],p[2])); d+=(i?'L':'M')+c[0]+' '+c[1]+' '; }); lines+=`<path d="${d.trim()}"/>\n`; });
     M=0;
   } else if(params.mode==='central'){
-    // ---- Mirror: 3D mandala — a base orbit/rose curve mirrored N-fold around the central axis ----
-    const Nc=Math.max(1,Math.round(params.centralN||6)), pet=Math.round(params.mirPetals||0),
-          ellip=params.mirEllip!=null?params.mirEllip:1, reach=params.mirReach||300, turns=Math.max(0.1,params.mirTurns||1),
-          twist=(params.mirTwist||0)*PI/180, dome=params.mirDome||0, waves=Math.round(params.mirWaves||0),
-          waveH=params.mirWaveH||0, layers=Math.max(1,Math.round(params.rings));
-    const steps=Math.min(900,Math.max(90,Math.round(150*turns+pet*16)));
+    // ---- Mirror: 3D sphere burst — one base object (2 sides = a spoke, 3+ = polygon) repeated over N directions on a sphere ----
+    const Nc=Math.max(1,Math.round(params.centralN||1)), sides=Math.max(2,Math.round(params.mirSides||2)),
+          reach=params.mirReach||320, inner=reach*clamp(params.mirInner||0,0,0.98),
+          cover=clamp(params.mirCover!=null?params.mirCover:1,0,1), spin=(params.mirSpin||0)*PI/180,
+          twist=(params.mirTwist||0)*PI/180, L=Math.max(1,Math.round(params.mirLayers||1));
+    const midR=(inner+reach)/2, objR=(reach-inner)/2, closed=sides>=3, GA=PI*(3-Math.sqrt(5));
+    // base-object vertices in the radial(a) / lateral(b) plane; first vertex points outward, 2 sides ⇒ a straight spoke
+    const verts=[]; for(let k=0;k<sides;k++){ const ph=(k/sides)*2*PI; verts.push([midR+objR*Math.cos(ph), objR*Math.sin(ph)]); }
+    const norm=v=>{ const L2=Math.hypot(v[0],v[1],v[2])||1; return [v[0]/L2,v[1]/L2,v[2]/L2]; };
+    const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+    const rotY=(v,ang)=>{ const c=Math.cos(ang),s=Math.sin(ang); return [v[0]*c+v[2]*s, v[1], -v[0]*s+v[2]*c]; };
+    // Fibonacci sphere: spread Nc directions evenly over the sphere (cover scales the latitude band: 1=full sphere, 0=flat disc)
+    const dirAt=(i,rot)=>{ const y=(Nc>1?1-2*i/(Nc-1):0)*cover, r=Math.sqrt(Math.max(0,1-y*y)), th=i*GA+rot;
+      return rotY([Math.cos(th)*r, y, Math.sin(th)*r], 0); };
+    const ss=Math.sin(spin), sc2=Math.cos(spin);
+    // build the object that radiates along dir; lateral axis = a stable perpendicular, rolled around dir by Spin
+    const objPts=(dir,rf)=>{ const up=Math.abs(dir[1])>0.95?[1,0,0]:[0,1,0]; const u=norm(cross(dir,up)), w=cross(dir,u);
+      const ur=[u[0]*sc2+w[0]*ss, u[1]*sc2+w[1]*ss, u[2]*sc2+w[2]*ss];   // u rotated around dir by spin
+      return verts.map(v=>{ const a=v[0]*rf, b=v[1]*rf;
+        return map(project((dir[0]*a+ur[0]*b)*A, dir[1]*a+ur[1]*b, dir[2]*a+ur[2]*b)); }); };
     if(params.stroke>0){
-      for(let l=0;l<layers;l++){ const lf=layers>1?l/(layers-1):0, sc=1-lf*0.5, yL=layers>1?(lf-0.5)*reach*0.55:0, rotL=twist*lf, re=reach*sc;
-        for(let c=0;c<Nc;c++){ const th=c/Nc*2*PI+rotL, ct=Math.cos(th), st=Math.sin(th); let d='';
-          for(let i=0;i<=steps;i++){ const ph=i/steps*2*PI*turns, rho=re*(pet>0?Math.abs(Math.cos(pet*ph)):1)*noiseFactor(ph,lf);
-            const lx=rho*Math.cos(ph), lz=rho*Math.sin(ph)*ellip, rp=Math.hypot(lx,lz);
-            const y=yL + dome*(1-rp/Math.max(1,re)) + waveH*Math.sin(waves*ph);
-            const wx=lx*ct-lz*st, wz=lx*st+lz*ct, cp=map(project(wx,y,wz)); d+=(i?'L':'M')+cp[0]+' '+cp[1]+' '; }
-          lines+=`<path d="${d.trim()}"/>\n`; }
+      for(let l=0;l<L;l++){ const rf=L>1?1-l*0.6/(L-1):1, rot=twist*l;
+        for(let c=0;c<Nc;c++){ const pts=objPts(dirAt(c,rot),rf); let d='';
+          pts.forEach((p,i)=>{ d+=(i?'L':'M')+p[0]+' '+p[1]+' '; });
+          if(closed) d+='Z'; lines+=`<path d="${d.trim()}"/>\n`; }
+      }
+    }
+    // markers ride the spokes — full marker controls: amount, size, radius, colour, shape, plus Mode (tip/mid/along), Offset (radial), Scatter (3D jitter)
+    if(shapes.length && params.markerSize>0 && markerData.length){
+      const sz=params.markerSize, rx=(sz*params.markerRadius/100).toFixed(2), n=markerData.length,
+            off=params.markerOffset||0, scat=params.markerScatter||0, mode=params.markerMode;
+      markerData.forEach((mk,j)=>{ const c=Math.floor(j*Nc/n)%Nc, dir=dirAt(c,0);
+        let rad = mode==='faceMid' ? midR : (mode==='line' ? inner+(reach-inner)*(mk.kk||0) : reach);   // tip / mid / along the spoke
+        rad += off;
+        const x=dir[0]*rad+scat*(mk.su||0), y=dir[1]*rad+scat*(mk.sv||0), z=dir[2]*rad+scat*(mk.sw||0);
+        const p=map(project(x*A,y,z)), col=params['col'+(Math.floor((mk.cr||0)*cc)%cc)], shp=shapes[Math.floor((mk.sh||0)*shapes.length)%shapes.length];
+        mkArr.push({shp,x:+p[0],y:+p[1],sz,rx,col}); });
+    }
+    M=0;
+  } else if(params.mode==='extrude'){
+    // ---- Extrude: import a 2D SVG outline and build a wireframe — sweep along Z, or inflate into a volume; fill the interior ----
+    const sv=params.svgShape;
+    if(sv && sv.polys && sv.polys.length){
+      const scale=params.exScale||300, inflate=params.exMode==='inflate',
+            fill=params.exFill||'none', fillN=Math.max(1,Math.round(params.exFillN||12));
+      const closedPolys=sv.polys.filter(P=>P.closed);
+      // scanline interior fill: axis 0 = horizontal scan (varying y), 1 = vertical scan (varying x); even-odd handles holes
+      const scanSegs=(axis,nLines)=>{ const res=[];
+        for(let k=0;k<nLines;k++){ const v=-1+(k+0.5)/nLines*2, xs=[];
+          closedPolys.forEach(P=>{ const pts=P.pts, np=pts.length;
+            for(let i=0;i<np;i++){ const a=pts[i], b=pts[(i+1)%np], a1=axis?a[0]:a[1], b1=axis?b[0]:b[1], a2=axis?a[1]:a[0], b2=axis?b[1]:b[0];
+              if((a1<=v&&b1>v)||(b1<=v&&a1>v)) xs.push(a2+(b2-a2)*(v-a1)/(b1-a1)); } });
+          xs.sort((p,q)=>p-q);
+          for(let i=0;i+1<xs.length;i+=2) res.push({axis,v,a:xs[i],b:xs[i+1]}); }
+        return res; };
+      const fillAxes = fill==='grid'?[0,1]:(fill==='vert'?[1]:(fill==='horiz'?[0]:[]));
+
+      if(inflate){
+        // ---- Inflate: pillow the shape into Z — flat rim at z=0, domed interior surface (front +z & back −z) ----
+        const bulge=params.exBulge||120, pt=(nx,ny,z)=>map(project(nx*scale,ny*scale,z)), MR=22;
+        if(params.stroke>0){
+          sv.polys.forEach(P=>{ let d=''; P.pts.forEach((p,i)=>{ const c=pt(p[0],p[1],0); d+=(i?'L':'M')+c[0]+' '+c[1]+' '; }); if(P.closed)d+='Z'; lines+=`<path d="${d.trim()}"/>\n`; });
+          (fillAxes.length?fillAxes:[0]).forEach(axis=>{ scanSegs(axis,fillN).forEach(s=>{ const w=s.b-s.a;
+            for(const sign of [1,-1]){ let d='';
+              for(let j=0;j<=MR;j++){ const u=j/MR, pos=s.a+w*u, z=sign*bulge*Math.sqrt(Math.max(0,1-(2*u-1)*(2*u-1))),
+                    c= axis?pt(s.v,pos,z):pt(pos,s.v,z); d+=(j?'L':'M')+c[0]+' '+c[1]+' '; }
+              lines+=`<path d="${d.trim()}"/>\n`; } }); });
+        }
+        if(shapes.length && params.markerSize>0 && markerData.length){ const sz=params.markerSize, rx=(sz*params.markerRadius/100).toFixed(2), allp=[];
+          sv.polys.forEach(P=>P.pts.forEach(p=>allp.push(p))); const m2=allp.length, n=markerData.length;
+          if(m2) markerData.forEach((mk,j)=>{ const pp=allp[Math.floor(j*m2/n)%m2], c=pt(pp[0],pp[1],0),
+            col=params['col'+(Math.floor((mk.cr||0)*cc)%cc)], shp=shapes[Math.floor((mk.sh||0)*shapes.length)%shapes.length];
+            mkArr.push({shp,x:+c[0],y:+c[1],sz,rx,col}); }); }
+      } else {
+        const depth=params.exDepth||0, segs=Math.max(1,Math.round(params.exSegs||1)),
+              twist=(params.exTwist||0)*PI/180, taperEnd=params.exTaper!=null?params.exTaper:1, walls=Math.max(0,Math.round(params.exWalls||0));
+        // map a normalized point (nx,ny) to screen at section depth t∈[0,1]: scale-taper, twist about Z, slide along Z
+        const at=(nx,ny,t)=>{ const sc=(1-t)+t*taperEnd, ro=twist*t, c=Math.cos(ro), s=Math.sin(ro);
+          return map(project((nx*c-ny*s)*scale*sc, (nx*s+ny*c)*scale*sc, depth*(t-0.5))); };
+        if(params.stroke>0){
+          for(let q=0;q<segs;q++){ const t=segs>1?q/(segs-1):0;                            // contour rings stacked along the extrusion
+            sv.polys.forEach(P=>{ let d=''; P.pts.forEach((p,i)=>{ const cp=at(p[0],p[1],t); d+=(i?'L':'M')+cp[0]+' '+cp[1]+' '; }); if(P.closed)d+='Z'; lines+=`<path d="${d.trim()}"/>\n`; });
+          }
+          if(walls>0 && depth!==0){ sv.polys.forEach(P=>{ const np=P.pts.length;                // wall lines connecting front→back
+            for(let w=0;w<walls;w++){ const fi=w/walls*np, i0=Math.floor(fi)%np, f=fi-Math.floor(fi), i1=(i0+1)%np,
+                  px=P.pts[i0][0]*(1-f)+P.pts[i1][0]*f, py=P.pts[i0][1]*(1-f)+P.pts[i1][1]*f; let d='';
+              for(let q=0;q<=segs;q++){ const cp=at(px,py,q/segs); d+=(q?'L':'M')+cp[0]+' '+cp[1]+' '; }
+              lines+=`<path d="${d.trim()}"/>\n`; }
+          }); }
+          fillAxes.forEach(axis=>{ scanSegs(axis,fillN).forEach(s=>{
+            [0,1].forEach(t=>{ const c0=axis?at(s.v,s.a,t):at(s.a,s.v,t), c1=axis?at(s.v,s.b,t):at(s.b,s.v,t); lines+=`<path d="M${c0[0]} ${c0[1]}L${c1[0]} ${c1[1]}"/>\n`; });   // grid on front & back caps
+            if(depth!==0) [s.a,s.b].forEach(e=>{ let d='';                                   // depth edges where grid meets the rim → ties faces to the walls (true 3D mesh)
+              for(let q=0;q<=segs;q++){ const c=axis?at(s.v,e,q/segs):at(e,s.v,q/segs); d+=(q?'L':'M')+c[0]+' '+c[1]+' '; } lines+=`<path d="${d.trim()}"/>\n`; });
+          }); });
+        }
+        if(shapes.length && params.markerSize>0 && markerData.length){
+          const sz=params.markerSize, rx=(sz*params.markerRadius/100).toFixed(2), allp=[];
+          sv.polys.forEach(P=>P.pts.forEach(p=>allp.push(p))); const m2=allp.length, n=markerData.length;
+          if(m2) markerData.forEach((mk,j)=>{ const pp=allp[Math.floor(j*m2/n)%m2], t=(mk.tt!=null?mk.tt:0)<0.5?0:1, cp=at(pp[0],pp[1],t);
+            const col=params['col'+(Math.floor((mk.cr||0)*cc)%cc)], shp=shapes[Math.floor((mk.sh||0)*shapes.length)%shapes.length];
+            mkArr.push({shp,x:+cp[0],y:+cp[1],sz,rx,col}); });
+        }
       }
     }
     M=0;
@@ -1213,6 +1405,7 @@ function renderTimeline(){ const keys=animatedKeys(); const L=document.getElemen
   L.innerHTML='<div class="lrow lruler"></div>'+keys.map(k=>`<div class="lrow" title="${labelOf(k)}">${labelOf(k)}</div>`).join('');
   let th='<div id="tl-ruler"></div>'; keys.forEach(k=>{ th+=`<div class="trow">`+keyframes[k].map((kf,idx)=>`<div class="kf kf-${kf.ease||'linear'}${kf.sel?' sel':''}" style="left:${(kf.t/tl.dur*100).toFixed(2)}%" data-k="${k}" data-i="${idx}" title="${kf.ease}"></div>`).join('')+'</div>'; });
   th+='<div id="tl-playhead"></div>'; T.innerHTML=th;
+  syncEaseUI();
   const ru=T.querySelector('#tl-ruler');
   for(let m=1;m<tl.dur*4;m++){ if(m%4===0)continue; const x=(m/4)/tl.dur*100; ru.insertAdjacentHTML('beforeend',`<div class="tickline minor" style="left:${x}%"></div>`); }
   for(let s=0;s<=tl.dur;s++){ const x=s/tl.dur*100; ru.insertAdjacentHTML('beforeend',`<div class="tickline" style="left:${x}%"></div><div class="tick" style="left:${x}%">${s}s</div>`); }
@@ -1224,8 +1417,10 @@ function renderTimeline(){ const keys=animatedKeys(); const L=document.getElemen
     dEl.addEventListener('contextmenu',ev=>{ ev.preventDefault(); removeKey(dEl.dataset.k,+dEl.dataset.i); });
     dEl.addEventListener('pointerdown',ev=>{ if(ev.button!==0)return; ev.stopPropagation(); ev.preventDefault();
       const key=dEl.dataset.k, idx=+dEl.dataset.i, kfo=keyframes[key][idx], rect=T.getBoundingClientRect(); let moved=false, sx=ev.clientX, group;
-      if(kfo.sel){ group=[]; Object.keys(keyframes).forEach(k=>keyframes[k].forEach(o=>{ if(o.sel) group.push({o,t0:o.t}); })); }
-      else { Object.keys(keyframes).forEach(k=>keyframes[k].forEach(o=>o.sel=false)); group=[{o:kfo,t0:kfo.t}]; }
+      if(ev.shiftKey){ kfo.sel=!kfo.sel; group=[]; Object.keys(keyframes).forEach(k=>keyframes[k].forEach(o=>{ if(o.sel) group.push({o,t0:o.t}); })); }
+      else if(kfo.sel){ group=[]; Object.keys(keyframes).forEach(k=>keyframes[k].forEach(o=>{ if(o.sel) group.push({o,t0:o.t}); })); }
+      else { Object.keys(keyframes).forEach(k=>keyframes[k].forEach(o=>o.sel=false)); kfo.sel=true; group=[{o:kfo,t0:kfo.t}]; }
+      renderTimeline();   // mark the clicked keyframe + reflect its easing in the toolbar & graph
       const mv=e=>{ if(Math.abs(e.clientX-sx)>3) moved=true; const d=(e.clientX-sx)/rect.width*tl.dur;
         group.forEach(g=>{ let nt=clamp(g.t0+d,0,tl.dur); if(e.shiftKey) nt=Math.round(nt/0.5)*0.5; g.o.t=parseFloat(nt.toFixed(3)); }); renderTimeline(); };
       const up=()=>{ window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up);
@@ -1239,7 +1434,7 @@ function updateTime(){ const t=document.getElementById('tl-time'); if(t) t.textC
 let activePop=null;
 function closePop(){ if(activePop){activePop.remove();activePop=null;document.removeEventListener('mousedown',closePop);} }
 function openEasePop(ev,key,idx){ closePop(); const p=document.createElement('div'); p.className='ease-pop';
-  EASES.forEach(e=>{ const b=document.createElement('button'); b.textContent=e==='inout'?'in-out':e; if(keyframes[key][idx].ease===e)b.style.color='#fff';
+  EASES.forEach(e=>{ const b=document.createElement('button'); b.textContent=e==='inout'?'in-out':(e==='bezier'?'curve':e); if(keyframes[key][idx].ease===e)b.style.color='#fff';
     b.addEventListener('click',ee=>{ee.stopPropagation();setEase(key,idx,e);closePop();}); p.appendChild(b); });
   const del=document.createElement('button'); del.textContent='✕'; del.addEventListener('click',ee=>{ee.stopPropagation();removeKey(key,idx);closePop();}); p.appendChild(del);
   document.body.appendChild(p); p.style.left=Math.min(ev.clientX-20,innerWidth-p.offsetWidth-10)+'px'; p.style.top=(ev.clientY-46)+'px'; activePop=p; setTimeout(()=>document.addEventListener('mousedown',closePop),0); }
@@ -1302,6 +1497,18 @@ function shuffle(){
     params.topoDetail=rpick([3,4,5,6,8]); params.topoSeed=1+Math.floor(rrange(0,60)); params.noiseSeed=1+Math.floor(rrange(0,60));
     params.noise=rpick([0,0.3,0.6,1]); params.height=Math.round(rrange(160,500));
     params.startSize=Math.round(rrange(220,360)); params.endSize=params.startSize;
+  } else if(params.mode==='central'){
+    params.centralN=rpick([3,4,5,6,8,12,24,48,64]); params.mirSides=rpick([2,2,2,3,4,5,6]);
+    params.mirReach=Math.round(rrange(200,440)); params.mirInner=rpick([0,0,0.2,0.4,0.6]);
+    params.mirCover=rpick([1,1,1,0.5,0.7,0]); params.mirSpin=rpick([0,0,15,30,45,90]);
+    params.mirTwist=rpick([0,0,10,20,30]); params.mirLayers=rpick([1,1,1,3,5,7]);
+    params.markerSize=rpick([0,16,16,24]);
+  } else if(params.mode==='extrude'){
+    params.exMode=rpick(['extrude','extrude','inflate']);
+    params.exDepth=Math.round(rrange(120,640)); params.exSegs=rpick([2,3,6,10,16,24]);
+    params.exWalls=rpick([0,12,24,48,96]); params.exTwist=rpick([0,0,90,180,360,-180]);
+    params.exTaper=rpick([1,1,0,0.4,1.6]); params.exBulge=Math.round(rrange(60,300));
+    params.exFill=rpick(['none','horiz','vert','grid']); params.exFillN=rpick([6,10,14,20,30]);
   } else {
     const set=[3,4,6,80]; const ss=rpick(set);
     params.rings=rpick([2,3,3,4,5]); params.sides=ss;
@@ -1361,6 +1568,27 @@ function wireExport(){ const xt=document.getElementById('x-toggle'), xm=document
     if(x==='svg')exportSVG(); else if(x==='png')exportPNG(); else if(x==='web')exportWeb(); else if(x==='video')exportVideo(); })); }
 function saveProject(){ const name=askName('litevision-project','json'); if(!name)return; downloadBlob(JSON.stringify({v:1,params,keyframes,markerData,dur:tl.dur}),name,'application/json'); }
 function loadProject(file){ const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.params)Object.assign(params,d.params); keyframes=d.keyframes||{}; markerData=d.markerData||[]; if(d.dur)tl.dur=d.dur; ensureMarkers(); buildControls(); applyColors(); renderTimeline(); updateKeyBtns(); updateTime(); render(); pushState(); }catch(err){ alert('Could not load file'); } }; r.readAsText(file); }
+// Import an SVG → sample every geometry element into normalized 2D polylines for the Extrude mode
+function importSVG(file){ const r=new FileReader(); r.onload=()=>{ try{
+  const parsed=new DOMParser().parseFromString(r.result,'image/svg+xml'); const svgEl=parsed.querySelector('svg'); if(!svgEl) throw 0;
+  const root=document.importNode(svgEl,true);
+  const holder=document.createElement('div'); holder.style.cssText='position:absolute;left:-99999px;top:0;width:0;height:0;overflow:hidden'; holder.appendChild(root); document.body.appendChild(holder);
+  const els=[...root.querySelectorAll('path,line,polyline,polygon,circle,ellipse,rect')], polys=[];
+  els.forEach(el=>{ let len=0; try{ len=el.getTotalLength(); }catch(e){} if(!len||!isFinite(len)||len<0.01) return;
+    const K=Math.max(16,Math.min(3000,Math.round(len/3))), step=len/K, raw=[];
+    for(let i=0;i<=K;i++){ const pt=el.getPointAtLength(step*i); raw.push([pt.x,pt.y]); }
+    // split into separate contours wherever the path jumps (sub-paths / letter counters), so holes fill correctly
+    const thr=step*4, push=pts=>{ if(pts.length>2) polys.push({pts, closed: Math.hypot(pts[0][0]-pts[pts.length-1][0],pts[0][1]-pts[pts.length-1][1])<thr}); };
+    let cur=[raw[0]];
+    for(let i=1;i<raw.length;i++){ if(Math.hypot(raw[i][0]-raw[i-1][0],raw[i][1]-raw[i-1][1])>thr){ push(cur); cur=[raw[i]]; } else cur.push(raw[i]); }
+    push(cur);
+  });
+  document.body.removeChild(holder); if(!polys.length){ alert('No drawable shapes found in that SVG.'); return; }
+  let mnx=1e9,mny=1e9,mxx=-1e9,mxy=-1e9; polys.forEach(P=>P.pts.forEach(p=>{ if(p[0]<mnx)mnx=p[0]; if(p[0]>mxx)mxx=p[0]; if(p[1]<mny)mny=p[1]; if(p[1]>mxy)mxy=p[1]; }));
+  const cx=(mnx+mxx)/2, cy=(mny+mxy)/2, s=2/Math.max(mxx-mnx,mxy-mny,1);   // center, fit to [-1,1], flip Y (SVG y-down)
+  params.svgShape={ name:file.name, polys:polys.map(P=>({closed:P.closed, pts:P.pts.map(p=>[ +((p[0]-cx)*s).toFixed(4), +(-(p[1]-cy)*s).toFixed(4) ])})) };
+  params.mode='extrude'; params.topo=false; buildControls(); updateTopoUI(); render(); pushState();
+} catch(e){ alert('Could not read that SVG file.'); } }; r.readAsText(file); }
 function setColors(bg,line){ params.bg=bg; params.line=line; applyColors(); render(); pushState(); }
 function wireSettings(){ const sp=document.getElementById('settings-pop');
   document.getElementById('x-settings').onclick=e=>{ e.stopPropagation(); sp.classList.toggle('open'); };
@@ -1376,6 +1604,8 @@ function wireSettings(){ const sp=document.getElementById('settings-pop');
   camtog.onclick=e=>{ e.stopPropagation(); const open=campnl.classList.toggle('open'); camtog.classList.toggle('on',open); };
   const lpnl=document.getElementById('layers-panel'), ltog=document.getElementById('layers-toggle');
   ltog.onclick=e=>{ e.stopPropagation(); const open=lpnl.classList.toggle('open'); ltog.classList.toggle('on',open); };
+  const epnl=document.getElementById('ease-panel'), etog=document.getElementById('ease-toggle');
+  etog.onclick=e=>{ e.stopPropagation(); const open=epnl.classList.toggle('open'); etog.classList.toggle('on',open); if(open)syncEaseUI(); };
   const sb=document.getElementById('set-bg'), sl=document.getElementById('set-line'), sd=document.getElementById('set-dur');
   sb.addEventListener('input',()=>{ params.bg=sb.value; applyColors(); render(); }); sb.addEventListener('change',pushState);
   sl.addEventListener('input',()=>{ params.line=sl.value; render(); }); sl.addEventListener('change',pushState);
@@ -1387,6 +1617,7 @@ function wireSettings(){ const sp=document.getElementById('settings-pop');
   document.getElementById('x-save').onclick=saveProject;
   document.getElementById('x-load').onclick=()=>document.getElementById('load-input').click();
   document.getElementById('load-input').addEventListener('change',e=>{ if(e.target.files[0]) loadProject(e.target.files[0]); e.target.value=''; });
+  document.getElementById('svg-input').addEventListener('change',e=>{ if(e.target.files[0]) importSVG(e.target.files[0]); e.target.value=''; });
 }
 
 document.getElementById('b-undo').onclick=()=>{ if(hi>0){hi--;applyState();} };
