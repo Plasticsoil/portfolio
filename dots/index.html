@@ -1,0 +1,1214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dots — sticker type · Yam Liv</title>
+<meta name="description" content="Dot-matrix typography made of stickers. Offset, seed, crowdness — export SVG / PNG / embed code." />
+<link rel="icon" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" />
+<style>
+  :root{
+    --bg:#F8F6F3; --surface:#FFFFFF; --line:#E7E4DE;
+    --ink:#26251E; --muted:#A3A09B; --accent:#FF8FF4;
+  }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; height:100%; }
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"Nimbus Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size:13px; -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  #app{ display:flex; height:100vh; }
+
+  /* ---------- side panels ---------- */
+  .side{
+    width:280px; flex:none; height:100%; overflow-y:auto;
+    padding:22px 20px 26px;
+    background:var(--bg);
+  }
+  #panel{ border-right:1px solid var(--line); }
+  #panel2{ border-left:1px solid var(--line); }
+  .side::-webkit-scrollbar{ width:0; }
+  h1{
+    font-family:"Instrument Serif",serif; font-weight:400;
+    font-size:38px; line-height:1; margin:0 0 2px; color:var(--muted);
+    letter-spacing:-0.01em;
+  }
+  .sub{ color:var(--muted); font-size:11px; margin:0 0 18px; }
+  .sub a{ color:inherit; text-decoration:none; border-bottom:1px solid var(--line); }
+  .sec{ margin-bottom:15px; }
+  .lbl{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:10px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--muted); margin-bottom:6px;
+  }
+  .lbl b{ font-weight:400; color:var(--ink); font-variant-numeric:tabular-nums; }
+  textarea{
+    width:100%; resize:none; border:1px solid var(--line); border-radius:8px;
+    background:var(--surface); color:var(--ink); padding:10px 11px;
+    font:inherit; font-size:14px; line-height:1.35; letter-spacing:0.04em;
+    text-transform:uppercase; outline:none;
+  }
+  textarea:focus{ border-color:var(--ink); }
+  input[type=range]{
+    width:100%; accent-color:var(--accent); height:22px; margin:0; cursor:pointer;
+  }
+  .row{ display:flex; gap:8px; align-items:center; }
+  .seg{ display:flex; gap:0; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--surface); }
+  .seg button{
+    flex:1; border:0; background:transparent; padding:7px 4px; font:inherit; font-size:11px;
+    color:var(--muted); cursor:pointer; white-space:nowrap;
+    display:flex; align-items:center; justify-content:center; min-height:30px;
+  }
+  .seg button svg{ display:block; pointer-events:none; }
+  .seg button.on{ background:var(--ink); color:#fff; }
+  .seg button:not(.on):hover{ color:var(--ink); }
+  input[type=number]{
+    width:76px; border:1px solid var(--line); border-radius:8px; background:var(--surface);
+    padding:7px 9px; font:inherit; outline:none; color:var(--ink);
+  }
+  input[type=number]:focus{ border-color:var(--ink); }
+  .btn{
+    border:1px solid var(--line); background:var(--surface); color:var(--ink);
+    border-radius:8px; padding:7px 10px; font:inherit; font-size:12px; cursor:pointer;
+  }
+  .btn:hover{ border-color:var(--ink); }
+  .btn.dark{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .btn.dark:hover{ background:#000; }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{
+    border:1px solid var(--line); background:var(--surface); border-radius:999px;
+    padding:5px 11px; font-size:11px; color:var(--ink); cursor:pointer;
+  }
+  .chip:hover{ border-color:var(--ink); }
+  /* palette swatches */
+  #swatches{ display:flex; flex-wrap:wrap; gap:7px; align-items:center; }
+  .sw{ position:relative; width:30px; height:30px; }
+  .sw input[type=color]{
+    position:absolute; inset:0; width:100%; height:100%; padding:0; border:none;
+    border-radius:50%; cursor:pointer; background:none;
+  }
+  .sw input[type=color]::-webkit-color-swatch-wrapper{ padding:0; }
+  .sw input[type=color]::-webkit-color-swatch{ border:1px solid rgba(0,0,0,.12); border-radius:50%; }
+  .sw .x{
+    position:absolute; top:-5px; right:-5px; width:14px; height:14px; border-radius:50%;
+    background:var(--ink); color:#fff; font-size:9px; line-height:14px; text-align:center;
+    cursor:pointer; display:none; user-select:none;
+  }
+  .sw:hover .x{ display:block; }
+  #addColor{
+    width:30px; height:30px; border-radius:50%; border:1px dashed var(--muted);
+    background:transparent; color:var(--muted); font-size:15px; cursor:pointer; line-height:1;
+  }
+  #addColor:hover{ border-color:var(--ink); color:var(--ink); }
+  .bgrow{ display:flex; align-items:center; gap:9px; margin-top:10px; }
+  .bgrow .sw{ width:30px; height:30px; }
+  .bgrow span{ font-size:11px; color:var(--muted); }
+  .togs{ display:flex; gap:16px; }
+  .tog{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--ink); cursor:pointer; user-select:none; }
+  .tog input{ accent-color:var(--accent); margin:0; }
+  .exp{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .foot{ margin-top:18px; font-size:11px; color:var(--muted); }
+  .foot a{ color:inherit; text-decoration:none; border-bottom:1px solid var(--line); }
+
+  /* ---------- stage ---------- */
+  #stagewrap{
+    flex:1; height:100%; display:flex; align-items:center; justify-content:center;
+    padding:36px; overflow:hidden; position:relative;
+  }
+  #stagefit{ position:relative; flex:none; }
+  #stage{
+    position:absolute; left:0; top:0; transform-origin:0 0; overflow:hidden;
+    border-radius:2px; box-shadow:0 1px 3px rgba(38,37,30,.10), 0 12px 40px rgba(38,37,30,.08);
+    cursor:pointer; touch-action:none;
+  }
+  .st{ position:absolute; border-radius:50%; will-change:transform; }
+  #hint{
+    position:absolute; bottom:14px; left:0; right:0; text-align:center;
+    font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted);
+    pointer-events:none;
+  }
+  #toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(12px);
+    background:var(--ink); color:#fff; font-size:12px; padding:9px 16px; border-radius:999px;
+    opacity:0; transition:opacity .18s, transform .18s; pointer-events:none; z-index:99;
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ---------- embed mode ---------- */
+  body.embed{ background:transparent; }
+  body.embed #panel, body.embed #panel2, body.embed #hint{ display:none; }
+  body.embed #stagewrap{ padding:0; }
+  body.embed #stage{ box-shadow:none; border-radius:0; }
+
+  @media (max-width:1080px){
+    .side{ width:240px; padding:18px 16px 22px; }
+  }
+  @media (max-width:820px){
+    body{ overflow:auto; }
+    #app{ flex-direction:column; height:auto; }
+    .side{ width:100%; height:auto; border:0; border-bottom:1px solid var(--line); }
+    #panel2{ order:3; border-bottom:0; border-top:1px solid var(--line); }
+    #stagewrap{ padding:16px; min-height:62vh; order:2; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="panel" class="side">
+    <h1>Dots</h1>
+    <p class="sub">sticker type generator · <a href="https://www.yamliv.net" target="_blank" rel="noopener">yamliv.net</a></p>
+
+    <div class="sec">
+      <div class="lbl"><span>Source</span></div>
+      <div class="seg" id="segSrc">
+        <button data-v="text">Text</button>
+        <button data-v="svg">SVG</button>
+      </div>
+      <div style="height:10px"></div>
+      <textarea id="inWord" rows="2" spellcheck="false"></textarea>
+      <div id="svgBox" style="display:none">
+        <div class="row">
+          <button class="btn" id="btnSvgUp">Upload SVG…</button>
+          <span id="svgName" style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">no file</span>
+        </div>
+        <input type="file" id="inSvgFile" accept=".svg,image/svg+xml" style="display:none" />
+        <div style="height:10px"></div>
+        <div class="seg" id="segSvgMode">
+          <button data-v="fill">Stickers on fill</button>
+          <button data-v="stroke">On stroke</button>
+        </div>
+        <div style="height:14px"></div>
+        <div class="lbl"><span>Detail</span><b id="vDetail"></b></div>
+        <input type="range" id="inDetail" min="12" max="60" step="1" />
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl"><span>Canvas</span></div>
+      <div class="seg" id="segRatio">
+        <button data-v="square" title="Square 1:1"><svg width="16" height="14" viewBox="0 0 16 14"><rect x="2.75" y="1.75" width="10.5" height="10.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
+        <button data-v="wide" title="Wide 16:9"><svg width="16" height="14" viewBox="0 0 16 14"><rect x="0.75" y="3" width="14.5" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
+        <button data-v="banner" title="Banner"><svg width="16" height="14" viewBox="0 0 16 14"><rect x="0.75" y="4.5" width="14.5" height="5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
+      </div>
+      <div style="height:8px"></div>
+      <div class="seg" id="segAlign">
+        <button data-v="left" title="Align left"><svg width="16" height="14" viewBox="0 0 16 14" fill="currentColor"><rect y="0" width="16" height="2" rx="1"/><rect y="4" width="10" height="2" rx="1"/><rect y="8" width="14" height="2" rx="1"/><rect y="12" width="8" height="2" rx="1"/></svg></button>
+        <button data-v="center" title="Align center"><svg width="16" height="14" viewBox="0 0 16 14" fill="currentColor"><rect y="0" width="16" height="2" rx="1"/><rect x="3" y="4" width="10" height="2" rx="1"/><rect x="1" y="8" width="14" height="2" rx="1"/><rect x="4" y="12" width="8" height="2" rx="1"/></svg></button>
+        <button data-v="right" title="Align right"><svg width="16" height="14" viewBox="0 0 16 14" fill="currentColor"><rect y="0" width="16" height="2" rx="1"/><rect x="6" y="4" width="10" height="2" rx="1"/><rect x="2" y="8" width="14" height="2" rx="1"/><rect x="8" y="12" width="8" height="2" rx="1"/></svg></button>
+        <button data-v="block" title="Justify — stretch word spaces"><svg width="16" height="14" viewBox="0 0 16 14" fill="currentColor"><rect y="0" width="16" height="2" rx="1"/><rect y="4" width="16" height="2" rx="1"/><rect y="8" width="16" height="2" rx="1"/><rect y="12" width="16" height="2" rx="1"/></svg></button>
+        <button data-v="blockl" title="Justify — stretch letter spaces"><svg width="16" height="14" viewBox="0 0 16 14" fill="currentColor"><rect y="0" width="4" height="2" rx="1"/><rect x="6" y="0" width="4" height="2" rx="1"/><rect x="12" y="0" width="4" height="2" rx="1"/><rect y="4" width="4" height="2" rx="1"/><rect x="6" y="4" width="4" height="2" rx="1"/><rect x="12" y="4" width="4" height="2" rx="1"/><rect y="8" width="4" height="2" rx="1"/><rect x="6" y="8" width="4" height="2" rx="1"/><rect x="12" y="8" width="4" height="2" rx="1"/><rect y="12" width="4" height="2" rx="1"/><rect x="6" y="12" width="4" height="2" rx="1"/><rect x="12" y="12" width="4" height="2" rx="1"/></svg></button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl"><span>Dot size</span><b id="vSize"></b></div>
+      <input type="range" id="inSize" min="0.55" max="1.35" step="0.01" />
+    </div>
+    <div class="sec" id="secTrack">
+      <div class="lbl"><span>Letter space</span><b id="vTrack"></b></div>
+      <input type="range" id="inTrack" min="0" max="4" step="0.25" />
+    </div>
+    <div class="sec" id="secLineGap">
+      <div class="lbl"><span>Line space</span><b id="vLineGap"></b></div>
+      <input type="range" id="inLineGap" min="0" max="6" step="0.25" />
+    </div>
+    <div class="sec">
+      <div class="lbl"><span>Offset</span><b id="vJitter"></b></div>
+      <input type="range" id="inJitter" min="0" max="0.45" step="0.01" />
+    </div>
+    <div class="sec">
+      <div class="lbl"><span>Crowdness</span><b id="vCrowd"></b></div>
+      <input type="range" id="inCrowd" min="0" max="1" step="0.05" />
+    </div>
+  </aside>
+
+  <main id="stagewrap">
+    <div id="stagefit"><div id="stage"></div></div>
+    <div id="hint">hover to push &nbsp;·&nbsp; click to re-stick</div>
+  </main>
+
+  <aside id="panel2" class="side">
+    <div class="sec">
+      <div class="lbl"><span>Palette</span></div>
+      <div class="chips" id="presets"></div>
+      <div style="height:12px"></div>
+      <div id="swatches"></div>
+      <div class="bgrow">
+        <div class="sw"><input type="color" id="inBg" /></div>
+        <span>background</span>
+      </div>
+      <div style="height:12px"></div>
+      <div class="lbl" style="margin-top:2px"><span>Color per</span></div>
+      <div class="seg" id="segMode">
+        <button data-v="letter">Letter</button>
+        <button data-v="word">Word</button>
+        <button data-v="mix">Mix</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl"><span>Wiggle</span><b id="vWiggle"></b></div>
+      <input type="range" id="inWiggle" min="0" max="1" step="0.05" />
+    </div>
+
+    <div class="sec">
+      <div class="lbl"><span>Seed</span></div>
+      <div class="row">
+        <input type="number" id="inSeed" step="1" />
+        <button class="btn" id="btnDice" style="flex:1" title="random seed">🎲 Shuffle</button>
+      </div>
+      <div class="row" style="margin-top:7px">
+        <button class="btn" id="btnSwap" style="flex:1" title="swap background with first sticker color">⇄ Swap colors</button>
+        <button class="btn" id="btnReset" style="flex:1" title="reset all settings to defaults">↺ Reset</button>
+      </div>
+    </div>
+
+    <div class="sec togs">
+      <label class="tog"><input type="checkbox" id="inGrain" /> Grain</label>
+      <label class="tog"><input type="checkbox" id="inTrans" /> Transparent bg</label>
+    </div>
+
+    <div class="sec">
+      <div class="lbl"><span>Export</span></div>
+      <label class="tog" style="margin-bottom:9px" title="drop stickers fully hidden under others / same-colour twins at the same spot — lighter files, same look"><input type="checkbox" id="inDedupe" /> Remove hidden overlaps</label>
+      <div class="exp">
+        <button class="btn dark" id="btnSvg">SVG</button>
+        <button class="btn dark" id="btnPng">PNG 2×</button>
+        <button class="btn" id="btnEmbed">Copy embed</button>
+        <button class="btn" id="btnLink">Copy link</button>
+      </div>
+    </div>
+
+    <div class="foot">hover to push · click to re-stick<br/>© <a href="https://www.yamliv.net" target="_blank" rel="noopener">Yam Liv</a></div>
+  </aside>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+
+/* ============================== 5×7 dot font ============================== */
+const FONT = {
+  A:["01110","10001","10001","11111","10001","10001","10001"],
+  B:["11110","10001","10001","11110","10001","10001","11110"],
+  C:["01110","10001","10000","10000","10000","10001","01110"],
+  D:["11110","10001","10001","10001","10001","10001","11110"],
+  E:["11111","10000","10000","11110","10000","10000","11111"],
+  F:["11111","10000","10000","11110","10000","10000","10000"],
+  G:["01110","10001","10000","10111","10001","10001","01111"],
+  H:["10001","10001","10001","11111","10001","10001","10001"],
+  I:["11111","00100","00100","00100","00100","00100","11111"],
+  J:["00111","00010","00010","00010","00010","10010","01100"],
+  K:["10001","10010","10100","11000","10100","10010","10001"],
+  L:["10000","10000","10000","10000","10000","10000","11111"],
+  M:["10001","11011","10101","10101","10001","10001","10001"],
+  N:["10001","11001","10101","10011","10001","10001","10001"],
+  O:["01110","10001","10001","10001","10001","10001","01110"],
+  P:["11110","10001","10001","11110","10000","10000","10000"],
+  Q:["01110","10001","10001","10001","10101","10010","01101"],
+  R:["11110","10001","10001","11110","10100","10010","10001"],
+  S:["01111","10000","10000","01110","00001","00001","11110"],
+  T:["11111","00100","00100","00100","00100","00100","00100"],
+  U:["10001","10001","10001","10001","10001","10001","01110"],
+  V:["10001","10001","10001","10001","10001","01010","00100"],
+  W:["10001","10001","10001","10101","10101","10101","01010"],
+  X:["10001","10001","01010","00100","01010","10001","10001"],
+  Y:["10001","10001","01010","00100","00100","00100","00100"],
+  Z:["11111","00001","00010","00100","01000","10000","11111"],
+  "0":["01110","10001","10011","10101","11001","10001","01110"],
+  "1":["00100","01100","00100","00100","00100","00100","01110"],
+  "2":["01110","10001","00001","00010","00100","01000","11111"],
+  "3":["11111","00010","00100","00010","00001","10001","01110"],
+  "4":["00010","00110","01010","10010","11111","00010","00010"],
+  "5":["11111","10000","11110","00001","00001","10001","01110"],
+  "6":["00110","01000","10000","11110","10001","10001","01110"],
+  "7":["11111","00001","00010","00100","01000","01000","01000"],
+  "8":["01110","10001","10001","01110","10001","10001","01110"],
+  "9":["01110","10001","10001","01111","00001","00010","01100"],
+  ".":["00000","00000","00000","00000","00000","00100","00100"],
+  ",":["00000","00000","00000","00000","00000","00100","01000"],
+  "!":["00100","00100","00100","00100","00100","00000","00100"],
+  "?":["01110","10001","00001","00010","00100","00000","00100"],
+  "'":["00100","00100","00000","00000","00000","00000","00000"],
+  "-":["00000","00000","00000","01110","00000","00000","00000"],
+  "+":["00000","00100","00100","11111","00100","00100","00000"],
+  "&":["01100","10010","10100","01000","10101","10010","01101"],
+  "*":["00000","10101","01110","11111","01110","10101","00000"],
+  ":":["00000","00100","00000","00000","00100","00000","00000"],
+  "/":["00001","00010","00010","00100","01000","01000","10000"],
+  "♥":["00000","01010","11111","11111","01110","00100","00000"]
+};
+/* trim empty columns → proportional widths */
+const GLYPHS = {};
+for(const ch in FONT){
+  const rows = FONT[ch];
+  let min=5, max=-1;
+  const dots=[];
+  for(let r=0;r<7;r++) for(let c=0;c<5;c++)
+    if(rows[r][c]==="1"){ dots.push([c,r]); if(c<min)min=c; if(c>max)max=c; }
+  GLYPHS[ch] = { dots: dots.map(function(d){return [d[0]-min, d[1]];}), w: max<0?0:(max-min+1) };
+}
+const SPACE_W = 2, GLYPH_ROWS = 7;
+
+/* ============================== utils ============================== */
+function strHash(s){ let h=0; for(let i=0;i<s.length;i++) h=(h<<5)-h+s.charCodeAt(i)|0; return h>>>0; }
+function rnd(seed,i,k){ /* deterministic -1..1 */
+  let h=(i+1)*2654435761 ^ seed ^ Math.imul(k+1,668265261);
+  h=Math.imul(h^h>>>13,2246822507); h=(h^h>>>16)>>>0;
+  return h/4294967296*2-1;
+}
+function rnd01(seed,i,k){ return (rnd(seed,i,k)+1)/2; }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+function easeOutPow(u,p){ return 1-Math.pow(1-u,p); }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+
+/* ============================== state ============================== */
+const RATIOS = { square:{W:1080,H:1080}, wide:{W:1600,H:900}, banner:{W:1920,H:640} };
+const PRESETS = [
+  { name:"B/W",     bg:"#FFFFFF", pal:["#141414"] },
+  { name:"W/B",     bg:"#141414", pal:["#FFFFFF"] },
+  { name:"Pastel",  bg:"#FAF7F0", pal:["#FFC5D9","#A6DBFF","#B5EAC8","#FFF1A6","#DCC9F7"] },
+  { name:"Neon",    bg:"#E8E1CD", pal:["#E4FF19"] },
+  { name:"Primary", bg:"#141414", pal:["#E63324","#1E9E3E","#2E6BE6","#F4D511","#FFFFFF"] },
+  { name:"Studio",  bg:"#F8F6F3", pal:["#FF8FF4","#26251E"] }
+];
+const DEFAULTS = {
+  seed:7, size:0.98, track:1, lineGap:2, jitter:0.14, crowd:0.3, wiggle:0.5,
+  mode:"letter", align:"center", ratio:"square", grain:false, trans:false,
+  detail:32, svgMode:"fill", dedupe:true
+};
+const state = {
+  word:"DOTS\n4 EVER",
+  seed:7,
+  size:0.98,
+  track:1,
+  lineGap:2,
+  jitter:0.14,
+  crowd:0.3,
+  wiggle:0.5,
+  pal:["#E4FF19"],
+  bg:"#E8E1CD",
+  mode:"letter",
+  align:"center",
+  ratio:"square",
+  grain:false,
+  trans:false,
+  bgNone:false,
+  src:"text",
+  svgMode:"fill",
+  detail:32,
+  dedupe:true
+};
+let svgSrc = null; /* {name, strokes:[[{x,y}..]..], raster:ImageData|null} */
+
+/* read url params */
+(function(){
+  const q = new URLSearchParams(location.search);
+  if(q.get("w")) state.word = q.get("w");
+  if(q.get("seed")!==null && q.get("seed")!=="") state.seed = parseInt(q.get("seed"),10)||0;
+  if(q.get("size")) state.size = parseFloat(q.get("size"))||state.size;
+  if(q.get("sp")!==null && q.get("sp")!=="") state.track = parseFloat(q.get("sp"));
+  if(q.get("lg")!==null && q.get("lg")!=="") state.lineGap = parseFloat(q.get("lg"));
+  if(q.get("j")!==null && q.get("j")!=="") state.jitter = parseFloat(q.get("j"));
+  if(q.get("c")!==null && q.get("c")!=="") state.crowd = parseFloat(q.get("c"));
+  if(q.get("wg")!==null && q.get("wg")!=="") state.wiggle = parseFloat(q.get("wg"));
+  if(q.get("pal")) state.pal = q.get("pal").split(",").map(function(h){return "#"+h.replace(/[^0-9a-fA-F]/g,"");}).filter(function(h){return h.length===7;});
+  if(!state.pal.length) state.pal=["#E4FF19"];
+  if(q.get("bg")==="none") state.bgNone = true;
+  else if(q.get("bg")) state.bg = "#"+q.get("bg").replace(/[^0-9a-fA-F]/g,"");
+  if(q.get("cm")==="word") state.mode="word";
+  if(q.get("cm")==="mix" || q.get("cm")==="dot") state.mode="mix";
+  if(["left","right","block","blockl"].indexOf(q.get("al"))>=0) state.align=q.get("al");
+  if(RATIOS[q.get("ar")]) state.ratio = q.get("ar");
+  if(q.get("gr")==="1") state.grain=true;
+  if(q.get("embed")==="1") document.body.classList.add("embed");
+})();
+const IS_EMBED = document.body.classList.contains("embed");
+
+/* ============================== svg source ============================== */
+function prepareSVG(text, name){
+  const holder = document.createElement("div");
+  holder.style.cssText = "position:absolute;left:-9999px;top:0;width:512px;height:512px;overflow:hidden;";
+  holder.innerHTML = text;
+  const svg = holder.querySelector("svg");
+  if(!svg) return Promise.resolve(false);
+  document.body.appendChild(holder);
+  if(!svg.getAttribute("viewBox")){
+    const w = parseFloat(svg.getAttribute("width"))||512;
+    const h = parseFloat(svg.getAttribute("height"))||512;
+    svg.setAttribute("viewBox","0 0 "+w+" "+h);
+  }
+  svg.setAttribute("width","512"); svg.setAttribute("height","512");
+  svg.removeAttribute("style");
+
+  /* sample every geometry element finely (density-independent) */
+  const strokes = [];
+  svg.querySelectorAll("path,rect,circle,ellipse,line,polyline,polygon").forEach(function(el){
+    if(el.closest("defs,clipPath,mask,symbol,pattern")) return;
+    let len = 0;
+    try{ len = el.getTotalLength(); }catch(e){ return; }
+    if(!len || !isFinite(len)) return;
+    const m = el.getCTM(); if(!m) return;
+    const step = len/420;
+    const pts = [];
+    for(let d=0; d<=len; d+=step){
+      const p = el.getPointAtLength(d);
+      pts.push({ x:m.a*p.x+m.c*p.y+m.e, y:m.b*p.x+m.d*p.y+m.f });
+    }
+    if(pts.length>1) strokes.push(pts);
+  });
+
+  /* rasterize for fill sampling + source colors */
+  const src = "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(new XMLSerializer().serializeToString(svg));
+  return new Promise(function(res){
+    const img = new Image();
+    img.onload = function(){
+      let data = null;
+      try{
+        const cv = document.createElement("canvas"); cv.width=512; cv.height=512;
+        const c = cv.getContext("2d");
+        c.drawImage(img,0,0,512,512);
+        data = c.getImageData(0,0,512,512);
+      }catch(e){}
+      holder.remove();
+      svgSrc = { name:name, strokes:strokes, raster:data };
+      res(!!(data || strokes.length));
+    };
+    img.onerror = function(){
+      holder.remove();
+      svgSrc = strokes.length ? { name:name, strokes:strokes, raster:null } : null;
+      res(!!svgSrc);
+    };
+    img.src = src;
+  });
+}
+
+function buildLayoutSVG(){
+  const R = RATIOS[state.ratio], W=R.W, H=R.H;
+  if(!svgSrc) return { W:W, H:H, cell:20, stickers:[] };
+  const seedBase = (strHash(svgSrc.name+state.svgMode) ^ Math.imul(state.seed|0,2654435761))>>>0;
+  const pal = state.pal.length ? state.pal : ["#E4FF19"];
+  const PAD = Math.min(W,H)*0.075;
+  const useStroke = state.svgMode==="stroke" || !svgSrc.raster;
+
+  /* source-space bbox */
+  let bb = null;
+  function ext(x,y){
+    if(!bb) bb={x0:x,y0:y,x1:x,y1:y};
+    else{ if(x<bb.x0)bb.x0=x; if(x>bb.x1)bb.x1=x; if(y<bb.y0)bb.y0=y; if(y>bb.y1)bb.y1=y; }
+  }
+  if(useStroke){
+    svgSrc.strokes.forEach(function(ps){ ps.forEach(function(p){ ext(p.x,p.y); }); });
+  } else {
+    const r=svgSrc.raster, d=r.data;
+    for(let y=0;y<r.height;y+=2) for(let x=0;x<r.width;x+=2)
+      if(d[(y*r.width+x)*4+3]>40) ext(x,y);
+  }
+  if(!bb) return { W:W, H:H, cell:20, stickers:[] };
+  const bw = Math.max(1,bb.x1-bb.x0), bh = Math.max(1,bb.y1-bb.y0);
+  const sc = Math.min((W-2*PAD)/bw, (H-2*PAD)/bh);
+  const ox = (W-bw*sc)/2 - bb.x0*sc;
+  const oy = (H-bh*sc)/2 - bb.y0*sc;
+  const cell = Math.max(5, Math.max(bw,bh)*sc/state.detail);
+
+  function rasterAt(tx,ty){
+    const r=svgSrc.raster; if(!r) return null;
+    const x=Math.round((tx-ox)/sc), y=Math.round((ty-oy)/sc);
+    if(x<0||y<0||x>=r.width||y>=r.height) return null;
+    const i=(y*r.width+x)*4;
+    if(r.data[i+3]<128) return null;
+    return "rgb("+r.data[i]+","+r.data[i+1]+","+r.data[i+2]+")";
+  }
+
+  /* raw dot centres */
+  let raw = []; /* {x,y,g,col} */
+  if(useStroke){
+    svgSrc.strokes.forEach(function(ps,gi){
+      let px=null, py=null, carry=0;
+      for(const p of ps){
+        const tx=p.x*sc+ox, ty=p.y*sc+oy;
+        if(px===null){ raw.push({x:tx,y:ty,g:gi,col:null}); px=tx; py=ty; continue; }
+        let dx=tx-px, dy=ty-py, d=Math.hypot(dx,dy);
+        while(carry+d >= cell){
+          const t=(cell-carry)/d;
+          px+=dx*t; py+=dy*t;
+          raw.push({x:px,y:py,g:gi,col:null});
+          dx=tx-px; dy=ty-py; d=Math.hypot(dx,dy); carry=0;
+        }
+        carry+=d; px=tx; py=ty;
+      }
+    });
+  } else {
+    const x0=bb.x0*sc+ox, x1=bb.x1*sc+ox, y0=bb.y0*sc+oy, y1=bb.y1*sc+oy;
+    for(let y=y0+cell/2; y<=y1; y+=cell)
+      for(let x=x0+cell/2; x<=x1; x+=cell){
+        const col = rasterAt(x,y);
+        if(col) raw.push({x:x,y:y,g:0,col:col});
+      }
+  }
+  if(raw.length>2800){
+    const stride = Math.ceil(raw.length/2800);
+    raw = raw.filter(function(_,i){ return i%stride===0; });
+  }
+
+  /* stickers with jitter + crowd, same recipe as text mode */
+  const stickers=[];
+  const colorStart = seedBase % pal.length;
+  let prevColor=null;
+  raw.forEach(function(pt,di){
+    let color;
+    if(state.mode==="mix" && pal.length>1){
+      let ci = Math.floor(rnd01(seedBase,di,7)*pal.length) % pal.length;
+      if(pal[ci]===prevColor) ci=(ci+1)%pal.length;
+      color = pal[ci];
+    } else if(useStroke) color = pal[(colorStart+pt.g) % pal.length];
+    else color = pt.col || pal[colorStart];
+    prevColor = color;
+    const cr = state.crowd;
+    const extras = (rnd01(seedBase,di,8) < cr ? 1 : 0)
+                 + (rnd01(seedBase,di,9) < cr*0.6 ? 1 : 0)
+                 + (rnd01(seedBase,di,10) < (cr-0.4)*1.5 ? 1 : 0)
+                 + (rnd01(seedBase,di,11) < (cr-0.7)*2.5 ? 1 : 0);
+    for(let e=0; e<=extras; e++){
+      const k = di*6+e;
+      const spread = state.jitter*cell * (e===0?1:1.9) + (e>0 ? cell*0.18 : 0);
+      stickers.push({
+        x: pt.x + rnd(seedBase,k,0)*spread,
+        y: pt.y + rnd(seedBase,k,1)*spread,
+        r: cell*state.size/2 * (1 + rnd(seedBase,k,3)*0.06) * (e>0?0.96:1),
+        color: color
+      });
+    }
+  });
+  return { W:W, H:H, cell:cell, stickers:stickers };
+}
+
+/* ============================== layout ============================== */
+let layout = null;
+
+function buildLayout(){
+  if(state.src==="svg") return buildLayoutSVG();
+  const R = RATIOS[state.ratio], W=R.W, H=R.H;
+  const seedBase = (strHash(state.word.toUpperCase()) ^ Math.imul(state.seed|0,2654435761))>>>0;
+  const pal = state.pal.length ? state.pal : ["#E4FF19"];
+
+  /* parse lines into glyph runs */
+  const lines = [];
+  const rawLines = state.word.toUpperCase().split("\n");
+  for(let li=0; li<rawLines.length; li++){
+    const items=[];
+    for(const ch of rawLines[li]){
+      if(ch===" "){ items.push({space:true, w:SPACE_W}); continue; }
+      const g = GLYPHS[ch];
+      if(g && g.w>0) items.push({g:g, w:g.w});
+    }
+    while(items.length && items[items.length-1].space) items.pop();
+    while(items.length && items[0].space) items.shift();
+    if(items.length) lines.push(items);
+  }
+  if(!lines.length) return { W:W, H:H, cell:20, stickers:[] };
+
+  const track = state.track;
+  const lineW = lines.map(function(items){
+    let w=0;
+    for(let i=0;i<items.length;i++){ w+=items[i].w; if(i<items.length-1) w+=track; }
+    return w;
+  });
+  const maxW = Math.max.apply(null, lineW);
+  const totalRows = lines.length*GLYPH_ROWS + Math.max(0,lines.length-1)*state.lineGap;
+  const PAD = Math.min(W,H)*0.075;
+  const cell = Math.min((W-2*PAD)/maxW, (H-2*PAD)/totalRows, Math.min(W,H)/7);
+
+  const stickers=[];
+  let letterIdx=0, wordIdx=0, dotIdx=0;
+  const colorStart = seedBase % pal.length;
+  const bx0 = (W - maxW*cell)/2;
+  const y0 = (H - totalRows*cell)/2;
+
+  for(let li=0; li<lines.length; li++){
+    const items = lines[li];
+    if(li>0) wordIdx++;
+    const gaps = items.length-1;
+    const nSpaces = items.filter(function(x){return x.space;}).length;
+    let cx, extraGap = 0, extraSpace = 0;
+    if(state.align==="left") cx = bx0;
+    else if(state.align==="right") cx = bx0 + (maxW-lineW[li])*cell;
+    else if(state.align==="block" && nSpaces>0){ cx = bx0; extraSpace = (maxW-lineW[li])/nSpaces; }
+    else if((state.align==="block" || state.align==="blockl") && gaps>0){ cx = bx0; extraGap = (maxW-lineW[li])/gaps; }
+    else cx = bx0 + (maxW-lineW[li])/2*cell;
+    const cy = y0 + li*(GLYPH_ROWS+state.lineGap)*cell;
+    for(let ii=0; ii<items.length; ii++){
+      const it = items[ii];
+      if(it.space){ wordIdx++; }
+      else{
+        let groupIdx = state.mode==="word" ? wordIdx : letterIdx;
+        let groupColor = pal[(colorStart+groupIdx) % pal.length];
+        let prevColor = null;
+        for(const d of it.g.dots){
+          const bx = cx + (d[0]+0.5)*cell;
+          const by = cy + (d[1]+0.5)*cell;
+          /* color */
+          let color;
+          if(state.mode==="mix" && pal.length>1){
+            let ci = Math.floor(rnd01(seedBase,dotIdx,7)*pal.length) % pal.length;
+            if(pal[ci]===prevColor) ci=(ci+1)%pal.length;
+            color = pal[ci];
+          } else color = groupColor;
+          prevColor = color;
+          /* base sticker + crowd extras (up to 4 extras at full crowd) */
+          const cr = state.crowd;
+          const extras = (rnd01(seedBase,dotIdx,8) < cr ? 1 : 0)
+                       + (rnd01(seedBase,dotIdx,9) < cr*0.6 ? 1 : 0)
+                       + (rnd01(seedBase,dotIdx,10) < (cr-0.4)*1.5 ? 1 : 0)
+                       + (rnd01(seedBase,dotIdx,11) < (cr-0.7)*2.5 ? 1 : 0);
+          for(let e=0; e<=extras; e++){
+            const k = dotIdx*6+e;
+            const spread = state.jitter*cell * (e===0?1:1.9) + (e>0 ? cell*0.18 : 0);
+            const x = bx + rnd(seedBase,k,0)*spread;
+            const y = by + rnd(seedBase,k,1)*spread;
+            const r = cell*state.size/2 * (1 + rnd(seedBase,k,3)*0.06) * (e>0?0.96:1);
+            stickers.push({ x:x, y:y, r:r, color:color });
+          }
+          dotIdx++;
+        }
+        letterIdx++;
+      }
+      cx += it.w*cell;
+      if(it.space) cx += extraSpace*cell;
+      if(ii<items.length-1) cx += (track+extraGap)*cell;
+    }
+  }
+  return { W:W, H:H, cell:cell, stickers:stickers };
+}
+
+/* ============================== DOM render ============================== */
+const stage = document.getElementById("stage");
+const stagefit = document.getElementById("stagefit");
+const stagewrap = document.getElementById("stagewrap");
+let grainTurb = null;
+
+function addGrain(el, W, H){
+  const id = "grain"+Math.floor(Math.random()*1e6);
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS,"svg");
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  svg.setAttribute("preserveAspectRatio","none");
+  svg.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;mix-blend-mode:overlay;opacity:0.45;z-index:9;";
+  svg.innerHTML = '<filter id="'+id+'"><feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="2" stitchTiles="stitch" seed="1"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope="0" intercept="1"/></feComponentTransfer></filter><rect width="'+W+'" height="'+H+'" filter="url(#'+id+')"/>';
+  el.appendChild(svg);
+  return svg.querySelector("feTurbulence");
+}
+
+function rebuild(){
+  layout = buildLayout();
+  stage.innerHTML = "";
+  stage.style.width = layout.W+"px";
+  stage.style.height = layout.H+"px";
+  stage.style.background = (IS_EMBED && state.bgNone) ? "transparent" : state.bg;
+  for(const s of layout.stickers){
+    const d = document.createElement("div");
+    d.className = "st";
+    d.style.cssText = "left:"+(s.x-s.r).toFixed(1)+"px;top:"+(s.y-s.r).toFixed(1)+"px;width:"+(s.r*2).toFixed(1)+"px;height:"+(s.r*2).toFixed(1)+"px;background:"+s.color+";";
+    stage.appendChild(d);
+    s.el = d;
+  }
+  const n = layout.stickers.length;
+  hovX = new Float32Array(n); hovY = new Float32Array(n);
+  grainTurb = (state.grain && !(IS_EMBED && state.bgNone)) ? addGrain(stage, layout.W, layout.H) : null;
+  rainStart = -Infinity;
+  fit();
+  writeURL();
+}
+
+function fit(){
+  if(!layout) return;
+  let availW, availH;
+  if(IS_EMBED){ availW = window.innerWidth; availH = window.innerHeight; }
+  else{
+    const r = stagewrap.getBoundingClientRect();
+    availW = r.width-72; availH = r.height-72;
+  }
+  const sc = Math.min(availW/layout.W, availH/layout.H);
+  stage.style.transform = "scale("+sc+")";
+  stagefit.style.width  = (layout.W*sc)+"px";
+  stagefit.style.height = (layout.H*sc)+"px";
+}
+window.addEventListener("resize", fit);
+
+/* ============================== animation ============================== */
+const FPS = 12, STEP = 1/FPS;
+let acc = 0, frame = 0, lastT = 0, elapsed = 0;
+let hover = false, mx = 0, my = 0;
+let wobblePhase = Math.random()*1000;
+let hovX = null, hovY = null;
+
+/* click rain */
+let rainStart = -Infinity, fallOrder = [], riseOrder = [];
+const FALL_DUR = 0.5, RISE_DUR = 0.6, HOLD = 0.25;
+let stgF = 0, stgR = 0, totalFallEnd = 0, rainTotal = 0;
+
+function startRain(){
+  const n = layout.stickers.length;
+  if(!n) return;
+  const a = shuffle(Array.from({length:n}, function(_,i){return i;}));
+  const b = shuffle(Array.from({length:n}, function(_,i){return i;}));
+  fallOrder = new Array(n); riseOrder = new Array(n);
+  for(let i=0;i<n;i++){ fallOrder[a[i]]=i; riseOrder[b[i]]=i; }
+  stgF = 0.9/n; stgR = 1.1/n;
+  totalFallEnd = (n-1)*stgF + FALL_DUR + HOLD;
+  rainTotal = totalFallEnd + (n-1)*stgR + RISE_DUR;
+  rainStart = elapsed;
+  wobblePhase = Math.random()*1000;
+}
+
+stage.addEventListener("pointerenter", function(){ hover=true; });
+stage.addEventListener("pointerleave", function(){ hover=false; });
+stage.addEventListener("pointermove", function(e){
+  const r = stage.getBoundingClientRect();
+  if(!r.width || !r.height) return;
+  mx = (e.clientX-r.left) * (layout.W/r.width);
+  my = (e.clientY-r.top)  * (layout.H/r.height);
+});
+stage.addEventListener("click", startRain);
+
+function tick(now){
+  requestAnimationFrame(tick);
+  if(!lastT){ lastT = now; return; }
+  const dt = Math.min(0.1,(now-lastT)/1000);
+  lastT = now; elapsed += dt; acc += dt;
+  if(acc < STEP) return;                 /* everything runs stepped at 12fps */
+  acc = 0; frame++;
+  if(!layout || !hovX) return;
+  if(grainTurb) grainTurb.setAttribute("seed", frame%97);
+
+  const cell = layout.cell;
+  const t = elapsed;
+  const sway = state.wiggle * cell * 0.10;
+  const nAmp = state.wiggle * 2.2;
+  const RAD = Math.max(cell*4.5, layout.W*0.18);
+  const STR = RAD*0.4;
+  const FEATHER = Math.max(36, Math.min(layout.W,layout.H)*0.055);
+  const rt = t - rainStart;
+  const raining = rt>=0 && rt<=rainTotal;
+
+  for(let i=0;i<layout.stickers.length;i++){
+    const s = layout.stickers[i];
+    let tx = 0, ty = 0;
+    if(hover && !raining){
+      const dx = s.x-mx, dy = s.y-my;
+      const dist = Math.hypot(dx,dy);
+      if(dist<RAD && dist>0.01){
+        const f = 1-dist/RAD;
+        const push = f*f*STR;
+        tx = dx/dist*push; ty = dy/dist*push;
+      }
+    }
+    hovX[i] += (tx-hovX[i])*0.5;
+    hovY[i] += (ty-hovY[i])*0.5;
+
+    let X = Math.sin(t*1.15 + wobblePhase + i*0.7)*sway + rnd(1,i,frame)*nAmp + hovX[i];
+    let Y = Math.cos(t*1.35 + wobblePhase + i*0.6)*sway*0.8 + rnd(2,i,frame)*nAmp + hovY[i];
+
+    if(raining){
+      const f0 = fallOrder[i]*stgF;
+      const fallDist = layout.H - s.y + s.r + 80;
+      const risePos  = s.y + s.r + 80;
+      if(rt >= f0){
+        if(rt < f0+FALL_DUR){ const u=(rt-f0)/FALL_DUR; X=hovX[i]; Y=u*u*fallDist; }
+        else{
+          const r0 = totalFallEnd + riseOrder[i]*stgR;
+          if(rt < r0){ X=0; Y=fallDist; }
+          else if(rt < r0+RISE_DUR){ const u=(rt-r0)/RISE_DUR; X=0; Y=-risePos*(1-easeOutPow(u,2.4)); }
+        }
+      }
+    }
+    /* feather: fade out toward the frame edge so nothing gets hard-clipped */
+    const px = s.x + X, py = s.y + Y;
+    const edge = Math.min(px, layout.W-px, py, layout.H-py);
+    const o = edge<=0 ? 0 : (edge>=FEATHER ? 1 : edge/FEATHER);
+    s.el.style.transform = "translate("+X.toFixed(1)+"px,"+Y.toFixed(1)+"px)";
+    s.el.style.opacity = o.toFixed(2);
+  }
+}
+requestAnimationFrame(tick);
+
+/* ============================== exports ============================== */
+function fileName(ext){
+  const base = state.src==="svg" && svgSrc ? svgSrc.name : state.word;
+  const w = base.replace(/\s+/g,"-").replace(/[^\w\-]/g,"").toLowerCase() || "dots";
+  return "dots-"+w+"-s"+state.seed+"."+ext;
+}
+/* ---- export metadata: keep the written text + settings inside the files ---- */
+function escXml(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function metaEntries(){
+  const isSvgSrc = state.src==="svg" && svgSrc;
+  const R = RATIOS[state.ratio];
+  const flat = state.word.replace(/\n+/g," / ");
+  const title = "Dots — " + (isSvgSrc ? svgSrc.name : flat);
+  const desc = "Sticker dot typography generated with Dots (yamliv.net/dots). "
+    + (isSvgSrc ? 'Source SVG: "'+svgSrc.name+'" · stickers on '+state.svgMode+' · detail '+state.detail
+                : 'Text: "'+flat+'"')
+    + ". Settings: seed "+state.seed+", dot size "+state.size+", letter space "+state.track
+    + ", line space "+state.lineGap+", offset "+state.jitter+", crowdness "+state.crowd
+    + ", color per "+state.mode+", align "+state.align+", canvas "+R.W+"x"+R.H
+    + ", palette "+state.pal.join(" ")+" on "+(state.trans ? "transparent" : state.bg)+".";
+  const keywords = "dot type, sticker typography, dotted lettering, "
+    + (isSvgSrc ? svgSrc.name : state.word.split(/\s+/).filter(Boolean).join(", "));
+  const ent = [
+    { k:"Title", v:title },
+    { k:"Description", v:desc },
+    { k:"Keywords", v:keywords },
+    { k:"Software", v:"Dots — yamliv.net/dots" }
+  ];
+  if(!isSvgSrc) ent.push({ k:"Source", v:"https://www.yamliv.net/dots/?"+shareParams(false) });
+  return ent;
+}
+/* inject iTXt chunks (UTF-8 metadata) right after the PNG IHDR chunk */
+function crc32(bytes, start, end){
+  let t = crc32.t;
+  if(!t){
+    t = crc32.t = new Int32Array(256);
+    for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = (c&1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1); t[n]=c; }
+  }
+  let c = -1;
+  for(let i=start;i<end;i++) c = t[(c ^ bytes[i]) & 255] ^ (c>>>8);
+  return (c ^ -1) >>> 0;
+}
+function addPngMeta(blob, entries){
+  const enc = new TextEncoder();
+  const chunks = entries.map(function(e){
+    const kb = enc.encode(e.k), vb = enc.encode(e.v);
+    const data = new Uint8Array(kb.length+5+vb.length);
+    data.set(kb,0);
+    /* keyword\0, comp flag 0, comp method 0, empty lang\0, empty translated\0 */
+    data.set(vb, kb.length+5);
+    const buf = new Uint8Array(12+data.length);
+    const dv = new DataView(buf.buffer);
+    dv.setUint32(0, data.length);
+    buf.set([105,84,88,116], 4); /* "iTXt" */
+    buf.set(data, 8);
+    dv.setUint32(8+data.length, crc32(buf,4,8+data.length));
+    return buf;
+  });
+  return blob.arrayBuffer().then(function(ab){
+    const b = new Uint8Array(ab);
+    let total = b.length;
+    chunks.forEach(function(c){ total += c.length; });
+    const out = new Uint8Array(total);
+    const INS = 33; /* 8 signature + 25 IHDR */
+    out.set(b.subarray(0,INS), 0);
+    let o = INS;
+    chunks.forEach(function(c){ out.set(c,o); o += c.length; });
+    out.set(b.subarray(INS), o);
+    return new Blob([out], {type:"image/png"});
+  });
+}
+/* drop stickers that are invisible in the flat render: fully covered by a
+   later (higher) sticker, or a same-colour twin sitting almost on the same spot */
+function dedupeStickers(sts){
+  const keep = new Array(sts.length).fill(true);
+  let bs = 8;
+  for(const s of sts) if(s.r>bs) bs = s.r;
+  bs *= 2;
+  const buckets = new Map();
+  for(let i=sts.length-1; i>=0; i--){
+    const s = sts[i];
+    const cx = Math.floor(s.x/bs), cy = Math.floor(s.y/bs);
+    let hidden = false;
+    for(let gx=cx-1; gx<=cx+1 && !hidden; gx++)
+      for(let gy=cy-1; gy<=cy+1 && !hidden; gy++){
+        const b = buckets.get(gx+","+gy);
+        if(!b) continue;
+        for(const j of b){
+          const t = sts[j];
+          const d = Math.hypot(s.x-t.x, s.y-t.y);
+          if(d + s.r <= t.r + 0.5){ hidden = true; break; }
+          if(t.color===s.color && d < 0.4*Math.min(s.r,t.r)){ hidden = true; break; }
+        }
+      }
+    if(hidden){ keep[i] = false; continue; }
+    const k = cx+","+cy;
+    if(!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k).push(i);
+  }
+  return sts.filter(function(_,i){ return keep[i]; });
+}
+function exportStickers(L){
+  if(!state.dedupe) return { list:L.stickers, removed:0 };
+  const list = dedupeStickers(L.stickers);
+  return { list:list, removed:L.stickers.length-list.length };
+}
+function buildSVG(){
+  const L = buildLayout();
+  const ex = exportStickers(L);
+  const meta = metaEntries();
+  let out = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+L.W+' '+L.H+'" width="'+L.W+'" height="'+L.H+'">\n';
+  out += '  <title>'+escXml(meta[0].v)+'</title>\n';
+  out += '  <desc>'+escXml(meta[1].v)+' Keywords: '+escXml(meta[2].v)+'</desc>\n';
+  const src = meta.find(function(e){ return e.k==="Source"; });
+  if(src) out += '  <!-- edit this design: '+escXml(src.v)+' -->\n';
+  if(!state.trans) out += '  <rect width="'+L.W+'" height="'+L.H+'" fill="'+state.bg+'"/>\n';
+  out += '  <g>\n';
+  for(const s of ex.list)
+    out += '    <circle cx="'+s.x.toFixed(1)+'" cy="'+s.y.toFixed(1)+'" r="'+s.r.toFixed(1)+'" fill="'+s.color+'"/>\n';
+  out += '  </g>\n</svg>';
+  return { code:out, removed:ex.removed, count:ex.list.length };
+}
+function download(blob, name){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 3000);
+}
+function exportSVG(){
+  const svg = buildSVG();
+  download(new Blob([svg.code],{type:"image/svg+xml"}), fileName("svg"));
+  toast(svg.removed ? "SVG saved · "+svg.count+" dots ("+svg.removed+" hidden removed)" : "SVG saved · "+svg.count+" dots");
+}
+function exportPNG(){
+  const L = buildLayout(), SC = 2;
+  const ex = exportStickers(L);
+  const cv = document.createElement("canvas");
+  cv.width = L.W*SC; cv.height = L.H*SC;
+  const c = cv.getContext("2d");
+  c.scale(SC,SC);
+  if(!state.trans){ c.fillStyle = state.bg; c.fillRect(0,0,L.W,L.H); }
+  for(const s of ex.list){
+    c.fillStyle = s.color;
+    c.beginPath(); c.arc(s.x, s.y, s.r, 0, Math.PI*2); c.fill();
+  }
+  cv.toBlob(function(b){
+    if(!b) return;
+    addPngMeta(b, metaEntries()).then(function(b2){
+      download(b2, fileName("png"));
+      toast(ex.removed ? "PNG saved ("+ex.removed+" hidden removed)" : "PNG saved");
+    }, function(){
+      download(b, fileName("png"));
+      toast("PNG saved");
+    });
+  }, "image/png");
+}
+function shareParams(embed){
+  const q = new URLSearchParams();
+  if(embed) q.set("embed","1");
+  q.set("w", state.word);
+  q.set("seed", String(state.seed));
+  q.set("size", state.size.toFixed(2));
+  q.set("sp", String(state.track));
+  q.set("lg", String(state.lineGap));
+  q.set("j", state.jitter.toFixed(2));
+  q.set("c", state.crowd.toFixed(2));
+  q.set("wg", state.wiggle.toFixed(2));
+  q.set("pal", state.pal.map(function(h){return h.replace("#","");}).join(","));
+  q.set("bg", state.bg.replace("#",""));
+  if(state.mode!=="letter") q.set("cm", state.mode);
+  if(state.align!=="center") q.set("al", state.align);
+  if(state.ratio!=="square") q.set("ar", state.ratio);
+  if(state.grain) q.set("gr","1");
+  return q.toString();
+}
+function copy(text, msg){
+  navigator.clipboard.writeText(text).then(function(){ toast(msg); },
+    function(){ window.prompt("Copy:", text); });
+}
+function copyEmbed(){
+  if(state.src==="svg"){ toast("Embed works for text mode only"); return; }
+  const R = RATIOS[state.ratio];
+  let params = shareParams(true);
+  if(state.trans) params = params.replace("bg="+state.bg.replace("#",""), "bg=none");
+  const url = "https://www.yamliv.net/dots/?"+params;
+  const flat = state.word.replace(/\s+/g," ").trim();
+  const code = '<iframe src="'+url+'" width="'+R.W+'" height="'+R.H+'" frameborder="0" loading="lazy" style="border:0;max-width:100%;" title="Dots · '+flat.replace(/"/g,"")+'"></iframe>';
+  copy(code, "Embed code copied");
+}
+function copyLink(){
+  if(state.src==="svg"){ toast("Link works for text mode only"); return; }
+  copy("https://www.yamliv.net/dots/?"+shareParams(false), "Link copied");
+}
+function writeURL(){
+  if(IS_EMBED || state.src==="svg") return;
+  history.replaceState(null,"","?"+shareParams(false));
+}
+
+/* ============================== UI ============================== */
+const toastEl = document.getElementById("toast");
+let toastTimer = 0;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 1600);
+}
+function $(id){ return document.getElementById(id); }
+
+const UI_SYNCS = [];
+function bindRange(id, key, vId, fmt){
+  const el = $(id), v = $(vId);
+  function sync(){ el.value = state[key]; v.textContent = fmt(state[key]); }
+  sync();
+  UI_SYNCS.push(sync);
+  el.addEventListener("input", function(){
+    state[key] = parseFloat(el.value);
+    v.textContent = fmt(state[key]);
+    rebuild();
+  });
+}
+function bindSeg(id, key, onChange){
+  const seg = $(id);
+  const btns = seg.querySelectorAll("button");
+  function sync(){ btns.forEach(function(b){ b.classList.toggle("on", b.dataset.v===state[key]); }); }
+  btns.forEach(function(b){
+    b.addEventListener("click", function(){ state[key]=b.dataset.v; sync(); onChange(); });
+  });
+  sync();
+  UI_SYNCS.push(sync);
+  return sync;
+}
+function renderSwatches(){
+  const box = $("swatches");
+  box.innerHTML = "";
+  state.pal.forEach(function(col, i){
+    const d = document.createElement("div");
+    d.className = "sw";
+    const inp = document.createElement("input");
+    inp.type = "color"; inp.value = col;
+    inp.addEventListener("input", function(){ state.pal[i]=inp.value; rebuild(); });
+    d.appendChild(inp);
+    if(state.pal.length>1){
+      const x = document.createElement("div");
+      x.className = "x"; x.textContent = "×";
+      x.addEventListener("click", function(){ state.pal.splice(i,1); renderSwatches(); rebuild(); });
+      d.appendChild(x);
+    }
+    box.appendChild(d);
+  });
+  const add = document.createElement("button");
+  add.id = "addColor"; add.textContent = "+"; add.title = "add color";
+  add.addEventListener("click", function(){
+    if(state.pal.length>=8) return;
+    state.pal.push(state.pal[state.pal.length-1]);
+    renderSwatches(); rebuild();
+  });
+  box.appendChild(add);
+}
+
+if(!IS_EMBED){
+  const inWord = $("inWord");
+  inWord.value = state.word;
+  inWord.addEventListener("input", function(){ state.word = inWord.value; rebuild(); });
+
+  bindRange("inSize","size","vSize", function(v){ return v.toFixed(2); });
+  bindRange("inTrack","track","vTrack", function(v){ return v.toFixed(2); });
+  bindRange("inLineGap","lineGap","vLineGap", function(v){ return v.toFixed(2); });
+  bindRange("inJitter","jitter","vJitter", function(v){ return v.toFixed(2); });
+  bindRange("inCrowd","crowd","vCrowd", function(v){ return v.toFixed(2); });
+  bindRange("inWiggle","wiggle","vWiggle", function(v){ return v.toFixed(2); });
+  bindSeg("segRatio","ratio", rebuild);
+  bindSeg("segAlign","align", rebuild);
+  bindSeg("segMode","mode", rebuild);
+  bindRange("inDetail","detail","vDetail", function(v){ return String(Math.round(v)); });
+
+  /* text / svg source */
+  function syncSrcUI(){
+    const isSvg = state.src==="svg";
+    inWord.style.display = isSvg ? "none" : "";
+    $("svgBox").style.display = isSvg ? "" : "none";
+    $("secTrack").style.display = isSvg ? "none" : "";
+    $("secLineGap").style.display = isSvg ? "none" : "";
+    $("segAlign").style.display = isSvg ? "none" : "";
+  }
+  const syncSrcSeg = bindSeg("segSrc","src", function(){ syncSrcUI(); rebuild(); });
+  bindSeg("segSvgMode","svgMode", rebuild);
+  syncSrcUI();
+
+  $("btnSvgUp").addEventListener("click", function(){ $("inSvgFile").click(); });
+  $("inSvgFile").addEventListener("change", function(){
+    const f = this.files[0];
+    if(!f) return;
+    const rd = new FileReader();
+    rd.onload = function(){
+      prepareSVG(String(rd.result), f.name.replace(/\.svg$/i,"")).then(function(ok){
+        if(ok){
+          $("svgName").textContent = f.name;
+          state.src = "svg";
+          syncSrcSeg(); syncSrcUI(); rebuild();
+          toast("SVG loaded — "+(svgSrc.strokes.length)+" shapes");
+        } else toast("Could not read that SVG");
+      });
+    };
+    rd.readAsText(f);
+  });
+
+  const inSeed = $("inSeed");
+  inSeed.value = state.seed;
+  inSeed.addEventListener("input", function(){ state.seed = parseInt(inSeed.value,10)||0; rebuild(); });
+  $("btnDice").addEventListener("click", function(){
+    state.seed = Math.floor(Math.random()*10000);
+    inSeed.value = state.seed;
+    rebuild();
+  });
+  $("btnSwap").addEventListener("click", function(){
+    const t = state.bg;
+    state.bg = state.pal[0];
+    state.pal = state.pal.slice();
+    state.pal[0] = t;
+    $("inBg").value = state.bg;
+    renderSwatches();
+    rebuild();
+  });
+  $("btnReset").addEventListener("click", function(){
+    Object.assign(state, DEFAULTS);
+    state.pal = ["#E4FF19"];
+    state.bg = "#E8E1CD";
+    UI_SYNCS.forEach(function(f){ f(); });
+    inSeed.value = state.seed;
+    $("inBg").value = state.bg;
+    $("inGrain").checked = state.grain;
+    $("inTrans").checked = state.trans;
+    $("inDedupe").checked = state.dedupe;
+    renderSwatches();
+    rebuild();
+    toast("Reset to defaults");
+  });
+
+  const presetsBox = $("presets");
+  PRESETS.forEach(function(p){
+    const b = document.createElement("button");
+    b.className = "chip"; b.textContent = p.name;
+    b.addEventListener("click", function(){
+      state.pal = p.pal.slice(); state.bg = p.bg;
+      $("inBg").value = p.bg;
+      renderSwatches(); rebuild();
+    });
+    presetsBox.appendChild(b);
+  });
+  renderSwatches();
+
+  const inBg = $("inBg");
+  inBg.value = state.bg;
+  inBg.addEventListener("input", function(){ state.bg = inBg.value; rebuild(); });
+
+  const inGrain = $("inGrain"), inTrans = $("inTrans"), inDedupe = $("inDedupe");
+  inGrain.checked = state.grain;
+  inTrans.checked = state.trans;
+  inDedupe.checked = state.dedupe;
+  inGrain.addEventListener("change", function(){ state.grain = inGrain.checked; rebuild(); });
+  inTrans.addEventListener("change", function(){ state.trans = inTrans.checked; });
+  inDedupe.addEventListener("change", function(){ state.dedupe = inDedupe.checked; });
+
+  $("btnSvg").addEventListener("click", exportSVG);
+  $("btnPng").addEventListener("click", exportPNG);
+  $("btnEmbed").addEventListener("click", copyEmbed);
+  $("btnLink").addEventListener("click", copyLink);
+}
+
+rebuild();
+</script>
+</body>
+</html>
