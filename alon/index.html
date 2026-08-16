@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#FBFAF9">
+<title>אפיון ויזואלי — אלון וולטרס</title>
+<meta property="og:title" content="אפיון ויזואלי — אלון וולטרס">
+<meta property="og:description" content="שאלון קצר לפני שמתחילים לעצב. 10 דקות בטלפון.">
+<meta name="description" content="שאלון קצר לפני שמתחילים לעצב. 10 דקות בטלפון.">
+</head>
+<body><style>
+  :root {
+    --ground:      #FBFAF9;
+    --surface:     #FFFFFF;
+    --surface-alt: #F3F1EE;
+    --ink:         #17181A;
+    --ink-soft:    #6E6C69;
+    --line:        #E4E1DC;
+    --accent:      #2E4A5A;
+    --accent-ink:  #FFFFFF;
+    --accent-soft: #E7EDF1;
+    --warn:        #8A5A2B;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #131315;
+      --surface:     #1B1C1F;
+      --surface-alt: #232428;
+      --ink:         #EDEBE8;
+      --ink-soft:    #97948F;
+      --line:        #2F3035;
+      --accent:      #9CC2D8;
+      --accent-ink:  #10171C;
+      --accent-soft: #26333B;
+      --warn:        #D9A86B;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #131315;
+    --surface:     #1B1C1F;
+    --surface-alt: #232428;
+    --ink:         #EDEBE8;
+    --ink-soft:    #97948F;
+    --line:        #2F3035;
+    --accent:      #9CC2D8;
+    --accent-ink:  #10171C;
+    --accent-soft: #26333B;
+    --warn:        #D9A86B;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Hebrew",
+                 "Arial Hebrew", Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.5;
+    margin: 0;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .doc { max-width: 34rem; margin: 0 auto; padding: 0 1.15rem 7rem; }
+
+  /* ---------- progress ---------- */
+  .bar {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--ground);
+    border-bottom: 1px solid var(--line);
+    padding: 0.7rem 0 0.6rem;
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+  .bar-track {
+    flex: 1; height: 4px; border-radius: 2px;
+    background: var(--line); overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; width: 0%; background: var(--accent);
+    transition: width 0.25s ease;
+  }
+  @media (prefers-reduced-motion: reduce) { .bar-fill { transition: none; } }
+  .bar-count {
+    font-size: 0.8rem; color: var(--ink-soft);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+
+  /* ---------- header ---------- */
+  header { padding: 2rem 0 0.5rem; }
+  h1 { font-size: 1.5rem; line-height: 1.25; margin: 0 0 0.6rem; text-wrap: balance; }
+  .lede { color: var(--ink-soft); font-size: 0.95rem; margin: 0; }
+
+  /* ---------- sections ---------- */
+  section { padding-top: 2.5rem; }
+  .eyebrow {
+    font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 0 0 0.3rem;
+  }
+  h2 { font-size: 1.05rem; margin: 0 0 0.35rem; }
+  .note { font-size: 0.87rem; color: var(--ink-soft); margin: 0 0 1.4rem; }
+
+  .q { padding: 1.05rem 0; border-top: 1px solid var(--line); }
+  .q:first-of-type { border-top: none; padding-top: 0.4rem; }
+  .q-label {
+    display: flex; gap: 0.55rem; align-items: baseline;
+    font-size: 0.93rem; color: var(--ink-soft); margin-bottom: 0.6rem;
+  }
+  .q-num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- option buttons ---------- */
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  button.opt {
+    font: inherit; font-size: 0.97rem; color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line); border-radius: 9px;
+    padding: 0.85rem 0.7rem; min-height: 3.1rem;
+    cursor: pointer; text-align: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.opt.mid {
+    margin-top: 0.5rem; width: 100%;
+    min-height: 2.3rem; padding: 0.4rem;
+    font-size: 0.85rem; color: var(--ink-soft);
+    background: transparent; border-style: dashed;
+  }
+  button.opt[aria-pressed="true"] {
+    background: var(--accent); color: var(--accent-ink);
+    border-color: var(--accent); font-weight: 600;
+  }
+  button.opt.mid[aria-pressed="true"] { border-style: solid; }
+  button.opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- word chips ---------- */
+  .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  button.chip {
+    font: inherit; font-size: 0.92rem; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 999px; padding: 0.45rem 0.9rem; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.chip[aria-pressed="true"] {
+    background: var(--accent); color: var(--accent-ink);
+    border-color: var(--accent); font-weight: 600;
+  }
+  button.chip[disabled] { opacity: 0.35; cursor: default; }
+  button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .counter { font-size: 0.8rem; color: var(--ink-soft); margin: 0.55rem 0 0; }
+
+  /* ---------- text fields ---------- */
+  textarea {
+    font: inherit; font-size: 0.95rem; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 9px; padding: 0.7rem; width: 100%;
+    min-height: 4.6rem; resize: vertical;
+  }
+  textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  textarea::placeholder { color: var(--ink-soft); opacity: 0.75; }
+
+  /* ---------- footer actions ---------- */
+  .actions {
+    position: fixed; bottom: 0; inset-inline: 0; z-index: 30;
+    background: var(--ground); border-top: 1px solid var(--line);
+    padding: 0.7rem 1.15rem calc(0.7rem + env(safe-area-inset-bottom));
+  }
+  .actions-inner { max-width: 34rem; margin: 0 auto; display: flex; gap: 0.5rem; }
+  button.send {
+    font: inherit; font-weight: 600; font-size: 1rem;
+    border-radius: 9px; padding: 0.85rem 1rem; cursor: pointer; flex: 1;
+    background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent);
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.send.ghost {
+    flex: 0 0 auto; background: transparent;
+    color: var(--ink); border-color: var(--line);
+  }
+  button.send:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .status {
+    max-width: 34rem; margin: 0 auto 0.5rem;
+    font-size: 0.85rem; color: var(--warn); text-align: center; min-height: 1.2em;
+  }
+  .status.ok { color: var(--accent); }
+
+  #out {
+    position: fixed; opacity: 0; pointer-events: none;
+    inset-block-start: 0; inset-inline-start: 0; height: 1px; width: 1px;
+  }
+</style>
+
+<div class="doc" dir="rtl" lang="he">
+
+  <div class="bar">
+    <div class="bar-track"><div class="bar-fill" id="fill"></div></div>
+    <span class="bar-count" id="count">0 מתוך 25</span>
+  </div>
+
+  <header>
+    <h1>אפיון ויזואלי — אלון וולטרס</h1>
+    <p class="lede">
+      לפני שמתחילים לעצב, צריך להבין איך אתה נראה ומרגיש — לא איך אתה כותב על עצמך.
+      זה לוקח בערך 10 דקות. אל תתלבט, תענה מהבטן. התשובות המהירות הן הכי מדויקות.
+      התשובות נשמרות בטלפון תוך כדי, אז אפשר לצאת ולחזור.
+    </p>
+  </header>
+
+  <section id="partA">
+    <p class="eyebrow">חלק א׳</p>
+    <h2>תבחר צד</h2>
+    <p class="note">אם משהו באמת באמצע יש כפתור לזה — אבל תשתדל לבחור צד.</p>
+    <div id="pairs"></div>
+  </section>
+
+  <section id="partB">
+    <p class="eyebrow">חלק ב׳</p>
+    <h2>מילים</h2>
+    <p class="note">שלוש מילים שהן ממש אתה, ואחת שהיא ממש לא.</p>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num" id="numYes"></span><span>שלוש מילים שהן ממש אתה</span></div>
+      <div class="chips" id="wordsYes"></div>
+      <p class="counter" id="yesCount">0 מתוך 3</p>
+    </div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num" id="numNo"></span><span>מילה אחת שהיא ממש לא אתה</span></div>
+      <div class="chips" id="wordsNo"></div>
+    </div>
+  </section>
+
+  <section id="partC">
+    <p class="eyebrow">חלק ג׳</p>
+    <h2>רפרנסים</h2>
+    <p class="note">
+      החלק הכי חשוב, ולוקח 3 דקות. לא חייב להיות כושר — מותג בגדים, מסעדה, מוזיקאי,
+      כל דבר שאתה אוהב איך שהוא נראה.
+    </p>
+    <div id="refs"></div>
+  </section>
+
+  <section id="partD">
+    <p class="eyebrow">חלק ד׳</p>
+    <h2>שלוש שורות פתוחות</h2>
+    <p class="note">משפט אחד לכל אחת מספיק.</p>
+    <div id="opens"></div>
+  </section>
+
+</div>
+
+<div class="actions">
+  <p class="status" id="status"></p>
+  <div class="actions-inner">
+    <button class="send" id="copy" type="button">העתק תשובות</button>
+    <button class="send ghost" id="wa" type="button">וואטסאפ</button>
+  </div>
+</div>
+
+<textarea id="out" aria-hidden="true" tabindex="-1"></textarea>
+
+<script>
+(function () {
+  "use strict";
+
+  var PAIRS = [
+    ["יום", "לילה"],
+    ["במכון", "בחוץ"],
+    ["אורבני — עיר, בטון, גגות", "טבע — חוף, יער, הרים"],
+    ["אולפן נקי", "מקום אמיתי, קצת מבולגן"],
+    ["פנים ומבט למצלמה", "גוף בתנועה"],
+    ["באמצע המאמץ, מיוזע", "אחרי, רגוע"],
+    ["צבע", "שחור־לבן"],
+    ["מלוטש ומוגמר", "גולמי, כאילו צולם בטלפון"],
+    ["אתה לבד", "אתה עם מתאמנים"],
+    ["קרוב ואינטימי", "רחב ומרשים"],
+    ["קשוח", "חם"],
+    ["שקט ומרוכז", "אנרגטי ורועש"],
+    ["יוקרתי", "נגיש"],
+    ["מדעי ומדויק", "אינטואיטיבי ורגשי"],
+    ["“אני אדחוף אותך”", "“אני איתך”"],
+    ["בהיר ואוורירי", "כהה ודחוס"],
+    ["חם — חול, חלודה, עור", "קר — פלדה, בטון, כחול"]
+  ];
+
+  var WORDS = ["קשוח","חם","מקצועי","ידידותי","יוקרתי","נגיש","רציני","משוחרר",
+               "מדויק","אנושי","עוצמתי","שקט","נחוש","כיפי","אמין","ישיר",
+               "סבלני","תובעני"];
+
+  var REFS = [
+    ["רפרנס 1 — קישור + מה תפס אותך", "instagram.com/…\nמה תפס אותך במילה־שתיים"],
+    ["רפרנס 2 — קישור + מה תפס אותך", "instagram.com/…\nמה תפס אותך במילה־שתיים"],
+    ["רפרנס 3 — קישור + מה תפס אותך", "instagram.com/…\nמה תפס אותך במילה־שתיים"],
+    ["אחד שאתה לא סובל איך שהוא נראה — וגם למה", "זה עוזר לי לא פחות מהשלושה שאהבת"]
+  ];
+
+  var OPENS = [
+    ["מישהו נוחת על הדף ל־3 שניות ועוזב. מה אתה רוצה שיישאר לו בראש?", ""],
+    ["מה אתה הכי לא רוצה שיחשבו עליך כשרואים את הדף?", ""],
+    ["יש תמונה אחת שאתה הכי אוהב של עצמך? תאר אותה ותגיד למה דווקא היא", "ואל תשכח לשלוח לי אותה"]
+  ];
+
+  var KEY = "aw-visual-brief-v2";
+  var TOTAL = PAIRS.length + 2 + REFS.length + OPENS.length;
+
+  /* question numbers derive from the arrays — adding a pair renumbers everything */
+  var N_YES  = PAIRS.length + 1;
+  var N_NO   = PAIRS.length + 2;
+  var N_REF  = PAIRS.length + 3;
+  var N_OPEN = N_REF + REFS.length;
+
+  var state = { pairs: {}, yes: [], no: null, refs: {}, opens: {} };
+  try {
+    var saved = localStorage.getItem(KEY);
+    if (saved) {
+      var p = JSON.parse(saved);
+      if (p && typeof p === "object") {
+        state.pairs = p.pairs || {};
+        state.yes   = Array.isArray(p.yes) ? p.yes : [];
+        state.no    = typeof p.no === "string" ? p.no : null;
+        state.refs  = p.refs || {};
+        state.opens = p.opens || {};
+      }
+    }
+  } catch (e) { /* private mode — carry on without persistence */ }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function labelRow(num, text) {
+    var row = el("div", "q-label");
+    row.appendChild(el("span", "q-num", num + "."));
+    row.appendChild(el("span", null, text));
+    return row;
+  }
+
+  /* ---------- Part A ---------- */
+  var pairsHost = document.getElementById("pairs");
+
+  PAIRS.forEach(function (pair, i) {
+    var q = el("div", "q");
+    q.appendChild(labelRow(i + 1, pair[0] + "  /  " + pair[1]));
+
+    var duo = el("div", "duo");
+    var buttons = [];
+
+    function mark() {
+      buttons.forEach(function (b) {
+        b.setAttribute("aria-pressed", state.pairs[i] === b.dataset.val ? "true" : "false");
+      });
+    }
+
+    [0, 1].forEach(function (side) {
+      var b = el("button", "opt", pair[side]);
+      b.type = "button";
+      b.dataset.val = pair[side];
+      b.addEventListener("click", function () {
+        state.pairs[i] = (state.pairs[i] === b.dataset.val) ? undefined : b.dataset.val;
+        if (state.pairs[i] === undefined) delete state.pairs[i];
+        mark(); save(); tally();
+      });
+      buttons.push(b);
+      duo.appendChild(b);
+    });
+
+    var mid = el("button", "opt mid", "אמצע");
+    mid.type = "button";
+    mid.dataset.val = "אמצע";
+    mid.addEventListener("click", function () {
+      state.pairs[i] = (state.pairs[i] === "אמצע") ? undefined : "אמצע";
+      if (state.pairs[i] === undefined) delete state.pairs[i];
+      mark(); save(); tally();
+    });
+    buttons.push(mid);
+
+    q.appendChild(duo);
+    q.appendChild(mid);
+    pairsHost.appendChild(q);
+    mark();
+  });
+
+  /* ---------- Part B ---------- */
+  var yesHost = document.getElementById("wordsYes");
+  var noHost  = document.getElementById("wordsNo");
+  var yesCount = document.getElementById("yesCount");
+  var yesBtns = [], noBtns = [];
+
+  function markWords() {
+    var full = state.yes.length >= 3;
+    yesBtns.forEach(function (b) {
+      var on = state.yes.indexOf(b.dataset.w) > -1;
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.disabled = (!on && full);
+    });
+    noBtns.forEach(function (b) {
+      b.setAttribute("aria-pressed", state.no === b.dataset.w ? "true" : "false");
+    });
+    yesCount.textContent = state.yes.length + " מתוך 3";
+  }
+
+  WORDS.forEach(function (w) {
+    var y = el("button", "chip", w);
+    y.type = "button"; y.dataset.w = w;
+    y.addEventListener("click", function () {
+      var at = state.yes.indexOf(w);
+      if (at > -1) state.yes.splice(at, 1);
+      else if (state.yes.length < 3) state.yes.push(w);
+      markWords(); save(); tally();
+    });
+    yesBtns.push(y); yesHost.appendChild(y);
+
+    var n = el("button", "chip", w);
+    n.type = "button"; n.dataset.w = w;
+    n.addEventListener("click", function () {
+      state.no = (state.no === w) ? null : w;
+      markWords(); save(); tally();
+    });
+    noBtns.push(n); noHost.appendChild(n);
+  });
+  markWords();
+
+  /* ---------- Parts C & D ---------- */
+  function buildText(host, items, bucket, startNum) {
+    items.forEach(function (item, i) {
+      var q = el("div", "q");
+      q.appendChild(labelRow(startNum + i, item[0]));
+      var ta = document.createElement("textarea");
+      ta.placeholder = item[1];
+      ta.value = bucket[i] || "";
+      ta.addEventListener("input", function () {
+        bucket[i] = ta.value;
+        save(); tally();
+      });
+      q.appendChild(ta);
+      host.appendChild(q);
+    });
+  }
+  document.getElementById("numYes").textContent = N_YES + ".";
+  document.getElementById("numNo").textContent  = N_NO + ".";
+  buildText(document.getElementById("refs"),  REFS,  state.refs,  N_REF);
+  buildText(document.getElementById("opens"), OPENS, state.opens, N_OPEN);
+
+  /* ---------- progress ---------- */
+  var fill = document.getElementById("fill");
+  var count = document.getElementById("count");
+
+  function filled(bucket, n) {
+    var c = 0;
+    for (var i = 0; i < n; i++) {
+      if (bucket[i] && String(bucket[i]).trim() !== "") c++;
+    }
+    return c;
+  }
+
+  function done() {
+    return Object.keys(state.pairs).length
+         + (state.yes.length === 3 ? 1 : 0)
+         + (state.no ? 1 : 0)
+         + filled(state.refs, REFS.length)
+         + filled(state.opens, OPENS.length);
+  }
+
+  function tally() {
+    var d = done();
+    fill.style.width = Math.round((d / TOTAL) * 100) + "%";
+    count.textContent = d + " מתוך " + TOTAL;
+  }
+  tally();
+
+  /* ---------- output ---------- */
+  function compose() {
+    var L = [];
+    L.push("אפיון ויזואלי — אלון וולטרס");
+    L.push("");
+    L.push("— חלק א׳: בחירות —");
+    PAIRS.forEach(function (pair, i) {
+      var a = state.pairs[i];
+      L.push((i + 1) + ". " + pair[0] + " / " + pair[1] + "  ←  " + (a || "לא ענה"));
+    });
+    L.push("");
+    L.push("— חלק ב׳: מילים —");
+    L.push(N_YES + ". ממש אני: " + (state.yes.length ? state.yes.join(", ") : "לא ענה"));
+    L.push(N_NO + ". ממש לא אני: " + (state.no || "לא ענה"));
+    L.push("");
+    L.push("— חלק ג׳: רפרנסים —");
+    REFS.forEach(function (r, i) {
+      L.push((N_REF + i) + ". " + r[0]);
+      L.push((state.refs[i] || "לא ענה").trim());
+      L.push("");
+    });
+    L.push("— חלק ד׳: פתוח —");
+    OPENS.forEach(function (o, i) {
+      L.push((N_OPEN + i) + ". " + o[0]);
+      L.push((state.opens[i] || "לא ענה").trim());
+      L.push("");
+    });
+    return L.join("\n").trim();
+  }
+
+  var status = document.getElementById("status");
+  var out = document.getElementById("out");
+
+  function say(msg, ok) {
+    status.textContent = msg;
+    status.className = ok ? "status ok" : "status";
+  }
+
+  function missingNote() {
+    var left = TOTAL - done();
+    return left > 0 ? " (" + left + " שאלות עדיין ריקות)" : "";
+  }
+
+  document.getElementById("copy").addEventListener("click", function () {
+    var text = compose();
+    function fallback() {
+      out.value = text;
+      out.select();
+      out.setSelectionRange(0, text.length);
+      try { document.execCommand("copy"); } catch (e) {}
+      say("הועתק — תדביק בוואטסאפ ותשלח" + missingNote(), true);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        say("הועתק — תדביק בוואטסאפ ותשלח" + missingNote(), true);
+      })["catch"](fallback);
+    } else {
+      fallback();
+    }
+  });
+
+  document.getElementById("wa").addEventListener("click", function () {
+    var text = compose();
+    if (text.length > 1600) {
+      say("התשובות ארוכות מדי לוואטסאפ ישיר — תשתמש בהעתק תשובות", false);
+      return;
+    }
+    window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+  });
+})();
+</script>
+
+</body>
+</html>
