@@ -1,0 +1,1029 @@
+/* ══════════════════════════════════════════════════════════════
+   PAGES — what the sub-pages (Work, Tools, Shop) need on top of
+   site.css.
+
+   Kept separate so shared/site.css stays a verbatim copy of the
+   original index.html style block.
+
+   The page heading is NOT restyled here: it reuses .hero and
+   .hero-headline straight from site.css, so it is the same hero
+   the home page has, minus the floating objects. Only the bits
+   that don't exist on the home page live below.
+════════════════════════════════════════════════════════════════ */
+
+/* The navbar labels are styled in site.css (.nav-title) — every nav
+   item is live text, so nothing extra is needed here for them. */
+
+:root {
+  /* site.css writes #F4F1ED as a literal in fifteen places — the fill
+     behind case-study tiles and media frames. It never got a variable
+     name, and site.css is kept as a verbatim copy, so the name is
+     given here instead. Same colour, now referable. */
+  --color-frame: #F4F1ED;
+}
+
+/* Nothing on the site glows permanently. The gradient is a hover
+   response everywhere — navbar pills, contact buttons, headings —
+   and that stays true for "Get in touch" too. An always-on version
+   of it was tried on both the navbar item and the closing heading
+   and taken back out. */
+
+/* ── Page heading ──────────────────────────────────────────────
+   .hero on the home page is `height: calc(100vh - 160px)` and holds
+   the ring-cards. Here the same shell is used with nothing floating
+   in it, so the headline sits alone in the open space. */
+
+.hero--page .hero-cards { display: none; }
+
+/* The home page reveals .hero-headline via JS (it adds .ready in sync
+   with document.fonts.ready, to avoid a flash of unwrapped text).
+   These pages have no such entrance, so the markup carries .ready
+   and the headline is simply visible. */
+
+/* ── Section under the heading ─────────────────────────────────*/
+
+.page-section {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg) var(--space-4xl);
+}
+
+/* ── Empty slot ────────────────────────────────────────────────
+   A placeholder for work not added yet. It sits in the same two
+   offset columns as the real cards (.cards-col from site.css), so
+   it takes a card's exact footprint — 400 wide, 480 tall, the body
+   height without the footer line — and the zigzag rhythm holds.
+
+   Clearly not a project though: no thumbnail, no tags, a dashed
+   edge and one quiet label. */
+
+.slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--card-w);
+  height: var(--card-h);
+  flex-shrink: 0;
+  border: 1px dashed var(--color-muted-50);
+  background: transparent;
+}
+
+.slot-label {
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 120%;
+  text-transform: capitalize;
+  color: var(--color-muted-50);
+}
+.slot-label::before { content: '/ '; }
+
+/* ══════════════════════════════════════════════════════════════
+   SHOP GRID
+
+   Modelled on the Articles index at wearemotto.com/blog — a tag
+   filter, a search field, and a three-across grid whose cards are
+   a tag over a thumbnail with the title beneath.
+
+   Everything else is this site's own: the palette from site.css,
+   Switzer at 18px capitalize for titles (matching .card-b-title
+   on the work cards), the --space scale, and square corners.
+
+   Filtering hides and shows cards in place rather than reloading,
+   which is what makes Motto's version feel instant.
+════════════════════════════════════════════════════════════════ */
+
+.shop {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg) var(--space-4xl);
+}
+
+/* ── Filter bar ────────────────────────────────────────────── */
+
+.shop-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  padding-bottom: var(--space-md);
+  margin-bottom: var(--space-xl);
+  border-bottom: 1px solid var(--color-muted-15);
+}
+
+/* Figma: 4px between tags. */
+.shop-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+
+/* Filter tag — Figma "Frame 1707483872".
+   Auto-layout row, 10px padding, 5px radius, 32px tall. That height
+   is 10 + 12 + 10, where the 12 is the cap-height text box produced
+   by leading-trim: both / text-edge: cap. Neither property ships in
+   a browser yet, so the pill is given the finished height directly
+   and the label is centred in it — same result, no hack needed.
+
+   Idle has no background; the background is the hover state. */
+.shop-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  font-family: var(--font-sans);      /* Switzer */
+  font-style: normal;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 120%;
+  /* Figma specified -0.01em; the site standardised on 0 with the
+     navbar, so Switzer's own spacing is used untouched everywhere. */
+  letter-spacing: 0;
+  text-transform: capitalize;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background var(--dur-sm) ease, color var(--dur-sm) ease;
+}
+
+.shop-tag:hover { background: rgba(163, 160, 155, 0.1); }
+
+/* Selected keeps the background but darkens the label, so "selected"
+   and "hovered" don't render identically — the spec only defines the
+   first two states. */
+.shop-tag[aria-pressed="true"] {
+  background: rgba(163, 160, 155, 0.1);
+  color: var(--color-ink);
+}
+
+/* Search — after the field on cursor.com/blog: a fully rounded pill
+   with a hairline border and a filled ground, so it reads as somewhere
+   to type rather than as another button. Measured there: radius
+   effectively infinite, 1px border of the ink at 10%, background
+   rgb(242,241,237) — which is within a point of this site's own
+   --color-frame (#F4F1ED), so the palette needs nothing new.
+
+   Height stays 32px to sit level with the filter tags. */
+.shop-search {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-frame);
+  /* No outline — the filled ground is what says "type here". Hover and
+     focus deepen that fill instead of drawing an edge. */
+  transition: background var(--dur-sm) ease;
+}
+.shop-search:hover { background: rgba(163, 160, 155, 0.18); }
+.shop-search:focus-within { background: rgba(163, 160, 155, 0.28); }
+
+.shop-search svg {
+  flex: none;
+  display: block;
+  color: var(--color-muted);
+  transition: color var(--dur-sm) ease;
+}
+.shop-search:focus-within svg { color: var(--color-ink); }
+
+/* A search input is one of the few elements browsers still style
+   themselves — Chrome swaps in a system UI font unless every part of
+   the font shorthand is declared, which is why the placeholder was
+   coming out in the wrong face. `font` sets all of them at once, and
+   `appearance: none` drops the rest of the native treatment. */
+.shop-search input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: clamp(96px, 14vw, 170px);
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: normal 400 16px/120% var(--font-sans);
+  letter-spacing: 0;
+  color: var(--color-ink);
+}
+.shop-search input::placeholder { color: var(--color-muted); opacity: 1; }
+.shop-search input:focus { outline: none; }
+/* The browser's own clear button doesn't match anything here. */
+.shop-search input::-webkit-search-cancel-button,
+.shop-search input::-webkit-search-decoration { -webkit-appearance: none; display: none; }
+
+/* ── Grid ──────────────────────────────────────────────────── */
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-xl) var(--space-lg);
+}
+
+.shop-card { position: relative; min-width: 0; }
+.shop-card[hidden] { display: none; }
+
+/* Whole card clickable, without nesting interactive elements. */
+.shop-card-link::after { content: ''; position: absolute; inset: 0; z-index: 3; }
+
+/* Every thumbnail is square, so the grid keeps one rhythm whatever
+   a product turns out to be. */
+.shop-card-media {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: var(--color-frame);
+  overflow: hidden;
+}
+.shop-card-media > img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The category is no longer printed on the thumbnail — it lives on
+   the product page. It stays in the card's data attributes, which is
+   all the filter ever read it from. */
+
+/* ── Live type thumbnail ───────────────────────────────────────
+   The typeface card previews itself rather than showing a picture of
+   itself: real text in the subset face, walking up the weight axis
+   while the pointer is over the card. White on black, matching the
+   product artwork. */
+.shop-card-media--type {
+  background: #000000;
+  /* Shared by the sample and the slider, so the slider can be exactly
+     as tall as the block of letters without measuring anything. */
+  --sample-size: clamp(34px, 5.6vw, 68px);
+  --sample-lh: 1.35;
+  --sample-lines: 3;
+}
+
+.shop-card-type {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  /* The block sits in the middle of the thumbnail; the lines inside it
+     stay flush left. Extra padding on the left clears the weight
+     slider that runs down that edge. */
+  place-items: center;
+  padding: 0 var(--space-md) 0 calc(var(--space-md) + 20px);
+  white-space: pre-line;          /* the sample is three lines */
+  text-align: left;
+  font-family: 'DotsMono001 Specimen', ui-monospace, monospace;
+  font-size: var(--sample-size);
+  line-height: var(--sample-lh);
+  color: #FFFFFF;
+  font-variation-settings: 'wght' 250;
+  /* No transition. The weight is being driven directly by the pointer,
+     so easing it only puts the letters behind the hand. */
+  user-select: none;
+}
+
+/* Grain — the same noise the sphere card uses, screened so it reads as
+   white speckle over the black.
+
+   The sphere card runs it at 0.12, but that card sits on a light
+   ground. Screened onto pure black the noise comes through at its own
+   value — mid grey, about 50% — so 0.12 of that lands near RGB 15 and
+   is invisible. Hence --grain: it is a knob, not a constant.
+
+   Left unanimated: the sphere card's shifts every 0.35s, which is
+   lively on one canvas and restless across a whole grid. */
+.shop-card-media {
+  --grain: 0.34;
+}
+
+.shop-card-media .card-grain {
+  z-index: 1;
+  opacity: var(--grain);
+  mix-blend-mode: screen;
+  animation: none;
+}
+
+/* ── Weight read-out ───────────────────────────────────────────
+   Driven by the hover rather than dragged: the marker travels the
+   same 250→800 the letters do, on the same curve, so it reads as the
+   cause of what the type is doing. No numbers — the position alone
+   says where on the axis you are.
+
+   There is no drawn track — the left edge of the frame is the slider.
+   The marker rides it from the very bottom to the very top, following
+   the pointer: low is light, high is bold. So the slider isn't
+   reporting the hover, it *is* the control. */
+.shop-weight {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.shop-weight-track {
+  position: relative;
+  width: 1px;
+  height: 100%;
+  background: none;                /* the frame edge stands in for it */
+}
+
+/* Triangle pointing left, at the edge it marks. Flush to the frame. */
+.shop-weight-knob {
+  position: absolute;
+  left: 0;
+  bottom: 25%;                     /* resting at 250 on a 100–900 axis */
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 11px solid #FFFFFF;
+  transform: translateY(50%);
+  /* No transition: the marker is under the hand, and any easing here
+     reads as lag rather than smoothing. */
+}
+
+/* Placeholder card for a product not released yet. */
+.shop-card--soon .shop-card-media {
+  border: 1px dashed var(--color-muted-50);
+  background: transparent;
+}
+.shop-card--soon .shop-card-type {
+  color: var(--color-muted-50);
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: 16px;
+  text-transform: capitalize;
+}
+
+/* ── Card footer — mirrors .card-b-footer on the work cards ──── */
+
+.shop-card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+/* What the thing is, under its name — the way a foundry lists a
+   release. Carries the description the title used to hold after a
+   dash. */
+.shop-card-sub {
+  margin-top: 2px;
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 120%;
+  text-transform: capitalize;
+  color: var(--color-muted-50);
+}
+
+.shop-card-title {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 120%;
+  text-transform: capitalize;
+  color: var(--color-muted);
+  margin: 0;
+  /* Motto caps titles at two lines so every row stays level. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: color var(--dur-sm) ease;
+}
+.shop-card:hover .shop-card-title { color: var(--color-ink); }
+
+.shop-card-price {
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: 18px;
+  line-height: 120%;
+  color: var(--color-muted-50);
+}
+
+.shop-empty {
+  grid-column: 1 / -1;
+  padding: var(--space-2xl) 0;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--color-muted-50);
+}
+
+@media (max-width: 900px) {
+  .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .shop       { padding: 0 var(--space-md) var(--space-3xl); }
+  .shop-grid  { grid-template-columns: 1fr; gap: var(--space-lg); }
+  .shop-bar   { gap: var(--space-sm); }
+  .shop-search { margin-inline-start: 0; width: 100%; }
+  .shop-search input { width: 100%; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PRODUCT — the shop's typeface entry
+
+   The specimen runs on a subset of the real typeface: basic Latin
+   only, no extras, no static weights, no licence. 3.7KB against the
+   153KB that is sold, so the page can show the font working without
+   giving away the thing itself.
+════════════════════════════════════════════════════════════════ */
+
+@font-face {
+  font-family: 'DotsMono001 Specimen';
+  src: url('/shared/fonts/DotsMono001-Specimen.woff2') format('woff2-variations');
+  font-weight: 100 900;      /* the variable axis survived subsetting */
+  font-display: swap;
+}
+
+.product {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg) var(--space-4xl);
+}
+
+/* ── Live type tester ──────────────────────────────────────── */
+
+.spec {
+  border: 1px solid var(--color-muted-15);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #111111;
+}
+
+.spec-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.spec-label {
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: 14px;
+  text-transform: capitalize;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.spec-control { display: flex; align-items: center; gap: 10px; }
+.spec-control:last-of-type { margin-inline-start: auto; }
+.spec-control input { width: 120px; accent-color: #FFFFFF; }
+.spec-control output {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+  min-width: 4ch;
+}
+
+/* The field itself. Editable, so a visitor types their own word —
+   which is the only way to really judge a typeface. */
+.spec-field {
+  display: block;
+  width: 100%;
+  min-height: 260px;
+  padding: clamp(20px, 5vw, 56px);
+  border: 0;
+  background: transparent;
+  color: #FFFFFF;
+  font-family: 'DotsMono001 Specimen', ui-monospace, monospace;
+  font-size: 72px;
+  font-weight: 400;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.spec-field:focus { outline: none; }
+
+/* ── Product detail ────────────────────────────────────────── */
+
+.product-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--space-xl);
+  align-items: start;
+  margin-top: var(--space-xl);
+}
+
+/* The category moved off the thumbnail and onto the product page. */
+.product-kicker {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 120%;
+  text-transform: capitalize;
+  color: var(--color-muted-50);
+  margin-bottom: var(--space-xs);
+}
+.product-kicker::before { content: '/ '; }
+
+.product-name {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 56px;
+  line-height: 1.1;
+  color: var(--color-muted);
+}
+
+.product-sub {
+  margin-top: 4px;
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 120%;
+  text-transform: capitalize;
+  color: var(--color-muted-50);
+}
+
+.product-blurb {
+  margin-top: var(--space-md);
+  max-width: 54ch;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+.product-buy {
+  padding: var(--space-lg);
+  border: 1px solid var(--color-muted-15);
+  border-radius: 14px;
+  background: var(--color-surface);
+}
+
+.product-price {
+  font-family: var(--font-serif);
+  font-size: 40px;
+  line-height: 1;
+  color: var(--color-ink);
+}
+.product-price small {
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--color-muted);
+}
+
+.product-specs { margin-top: var(--space-md); }
+.product-spec {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--color-muted-15);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+.product-spec dt { color: var(--color-muted-50); }
+.product-spec dd { color: var(--color-ink); text-align: right; }
+
+.product-cta { margin-top: var(--space-lg); }
+
+.product-note {
+  margin-top: var(--space-sm);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-muted-50);
+}
+
+@media (max-width: 900px) {
+  .product-row  { grid-template-columns: 1fr; gap: var(--space-lg); }
+  .product-name { font-size: 40px; }
+  .spec-field   { font-size: 48px; min-height: 200px; }
+}
+
+@media (max-width: 600px) {
+  .product    { padding: 0 var(--space-md) var(--space-3xl); }
+  .spec-field { font-size: 34px; min-height: 160px; }
+  .spec-control:last-of-type { margin-inline-start: 0; }
+}
+
+/* ── Empty state for Tools / Shop ──────────────────────────────*/
+
+.page-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-4xl) var(--space-lg);
+  text-align: center;
+}
+
+.page-empty-note {
+  max-width: 52ch;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SECONDARY FOOTER
+
+   The page ends on one large line — the same move a case study makes
+   with "Back to top": display type you arrive at, not a grid of
+   columns to read. The ways to reach her sit under it as a quiet row
+   of the site's own pills.
+
+   The home page keeps its full contact section and passes
+   SITE_FOOTER_SKIP_CONTACT, which drops the duplicate email and phone.
+════════════════════════════════════════════════════════════════ */
+
+.foot2 {
+  margin-top: var(--space-3xl);
+  padding-top: var(--space-2xl);
+  border-top: 1px solid var(--color-muted-15);
+  text-align: center;
+}
+
+.foot2-cta {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+/* Sized like the hero headline, so the bottom of the page answers the
+   top of it. */
+.foot2-big {
+  display: inline-block;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: clamp(48px, 8vw, 88px);
+  line-height: 1.05;
+  color: var(--color-muted);
+  text-decoration: none;
+  transition: color var(--dur-sm) ease;
+}
+.foot2-big:hover { color: var(--color-ink); }
+
+.foot2-sub {
+  margin-top: var(--space-sm);
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: 24px;
+  line-height: 120%;
+  letter-spacing: -0.02em;
+  color: var(--color-muted);
+}
+
+.foot2-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+  max-width: 1440px;
+  margin: var(--space-xl) auto 0;
+  padding: 0 var(--space-lg);
+}
+
+.foot2-legal {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  max-width: 1440px;
+  margin: var(--space-2xl) auto 0;
+  padding: 0 var(--space-lg) var(--space-lg);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-muted-50);
+}
+
+.foot2-top {
+  text-decoration: none;
+  color: var(--color-muted-50);
+  transition: color var(--dur-sm) ease;
+}
+.foot2-top:hover { color: var(--color-ink); }
+
+/* The accent strip the home page also ends on. */
+.foot2-strip { height: 4px; background: var(--gradient-accent); }
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE
+════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 600px) {
+  /* site.css collapses .cards-col to `display: contents` here, so the
+     cards become direct children of .cards-inner and are sequenced by
+     --card-order. Its rule only names .card-b, so the slots need the
+     same treatment or they would jump to the end of the list. */
+  .slot {
+    order: var(--card-order, 0);
+    width: 100%;
+    height: auto;
+    aspect-ratio: 400 / 480;
+  }
+
+  .page-section { padding: 0 var(--space-md) var(--space-3xl); }
+  .foot2-cta,
+  .foot2-row,
+  .foot2-legal { padding-inline: var(--space-md); }
+  .foot2-row   { gap: var(--space-md); }
+  .foot2-sub   { font-size: 18px; }
+  .slot { min-height: 180px; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DARK SHOP — a trial, not a decision
+
+   Scoped to html[data-theme="dark"] and only ever set on the shop
+   page, so nothing else on the site can be affected. Remove this
+   block and the toggle in shop/index.html to take it back out.
+
+   The palette is turned rather than replaced: the same warm greys,
+   swapped end for end, so it still reads as this site and not as a
+   generic dark theme.
+════════════════════════════════════════════════════════════════ */
+
+html[data-theme="dark"] {
+  --color-bg:        #1A1917;   /* warm near-black, not a blue-black */
+  --color-surface:   #232120;
+  --color-frame:     #262422;   /* the ground behind a thumbnail     */
+  --color-muted:     #908C86;   /* body text, readable on the dark   */
+  --color-ink:       #F5F3F0;   /* emphasis — the light end now      */
+  --color-ink-muted: #CFCAC4;
+  --color-white:     #2E2B29;   /* "raised" surfaces, e.g. on focus  */
+}
+
+html[data-theme="dark"] body { background: var(--color-bg); }
+
+/* The two hairlines were written against the light ground. */
+html[data-theme="dark"] .shop-search:hover { background: rgba(245, 243, 240, 0.10); }
+html[data-theme="dark"] .shop-search:focus-within { background: rgba(245, 243, 240, 0.16); }
+html[data-theme="dark"] .shop-tag:hover,
+html[data-theme="dark"] .shop-tag[aria-pressed="true"] { background: rgba(245, 243, 240, 0.08); }
+
+/* No outline on the thumbnails. The black sits directly on the dark
+   ground and the frame reads by its contents rather than by an edge. */
+
+/* The cursor's SVGs are drawn in the ink colour, which disappears on
+   the dark ground. Same override .cursor-tooltip--light already uses
+   for dark cards, applied to the whole cursor here. */
+html[data-theme="dark"] #cursor svg path   { stroke: #F5F3F0 !important; }
+html[data-theme="dark"] #cursor svg circle,
+html[data-theme="dark"] #cursor svg polygon,
+html[data-theme="dark"] #cursor svg text   { fill: #F5F3F0 !important; }
+
+/* ── Buttons on the dark ground ────────────────────────────────
+   The accent gradient is built for the beige page; against the dark
+   it turns into a colour cast that fights everything around it. The
+   glow goes white here, and the label goes dark to sit on it. */
+/* The glow is the only thing drawn — spread wider than the pill and
+   blurred hard, so it reads as a soft mass of light rather than a
+   shape with an edge. Blurring an opaque white leaves the middle
+   fully opaque, which is what the dark label sits on; the falloff
+   happens outside the text. */
+html[data-theme="dark"] .contact-btn::before,
+html[data-theme="dark"] .nav-link::before,
+html[data-theme="dark"] .nav-logo::before {
+  background: #FFFFFF;
+  inset: -5px -14px;
+  filter: blur(16px);
+}
+
+/* No background of its own — a filled pill on top of the glow is
+   exactly the hard edge that gave it away. */
+html[data-theme="dark"] .contact-btn:hover,
+html[data-theme="dark"] .nav-link:hover,
+html[data-theme="dark"] .nav-logo:hover {
+  background: transparent;
+  color: #1A1917;
+}
+
+html[data-theme="dark"] .contact-btn:hover .btn-label,
+html[data-theme="dark"] .contact-btn:hover .btn-slash,
+html[data-theme="dark"] .nav-link:hover .nav-title,
+html[data-theme="dark"] .nav-logo:hover .nav-title {
+  color: #1A1917;
+  opacity: 1;
+}
+
+/* ── The toggle itself ─────────────────────────────────────────
+   Deliberately plain: it is here to compare the two, not to ship. */
+.theme-toggle {
+  position: fixed;
+  right: var(--space-md);
+  bottom: var(--space-md);
+  z-index: 1000;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--color-muted-50);
+  border-radius: 999px;
+  background: var(--color-bg);
+  font: normal 400 14px/120% var(--font-sans);
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: color var(--dur-sm) ease, border-color var(--dur-sm) ease;
+}
+.theme-toggle:hover { color: var(--color-ink); border-color: var(--color-ink); }
+
+/* ══════════════════════════════════════════════════════════════
+   MARQUEE TITLE
+
+   A slim band that names the page, in place of the full-height hero.
+   The unit repeats and drifts right to left, so the strip reads as one
+   continuous line rather than a heading sitting in a box.
+
+   The unit is the Figma "Shop/" frame: the word, then three
+   overlapping rings. Every measurement below is written in em against
+   the 96px the spec was drawn at, so the whole assembly scales with
+   the type instead of coming apart at other sizes:
+
+     word            161   × 69      96px Instrument Serif, -0.02em
+     ring            52.97 × 74.37   4px border, no fill
+     ring overlap    24                → frame 110.9 wide
+     gap             8
+     padding-right   16
+     unit            295.9 × 74.37
+
+   The track holds two identical sets and travels -50%, which lands the
+   second set exactly where the first began. The item count can change;
+   the -50% cannot.
+════════════════════════════════════════════════════════════════ */
+
+.mtitle {
+  position: relative;
+  overflow: hidden;
+  /* The navbar is fixed and 60px tall, and this band starts at the very
+     top of the document — so its height has to be cleared before any
+     breathing room is measured, or the type sits under the nav. */
+  padding-top: calc(var(--navbar-h) + clamp(72px, 9vw, 124px));
+  padding-bottom: clamp(64px, 8vw, 108px);
+  user-select: none;
+
+  /* Fade both ends, so the strip runs out of the page rather than
+     stopping at a hard edge. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+
+.mtitle-track {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  animation: mtitle-drift 46s linear infinite;
+}
+
+/* One repeat: word + rings. */
+.mtitle-unit {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.0833em;                 /* 8 / 96   */
+  padding-right: 0.1667em;       /* 16 / 96  */
+  font-size: clamp(52px, 9vw, 96px);
+}
+
+.mtitle-word {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1em;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: capitalize;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+/* Exported artwork, not CSS shapes: the rings are slanted ovals and
+   their overlap is drawn into the path data. 115 × 79 in its own
+   viewBox, sized in em so it scales with the word beside it. */
+.mtitle-rings {
+  flex: none;
+  width: 1.1979em;               /* 115 / 96 */
+  height: 0.8229em;              /*  79 / 96 */
+  color: var(--color-muted);     /* the paths stroke currentColor */
+  overflow: visible;
+}
+
+@keyframes mtitle-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+/* Holding still is better than a strip that jumps a frame at a time. */
+@media (prefers-reduced-motion: reduce) {
+  .mtitle-track { animation: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DARK SHOP — a trial, not a decision
+
+   Scoped to html[data-theme="dark"] and only ever set on the shop
+   page, so nothing else on the site can be affected. Remove this
+   block and the toggle in shop/index.html to take it back out.
+
+   The palette is turned rather than replaced: the same warm greys,
+   swapped end for end, so it still reads as this site and not as a
+   generic dark theme.
+════════════════════════════════════════════════════════════════ */
+
+html[data-theme="dark"] {
+  --color-bg:        #1A1917;   /* warm near-black, not a blue-black */
+  --color-surface:   #232120;
+  --color-frame:     #262422;   /* the ground behind a thumbnail     */
+  --color-muted:     #908C86;   /* body text, readable on the dark   */
+  --color-ink:       #F5F3F0;   /* emphasis — the light end now      */
+  --color-ink-muted: #CFCAC4;
+  --color-white:     #2E2B29;   /* "raised" surfaces, e.g. on focus  */
+}
+
+html[data-theme="dark"] body { background: var(--color-bg); }
+
+/* The two hairlines were written against the light ground. */
+html[data-theme="dark"] .shop-search:hover { background: rgba(245, 243, 240, 0.10); }
+html[data-theme="dark"] .shop-search:focus-within { background: rgba(245, 243, 240, 0.16); }
+html[data-theme="dark"] .shop-tag:hover,
+html[data-theme="dark"] .shop-tag[aria-pressed="true"] { background: rgba(245, 243, 240, 0.08); }
+
+/* No outline on the thumbnails. The black sits directly on the dark
+   ground and the frame reads by its contents rather than by an edge. */
+
+/* The cursor's SVGs are drawn in the ink colour, which disappears on
+   the dark ground. Same override .cursor-tooltip--light already uses
+   for dark cards, applied to the whole cursor here. */
+html[data-theme="dark"] #cursor svg path   { stroke: #F5F3F0 !important; }
+html[data-theme="dark"] #cursor svg circle,
+html[data-theme="dark"] #cursor svg polygon,
+html[data-theme="dark"] #cursor svg text   { fill: #F5F3F0 !important; }
+
+/* ── Buttons on the dark ground ────────────────────────────────
+   The accent gradient is built for the beige page; against the dark
+   it turns into a colour cast that fights everything around it. The
+   glow goes white here, and the label goes dark to sit on it. */
+/* The glow is the only thing drawn — spread wider than the pill and
+   blurred hard, so it reads as a soft mass of light rather than a
+   shape with an edge. Blurring an opaque white leaves the middle
+   fully opaque, which is what the dark label sits on; the falloff
+   happens outside the text. */
+html[data-theme="dark"] .contact-btn::before,
+html[data-theme="dark"] .nav-link::before,
+html[data-theme="dark"] .nav-logo::before {
+  background: #FFFFFF;
+  inset: -5px -14px;
+  filter: blur(16px);
+}
+
+/* No background of its own — a filled pill on top of the glow is
+   exactly the hard edge that gave it away. */
+html[data-theme="dark"] .contact-btn:hover,
+html[data-theme="dark"] .nav-link:hover,
+html[data-theme="dark"] .nav-logo:hover {
+  background: transparent;
+  color: #1A1917;
+}
+
+html[data-theme="dark"] .contact-btn:hover .btn-label,
+html[data-theme="dark"] .contact-btn:hover .btn-slash,
+html[data-theme="dark"] .nav-link:hover .nav-title,
+html[data-theme="dark"] .nav-logo:hover .nav-title {
+  color: #1A1917;
+  opacity: 1;
+}
+
+/* ── The toggle itself ─────────────────────────────────────────
+   Deliberately plain: it is here to compare the two, not to ship. */
+.theme-toggle {
+  position: fixed;
+  right: var(--space-md);
+  bottom: var(--space-md);
+  z-index: 1000;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--color-muted-50);
+  border-radius: 999px;
+  background: var(--color-bg);
+  font: normal 400 14px/120% var(--font-sans);
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: color var(--dur-sm) ease, border-color var(--dur-sm) ease;
+}
+.theme-toggle:hover { color: var(--color-ink); border-color: var(--color-ink); }
+
+
+/* ══════════════════════════════════════════════════════════════
+   DITHERED GLOW — shop page only
+
+   The glow keeps its gradient; what changes is that the falloff is
+   drawn as a field of hard dots whose density carries it, instead of
+   as smooth transparency. The work happens in the SVG filter defined
+   at the top of shop/index.html — a CSS mask can't threshold, and a
+   threshold is the whole trick.
+
+   The blur lives in the filter now, so there is none here.
+
+   Scoped to .page-shop; widen the selector to make it site-wide.
+════════════════════════════════════════════════════════════════ */
+
+.page-shop .contact-btn::before,
+.page-shop .nav-link::before,
+.page-shop .nav-logo::before {
+  filter: url(#ditherGlow);
+  inset: -8px -18px;
+}

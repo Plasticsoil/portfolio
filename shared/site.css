@@ -1,0 +1,3463 @@
+/* ══════════════════════════════════════════════════════════════
+   SITE CSS — the whole of the original index.html <style> block,
+   moved out verbatim so that other pages can share it.
+
+   NOTHING HERE HAS BEEN REDESIGNED. Not a colour, not a radius,
+   not a font size. It is the same declarations in the same order;
+   only their location changed, so /tools and /shop can look
+   identical to the home page instead of approximating it.
+
+   Edit this file to change the site's appearance everywhere.
+════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════
+       DESIGN TOKENS
+       All raw values are defined once here and referenced
+       via var() throughout. Changing a token updates the
+       whole file — no hunting for magic numbers.
+    ══════════════════════════════════════════════════════ */
+    :root {
+      /* ── Colors ─────────────────────────────────────── */
+      --color-bg:        #F8F6F3;   /* page background */
+      --color-surface:   #FBFAF9;   /* overlay / card surface */
+      --color-muted:     #A3A09B;   /* primary text in muted palette */
+      --color-muted-50:  rgba(163, 160, 155, 0.50); /* half-opacity muted */
+      --color-muted-15:  rgba(163, 160, 155, 0.15); /* border / light fill */
+      --color-ink:       #26251E;   /* near-black for emphasis */
+      --color-ink-muted: #68645E;   /* case study headings / title */
+      --color-white:     #FFFFFF;
+
+      /* ── Gradient ────────────────────────────────────── */
+      /* Pink → Yellow → Cyan accent used on nav glows, btn glows, smoke */
+      --gradient-accent: linear-gradient(90deg, #FF6EFD -0.24%, #F8FF7B 55.18%, #60FBFF 88.92%);
+
+      /* ── Fonts ───────────────────────────────────────── */
+      --font-serif: 'Instrument Serif', serif;
+      /* Switzer, loaded from Fontshare as the variable family (weights
+         100–900, with a real italic rather than a synthesised slant).
+         It replaces Nimbus Sans L, which Figma specified but which was
+         never installed or self-hosted — so the site had in fact been
+         falling back to Helvetica all along. FunType already runs on
+         Switzer, so the portfolio and the tool now share a face. */
+      --font-sans:  'Switzer', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+      /* ── Spacing scale ───────────────────────────────── */
+      --space-xs:   8px;
+      --space-sm:   16px;
+      --space-md:   24px;
+      --space-lg:   40px;
+      --space-xl:   80px;
+      --space-2xl:  120px;
+      --space-3xl:  180px;
+      --space-4xl:  240px;
+
+      /* ── Layout ──────────────────────────────────────── */
+      --content-width: 1200px;
+      --card-w:        400px;
+      --card-h:        480px;
+      --navbar-h:      60px;
+      --overlay-w:       1320px; /* max width; panel uses min() for narrow viewports */
+      --overlay-gallery-h: 600px; /* fixed shell height for gallery overlay (Figma “Project overlay”) */
+      /* Fixed gap: overlay top edge sits 60px below the navbar */
+      --overlay-gap-below-navbar: 60px;
+      --overlay-panel-top:        calc(var(--navbar-h) + var(--overlay-gap-below-navbar));
+      --overlay-foot-h:           91px; /* bottom gradient strip — title + tags */
+
+      /* ── Easing ──────────────────────────────────────── */
+      --ease-spring: cubic-bezier(0.34, 1.2, 0.64, 1); /* overshoot spring */
+      --dur-sm:      0.15s;
+      --dur-md:      0.35s;
+      --dur-lg:      0.45s;
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       RESET & BASE
+    ══════════════════════════════════════════════════════ */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      /* Hide the OS cursor globally — the custom #cursor div takes over */
+      cursor: none !important;
+      /* Suppress the iOS/Android blue tap-highlight rectangle on touch */
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    html, body {
+      width: 100%;
+      background: var(--color-bg);
+      overflow-x: hidden;
+    }
+
+    /* Overscroll peek — a soft pink/yellow/cyan gradient that pulls up
+       from the bottom of the page when the user tries to scroll past
+       the end. Lives outside the mobile media query because the JS that
+       drives it only runs on touch devices anyway. */
+    #overscroll-peek {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      /* Tall bar so all three accent colors stack with room to read. */
+      height: 360px;
+      background: linear-gradient(to top,
+        rgba(255, 110, 253, 0.95) 0%,
+        rgba(255, 110, 253, 0.85) 18%,
+        rgba(248, 255, 123, 0.80) 38%,
+        rgba(96, 251, 255, 0.70)  60%,
+        rgba(96, 251, 255, 0.30)  82%,
+        rgba(96, 251, 255, 0.0)   100%);
+      filter: blur(22px);
+      transform: translateY(100%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 99997;
+      will-change: transform, opacity;
+      transition: transform 0.4s cubic-bezier(.2,.8,.2,1),
+                  opacity   0.4s ease;
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       CURSOR
+       The #cursor div follows the mouse via JS transform.
+       mix-blend-mode: difference on the canvas smoke trail
+       means the colorful particles visually invert whatever
+       they overlap, creating a "burn-through" effect without
+       needing to know the background color at paint time.
+    ══════════════════════════════════════════════════════ */
+    #cursor {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 99999;
+      will-change: transform;
+      opacity: 0; /* hidden until first mousemove */
+    }
+
+    /* JS sets transform on this inner wrapper to shift the visual anchor
+       point between modes (see CURSOR SYSTEM). */
+    #cursor-inner {
+      display: block;
+    }
+    /* Click feedback — cursor squishes on mousedown and springs back on
+       mouseup. We scale the inner CHILDREN of #cursor-inner (the idle
+       brackets, canpress, tooltip, action and image), NOT #cursor-inner
+       itself: the inner wrapper carries an inline anchor-translate
+       transform that JS rewrites every mousemove, which would override
+       any CSS transform we put on it. The children have no inline
+       transform, so a CSS class on the outer #cursor cleanly scales
+       whichever child is currently visible. */
+    #cursor > #cursor-inner > * {
+      transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #cursor.down > #cursor-inner > * { transform: scale(0.65); }
+
+
+    /* Plain paragraph tooltips (case-study QR): same type stack as default tooltip (Inter 16 / #26251E) + card + shadow */
+    #cursor-tooltip.cursor-tooltip--plain {
+      filter: drop-shadow(0 6px 24px rgba(38, 37, 30, 0.1));
+    }
+
+    #cursor-tooltip.cursor-tooltip--plain svg {
+      overflow: visible;
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       NAVBAR
+    ══════════════════════════════════════════════════════ */
+    .navbar {
+      width: 100%;
+      height: var(--navbar-h);
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 10000;
+    }
+
+    .navbar-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--lg, 40px);
+    }
+
+    /* ── Shared pill style for logo + nav links ────────
+       Figma: auto-layout row, padding 8px 28px, gap 4px. */
+    .nav-logo,
+    .nav-link {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-decoration: none;
+      padding: 8px 28px;
+      border-radius: 100px;
+      overflow: visible;
+      color: var(--color-muted);
+      transition: background var(--dur-sm) ease, color var(--dur-sm) ease;
+    }
+
+    /* Blurred gradient glow that fades in on hover */
+    .nav-logo::before,
+    .nav-link::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--gradient-accent);
+      filter: blur(11px);
+      border-radius: 100px;
+      opacity: 0;
+      transition: opacity var(--dur-sm) ease;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .nav-logo:hover,
+    .nav-link:hover,
+    .nav-link.proximity-hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #000;
+    }
+
+    .nav-logo:hover::before,
+    .nav-link:hover::before,
+    .nav-link.proximity-hover::before {
+      opacity: 1;
+    }
+
+    /* Slash separators are present in HTML for screen-reader
+       context but hidden visually */
+    .nav-link .slash,
+    .nav-logo .slash {
+      display: none;
+    }
+
+    /* Navbar label — live text, per the Figma "Title" spec. These used to
+       be SVG outlines of the same words, which meant a new nav item could
+       not be added without exporting artwork for it. */
+    .nav-title {
+      display: inline-block;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 120%;
+      /* Figma specified -0.01em; set to 0 by preference — Switzer's own
+         spacing is used as drawn, with nothing pulled out of it. */
+      letter-spacing: 0;
+      text-transform: capitalize;
+      color: inherit;
+      /* Figma sets leading-trim: both / text-edge: cap, which trims the
+         line box down to the 12px cap height — that is where its 28px
+         pill comes from (12 + 8 + 8). Neither property ships in browsers
+         yet, so the same trim is done with a negative block margin:
+         (12px − 1.2em) / 2 removed from each side. Glyphs still render
+         in full; only the box shrinks, exactly as leading-trim would. */
+      margin-block: calc((12px - 1.2em) / 2);
+    }
+
+    /* Figma places the link pills flush against each other — their own
+       28px side padding provides the separation. */
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+
+    /* Navbar background changes when overlay is open */
+    body.overlay-open .navbar {
+      background: var(--color-surface);
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       HERO
+    ══════════════════════════════════════════════════════ */
+    .hero {
+      position: relative;
+      isolation: isolate;
+      /* Slightly shorter than full viewport so the "/ my work" label peeks
+         above the fold — a soft hint that there's more below to scroll to. */
+      height: calc(100vh - 160px);
+      min-height: 600px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Hero cards layer ──────────────────────────────
+       Houses the floating project cards around the hero.
+       Currently: single SHLTR model card in idle state.
+       Future: collection layout (not ellipse).
+    ──────────────────────────────────────────────────── */
+    .hero-cards {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Base card shell */
+    .ring-card {
+      position: absolute;
+      width: 266.67px;
+      height: 176.47px;
+      pointer-events: all;
+      overflow: visible;
+    }
+
+    /* Invisible hit target — model extends past card shell; keeps hover/tooltip reliable */
+    .ring-card-hit {
+      position: absolute;
+      left: calc(50% - 180px);
+      top: calc(50% - 230px);
+      width: 360px;
+      height: 460px;
+      z-index: 2;
+      pointer-events: auto;
+    }
+
+    /* Mask group — visible viewport, 232×248 per Figma.
+       Idle: opacity 0.34, crisp
+       Hover: opacity 1, blur(5px) — soft glow */
+    .ring-card-mask {
+      position: absolute;
+      width: 232px;
+      height: 248px;
+      left: 17px;
+      top: -36px;
+      overflow: visible;
+      pointer-events: none;
+      opacity: 0.34;
+      z-index: 0;
+      transition: opacity 0.35s ease, filter 0.35s ease;
+    }
+
+    /* Shared stage — scales both the model-viewer and the gradient canvas
+       together so they stay at identical size/position → perfect sync. */
+    .ring-card-stage {
+      position: absolute;
+      width: 232px;
+      height: 248px;
+      left: 0;
+      top: 0;
+      transform: scale(1.6);
+      transform-origin: 50% 50%;
+      pointer-events: none;
+    }
+
+    /* Model silhouette. One element, one rotation source, filter swaps on hover.
+       Idle  → CSS filter flattens all shading to solid grey.
+       Hover → SVG filter composites accent gradient inside the model's alpha. */
+    .ring-card-model {
+      position: absolute;
+      width: 232px;
+      height: 248px;
+      left: 0;
+      top: 0;
+      background-color: transparent !important;
+      border: none;
+      outline: none;
+      filter: contrast(0) brightness(1.28);
+      transition: filter 0.35s ease;
+      z-index: 0;
+    }
+
+    /* Hover — swap to gradient-tint filter, bump container opacity, add gentle blur */
+    .ring-card:hover .ring-card-mask {
+      opacity: 1;
+      filter: blur(3px);
+    }
+    .ring-card:hover .ring-card-model {
+      filter: url(#mv-gradient-tint);
+    }
+
+    /* Long-press (~3s) on hero hit area: show full lit model (no silhouette / gradient tint) */
+    .ring-card.ring-card--model-revealed .ring-card-mask {
+      opacity: 1;
+      filter: none;
+    }
+
+    .ring-card.ring-card--model-revealed:hover .ring-card-mask {
+      filter: blur(2px);
+    }
+
+    .ring-card.ring-card--model-revealed .ring-card-model,
+    .ring-card.ring-card--model-revealed:hover .ring-card-model {
+      filter: none;
+    }
+
+    .ring-card-model::part(default-ar-button)    { display: none; }
+    .ring-card-model::part(default-progress-bar) { display: none; }
+
+    /* Static-image variant of the ring-card visual (HERO_CONFIG.image).
+       Preserves aspect ratio inside the 232×248 stage and matches the
+       Figma silhouette rotation. The grey-silhouette + hover-gradient
+       filters applied to .ring-card-model above carry over unchanged. */
+    img.ring-card-model {
+      object-fit: contain;
+      /* Half the visual size of the static mascot relative to the model-viewer
+         baseline (Figma: 212.75×200 mascot inside the 232×248 mask, further
+         shrunk by 0.5 so it reads at the same scale as the SHLTR silhouette). */
+      transform: rotate(12.23deg) scale(0.5);
+      transform-origin: 50% 50%;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    /* ── moji + sphere silhouettes ───────────────────────────────
+       Same grey-silhouette (idle) → gradient-tint (hover) treatment
+       as .ring-card-model, applied to the moji emoji and the hero
+       wireframe sphere. Kept on their own classes so they don't get
+       swept into the model-viewer turntable/spin logic. */
+    .ring-card-emoji,
+    .ring-card-sphere {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 232px;
+      height: 248px;
+      filter: contrast(0) brightness(1.28);
+      transition: filter 0.35s ease;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .ring-card:hover .ring-card-sphere {
+      filter: url(#mv-gradient-tint);
+    }
+    /* moji hand silhouette uses the compact-stops variant so the cyan and
+       pink edges of the gradient stay visible on the small glyph (see the
+       #mv-gradient-tint-moji filter definition above). */
+    .ring-card:hover .ring-card-emoji {
+      filter: url(#mv-gradient-tint-moji);
+    }
+    /* Long-press reveal → show true colours, matching the models. */
+    .ring-card.ring-card--model-revealed .ring-card-emoji,
+    .ring-card.ring-card--model-revealed .ring-card-sphere,
+    .ring-card.ring-card--model-revealed:hover .ring-card-emoji,
+    .ring-card.ring-card--model-revealed:hover .ring-card-sphere {
+      filter: none;
+    }
+
+    /* moji — pointing-hand emoji, centred, swaying like the /moji
+       start screen. Size is set per-entry (font-size) in applyHeroConfig. */
+    .ring-card-emoji {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Emoji', sans-serif;
+      font-size: 116px;
+      line-height: 1;
+    }
+    .ring-card-emoji .glyph {
+      display: inline-block;
+      animation: hero-emoji-nudge 2.2s ease-in-out infinite;
+    }
+    /* Mirrors moji/style.css @keyframes nudge (the start-screen hand). */
+    @keyframes hero-emoji-nudge {
+      0%, 100% { transform: translateX(-5px); }
+      50%      { transform: translateX(7px); }
+    }
+
+    /* Hero sphere canvas fills the stage; drawing handled by hero/hero-sphere.js. */
+    .ring-card-sphere { display: block; }
+
+    /* Phones: all four objects show as a scattered "scrapbook" collage —
+       see the mobile placement in the @media (max-width: 600px) band below. */
+
+    /* Project name label — hidden idle, visible on hover (Figma Glow) */
+    .ring-tag {
+      position: absolute;
+      left: 10px;
+      top: -20.37px;
+      z-index: 3;
+      visibility: hidden;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .ring-card:hover .ring-tag {
+      visibility: visible;
+    }
+
+    /* Long-press reveal: full model, no mask blur — hide label too (was still showing via :hover) */
+    .ring-card.ring-card--model-revealed .ring-tag,
+    .ring-card.ring-card--model-revealed:hover .ring-tag {
+      visibility: hidden;
+      opacity: 0;
+    }
+
+    .ring-tag-slash {
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: 18px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      color: var(--color-muted-50);
+    }
+
+    .ring-tag-name {
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+    }
+
+    /* ── Hero text block — above cards visually; pointer-events:none so the SHLTR hit area isn’t a tiny sliver under the headline */
+    .hero-text {
+      position: relative;
+      z-index: 10;
+      isolation: isolate;
+      mix-blend-mode: normal;
+      width: min(782px, calc(100% - 80px));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 27px;
+      pointer-events: none;
+    }
+
+    .hero-headline {
+      width: 100%;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 88px;
+      line-height: 114px;
+      color: var(--color-muted);
+      text-box-trim: trim-both;
+      text-box-edge: cap alphabetic;
+      /* .hero-text has pointer-events:none so the SHLTR card can be hovered; letters must opt in */
+      pointer-events: auto;
+    }
+
+    .hero-labels {
+      width: 100%;
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 var(--space-md);
+    }
+
+    .hero-labels span {
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 24px;
+      line-height: 120%;
+      letter-spacing: -0.02em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       WORK / CARDS
+    ══════════════════════════════════════════════════════ */
+    .cards-section {
+      width: 100%;
+      background: var(--color-bg);
+      padding: var(--space-2xl) 0 var(--space-3xl);
+    }
+
+    .cards-inner {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: var(--space-2xl);
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 220px;
+      box-sizing: border-box;
+    }
+
+    /* Each column holds the header (left only) + 4 cards */
+    .cards-col {
+      display: flex;
+      flex-direction: column;
+      gap: 200px;
+      width: var(--card-w);
+      flex-shrink: 0;
+    }
+
+    /* "/ my work" label sits in a fixed-height header slot
+       so both columns' first cards align horizontally */
+    .cards-col-header {
+      width: var(--card-w);
+      height: var(--space-2xl);
+      display: flex;
+      align-items: flex-start;
+      flex-shrink: 0;
+    }
+
+    .cards-col-label {
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 32px;
+      line-height: 120%;
+      letter-spacing: -0.02em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+      margin: 0;
+    }
+
+    /* Card outer wrapper (body + footer) */
+    .card-b {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-sm);
+      width: var(--card-w);
+      height: 508px; /* card-h (480) + gap (16) + footer (12) */
+      cursor: pointer;
+    }
+
+    .card-b-title,
+    .card-b-tag {
+      transition: color 0.15s ease;
+    }
+
+    .card-b:hover .card-b-title {
+      color: #5c5a56;
+    }
+
+    .card-b:hover .card-b-tag {
+      color: rgba(92, 90, 86, 0.88);
+    }
+
+    /* Card image area */
+    .card-b-body {
+      box-sizing: border-box;
+      width: var(--card-w);
+      height: var(--card-h);
+      background: var(--color-white);
+      border: none;
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    /* SHLTR work card: 3D turntable (Figma frame 467×607) */
+    .card-b.card-b--turntable {
+      width: 467px;
+      flex-shrink: 0;
+      align-self: center;
+      height: auto;
+    }
+
+    /* When the body wraps a thumbnail image with rounded corners, drop the white
+       card background so it doesn't peek out at the corners */
+    .card-b-body.card-b-body--thumb { background: transparent; }
+
+    .card-b-body.card-b-body--turntable {
+      width: 467px;
+      height: 607px;
+      background: #F8F6F3;
+    }
+
+    .card-b.card-b--turntable .card-b-footer {
+      width: 467px;
+    }
+
+    .card-turntable-model {
+      position: absolute;
+      z-index: 0;
+      width: 467px;
+      height: 607px;
+      left: calc(50% - 467px / 2 + 0.5px);
+      top: calc(50% - 607px / 2 - 18.5px);
+      display: block;
+      /* 150% zoom on the GLB only (logo overlay is a sibling, not scaled) */
+      transform: scale(1.5);
+      transform-origin: center center;
+    }
+
+    /* Vector logo — centered over the thumbnail (3D sits behind at z-index 0) */
+    .card-turntable-logo {
+      position: absolute;
+      z-index: 10;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(185px, 88%);
+      max-width: 100%;
+      height: auto;
+      max-height: 42%;
+      object-fit: contain;
+      object-position: center center;
+      pointer-events: none;
+      display: block;
+    }
+
+    /* Composite cover — tinted frame + background image + laser gradient + centered logo */
+    .card-b-body--composite {
+      background: #EAEEFB;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .card-cover-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .card-cover-logo {
+      position: absolute;
+      /* Figma: 223.03 × 29.01, centered horizontally, top 59.75px */
+      width: 223.03px;
+      height: 29.01px;
+      left: calc(50% - 223.03px / 2 - 0.48px);
+      top:  59.75px;
+      object-fit: contain;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Thumbnail image fills the card body */
+    .card-cover {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 16px;
+    }
+
+    /* Video thumbnail — scaled to card width (400px), proportional height ≈711px */
+    .card-thumbnail-video {
+      position: absolute;
+      width:  400px;
+      height: 711px;           /* 926 × (400/521) */
+      left:   0;
+      top:    calc(50% - 711px / 2 - 20px);
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+    }
+
+    /* Grain layer — sits between video and image overlay */
+    @keyframes grain-shift {
+      0%   { background-position:   0%   0%; }
+      10%  { background-position:  -5%  -10%; }
+      20%  { background-position: -15%   5%; }
+      30%  { background-position:   7%  -25%; }
+      40%  { background-position:  -5%  25%; }
+      50%  { background-position: -15%  10%; }
+      60%  { background-position:  15%   0%; }
+      70%  { background-position:   0%  15%; }
+      80%  { background-position:   3%  35%; }
+      90%  { background-position: -10%  10%; }
+      100% { background-position:   0%   0%; }
+    }
+
+    /* ── FunType thumbnail card ─────────────────────────────────
+       Embeds /fun/thumb.html (live Corner effect, COMING↔SOON cycle).
+       The iframe is pointer-events:none so card clicks pass through to
+       the password gate; a small lock icon sits in the top-right. */
+    .card-b-body--funtype {
+      position: relative;
+      overflow: hidden;
+      border-radius: 8px;
+      /* Orange placeholder matches the iframe bg so there's no flash
+         while the iframe loads. */
+      background: #FF7300;
+    }
+    .card-b-body--funtype .ft-preview {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      pointer-events: none;
+      display: block;
+    }
+    .card-b-body--funtype .ft-lock-icon {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 2;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* Same near-black as the custom cursor (#26251E) so the lock reads
+         as part of the cursor language, not as a chip. Hidden by default,
+         revealed only while the host card is hovered (matches the rest
+         of the card's hover-reveal language). */
+      color: var(--color-ink, #26251E);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .card-b:hover .card-b-body--funtype .ft-lock-icon {
+      opacity: 1;
+    }
+
+    /* moji interactive thumbnail card */
+    .card-b-body--mojithumb { background: rgba(255,255,255,0.5); overflow: visible; border-radius: 8px; }
+    .mt-timer {
+      position: absolute; left: 20px; top: 20px; z-index: 6;
+      font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 18px; line-height: 1.2; letter-spacing: -0.01em; color: rgba(163,160,155,0.5);
+    }
+    .mt-tag {
+      position: absolute; right: 20px; top: 20px; z-index: 6;
+      display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 6px;
+      background: rgba(6,182,212,0.15); color: #06B6D4;
+      font-family: 'Inter', sans-serif; font-size: 12px; line-height: 1; letter-spacing: -0.02em;
+      text-transform: capitalize; white-space: nowrap;
+    }
+    /* Wrapper around the central composition (head + cells + emoji stickers),
+       so it can be scaled as one unit on small screens without touching the
+       corner timer/tag. Full-size on desktop (no transform). */
+    .mt-stage { position: absolute; inset: 0; }
+    .mt-frame {
+      position: absolute; left: calc(50% - 155px); top: calc(50% - 79px + 4px);
+      width: 310px; height: 158px; z-index: 2;
+      display: flex; flex-direction: column; align-items: center; gap: 32px;
+    }
+    .mt-head {
+      font-family: 'Instrument Serif', serif; font-size: 50px; line-height: 1;
+      letter-spacing: -0.01em; color: #26251E; text-align: center; white-space: nowrap;
+    }
+    .mt-cells {
+      display: flex; width: 310px; height: 76px; background: #FFFFFF;
+      border: 2px solid #A3A09B; border-radius: 8px; overflow: hidden;
+      transition: border-color 0.25s ease; transition-delay: 0.34s;
+    }
+    .mt-cell {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      font-family: 'Instrument Serif', serif; font-size: 44px; line-height: 1; color: #26251E;
+      border-right: 2px solid #A3A09B;
+      transition: color 0.25s ease, border-color 0.25s ease; transition-delay: calc(var(--i) * 70ms);
+    }
+    .mt-cell:last-child { border-right: none; }
+    .mt-em {
+      position: absolute; z-index: 5; font-size: 60px; line-height: 1;
+      font-family: 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Emoji', sans-serif;
+      transition: transform 0.45s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    .mt-rainbow { left: calc(50% - 30px - 47px);  top: calc(50% - 21.5px - 107.5px); }
+    .mt-cherry  { left: calc(50% - 30px + 69px);  top: calc(50% - 21.5px - 68.5px); }
+    .mt-book    { left: calc(50% - 30px - 146px); top: calc(50% - 21.5px - 11.5px); }
+    .mt-fire    { left: calc(50% - 30px + 150px); top: calc(50% - 21.5px + 69.5px); }
+    .mt-devil   { left: calc(50% - 30px - 95px);  top: calc(50% - 21.5px + 78.5px); }
+    .mt-hand    { left: calc(50% - 30px + 27px);  top: calc(50% - 21.5px + 120.5px); }
+    /* hover (desktop) / auto-play (mobile, .is-mtplay): each emoji flies
+       outward, away from the centre (radial), revealing the text */
+    .card-b:hover .mt-rainbow, .card-b.is-mtplay .mt-rainbow { transform: translate(-14px, -31px); }
+    .card-b:hover .mt-cherry,  .card-b.is-mtplay .mt-cherry  { transform: translate(46px, -42px); }
+    .card-b:hover .mt-book,    .card-b.is-mtplay .mt-book    { transform: translate(-34px, -3px); }
+    .card-b:hover .mt-fire,    .card-b.is-mtplay .mt-fire    { transform: translate(31px, 14px); }
+    .card-b:hover .mt-devil,   .card-b.is-mtplay .mt-devil   { transform: translate(-26px, 22px); }
+    .card-b:hover .mt-hand,    .card-b.is-mtplay .mt-hand    { transform: translate(7px, 33px); }
+    /* hover/auto-play: EMOJI cells cascade to green (like solving the word) */
+    .card-b:hover .mt-cells, .card-b.is-mtplay .mt-cells { border-color: #2FB877; }
+    .card-b:hover .mt-cell, .card-b.is-mtplay .mt-cell { color: #2FB877; border-color: #2FB877; animation: mtPop 0.4s ease both; animation-delay: calc(var(--i) * 70ms); }
+    @keyframes mtPop { 0% { transform: scale(1); } 45% { transform: scale(1.18); } 100% { transform: scale(1); } }
+
+    /* Live sphere work-card */
+    .card-b-body--sphere {
+      background-color: #0a0a0a;
+      background-size: cover;
+      background-position: center;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .card-sphere-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
+    }
+    .card-sphere-logo {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      z-index: 2;
+      color: #FF8FF4;
+    }
+    .card-sphere-logo svg {
+      width: 200px;
+      height: auto;
+      filter: drop-shadow(0 3px 16px rgba(0,0,0,0.85)) drop-shadow(0 0 3px rgba(0,0,0,0.7));
+    }
+
+
+    /* White cursor over dark cards (data-cursor-light) — black-on-black is invisible.
+       Whiten everything (dot + text glyphs), and strokes for any bracket paths. */
+    #cursor-tooltip.cursor-tooltip--light svg * { fill: #fff !important; }
+    #cursor-tooltip.cursor-tooltip--light svg path { stroke: #fff !important; }
+    #cursor-tooltip.cursor-tooltip--light { filter: drop-shadow(0 1px 4px rgba(0,0,0,0.55)); }
+
+    .card-grain {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.12;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+      animation: grain-shift 0.35s steps(1) infinite;
+    }
+
+    /* Image layer on top of video + grain */
+    .card-thumbnail-img {
+      position: absolute;
+      left: 50%;
+      top:  50%;
+      transform: translate(-50%, -50%);
+      display: block;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Footer: title left, tags right */
+    .card-b-footer {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 0 var(--space-xs);
+      gap: var(--space-sm);
+      width: var(--card-w);
+      height: 12px;
+      flex-shrink: 0;
+      box-sizing: border-box;
+    }
+
+    .card-b-title {
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: 18px;
+      line-height: 120%;
+      text-transform: capitalize;
+      color: var(--color-muted);
+      margin: 0;
+      flex-shrink: 0;
+    }
+
+    .card-b-tags {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-end;
+      gap: var(--space-md);
+    }
+
+    .card-b-tag {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: 18px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-muted-50);
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       PROJECT OVERLAY
+       A full-screen fixed layer that dims/blurs the page
+       and presents a centered panel with a scrolling gallery.
+    ══════════════════════════════════════════════════════ */
+    #project-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      display: none;
+      pointer-events: none;
+    }
+
+    #project-overlay.open {
+      display: block;
+      pointer-events: all;
+    }
+
+    /* Clicking the backdrop closes the overlay */
+    #overlay-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(248, 246, 243, 0);
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+      transition: background var(--dur-md) ease, backdrop-filter var(--dur-md) ease;
+    }
+
+    #project-overlay.open #overlay-backdrop {
+      background: rgba(248, 246, 243, 0.5);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* Panel: centered, max 1200px; background matches Figma #FBFAF9 */
+    #overlay-panel {
+      --overlay-panel-actual-w: min(var(--overlay-w), calc(100vw - 48px));
+      position: absolute;
+      width: var(--overlay-panel-actual-w);
+      left: calc(50% - var(--overlay-panel-actual-w) / 2);
+      top: var(--overlay-panel-top);
+      bottom: auto;
+      height: min(var(--overlay-gallery-h), calc(100vh - var(--overlay-panel-top) - 24px));
+      background: #FBFAF9;
+      overflow: hidden;
+      opacity: 0;
+      transform-origin: top center;
+      /* Spring easing gives a slight overshoot on open */
+      transform: scale(0.96) translateY(16px);
+      transition: opacity var(--dur-md) ease, transform var(--dur-md) var(--ease-spring);
+      pointer-events: all;
+    }
+
+    /* Case study: flexible height — fills to bottom of viewport; same chrome + footer strip */
+    #overlay-panel.overlay-panel--case {
+      display: flex;
+      flex-direction: column;
+      bottom: 0;
+      height: auto;
+      padding: 0;
+      background: #FBFAF9;
+      border-radius: 0;
+      transform-origin: top center;
+    }
+
+    #overlay-panel.overlay-panel--case .overlay-view--default {
+      display: none !important;
+    }
+
+    #overlay-panel:not(.overlay-panel--case) .overlay-view--case {
+      display: none !important;
+    }
+
+    .overlay-view--default {
+      position: absolute;
+      inset: 0;
+    }
+
+    .overlay-view--case {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      position: relative;
+    }
+
+    .overlay-case {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .overlay-case-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+      overscroll-behavior: contain;
+      /* Hide scrollbar (still scrollable): Firefox / IE / WebKit */
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      /* Figma content padding; extra right clears top-right controls */
+      padding: 120px 56px 100px 120px;
+      box-sizing: border-box;
+    }
+
+    .overlay-case-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .overlay-case-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 80px;
+    }
+
+    .overlay-case-img {
+      display: block;
+      object-fit: cover;
+      background: transparent;
+    }
+
+    video.overlay-case-img {
+      flex-shrink: 0;
+    }
+
+    .overlay-case-img--video {
+      width: auto;
+      height: auto;
+      max-height: 540px;
+      max-width: 100%;
+      object-fit: contain;
+    }
+
+    /* Outro video wrapper — hugs the video at its native aspect ratio,
+       capped at 540px tall (slightly less than the 600px scroll panel)
+       so nothing is cropped and no letterbox bars are ever visible. */
+    .overlay-case-video-wrap {
+      position: relative;
+      display: inline-block;
+      width: auto;
+      height: auto;
+      max-height: 540px;
+      max-width: 100%;
+      background: transparent;
+      flex-shrink: 0;
+      overflow: visible;
+      line-height: 0;
+    }
+    .overlay-case-video-wrap > .overlay-case-img--video {
+      display: block;
+      width: auto;
+      height: auto;
+      max-height: 540px;
+      max-width: 100%;
+      object-fit: contain;
+      border-radius: 16px;
+      background: transparent;
+    }
+
+    /* Controls stack: 32×72 top-right, column flex gap 8, two 32×32 icon buttons. */
+    .overlay-case-video-controls {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      width: 32px;
+      height: 72px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      z-index: 2;
+    }
+    .overlay-case-video-btn {
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+      background: none;
+      border: none;
+      color: #A3A09B;
+      cursor: none;
+      transition: color var(--dur-sm) ease;
+    }
+    .overlay-case-video-btn svg { display: block; flex-shrink: 0; }
+    .overlay-case-video-btn:hover { color: var(--color-ink-muted); }
+
+    /* Mute: swap SVGs via aria-pressed (true = muted). */
+    .overlay-case-video-btn[data-video-action="mute"] .icon-unmuted { display: none; }
+    .overlay-case-video-btn[data-video-action="mute"][aria-pressed="false"] .icon-muted   { display: none; }
+    .overlay-case-video-btn[data-video-action="mute"][aria-pressed="false"] .icon-unmuted { display: inline-block; }
+
+
+    /* Figma “Frame with Four Frames”: 960×680, gap 40, four 460×320 cells */
+    .overlay-case-grid4 {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-content: center;
+      align-items: center;
+      gap: 40px;
+      width: 100%;
+      max-width: 960px;
+      min-height: 680px;
+      margin: 0 auto;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    .overlay-case-tile {
+      position: relative;
+      flex: 0 0 auto;
+      width: 460px;
+      height: 320px;
+      background: #F4F1ED;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .overlay-case-tile model-viewer.overlay-case-qr-mv {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      /* User-driven: drag to rotate, scroll to zoom. No auto-rotate. */
+      pointer-events: auto;
+      cursor: grab;
+    }
+    .overlay-case-tile model-viewer.overlay-case-qr-mv:active { cursor: grabbing; }
+
+    /* Image variant — used when a grid4-3d tile has { img } instead of { glb }
+       (e.g. QR poster stickers). Fills the tile frame like the model-viewer does. */
+    .overlay-case-tile .overlay-case-qr-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* 3D-indicator badge — top-right corner of each case-study tile.
+       32×32 pill (rgba muted 20%) with cube glyph. Hover → "Interactive 3D Object"
+       tooltip. Tiny footprint — doesn't block dragging the model elsewhere. */
+    .overlay-case-tile-3d {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      /* pointer-events enabled so the tooltip fires; the 32×32 area still
+         leaves the rest of the 460×320 tile free for camera-control drag. */
+      pointer-events: auto;
+      cursor: help;
+    }
+    .overlay-case-tile-3d svg { display: block; }
+
+    .overlay-case-tile-tag {
+      position: absolute;
+      left: 20px;
+      top: 20px;
+      z-index: 2;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      font-family: var(--font-sans);
+      font-size: 18px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      color: rgba(104, 100, 94, 0.5);
+    }
+
+    .overlay-case-section {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 24px;
+      width: 100%;
+    }
+
+    /* Figma “About the Project” / two-column copy — Nimbus Sans 16 / 150% */
+    .overlay-case-subhead {
+      font-family: var(--font-sans);
+      font-style: normal;
+      font-weight: 400; /* override UA <h3> bold */
+      font-size: 16px;
+      line-height: 1.5;
+      letter-spacing: -0.02em;
+      text-transform: capitalize;
+      color: #68645E;
+      margin: 0;
+      max-width: 960px;
+      width: 100%;
+    }
+    .overlay-case-subhead-slash {
+      /* "/" prefix — same weight/size as title, no capitalize so it stays thin */
+      display: inline;
+    }
+
+    .overlay-case-cols {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 48px;
+      width: 100%;
+      max-width: 960px;
+    }
+
+    .overlay-case-col {
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 456px;
+      font-family: var(--font-sans);
+      font-style: normal;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 1.5;
+      letter-spacing: -0.02em;
+      color: #A3A09B;
+      margin: 0;
+    }
+
+    .overlay-case-section p.overlay-case-col {
+      margin: 0;
+    }
+
+    /* Figma “Frame with Inner Frames”: 960×440, row ~619px centered, 4× phone columns */
+    .overlay-case-inner-phones {
+      width: 100%;
+      max-width: 960px;
+      height: 440px;
+      margin: 0 auto;
+      background: #F4F1ED;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+
+    .overlay-case-inner-phones-row {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: center;
+      justify-content: center;
+      gap: 29px;
+    }
+
+    .overlay-case-inner-phone {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      width: 131.5px;
+      flex: 0 0 131.5px;
+    }
+
+    /* Figma QR tag: row, gap 2, padding 0 8, Nimbus Sans 18/120%/-0.01em, #A3A09B.
+       Number is capitalized (no effect on digits); "/" itself stays untransformed. */
+    .overlay-case-inner-phone-tag {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      padding: 0 8px;
+      width: 100%;
+      height: 12px;
+      box-sizing: border-box;
+      font-family: var(--font-sans);
+      font-size: 18px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: #A3A09B;
+    }
+    .overlay-case-inner-phone-slash {
+      text-transform: none;
+    }
+
+    .overlay-case-inner-phone-img {
+      width: 131.5px;
+      height: 263px;
+      object-fit: cover;
+      display: block;
+      flex-shrink: 0;
+      background: #fff;
+    }
+
+    .overlay-case-picture-all {
+      width: 100%;
+      max-width: 960px;
+      height: auto;
+      aspect-ratio: 960 / 540;
+      display: block;
+      object-fit: cover;
+      background: #F4F1ED;
+    }
+    /* Natural-proportion variant — honors the image's own aspect ratio */
+    .overlay-case-picture-all--natural {
+      aspect-ratio: auto;
+      object-fit: contain;
+      background: transparent;
+    }
+
+    /* ── Solution nav bar (Radiant) ──
+       Static SVG sits behind; absolutely-positioned lottie-players overlay
+       the icon slots. The wrapper enforces the SVG aspect ratio so
+       percentage positions stay accurate at every container width. */
+    .overlay-case-solnav {
+      position: relative;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      display: block;
+      /* aspect-ratio is set inline from viewBox to stay data-driven */
+    }
+    .overlay-case-solnav-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      pointer-events: none;
+    }
+    .overlay-case-solnav-icon {
+      position: absolute;
+      transform: translate(-50%, -50%);   /* (left,top) is the icon center */
+      aspect-ratio: 1;                    /* keeps the slot square as it scales */
+      pointer-events: none;
+      /* Cover the static SVG icon underneath: the SVG icon slot is a white
+         33.33×33.33 rounded square (rx 6.667 → 20% radius). Painting the
+         overlay with the same white square hides the baked-in illustration
+         so only the lottie animation is visible. */
+      background: #FFFFFF;
+      border-radius: 20%;
+      overflow: hidden;
+    }
+    .overlay-case-solnav-icon lottie-player {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    /* Interactive hover hit-zones layered above the SVG (top nav buttons +
+       dropdown cells). Transparent by default; on hover, paint the brand
+       pink-tint gradient with 10px radius — matches the live radiantsecurity.ai
+       hover treatment. Sits below the icon overlays so the lottie still shows
+       through (icons are pointer-events:none, hits are pointer-events:auto). */
+    .overlay-case-solnav-hit {
+      position: absolute;
+      background: transparent;
+      border-radius: 10px;
+      pointer-events: auto;
+      cursor: pointer;
+      transition: background 160ms ease;
+    }
+    .overlay-case-solnav-hit:hover {
+      background: linear-gradient(102.87deg, rgba(234, 238, 251, 0) -108.49%, rgba(253, 112, 159, 0.2) 118.17%);
+    }
+
+    /* ── Icon library (Radiant) — single-row infinite carousel with edge fade.
+       The track duplicates its children and animates translateX from 0 to -50%
+       so the wrap point is invisible. The mask-image fades the left/right edges
+       of the visible viewport to transparent. Hovering pauses the marquee. */
+    .overlay-case-icon-library {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      overflow: hidden;
+      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%);
+              mask-image: linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%);
+    }
+    .overlay-case-icon-library-track {
+      display: flex;
+      flex-direction: row;
+      gap: 30px;
+      width: max-content;
+      animation: overlay-case-icon-library-scroll linear infinite;
+    }
+    .overlay-case-icon-library:hover .overlay-case-icon-library-track {
+      animation-play-state: paused;
+    }
+    @keyframes overlay-case-icon-library-scroll {
+      from { transform: translateX(0); }
+      /* -50% works because the track contains two identical copies of the
+         icon list, so when one set scrolls fully off-left the second is in
+         the same position the first started — visually seamless. */
+      to   { transform: translateX(calc(-50% - 15px)); }
+    }
+    .overlay-case-icon-library-tile {
+      width: 80px;
+      height: 80px;
+      background: #FFFFFF;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex: 0 0 auto;
+    }
+    .overlay-case-icon-library-tile lottie-player {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ── Globe (V4): case-study blocks ───────────────────────────
+       All blocks stay 960-wide to match the rest of the case study.
+       Videos autoplay muted loops; imagery is lazy-loaded. */
+
+    /* 2×2 video grid — 460×320 tiles, 40px gap. Sizes match Figma. */
+    .overlay-case-grid2x2 {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 40px;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .overlay-case-grid2x2-vid {
+      width: calc((100% - 40px) / 2);
+      aspect-ratio: 460 / 320;
+      object-fit: cover;
+      display: block;
+      background: #F4F1ED;
+    }
+
+    /* Full-width wide video (960×440) — no controls, just a looping clip. */
+    .overlay-case-wide-vid {
+      width: 100%;
+      max-width: 960px;
+      aspect-ratio: 960 / 440;
+      object-fit: cover;
+      display: block;
+      margin: 0 auto;
+      background: #F4F1ED;
+    }
+
+    /* Two-up subheading layout: two 456-wide columns each with its own
+       subheading above a short paragraph. Used after the wide videos. */
+    .overlay-case-subcols {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 48px;
+      width: 100%;
+      max-width: 960px;
+    }
+    .overlay-case-subcol {
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 456px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* 2-image row — two 460×320 tiles side-by-side. */
+    .overlay-case-grid2 {
+      display: flex;
+      flex-direction: row;
+      gap: 40px;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .overlay-case-grid2-img {
+      width: calc((100% - 40px) / 2);
+      aspect-ratio: 460 / 320;
+      object-fit: cover;
+      display: block;
+      background: #F4F1ED;
+    }
+
+    /* ── Globe code: scroll-driven sticky frame ──
+       Outer section is a 250vh runway. Inside, a sticky 100vh stage
+       centers an inner box whose width/height interpolate between the
+       regular 960-block size and full viewport based on scroll progress
+       (set as --p from 0 → 1 → 0 by JS). Page scroll is never hijacked —
+       the block just visually grows, fills, then shrinks as the visitor
+       keeps scrolling. The iframe inside is non-interactive during the
+       scale phases; a click-to-interact affordance can be added later. */
+    .overlay-case-globe-scroll {
+      position: relative;
+      width: 100%;
+      height: 250vh;
+      /* Sticky child needs a containing block taller than the viewport. */
+    }
+    .overlay-case-globe-stage {
+      position: sticky;
+      top: 0;
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .overlay-case-globe-inner {
+      /* --p drives the scale: 0 = base (960×552.7), 1 = viewport. */
+      --p: 0;
+      width: calc(960px + (100vw - 960px) * var(--p));
+      height: calc(552.7px + (100vh - 552.7px) * var(--p));
+      max-width: 100vw;
+      max-height: 100vh;
+      background: #FBFAF9;
+      display: block;
+      position: relative;
+      overflow: hidden;
+      transition: none;
+    }
+    /* The iframe always renders at full desktop viewport size (100vw × 100vh)
+       so the page inside doesn't reflow responsively when the outer box is
+       smaller. A uniform transform:scale() shrinks it visually to fit.
+       Scale factor = current_inner_width / 100vw.
+       At p=0 (base 960 wide) the page renders as if on a desktop monitor,
+       just scaled down. At p=1 it's 1:1, matching the real viewport. */
+    .overlay-case-globe-frame {
+      width: 100vw;
+      height: 100vh;
+      border: 0;
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: top left;
+      transform: scale(calc((960px + (100vw - 960px) * var(--p)) / 100vw));
+      /* Pointer events disabled so the iframe doesn't trap wheel/scroll
+         while the user is reading the case study. A future "interact"
+         mode will toggle this back on. */
+      pointer-events: none;
+    }
+
+    /* Figma “Horizontal Frame with Images”: four scene clips 225×400, gap 20 */
+    .overlay-case-scene-videos {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      align-items: stretch;
+      gap: 20px;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .overlay-case-scene-vid {
+      width: calc((100% - 60px) / 4);
+      min-width: 0;
+      height: 400px;
+      object-fit: cover;
+      display: block;
+      background: #F4F1ED;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 900px) {
+      .overlay-case-scene-videos {
+        flex-wrap: wrap;
+      }
+      .overlay-case-scene-vid {
+        width: calc((100% - 20px) / 2);
+      }
+    }
+
+    @media (max-width: 520px) {
+      .overlay-case-scene-vid {
+        width: 100%;
+      }
+    }
+
+    /* Sketch + Logo evolution — space-between, gap 12 */
+    .overlay-case-sketch-logo {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      box-sizing: border-box;
+    }
+
+    .overlay-case-sketch-wrap {
+      position: relative;
+      flex: 0 0 auto;
+      background: #F4F1ED;
+      max-width: 502px;
+      max-height: 525px;
+    }
+
+    .overlay-case-sketch-wrap .overlay-case-tile-tag {
+      color: rgba(104, 100, 94, 0.5);
+    }
+
+    .overlay-case-sketch-img {
+      display: block;
+      width: 100%;
+      max-width: 502px;
+      height: auto;
+      max-height: 525px;
+      object-fit: contain;
+    }
+
+    .overlay-case-logo-evo {
+      width: 217px;
+      height: 330px;
+      max-width: 100%;
+      object-fit: cover;
+      display: block;
+      flex-shrink: 0;
+      background: transparent;
+    }
+
+    /* Case-study top title ("SHLTR") — Instrument Serif 88px #A3A09B */
+    .overlay-case-title {
+      align-self: center;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 88px;
+      line-height: 114px;
+      letter-spacing: 0;
+      text-transform: capitalize;
+      color: #A3A09B;
+      text-align: center;
+    }
+
+    /* ── Lottie blocks ─────────────────────────────────
+       lottie-single  → full-width framed animation (like outro-video but lottie)
+       grid4-lottie   → reuses .overlay-case-grid4 layout; tiles embed Lottie
+       lottie-strip   → horizontal row of small Lottie icons (nav icons etc.)
+    ─────────────────────────────────────────────────── */
+    /* Per-block variants for the framed lottie container.
+       Default = beige (#F4F1ED); set b.variant: 'white' | 'transparent' in project.js */
+    /* Note: Executable Response Plans uses --white but the animation sits on a
+       pale blue-gray (#F3F4FA) — match the outer frame to that for a seamless look. */
+    .overlay-case-lottie-single-frame--white       { background: #F3F4FA !important; }
+    .overlay-case-lottie-single-frame--transparent { background: transparent !important; }
+    /* `small: true` on lottie-single — shrink the inner lottie to ~50% of default
+       (used for Executable Response Plans) */
+    .overlay-case-lottie-single-frame--small lottie-player {
+      max-width: 450px;
+      max-height: 260px;
+    }
+
+    /* Framed variant of grid4-lottie — wraps each lottie in an inner EAEEFB
+       345×230 frame (matches Figma SOC pain-point tiles). Tile bg becomes white. */
+    .overlay-case-grid4--framed .overlay-case-tile {
+      background: #FFFFFF !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay-case-grid4--framed .overlay-case-tile-frame {
+      position: relative;       /* anchor for the inner lottie */
+      width: 345px;
+      height: 230px;
+      background: #EAEEFB;
+      border-radius: 11.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    /* Lottie fills the inner 345×230 frame completely (the lottie player
+       preserves its own aspect ratio internally). Override the global
+       `position: absolute; inset: 0` so the lottie is laid out by the
+       frame's flex centering instead of being yanked to the tile's top-left. */
+    .overlay-case-grid4--framed .overlay-case-tile-frame lottie-player.overlay-case-lottie-tile {
+      position: static;
+      inset: auto;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+    }
+
+    /* ── Panel-cards block (Why Radiant) ──
+       960×736 EAEEFB panel with centered title + subtitle + 2×2 white cards. */
+    .overlay-case-panel-cards {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      background: #EAEEFB;
+      padding: 80px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 53.33px;
+      border-radius: 16px;
+    }
+    .overlay-case-panel-cards-head {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      text-align: center;
+    }
+    .overlay-case-panel-cards-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+      font-size: 40px;
+      line-height: 110%;
+      letter-spacing: -0.02em;
+      color: #111933;
+      margin: 0;
+    }
+    .overlay-case-panel-cards-sub {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 400;
+      font-size: 14px;
+      line-height: 140%;
+      color: #111933;
+      margin: 0;
+    }
+    .overlay-case-panel-cards-grid {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .overlay-case-panel-card {
+      flex: 0 0 calc(50% - 8px);
+      min-height: 213.33px;
+      background: #FFFFFF;
+      border-radius: 13.18px;
+      padding: 24px 32px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10.67px;
+    }
+    .overlay-case-panel-card-icon {
+      width: 53.33px;
+      height: 53.33px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay-case-panel-card-icon lottie-player {
+      width: 100%;
+      height: 100%;
+    }
+    .overlay-case-panel-card-spacer { flex: 1 0 0; min-height: 8px; }
+    .overlay-case-panel-card-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+      font-size: 18px;
+      line-height: 120%;
+      color: #111933;
+      margin: 0;
+    }
+    .overlay-case-panel-card-desc {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 400;
+      font-size: 13px;
+      line-height: 140%;
+      color: #111933;
+      margin: 0;
+    }
+
+    .overlay-case-lottie-single-frame {
+      width: 100%;
+      max-width: 100%;
+      background: #F4F1ED;
+      border-radius: 2px;
+      padding: 40px;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 320px;
+    }
+    .overlay-case-lottie-single-frame lottie-player {
+      width: 100%;
+      max-width: 900px;
+      height: auto;
+      max-height: 520px;
+    }
+
+    /* Tile-embedded Lottie (inside .overlay-case-tile — shares grid4 frame) */
+    .overlay-case-tile lottie-player.overlay-case-lottie-tile {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    /* No frame background for Lottie tiles — the animation carries its own look */
+    .overlay-case-tile:has(lottie-player.overlay-case-lottie-tile) {
+      background: transparent;
+    }
+
+    /* Optional caption under a grid4 tile (used by grid4-lottie with captions) */
+    .overlay-case-tile-caption {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -44px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 140%;
+      color: #68645E;
+      text-align: left;
+      padding: 0 4px;
+    }
+    .overlay-case-grid4--captioned {
+      margin-bottom: 48px; /* room for captions hanging below tiles */
+    }
+
+    /* Lottie strip — N icons in a flexible row, wraps on narrow widths */
+    .overlay-case-lottie-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+      gap: 24px;
+      padding: 32px;
+      background: #F4F1ED;
+      border-radius: 2px;
+    }
+    .overlay-case-lottie-strip lottie-player {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      display: block;
+    }
+
+    /* Feature-row Lottie — alternating "Main Container" cards (Lottie + text) */
+    .overlay-case-feature-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .overlay-case-feature-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      align-items: center;
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 1px 2px rgba(17, 25, 51, 0.04);
+    }
+    .overlay-case-feature-row--reverse .overlay-case-feature-row-media {
+      order: 2;
+    }
+    .overlay-case-feature-row--reverse .overlay-case-feature-row-text {
+      order: 1;
+    }
+    .overlay-case-feature-row-media {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      background: #F3F4FA;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay-case-feature-row-media lottie-player {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .overlay-case-feature-row-title {
+      margin: 0 0 12px 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 700;
+      font-size: 24px;
+      line-height: 1.3;
+      color: #111933;
+    }
+    .overlay-case-feature-row-desc {
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 400;
+      font-size: 14px;
+      line-height: 1.55;
+      color: #68645E;
+    }
+    @media (max-width: 720px) {
+      .overlay-case-feature-row {
+        grid-template-columns: 1fr;
+      }
+      .overlay-case-feature-row--reverse .overlay-case-feature-row-media,
+      .overlay-case-feature-row--reverse .overlay-case-feature-row-text {
+        order: initial;
+      }
+    }
+
+    /* "Back to top" button — same type as title, hover darkens + clickable */
+    .overlay-case-back-to-top {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      align-self: center;
+      margin: 0 auto;
+      padding: 80px 0;
+      background: transparent;
+      border: none;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 88px;
+      line-height: 114px;
+      letter-spacing: 0;
+      text-transform: capitalize;
+      color: #A3A09B;
+      text-align: center;
+      transition: color var(--dur-sm) ease;
+    }
+    .overlay-case-back-to-top:hover { color: #68645E; }
+
+    /* Closing “Video of project” — 337×600, centered */
+    .overlay-case-section.overlay-case-outro-video {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      align-self: stretch;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .overlay-case-footer {
+      flex-shrink: 0;
+      width: 100%;
+      height: var(--overlay-foot-h);
+      box-sizing: border-box;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-start;
+      gap: 40px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #FFFFFF 100%);
+      pointer-events: none;
+    }
+
+    .overlay-case-footer-inner {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-end;
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
+      gap: 20px;
+    }
+
+    .overlay-case-name {
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-ink-muted);
+    }
+
+    .overlay-case-tags {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .overlay-case-tag {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+    }
+
+    .overlay-case-tag-slash {
+      color: var(--color-muted);
+    }
+
+    #project-overlay.open #overlay-panel {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+
+    /* ── Exit + Share — thin stroke, #A3A09B; Exit = boxed X + label; Share = icon under icon column ─ */
+    /* ══════════════════════════════════════════════════════
+       SHARE MODAL
+       Styled with the site's tokens — bg #FBFAF9, ink #26251E,
+       muted #A3A09B, Instrument Serif title, Nimbus italic labels.
+    ══════════════════════════════════════════════════════ */
+    /* ──────────────────────────────────────────────────────
+       VIDEO FULLSCREEN POPUP
+       Fills everything below the navbar with --color-bg,
+       shows the video large (with X to close). The navbar
+       stays visible and active on top.
+    ────────────────────────────────────────────────────── */
+    .video-fs-modal {
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: var(--navbar-h);
+      bottom: 0;
+      background: var(--color-bg);
+      z-index: 9600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity var(--dur-lg) ease;
+    }
+    .video-fs-modal[hidden] { display: none; }
+    .video-fs-modal.open { opacity: 1; }
+
+    .video-fs-modal-video {
+      display: block;
+      max-width: calc(100vw - 80px);
+      max-height: calc(100vh - var(--navbar-h) - 80px);
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      background: transparent;
+    }
+
+    .video-fs-modal-controls {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .video-fs-modal-close,
+    .video-fs-modal-mute {
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: #A3A09B;
+      padding: 0;
+      transition: color var(--dur-sm) ease;
+    }
+    .video-fs-modal-close:hover,
+    .video-fs-modal-mute:hover { color: #26251E; }
+    .video-fs-modal-close svg,
+    .video-fs-modal-mute svg { width: 32px; height: 32px; }
+    .video-fs-modal-mute .icon-unmuted { display: none; }
+    .video-fs-modal-mute[aria-pressed="false"] .icon-muted   { display: none; }
+    .video-fs-modal-mute[aria-pressed="false"] .icon-unmuted { display: inline-block; }
+
+    /* ── Unlock gate modal ──
+       Soft password prompt — light card on a muted blurred backdrop,
+       restrained colour palette to match the rest of the site. */
+    .unlock-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 9700;             /* above overlay (9000) + share (9500) */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .unlock-modal[hidden] { display: none; }
+    .unlock-backdrop {
+      position: absolute;
+      inset: 0;
+      /* Light overlay tuned to the site cream so the page fades back
+         instead of dimming to black. Slight blur softens the work
+         underneath without losing the warm bg tone. */
+      background: rgba(248, 246, 243, 0.68);
+      backdrop-filter: blur(10px) saturate(1.05);
+      -webkit-backdrop-filter: blur(10px) saturate(1.05);
+      opacity: 0;
+      transition: opacity 0.32s ease;
+    }
+    .unlock-modal.open .unlock-backdrop { opacity: 1; }
+
+    .unlock-card {
+      position: relative;
+      width: min(440px, 100%);
+      background: var(--color-surface, #FBFAF9);
+      border: 1px solid rgba(163, 160, 155, 0.18);
+      border-radius: 18px;
+      padding: 44px 36px 32px;
+      box-shadow: 0 18px 48px rgba(38, 37, 30, 0.18);
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      transform: translateY(8px) scale(0.985);
+      transition: opacity 0.32s ease, transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .unlock-modal.open .unlock-card {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    /* Mini-hero headline — same Instrument Serif treatment as the page
+       hero, just smaller. */
+    .unlock-title {
+      margin: 0 0 10px;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 44px;
+      line-height: 1.02;
+      color: var(--color-muted, #A3A09B);
+      letter-spacing: -0.01em;
+    }
+    .unlock-body {
+      margin: 0 0 24px;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--color-muted, #A3A09B);
+    }
+
+    .unlock-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px 20px;
+      border: 1px solid rgba(163, 160, 155, 0.35);
+      border-radius: 999px;
+      background: transparent;
+      font-family: var(--font-sans);
+      font-size: 15px;
+      color: var(--color-ink, #26251E);
+      letter-spacing: 0.02em;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .unlock-input::placeholder {
+      color: rgba(163, 160, 155, 0.7);
+      font-style: italic;
+    }
+    .unlock-input:focus {
+      border-color: rgba(163, 160, 155, 0.65);
+      box-shadow: 0 0 0 3px rgba(163, 160, 155, 0.12);
+    }
+
+    .unlock-error {
+      min-height: 18px;
+      margin: 12px 4px 18px;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-size: 12px;
+      color: var(--color-muted, #A3A09B);
+      letter-spacing: 0.02em;
+    }
+
+    /* Close (X) — top-right ghost icon button. Quiet at rest, ink on hover. */
+    .unlock-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--color-muted, #A3A09B);
+      cursor: pointer;
+      border-radius: 999px;
+      transition: color 0.2s ease, background 0.2s ease;
+    }
+    .unlock-close:hover,
+    .unlock-close:focus-visible {
+      color: var(--color-ink, #26251E);
+      background: rgba(38, 37, 30, 0.06);
+      outline: none;
+    }
+
+    /* Submit (→) — circular pill with the gradient-blur glow at rest.
+       Aligned to the right end of the card. Same glow language as the
+       contact buttons elsewhere on the site. */
+    .unlock-btn-primary {
+      position: relative;
+      isolation: isolate;
+      align-self: flex-end;
+      margin-top: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.15);
+      color: var(--color-ink, #26251E);
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .unlock-btn-primary::before {
+      content: '';
+      position: absolute;
+      /* Bleed a touch outside the button bounds so the blurred edge stays
+         saturated right up to the pill's edge instead of fading off. */
+      inset: -4px;
+      border-radius: 999px;
+      background: var(--gradient-accent, linear-gradient(90deg, #FF6EFD, #F8FF7B, #60FBFF));
+      filter: blur(9px);
+      opacity: 0.9;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+      z-index: -1;
+    }
+    .unlock-btn-primary:hover::before,
+    .unlock-btn-primary:focus-visible::before {
+      opacity: 1;
+    }
+    .unlock-btn-primary:active { transform: scale(0.95); }
+    .unlock-btn-primary:focus-visible { outline: none; }
+    /* When Cancel/X is hovered, fade the arrow's glow so only one button
+       claims attention at any moment. */
+    .unlock-card:has(.unlock-close:hover) .unlock-btn-primary::before,
+    .unlock-card:has(.unlock-close:focus-visible) .unlock-btn-primary::before {
+      opacity: 0;
+    }
+
+    /* Shake on wrong password — short, restrained. */
+    @keyframes unlock-shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    .unlock-card.shake { animation: unlock-shake 0.36s cubic-bezier(.36,.07,.19,.97); }
+
+    .share-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 9500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .share-modal[hidden] { display: none; }
+
+    .share-modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(38, 37, 30, 0.32);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity: 0;
+      transition: opacity var(--dur-lg) ease;
+    }
+    .share-modal.open .share-modal-backdrop { opacity: 1; }
+
+    .share-modal-panel {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      width: 720px;
+      max-width: calc(100vw - 40px);
+      height: 440px;
+      background: #FBFAF9;
+      box-shadow: 0 24px 80px rgba(38, 37, 30, 0.18);
+      transform: translateY(12px);
+      opacity: 0;
+      transition: opacity var(--dur-lg) ease, transform var(--dur-lg) ease;
+      overflow: hidden;
+    }
+    .share-modal.open .share-modal-panel {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .share-modal-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+      background: none;
+      border: none;
+      color: #A3A09B;
+      cursor: none;
+      z-index: 2;
+      transition: color var(--dur-sm) ease;
+    }
+    .share-modal-close:hover { color: var(--color-ink-muted); }
+    .share-modal-close:hover svg path { stroke: var(--color-ink-muted); }
+
+    /* Left column — thumbnail (video poster or image) */
+    .share-modal-thumb {
+      position: relative;
+      flex: 0 0 300px;
+      width: 300px;
+      height: 100%;
+      background: #F4F1ED;
+      overflow: hidden;
+    }
+    .share-modal-thumb-video,
+    .share-modal-thumb-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    /* Video: contain (preserve framing, beige letterbox if ratios mismatch). */
+    .share-modal-thumb-video { object-fit: contain; }
+    /* Image: cover (fill the column edge-to-edge — no beige showing). */
+    .share-modal-thumb-img   { object-fit: cover; }
+    .share-modal-thumb-fallback {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 100%),
+        linear-gradient(135deg, #EDE9E3 0%, #F4F1ED 100%);
+    }
+
+    /* Right column — content */
+    .share-modal-content {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      padding: 40px;
+      gap: 20px;
+      min-width: 0;
+    }
+    .share-modal-eyebrow {
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 14px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      color: #A3A09B;
+    }
+    .share-modal-title {
+      margin: 0;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 48px;
+      line-height: 100%;
+      letter-spacing: -0.01em;
+      color: #26251E;
+    }
+
+    /* Copy-link field */
+    .share-modal-link {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      width: 100%;
+      border: 1px solid rgba(163, 160, 155, 0.35);
+      background: #F8F6F3;
+      margin-top: 8px;
+    }
+    .share-modal-url {
+      flex: 1 1 auto;
+      min-width: 0;
+      border: none;
+      outline: none;
+      background: transparent;
+      padding: 0 14px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      color: #68645E;
+      height: 40px;
+    }
+    .share-modal-copy {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 14px;
+      height: 40px;
+      background: transparent;
+      border: none;
+      border-left: 1px solid rgba(163, 160, 155, 0.35);
+      color: #A3A09B;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-size: 14px;
+      letter-spacing: -0.01em;
+      cursor: none;
+      transition: color var(--dur-sm) ease, background var(--dur-sm) ease;
+    }
+    .share-modal-copy:hover { color: var(--color-ink-muted); background: #F4F1ED; }
+    .share-modal-copy .icon-check  { display: none; }
+    .share-modal-copy.copied .icon-copy  { display: none; }
+    .share-modal-copy.copied .icon-check { display: inline-block; }
+    .share-modal-copy.copied             { color: #26251E; }
+
+    /* Platform row */
+    .share-modal-platforms {
+      display: flex;
+      flex-direction: row;
+      gap: 10px;
+      margin-top: auto;
+    }
+    .share-platform {
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(163, 160, 155, 0.35);
+      background: transparent;
+      color: #A3A09B;
+      cursor: none;
+      transition: color var(--dur-sm) ease, border-color var(--dur-sm) ease, background var(--dur-sm) ease;
+    }
+    .share-platform:hover {
+      color: #26251E;
+      border-color: #26251E;
+      background: #F4F1ED;
+    }
+
+    /* Figma: share stack — 32×88, right:10 top:10, column gap 24.
+       Two 32×32 icon-only buttons (Exit + Share). */
+    .overlay-actions {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      z-index: 30;
+      width: 32px;
+      height: 88px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 24px;
+      pointer-events: none;
+    }
+
+    .overlay-close,
+    .overlay-share {
+      pointer-events: all;
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      width: 32px;
+      height: 32px;
+      margin: 0;
+      padding: 0;
+      background: none;
+      border: none;
+      color: #A3A09B;
+      cursor: none;
+      transition: color var(--dur-sm) ease;
+    }
+
+    .overlay-close svg,
+    .overlay-share svg {
+      display: block;
+      flex-shrink: 0;
+    }
+
+    /* Hover: tighten to ink-muted */
+    .overlay-close:hover,
+    .overlay-share:hover {
+      color: var(--color-ink-muted);
+    }
+    .overlay-close:hover svg path,
+    .overlay-share:hover svg path {
+      stroke: var(--color-ink-muted);
+    }
+
+    /* ── Gallery columns inside the overlay ────────────
+       Two absolutely-positioned columns scroll upward
+       continuously via JS (INIT_LEFT / INIT_RIGHT set their
+       starting vertical offsets so they appear mid-scroll
+       on open rather than starting from the top).
+       SET_H is the total pixel height of one "set" of images;
+       when an offset exceeds SET_H it wraps back by SET_H,
+       creating seamless infinite scroll.
+    ──────────────────────────────────────────────────── */
+    .overlay-body {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .card-gallery-left,
+    .card-gallery-right {
+      position: absolute;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xl);
+      will-change: transform;
+      user-select: none;
+    }
+
+    .card-gallery-left  { left: var(--space-xl);  width: 561px; }
+    .card-gallery-right { right: var(--space-xl); width: var(--card-w); }
+
+    /* Placeholder block — muted fill while no real image exists */
+    .card-ph {
+      flex-shrink: 0;
+      background: rgba(163, 160, 155, 0.10);
+      border: 1px solid var(--color-muted-15);
+      border-radius: var(--space-xs);
+    }
+
+    /* ── Gallery overlay: flexible description + fixed 91px foot (Figma Frame 402 / 412) ─ */
+    .card-overlay-desc {
+      position: absolute;
+      left: 40px;
+      right: 40px;
+      bottom: var(--overlay-foot-h);
+      max-width: 1120px;
+      width: auto;
+      margin: 0 auto;
+      padding-bottom: 20px;
+      box-sizing: border-box;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 135%;
+      letter-spacing: -0.01em;
+      color: var(--color-muted);
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+      pointer-events: none;
+    }
+
+    .card-overlay-desc .desc-col {
+      flex-shrink: 0;
+      min-width: 0;
+    }
+
+    .card-overlay-foot {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: var(--overlay-foot-h);
+      box-sizing: border-box;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: stretch;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #FFFFFF 100%);
+      pointer-events: none;
+    }
+
+    .card-overlay-foot-inner {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 20px;
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
+      min-height: 11px;
+    }
+
+    /* Project title — Figma “SHLTR” */
+    .card-overlay-name {
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-ink-muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin: 0;
+    }
+
+    .card-overlay-tags {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .card-tag {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+    }
+
+    .card-tag-slash {
+      color: var(--color-muted);
+    }
+
+    /* Small decorative square in top-right of overlay cards */
+    .card-corner-icon {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 12px;
+      height: 12px;
+      border: 1px solid rgba(163, 160, 155, 0.4);
+      pointer-events: none;
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       CONTACT
+    ══════════════════════════════════════════════════════ */
+    .contact-section {
+      width: 100%;
+      min-height: 886px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: var(--space-4xl) var(--space-2xl) var(--space-2xl);
+      gap: 100px;
+      box-sizing: border-box;
+      background: var(--color-bg);
+    }
+
+    /* Top row: About column (left) + More to Explore column (right) */
+    .contact-top-row {
+      width: 100%;
+      max-width: var(--content-width);
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .contact-col-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: flex-start;
+      gap: var(--space-md);
+      flex: 1;
+    }
+
+    .contact-col-right {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-end;
+      gap: 21px;
+      flex: 1;
+    }
+
+    .contact-col-right .contact-btn-row {
+      justify-content: flex-end;
+    }
+
+    /* "About" large heading */
+    .contact-about-heading {
+      margin: 0;
+      height: 63px;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 88px;
+      line-height: 64px;
+      overflow: visible;
+      color: var(--color-muted);
+    }
+
+    .contact-bio {
+      max-width: 500px;
+      margin: 0;
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 150%;
+      letter-spacing: -0.02em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+    }
+
+    .contact-btn-row {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    /* "More to Explore" italic label */
+    .contact-more-label {
+      margin: 0;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 32px;
+      line-height: 120%;
+      text-align: right;
+      letter-spacing: -0.02em;
+      color: var(--color-muted);
+      align-self: stretch;
+    }
+
+    /* Center CTA: "Get in touch" */
+    .contact-bottom {
+      width: 434px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .contact-heading {
+      margin: 0;
+      height: 63px;
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 88px;
+      line-height: 64px;
+      text-align: center;
+      color: var(--color-muted);
+      overflow: visible;
+      align-self: stretch;
+    }
+
+    .contact-tagline {
+      margin: 0;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 24px;
+      line-height: 120%;
+      text-align: center;
+      letter-spacing: -0.02em;
+      color: var(--color-muted);
+    }
+
+    .contact-rule {
+      width: 100%;
+      border: none;
+      border-top: 1px solid rgba(163, 160, 155, 0.10);
+      margin: 0;
+      align-self: stretch;
+    }
+
+    /* Pill-style link button used throughout the contact section */
+    .contact-btn {
+      position: relative;
+      isolation: isolate;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 14px;
+      margin: -6px -14px;
+      border-radius: 100px;
+      text-decoration: none;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 120%;
+      letter-spacing: -0.01em;
+      text-transform: capitalize;
+      color: var(--color-muted);
+      white-space: nowrap;
+      transition: background var(--dur-sm) ease, color var(--dur-sm) ease;
+      overflow: visible;
+    }
+
+    .contact-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 100px;
+      background: var(--gradient-accent);
+      filter: blur(11px);
+      opacity: 0;
+      transition: opacity var(--dur-sm) ease;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .contact-btn:hover,
+    .contact-btn:active,
+    .contact-btn.proximity-hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: var(--color-ink);
+    }
+
+    .contact-btn:hover::before,
+    .contact-btn:active::before,
+    .contact-btn.proximity-hover::before {
+      opacity: 1;
+    }
+
+    .btn-slash {
+      opacity: 0.4;
+    }
+
+    .btn-label {
+      color: var(--color-muted);
+    }
+
+    .contact-btn:hover .btn-label,
+    .contact-btn:hover .btn-slash,
+    .contact-btn.proximity-hover .btn-label,
+    .contact-btn.proximity-hover .btn-slash {
+      color: var(--color-ink);
+      opacity: 1;
+    }
+
+
+    /* ══════════════════════════════════════════════════════
+       ANIMATIONS & UTILITIES
+    ══════════════════════════════════════════════════════ */
+
+    /* ── Letter bounce animation ────────────────────────
+       Each letter span gets this keyframe on mouseenter.
+       The multi-stop ease mimics a real bounce (rises fast,
+       over-shoots, settles with diminishing oscillations).
+    ──────────────────────────────────────────────────── */
+    @keyframes letter-float {
+      0%   { transform: translateY(0); }
+      28%  { transform: translateY(-24px); }
+      50%  { transform: translateY(-4px); }
+      67%  { transform: translateY(-14px); }
+      82%  { transform: translateY(-2px); }
+      93%  { transform: translateY(-7px); }
+      100% { transform: translateY(0); }
+    }
+
+    /* Individual letter wrapping spans */
+    .hero-headline .letter,
+    .contact-heading .letter,
+    .contact-about-heading .letter,
+    .contact-more-label .letter {
+      display: inline-block;
+    }
+
+    /* Space characters stay inline so the browser handles
+       word-break points naturally */
+    .hero-headline .letter-space,
+    .contact-heading .letter-space,
+    .contact-about-heading .letter-space,
+    .contact-more-label .letter-space {
+      display: inline;
+    }
+
+    .hero-headline .letter.bouncing,
+    .contact-heading .letter.bouncing,
+    .contact-about-heading .letter.bouncing,
+    .contact-more-label .letter.bouncing {
+      animation: letter-float 0.9s ease-in-out forwards;
+    }
+
+    /* ── Entrance animation (universal — desktop + mobile) ──
+       playEntrance() in JS staggers each letter through a rise + gradient sweep
+       on page load (hero) or when the heading scrolls into view (contact).
+       The .is-entering class on the parent pre-hides the letters until JS
+       releases them per-letter; the transition rule below drives the actual
+       motion. Previously scoped to mobile only — promoted out so the hero
+       "opens up" on desktop too. */
+    .hero-headline.is-entering .letter,
+    .contact-about-heading.is-entering .letter,
+    .contact-more-label.is-entering .letter,
+    .contact-heading.is-entering .letter {
+      opacity: 0;
+      transform: translateY(26px);
+      filter: blur(8px);
+    }
+    .hero-headline .letter,
+    .contact-about-heading .letter,
+    .contact-more-label .letter,
+    .contact-heading .letter {
+      transition: opacity 0.5s ease, transform 0.55s cubic-bezier(.2,.8,.2,1),
+                  color 0.2s ease, filter 0.45s ease;
+      will-change: opacity, transform, filter;
+    }
+
+    /* ── Hero entrance, part 1 — anti-flash ──
+       Hide the headline parent by default. The h1 itself ships with a
+       data-text attribute instead of textContent, so the element is
+       genuinely empty until the letter-wrap pass populates it with
+       spans. These rules keep the wrapped spans hidden until the JS
+       entrance fires .ready in sync with document.fonts.ready. */
+    .hero-headline {
+      opacity: 0;
+      visibility: hidden;
+    }
+    .hero-headline.ready {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* ── Hero entrance, parts 2 + 3 ──
+       Secondary text + ring-card objects pop in after the headline letter wave
+       starts, in display order from the centre outward. JS in initMobileHeadlines
+       adds .is-entered to release them. Both are display:none on mobile, so this
+       is desktop-only in practice. Pre-hide via opacity + scale; release via the
+       transitions below. */
+    .hero-labels {
+      opacity: 0;
+      transform: translateY(10px);
+      /* Slow + smooth ease-out (easeOutQuart) — meditative, no bounce. */
+      transition: opacity 1.4s ease, transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .hero-labels.is-entered {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hero-cards .ring-card {
+      opacity: 0;
+      /* transform-origin defaults to 50% 50% — each card scales from its own
+         centre, which is wherever applyHeroConfig placed it. The scale here is
+         independent of the inner .ring-card-stage hero-card-pulse animation. */
+      transform: scale(0.7);
+      /* Long, soft ease-out — feels like the object is settling into place,
+         not jumping. cubic-bezier(.22,1,.36,1) is easeOutQuart, no overshoot. */
+      transition: opacity 1.6s ease, transform 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .hero-cards.is-entered .ring-card {
+      opacity: 1;
+      transform: scale(1);
+    }
+    /* Stagger: from-the-centre outward — sphere first (it IS the centre),
+       then the small moji hand, then the original SHLTR + Radiant pair.
+       Wider gaps between objects so each gets a moment to breathe. */
+    .hero-cards.is-entered .ring-card[data-project="sphere"]  { transition-delay: 0ms; }
+    .hero-cards.is-entered .ring-card[data-project="moji"]    { transition-delay: 320ms; }
+    .hero-cards.is-entered .ring-card[data-project="shltr"]   { transition-delay: 640ms; }
+    .hero-cards.is-entered .ring-card[data-project="radiant"] { transition-delay: 960ms; }
+
+    /* ══════════════════════════════════════════════════════════════
+       MOBILE — Phase 1 + 2
+       Tablet  ≤ 900px  : compact desktop layout (gentle scaling)
+       Mobile  ≤ 640px  : single-column layout, stacked hero, larger
+                          touch targets, hover effects gracefully
+                          replaced by scroll/auto cycles.
+       ══════════════════════════════════════════════════════════════ */
+
+    /* ── Tablet (≤900px) ── */
+    @media (max-width: 900px) {
+      .cards-inner {
+        padding: 0 60px;
+        gap: var(--space-xl, 60px);
+      }
+      .nav-links { gap: 20px; }
+      .navbar-inner { padding: 0 24px; }
+    }
+
+    /* ── Mobile (≤600px) ──
+       Layout: pure-typography hero (decorative objects desktop-only);
+       single-column cards with 36px side padding; contact stacked centred
+       in order About → More to Explore → Get in touch (CTA last). */
+    @media (max-width: 600px) {
+      :root {
+        --navbar-h: 52px;
+      }
+
+      /* ── Navbar — frosted-glass backdrop on mobile so scrolled content
+         doesn't bleed into the navbar text. The ::before sits behind the
+         nav contents and applies a subtle backdrop blur + brighten,
+         masked with a gradient so the effect is strongest at the top
+         and fades out at the bottom edge — gives a soft separation
+         between the fixed bar and the page underneath. */
+      .navbar {
+        isolation: isolate;
+      }
+      .navbar::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        bottom: -16px;
+        backdrop-filter: blur(5px) saturate(1.05) brightness(1.04);
+        -webkit-backdrop-filter: blur(5px) saturate(1.05) brightness(1.04);
+        background: linear-gradient(to bottom,
+          rgba(248, 246, 243, 0.55) 0%,
+          rgba(248, 246, 243, 0.20) 60%,
+          rgba(248, 246, 243, 0)    100%);
+        -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+        mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+        pointer-events: none;
+        z-index: -1;
+      }
+
+      /* ── Navbar — tighten the pills so four items fit a phone ──
+         The labels are live text at every width now, so there is no
+         longer an SVG to hide or a fallback to reveal here. */
+      .navbar-inner {
+        padding: 0 16px;
+      }
+      .nav-links { gap: 0; }
+      .nav-logo, .nav-link {
+        padding: 8px 10px;
+      }
+      .nav-title {
+        font-size: 14px;
+      }
+      /* Touch devices: drop the blurred hover glow (no real hover anyway) */
+      @media (hover: none) {
+        .nav-logo::before, .nav-link::before { display: none; }
+      }
+      /* The Contact nav link joins the CTA-button lifecycle on mobile:
+         it drops in on load and pulses the coloured+blurred glow frame
+         (driven by --glow from JS, like the contact buttons). */
+      .nav-link[href="#contact"] {
+        transition: background 0.65s ease, color 0.25s ease,
+                    opacity 0.5s ease, transform 0.55s cubic-bezier(.2,.8,.2,1);
+      }
+      .nav-link[href="#contact"].is-entering {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      .nav-link[href="#contact"]::before {
+        display: block;
+        opacity: var(--glow, 0);
+        transition: opacity 0.45s ease;
+      }
+
+      /* ── Hero — same composition as desktop (cards flank headline)
+         but the cards shrink and tuck close so they read as decorative
+         shapes around the title rather than two big standalone cards. */
+      .hero {
+        height: auto;
+        /* Shorter than the viewport so the "/ my work" label AND a glimpse of
+           the first project peek above the fold — a hint to scroll on. */
+        min-height: calc(100vh - 180px);
+        padding: 80px 20px 40px;
+        position: relative;
+      }
+      .hero-text {
+        position: relative;
+        z-index: 2;
+        width: 100%;
+        max-width: 100%;
+        text-align: center;
+        padding: 0;
+        pointer-events: auto;
+      }
+      .hero-headline {
+        font-size: 64px;
+        line-height: 118%;
+        letter-spacing: -0.02em;
+        text-align: center;
+      }
+      /* Entrance initial state + transition now live in the universal block
+         above (look for "Entrance animation (universal — desktop + mobile)"). */
+      /* Force the headline onto 3 lines per Figma:
+         "Welcome / To My / Exhibition".
+         Each .letter-space has a data-space-idx (1, 2, 3) set by the
+         letter-wrap JS — we promote spaces #1 and #3 to display:block
+         so they break the line after "Welcome" and after "My". */
+      .hero-headline .letter-space[data-space-idx="1"],
+      .hero-headline .letter-space[data-space-idx="3"] {
+        display: block;
+        height: 0;
+        width: 0;
+      }
+      /* Hide the secondary labels on mobile — they don't earn the real estate. */
+      .hero-labels {
+        display: none;
+      }
+      /* Mobile hero is pure typography — the four decorative objects are
+         desktop-only. (The card auto-cycle JS skips hidden cards, so nothing
+         else needs to change to silence it here.) */
+      .hero-cards {
+        display: none;
+      }
+
+      /* ── Cards section — single column, 36px side padding, 120px gap
+         between items (matches Figma "Frame 408" auto-layout). ── */
+      .cards-section {
+        padding: 40px 0 80px;
+      }
+      .cards-inner {
+        flex-direction: column;
+        padding: 0 36px;
+        gap: 120px;
+        align-items: stretch;
+      }
+      /* `display: contents` lets cards-col vanish so cards become direct
+         flex children of cards-inner and gap+order apply uniformly. */
+      .cards-col {
+        display: contents;
+      }
+      .card-b {
+        order: var(--card-order, 0);
+      }
+      /* Two ".cards-col-header" labels exist (one per desktop column).
+         Show only the first as the single "/ my work" header on mobile;
+         hide the duplicate from the second column. */
+      /* Pull the first project up toward the "/ my work" label — the default
+         120px inter-item gap is too large between the header and project #1. */
+      .cards-col-header {
+        order: -1;
+        height: auto;
+        width: auto;
+        margin: 0 0 -76px;
+      }
+      .cards-col:nth-of-type(2) .cards-col-header {
+        display: none;
+      }
+      .cards-col-label {
+        font-size: 20px;
+      }
+      :root {
+        --card-w: 100%;
+      }
+      /* Card B per Figma: 288×373 inside 360 with 36 padding.
+         Card image: 288×346 (aspect 144/173 ≈ 5:6) on a white background
+         with a 1px hairline border in the muted tone. Footer 11px tall,
+         16px gap from image. */
+      .card-b {
+        width: 100%;
+        height: auto;
+        margin: 0;
+        gap: 16px;
+      }
+      .card-b-body {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 144 / 173;
+        background: #FFFFFF;
+        border: 1px solid rgba(163, 160, 155, 0.15);
+        box-sizing: border-box;
+      }
+      /* moji thumbnail: the composition is laid out for the 400px desktop
+         card. On the narrower mobile card the fixed-px head/cells/emoji would
+         crowd (and the 310px frame can overflow). Scale the whole central
+         composition down in proportion to the card's actual width so it keeps
+         the same breathing room as desktop, at any phone size.
+         100cqw = the card's own width (container); ÷400px = desktop design
+         width; capped at 1 so it never scales *up*. */
+      .card-b-body--mojithumb { container-type: inline-size; }
+      .card-b-body--mojithumb .mt-stage {
+        transform: scale(min(1, calc(100cqw / 400px)));
+        transform-origin: 50% 50%;
+      }
+      /* Override desktop's fixed 467×607 turntable body so SHLTR's card
+         scales to the mobile column width like every other card.
+         The turntable body is also given a transparent bg + no border
+         so the 3D model floats on the page bg (matches Figma — no
+         frame around the 3D silhouette). */
+      .card-b.card-b--turntable,
+      .card-b-body.card-b-body--turntable {
+        width: 100% !important;
+        height: auto !important;
+        align-self: stretch !important;
+        aspect-ratio: 144 / 173;
+        background: transparent !important;
+        border: none !important;
+      }
+      .card-b.card-b--turntable .card-b-footer {
+        width: 100%;
+      }
+      /* The model-viewer is desktop-locked at 467×607 and absolutely
+         positioned with a desktop-zoom transform. On mobile, fill the
+         body and reset the zoom so the model is centered + uncropped. */
+      .card-b-body.card-b-body--turntable .card-turntable-model {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        /* Match desktop's 150% zoom so the 3D silhouette fills the
+           card frame instead of looking small + lost inside the body. */
+        transform: scale(1.5);
+        transform-origin: 50% 50%;
+      }
+      /* Thumbnail PNGs (e.g. Radiant) have rounded transparent corners.
+         Keep the body bg transparent and drop the border so the white
+         card doesn't peek through the corners. */
+      .card-b-body.card-b-body--thumb {
+        background: transparent;
+        border: none;
+      }
+      .card-b .card-media,
+      .card-b .card-media-wrap,
+      .card-b-body > :first-child {
+        height: 100%;
+        width: 100%;
+      }
+      /* Footer: title left, tags right, 8px side padding, 16px gap
+         between title and tag-group. Inside tag-group: 24px between tags. */
+      .card-b-footer {
+        width: 100%;
+        height: 11px;
+        flex-wrap: nowrap;
+        padding: 0 8px;
+        gap: 16px;
+        min-width: 0;
+        box-sizing: border-box;
+      }
+      .card-b-title {
+        font-size: 16px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+      }
+      .card-b-tags {
+        flex-wrap: nowrap;
+        gap: 16px;
+        flex-shrink: 0;
+      }
+      .card-b-tag {
+        font-size: 16px;
+        white-space: nowrap;
+      }
+
+      /* ── Contact section — three centred blocks per Figma:
+         About → More to Explore → Get in touch (CTA last).
+         Section: padding 200px 36px 120px, gap 100px between blocks.
+         Block: gap 24px between heading/body/buttons.
+         Heading: Instrument Serif 52px, 0.4px stroke in muted tone.
+         Body text: Nimbus Sans 14px, italic for taglines.
+         Buttons: italic 16px underlined, gap 24 between buttons. */
+      .contact-section {
+        padding: 120px 36px 120px;
+        gap: 100px;
+        min-height: auto;
+      }
+      .contact-top-row {
+        display: contents;
+      }
+      .contact-col-left,
+      .contact-bottom,
+      .contact-col-right {
+        /* Override the desktop fixed width on .contact-bottom (434px),
+           which was wider than a 360px screen and forced horizontal scroll. */
+        width: 100% !important;
+        max-width: 100%;
+        align-items: center;
+        text-align: center;
+        gap: 24px;
+        box-sizing: border-box;
+      }
+      /* Stack: About → More to Explore → Get in touch (LAST / bottom-most),
+         so the "Get in touch" CTA is the final text on the page. */
+      .contact-col-left   { order: 0; }
+      .contact-col-right  { order: 1; align-items: center; }
+      .contact-bottom     { order: 2; }
+
+      .contact-col-right .contact-btn-row,
+      .contact-col-left  .contact-btn-row {
+        justify-content: center;
+        gap: 24px;
+      }
+
+      /* Headings — 52px serif with a hairline stroke per Figma. */
+      .contact-about-heading,
+      .contact-heading {
+        font-size: 52px;
+        height: auto;
+        line-height: 120%;
+        text-align: center;
+        letter-spacing: -0.01em;
+        -webkit-text-stroke: 0.4px #A3A09B;
+      }
+      .contact-bio {
+        text-align: justify;
+        text-align-last: center;
+        text-wrap: balance;
+        hyphens: auto;
+        font-size: 14px;
+        line-height: 150%;
+        letter-spacing: -0.02em;
+      }
+      .contact-tagline {
+        text-align: center;
+        font-style: italic;
+        font-size: 14px;
+        line-height: 120%;
+        letter-spacing: -0.02em;
+      }
+      /* Buttons — italic 16px, no underline per latest spec.
+         Slow the glow on/off transition so the auto-cycle reads as
+         a soft breath rather than a snap toggle. */
+      .contact-btn {
+        font-style: italic;
+        font-size: 16px;
+        text-decoration: none;
+        letter-spacing: -0.01em;
+        transition: background 0.65s ease, color 0.25s ease,
+                    opacity 0.5s ease, transform 0.55s cubic-bezier(.2,.8,.2,1);
+      }
+      /* Pre-hidden until revealed by the open-up (mirrors the headings). */
+      .contact-btn.is-entering {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+      /* Glow frame behind the button — flashed on by JS (open-up + periodic
+         pulse, same lifecycle as "Get in touch"); the text itself never blurs. */
+      .contact-btn::before {
+        opacity: var(--glow, 0);
+        transition: opacity 0.45s ease;
+      }
+      /* "More to Explore" gets its text replaced by JS to "Explore More"
+         on mobile (so the existing letter-wrap can split it into per-letter
+         spans for the auto cycle). Style here mirrors the other 52px serif
+         headings — font-style is forced to normal because the desktop
+         label is italic. */
+      .contact-more-label {
+        font-family: var(--font-serif);
+        font-style: normal;
+        font-weight: 400;
+        font-size: 52px;
+        line-height: 120%;
+        letter-spacing: -0.01em;
+        text-align: center;
+        /* Only the first letter is uppercase per Figma — text content is
+           already "Explore more", so disable the desktop capitalize. */
+        text-transform: none;
+        color: var(--color-muted);
+        -webkit-text-stroke: 0.4px #A3A09B;
+        align-self: center;
+        height: auto;
+      }
+
+      /* ── Disable the custom JS cursor on touch devices ──
+         The cursor div + tooltip should not appear on tap; the
+         OS pointer (or no pointer at all) takes over. */
+      *, *::before, *::after { cursor: auto !important; }
+      #cursor, #cursor-tooltip { display: none !important; }
+    }
+

@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Shop</title>
+<meta name="description" content="Fonts and scripts by Yam Livnat.">
+<meta name="theme-color" content="#F8F6F3">
+
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://api.fontshare.com">
+<link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@1,2&display=swap">
+
+<!-- The site's own stylesheet — the same one the home page uses. -->
+<link rel="stylesheet" href="/shared/site.css">
+<link rel="stylesheet" href="/shared/pages.css">
+</head>
+<body id="top" class="page-shop">
+
+<!-- ══════════════════════════════════════════════════════════════
+     DITHERED GLOW FILTER
+
+     Turns the button glow's smooth alpha falloff into a 1-bit dot
+     field whose density carries the gradient — dense where the glow
+     is strong, sparse where it fades out, nothing beyond.
+
+     A CSS mask can't do this: multiplying a soft gradient by noise
+     just gives a noisy soft gradient. A threshold is needed, and only
+     an SVG filter can do one.
+
+       1  blur the shape — this is the gradient being dithered
+       2  make noise, and map one channel to ±0.45 in the alpha slot
+       3  add it to the blurred alpha
+       4  feFuncA discrete snaps the sum to 0 or 1 at the 0.5 mark
+       5  paint the blurred colour back through that hard alpha
+
+     Step 4 is what makes it a bitmap rather than a haze. The ±0.45
+     amplitude is chosen so full alpha always survives the threshold
+     and zero alpha never does; only the middle dithers.
+══════════════════════════════════════════════════════════════════ -->
+<svg width="0" height="0" aria-hidden="true"
+     style="position:absolute;pointer-events:none">
+  <filter id="ditherGlow" x="-60%" y="-60%" width="220%" height="220%"
+          color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="15" result="soft"/>
+
+    <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="1"
+                  seed="7" stitchTiles="stitch" result="noise"/>
+    <feColorMatrix in="noise" type="matrix" result="bias"
+                   values="0 0 0 0 0
+                           0 0 0 0 0
+                           0 0 0 0 0
+                           0.9 0 0 0 -0.45"/>
+
+    <feComposite in="soft" in2="bias" operator="arithmetic"
+                 k1="0" k2="1" k3="1" k4="0" result="sum"/>
+
+    <feComponentTransfer in="sum" result="bits">
+      <feFuncA type="discrete" tableValues="0 1"/>
+    </feComponentTransfer>
+
+    <!-- Colour comes from the blur, so the light theme keeps its
+         gradient and the dark theme stays white. -->
+    <feComposite in="soft" in2="bits" operator="in"/>
+  </filter>
+</svg>
+
+<!-- A slim band in place of the full-height hero, so the products start
+     near the top of the screen. The word repeats and drifts right to
+     left; the track is built from one set duplicated, which is what
+     lets the -50% travel loop seamlessly. -->
+<section class="mtitle" id="mtitle" aria-label="Shop"></section>
+
+<script>
+(function () {
+  var band = document.getElementById('mtitle');
+  var SET  = 6;                    // repeats per set
+
+  /* One unit = the word, then the three rings. They are slanted ovals,
+     not circles, so this is the exported artwork rather than CSS
+     shapes. stroke="currentColor" lets them follow the theme — they
+     have to go light on the dark ground. */
+  var RINGS =
+    '<svg class="mtitle-rings" viewBox="0 0 115 79" fill="none" ' +
+         'xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<path d="M44.9361 48.6892C33.4762 68.5383 16.8191 80.3759 7.73158 75.1292C-1.35598 69.8825 0.567193 49.5383 12.0271 29.6892C23.487 9.84004 40.144 -1.99758 49.2316 3.24913C58.3191 8.49583 56.396 28.84 44.9361 48.6892Z" stroke="currentColor" stroke-width="3"/>' +
+      '<path d="M73.9028 48.6892C62.4429 68.5383 45.7858 80.3759 36.6983 75.1292C27.6107 69.8825 29.5339 49.5383 40.9938 29.6892C52.4537 9.84004 69.1107 -1.99758 78.1983 3.24913C87.2858 8.49583 85.3627 28.84 73.9028 48.6892Z" stroke="currentColor" stroke-width="3"/>' +
+      '<path d="M102.869 48.6892C91.4096 68.5383 74.7526 80.3759 65.665 75.1292C56.5774 69.8825 58.5006 49.5383 69.9605 29.6892C81.4204 9.84004 98.0774 -1.99758 107.165 3.24913C116.253 8.49583 114.329 28.84 102.869 48.6892Z" stroke="currentColor" stroke-width="3"/>' +
+    '</svg>';
+
+  var unit =
+    '<span class="mtitle-unit">' +
+      '<span class="mtitle-word">Shop</span>' +
+      RINGS +
+    '</span>';
+
+  var one = '';
+  for (var i = 0; i < SET; i++) one += unit;
+
+  // Two identical sets: the second lands exactly where the first began.
+  band.innerHTML = '<div class="mtitle-track" aria-hidden="true">' + one + one + '</div>';
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════
+     INDEX — tag filter, search, three-across grid
+     ══════════════════════════════════════════════════════════ -->
+<section class="shop" id="view-index">
+
+  <div class="shop-bar">
+    <div class="shop-tags" id="shop-tags" role="group" aria-label="Filter by tag"></div>
+
+    <!-- The label is an aria-label rather than a visually-hidden span.
+         The span relied on .u-sr-only, which lives in base.css — a file
+         this page doesn't load — so it had no styles and simply showed
+         up as text inside the field. -->
+    <label class="shop-search">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <circle cx="6" cy="6" r="4.5" stroke="currentColor"/>
+        <path d="M9.5 9.5L13 13" stroke="currentColor" stroke-linecap="round"/>
+      </svg>
+      <input type="search" id="shop-search" placeholder="Search"
+             aria-label="Search products" autocomplete="off">
+    </label>
+  </div>
+
+  <div class="shop-grid" id="shop-grid"></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     DETAIL — opens on card click (/shop/?p=<id>)
+     ══════════════════════════════════════════════════════════ -->
+<section class="product" id="view-product" hidden>
+
+  <!-- Live specimen. The visitor types their own word — the only way
+       to really judge a typeface — and drags the weight across the
+       variable axis the font actually ships with. -->
+  <div class="spec">
+    <div class="spec-bar">
+      <span class="spec-label">Try it</span>
+
+      <label class="spec-control">
+        <span class="spec-label">Weight</span>
+        <input type="range" id="spec-weight" min="100" max="900" step="1" value="400"
+               aria-label="Font weight">
+        <output id="spec-weight-out">400</output>
+      </label>
+
+      <label class="spec-control">
+        <span class="spec-label">Size</span>
+        <input type="range" id="spec-size" min="24" max="140" step="1" value="72"
+               aria-label="Preview size">
+        <output id="spec-size-out">72px</output>
+      </label>
+    </div>
+
+    <div class="spec-field" id="spec-field" contenteditable="true" spellcheck="false"
+         role="textbox" aria-label="Type to preview the typeface">DOTS.MONO.001</div>
+  </div>
+
+  <div class="product-row">
+    <div>
+      <p class="product-kicker">Typeface</p>
+      <h2 class="product-name">Dots.Mono.001</h2>
+      <p class="product-sub">Variable Monospace Typeface</p>
+      <p class="product-blurb">
+        Every pixel is a circle. A monospace display typeface built on a 5×7 grid,
+        where the weight axis is the twist: instead of thickening strokes, the dots
+        themselves grow — from small, separated points at Thin to bold, overlapping
+        letterforms at Black. Five stops on one smooth variable axis.
+      </p>
+      <p class="product-blurb">
+        Because it is fully monospace, every glyph shares the same width, so text
+        locks into a clean grid — for code-style layouts, tickers, tables, posters,
+        packaging, UI mockups and motion.
+      </p>
+    </div>
+
+    <div class="product-buy">
+      <div class="product-price">$12<small> + pay what you want</small></div>
+
+      <dl class="product-specs">
+        <div class="product-spec"><dt>Variable</dt><dd>Weight 100–900</dd></div>
+        <div class="product-spec"><dt>Static weights</dt><dd>Thin · Light · Regular · Bold · Black</dd></div>
+        <div class="product-spec"><dt>Glyphs</dt><dd>107</dd></div>
+        <div class="product-spec"><dt>Formats</dt><dd>Variable TTF + 5 static TTF</dd></div>
+        <div class="product-spec"><dt>Licence</dt><dd>Desktop, personal &amp; commercial</dd></div>
+      </dl>
+
+      <!-- Gumroad's overlay: checkout opens on top of this page rather
+           than sending the visitor away. No backend, no payment data
+           ever touching this site. -->
+      <div class="product-cta">
+        <a class="contact-btn" href="https://plasticsoil.gumroad.com/l/DotsMono001"
+           data-gumroad-overlay-checkout="true"
+           data-cursor-tooltip="Secure checkout by Gumroad">
+          <span class="btn-label">Buy the typeface</span>
+        </a>
+      </div>
+
+      <p class="product-note">
+        Instant download. Checkout and delivery are handled by Gumroad.
+        Webfont, app, game and broadcast use are available as a separate
+        extended licence — just reach out.
+      </p>
+    </div>
+  </div>
+
+  <p class="product-note" style="max-width:60ch">
+    The preview above runs on a cut-down version of the typeface — basic Latin only,
+    no extras and no static weights. The full family comes with the purchase.
+  </p>
+
+  <p class="product-cta"><a class="page-back" href="/shop/">All products</a></p>
+
+</section>
+
+<script src="/shared/nav.js"></script>
+<script defer src="/shared/cursor.js"></script>
+<script defer src="/shared/footer.js"></script>
+<script src="https://gumroad.com/js/gumroad.js" defer></script>
+
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   PRODUCTS
+
+   One object per product. Adding the next font is adding an entry —
+   no markup to write. `thumb: 'type'` means the card previews the
+   typeface itself instead of showing an image of it.
+════════════════════════════════════════════════════════════════ */
+
+/* `tag` is the product's category — what kind of thing it is — and
+   the filter row is built from these. They are categories rather than
+   attributes on purpose: "variable" and "monospace" describe a font,
+   so as soon as the shop sells anything that isn't one they stop
+   working as a way to browse. Add a category by giving a product a
+   new tag; the filter picks it up on its own. */
+var PRODUCTS = [
+  {
+    id: 'dots-mono-001',
+    title: 'Dots.Mono.001',
+    sub: 'Variable Monospace Typeface',
+    tag: 'Typeface',
+    tags: ['typeface'],
+    price: '$12+',
+    thumb: 'type',
+    sample: 'DOTS.\nMONO.\n001',
+    axis: { min: 100, max: 900, from: 250, to: 800 }
+  },
+  { id: 'soon-1', title: 'Next typeface',  sub: 'In progress',       tag: 'Typeface', tags: ['typeface'], price: 'Soon', soon: true },
+  { id: 'soon-2', title: 'Script',         sub: 'After Effects',     tag: 'Script',   tags: ['script'],   price: 'Soon', soon: true }
+];
+
+/* ══════════════════════════════════════════════════════════════
+   INDEX — filter, search, render
+
+   Every card is rendered once and then hidden or shown, which is
+   how the filter stays instant with no reload.
+════════════════════════════════════════════════════════════════ */
+
+(function () {
+  var grid   = document.getElementById('shop-grid');
+  var tagsEl = document.getElementById('shop-tags');
+  var search = document.getElementById('shop-search');
+  if (!grid) return;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function card(p) {
+    var isType = p.thumb === 'type' && !p.soon;
+    var a = p.axis || {};
+
+    /* The scale under the slider is the axis the font actually has,
+       so the read-out can't drift from the product. */
+    var weightUI = isType
+      ? '<div class="shop-weight" aria-hidden="true">' +
+          '<div class="shop-weight-track">' +
+            '<span class="shop-weight-knob"></span>' +
+          '</div>' +
+        '</div>'
+      : '';
+
+    var media = (p.soon
+      ? '<div class="shop-card-type">coming soon</div>'
+      : (isType
+          ? '<div class="shop-card-type">' + esc(p.sample || 'Aa') + '</div>' + weightUI
+          : '<img src="' + esc(p.thumb) + '" alt="" loading="lazy">'))
+      /* Grain sits over whatever the thumbnail is — the same noise the
+         sphere card uses, so the shop matches the rest of the site. */
+      + '<div class="card-grain" aria-hidden="true"></div>';
+
+    return '<article class="shop-card' + (p.soon ? ' shop-card--soon' : '') + '"' +
+             ' data-tags="' + esc((p.tags || []).join(' ')) + '"' +
+             ' data-title="' + esc(p.title.toLowerCase()) + '"' +
+             (isType ? ' data-from="' + a.from + '" data-min="' + a.min + '" data-max="' + a.max + '"' : '') + '>' +
+             '<div class="shop-card-media' + (isType ? ' shop-card-media--type' : '') + '">' +
+               media +
+             '</div>' +
+             '<div class="shop-card-foot">' +
+               '<div>' +
+                 '<h3 class="shop-card-title">' + esc(p.title) + '</h3>' +
+                 (p.sub ? '<p class="shop-card-sub">' + esc(p.sub) + '</p>' : '') +
+               '</div>' +
+               '<span class="shop-card-price">' + esc(p.price) + '</span>' +
+             '</div>' +
+             (p.soon ? '' :
+               /* data-cursor-light turns the custom cursor's tooltip white,
+                  which it has to be to be legible on the black thumbnail. */
+               /* data-cursor-tooltip-arrow adds the small caret the hero
+                  ring-cards already use. data-cursor-light turns the
+                  tooltip white, which it has to be to be legible on the
+                  black thumbnail. */
+               '<a class="shop-card-link" href="/shop/?p=' + encodeURIComponent(p.id) + '"' +
+               ' data-cursor-tooltip="See More" data-cursor-tooltip-arrow' +
+               (isType ? ' data-cursor-light' : '') +
+               ' aria-label="' + esc(p.title) + '"></a>') +
+           '</article>';
+  }
+
+  grid.innerHTML = PRODUCTS.map(card).join('') +
+                   '<p class="shop-empty" id="shop-empty" hidden>Nothing matches that.</p>';
+
+  /* Tag list is derived from the products, so it can never fall out
+     of step with what is actually for sale. */
+  var allTags = [];
+  PRODUCTS.forEach(function (p) {
+    (p.tags || []).forEach(function (t) { if (allTags.indexOf(t) < 0) allTags.push(t); });
+  });
+
+  tagsEl.innerHTML = ['all'].concat(allTags).map(function (t) {
+    return '<button class="shop-tag" type="button" data-tag="' + esc(t) + '"' +
+           ' aria-pressed="' + (t === 'all') + '">' + esc(t) + '</button>';
+  }).join('');
+
+  var activeTag = 'all';
+
+  function apply() {
+    var q = (search.value || '').trim().toLowerCase();
+    var shown = 0;
+
+    Array.prototype.forEach.call(grid.querySelectorAll('.shop-card'), function (el) {
+      var tagOk = activeTag === 'all' ||
+                  el.dataset.tags.split(' ').indexOf(activeTag) > -1;
+      var qOk = !q || el.dataset.title.indexOf(q) > -1 ||
+                el.dataset.tags.indexOf(q) > -1;
+      var on = tagOk && qOk;
+      el.hidden = !on;
+      if (on) shown++;
+    });
+
+    document.getElementById('shop-empty').hidden = shown > 0;
+  }
+
+  tagsEl.addEventListener('click', function (e) {
+    var btn = e.target.closest('.shop-tag');
+    if (!btn) return;
+    activeTag = btn.dataset.tag;
+    Array.prototype.forEach.call(tagsEl.children, function (b) {
+      b.setAttribute('aria-pressed', String(b === btn));
+    });
+    apply();
+  });
+
+  search.addEventListener('input', apply);
+  apply();
+
+  /* ── Weight follows the pointer ──────────────────────────────
+     The cursor's vertical position over the thumbnail sets the weight:
+     at the foot of the slider the letters are at their lightest, at
+     the head their heaviest. The marker sits at the same fraction, so
+     it reads as the control rather than a report of it.
+
+     Type and marker both carry a 0.12s transition — enough to take the
+     stutter out of the tracking without letting it trail the hand. */
+  Array.prototype.forEach.call(grid.querySelectorAll('.shop-card[data-from]'), function (cardEl) {
+    var type   = cardEl.querySelector('.shop-card-type');
+    var knob   = cardEl.querySelector('.shop-weight-knob');
+    var slider = cardEl.querySelector('.shop-weight');
+    var media  = cardEl.querySelector('.shop-card-media');
+    var lo = +cardEl.dataset.min, hi = +cardEl.dataset.max, rest = +cardEl.dataset.from;
+
+    function set(weight) {
+      type.style.fontVariationSettings = '"wght" ' + Math.round(weight);
+      knob.style.bottom = ((weight - lo) / (hi - lo) * 100) + '%';
+    }
+
+    function track(e) {
+      // Only while the pointer is actually over the thumbnail — below
+      // it are the title and price, and sweeping those shouldn't drag
+      // the weight to its lightest.
+      var m = media.getBoundingClientRect();
+      if (e.clientY < m.top || e.clientY > m.bottom) return;
+
+      // The frame's full height is the axis: its foot is the lightest
+      // weight, its head the heaviest.
+      var t = Math.max(0, Math.min(1, (m.bottom - e.clientY) / m.height));
+      set(lo + t * (hi - lo));
+    }
+
+    /* Bound to the card, not the thumbnail. The click overlay
+       (.shop-card-link::after) covers the card at z-index 3 and is a
+       sibling of .shop-card-media — so the pointer lands on it and its
+       events bubble to .shop-card, never through the thumbnail. A
+       listener on the thumbnail never fired.
+
+       Nothing on pointerleave: the weight stays where it was left, so
+       the grid keeps a record of where each card was last read. */
+    cardEl.addEventListener('pointermove', track);
+
+    // Lets the behaviour be checked without a real pointer.
+    cardEl._setWeight = set;
+  });
+
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   ROUTING — grid ⇄ product detail
+════════════════════════════════════════════════════════════════ */
+
+(function () {
+  var index = document.getElementById('view-index');
+  var detail = document.getElementById('view-product');
+
+  function route() {
+    var want = new URLSearchParams(location.search).get('p');
+    var found = want && PRODUCTS.filter(function (p) { return p.id === want && !p.soon; })[0];
+    index.hidden  = !!found;
+    detail.hidden = !found;
+    // Just the page, no site suffix — the tab is narrow and the name
+    // is already the domain.
+    document.title = found ? found.title : 'Shop';
+    window.scrollTo({ top: 0 });
+  }
+
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="/shop/"]');
+    if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    history.pushState(null, '', a.getAttribute('href'));
+    route();
+  });
+
+  window.addEventListener('popstate', route);
+  route();
+})();
+
+/* The two specimen controls. Weight drives the real variable axis, so
+   dragging it walks the font through its actual interpolation rather
+   than swapping between static cuts. */
+(function () {
+  var field = document.getElementById('spec-field');
+  if (!field) return;
+
+  function bind(inputId, outId, apply, suffix) {
+    var input = document.getElementById(inputId);
+    var out   = document.getElementById(outId);
+    input.addEventListener('input', function () {
+      apply(input.value);
+      out.textContent = input.value + (suffix || '');
+    });
+  }
+
+  bind('spec-weight', 'spec-weight-out', function (v) {
+    field.style.fontVariationSettings = '"wght" ' + v;
+  });
+
+  bind('spec-size', 'spec-size-out', function (v) {
+    field.style.fontSize = v + 'px';
+  }, 'px');
+})();
+</script>
+</body>
+</html>
