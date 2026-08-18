@@ -671,7 +671,7 @@
   font-family: var(--font-serif);
   font-size: clamp(52px, 5.5vw, 76px);
   line-height: 1;
-  color: var(--color-ink);
+  color: var(--color-muted);
 }
 .pd-price small {
   margin-inline-start: 0.3em;
@@ -683,6 +683,8 @@
 .pd-note {
   flex: 1 0 100%;
   max-width: 58ch;
+  margin-inline-start: auto;
+  text-align: right;
   font-family: var(--font-sans);
   font-size: 13px;
   line-height: 1.5;
@@ -1635,3 +1637,20 @@ button.contact-btn {
 
 /* Sphere's wordmark, sized against the tile the way the home-page card
    sizes it against its own. Inert, like the media under it. */
+
+/* ── Selection ─────────────────────────────────────────────────
+   The browser's blue belongs to the browser. This is the pink the
+   site already uses on the sphere, lightened so dark ink sits on it
+   comfortably. ::selection does not inherit, so the ::-moz- twin is
+   spelled out rather than grouped: one unknown pseudo-element in a
+   selector list drops the whole rule. */
+::selection {
+  background: #FFB9F7;
+  color: #1A1917;
+  text-shadow: none;
+}
+::-moz-selection {
+  background: #FFB9F7;
+  color: #1A1917;
+  text-shadow: none;
+}
