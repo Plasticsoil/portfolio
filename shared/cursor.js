@@ -217,8 +217,14 @@
           const caretSvg   = showCaret
             ? `<polygon points="${ax1},${ay - 4} ${ax1 + ARROW_W},${ay} ${ax1},${ay + 4}" fill="#292929"/>`
             : '';
+          /* Dot and caret say different things: the dot marks where the
+             cursor is, the caret says this opens. Both at once is one
+             mark too many, so the caret stands in for the dot. */
+          const dotSvg     = showCaret
+            ? ''
+            : `<circle cx="${DOT_CX}" cy="${DOT_CY}" r="${DOT_R}" fill="#292929"/>`;
           return `<svg width="${W}" height="${TOOLTIP_H}" viewBox="0 0 ${W} ${TOOLTIP_H}" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- anchor dot removed — label + caret only -->
+            ${dotSvg}
             <text x="${TEXT_START_X}" y="${TEXT_Y}" font-family="${FONT_FAMILY}" font-weight="400" font-size="${TOOLTIP_SIZE}" fill="#26251E">${escapeSvgText(t)}</text>
             ${caretSvg}
           </svg>`;
@@ -249,9 +255,15 @@
         const caretSvg  = showCaret
           ? `<polygon points="${ax2},${arrowCy - 4} ${ax2 + ARROW_W},${arrowCy} ${ax2},${arrowCy + 4}" fill="#292929"/>`
           : '';
+        /* Dot and caret say different things: the dot marks where the
+           cursor is, the caret says this opens. Both at once is one
+           mark too many, so the caret stands in for the dot. */
+        const dotSvg    = showCaret
+          ? ''
+          : `<circle cx="${DOT_CX}" cy="${DOT_CY}" r="${DOT_R}" fill="#292929"/>`;
 
         return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- anchor dot removed — label + caret only -->
+          ${dotSvg}
           ${textParts.join('')}
           ${caretSvg}
         </svg>`;

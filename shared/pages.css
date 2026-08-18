@@ -78,6 +78,21 @@
 }
 .slot-label::before { content: '/ '; }
 
+/* ── The typeface itself ───────────────────────────────────────
+   Declared up here, above everything that uses it, so a rewrite of
+   any one section can't take it out from under the rest. It went
+   missing exactly that way once.
+
+   A subset of the shipping font: basic Latin only, no extras, no
+   static weights, no licence. 3.7KB against the 153KB that is sold,
+   with the wght axis intact so the testers interpolate for real. */
+@font-face {
+  font-family: 'DotsMono001 Specimen';
+  src: url('/shared/fonts/DotsMono001-Specimen.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 /* ══════════════════════════════════════════════════════════════
    SHOP GRID
 
@@ -426,181 +441,308 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
-   PRODUCT — the shop's typeface entry
+   PRODUCT PAGE
 
-   The specimen runs on a subset of the real typeface: basic Latin
-   only, no extras, no static weights, no licence. 3.7KB against the
-   153KB that is sold, so the page can show the font working without
-   giving away the thing itself.
+   After the GT Haptik specimen at grillitype.com, in this site's own
+   terms: the thumbnail opens, then a field to type in, then every
+   weight on its own editable line, then what it is, then the gallery,
+   then three ways onward, then the closing line.
+
+   The page is dark throughout — the typeface is white on black, and
+   the page is built around it rather than around the site's paper.
 ════════════════════════════════════════════════════════════════ */
-
-@font-face {
-  font-family: 'DotsMono001 Specimen';
-  src: url('/shared/fonts/DotsMono001-Specimen.woff2') format('woff2-variations');
-  font-weight: 100 900;      /* the variable axis survived subsetting */
-  font-display: swap;
-}
 
 .product {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 0 var(--space-lg) var(--space-4xl);
+  /* The Shop band is hidden on a product, so this is the first thing in
+     the document and the fixed 60px navbar would sit on it. Clear the
+     navbar first, then give the artwork room to breathe. */
+  padding: calc(var(--navbar-h) + clamp(40px, 5vw, 72px)) var(--space-lg) var(--space-2xl);
 }
 
-/* ── Live type tester ──────────────────────────────────────── */
+/* ── 1. Opening thumbnail ──────────────────────────────────────*/
 
-.spec {
-  border: 1px solid var(--color-muted-15);
-  border-radius: 14px;
+/* Figma frame "9": 1600x900, padding 120, gap 120, black.
+   Sizes are in cqw against the frame, so it scales as one piece.
+
+   The container is the outer box and the padding lives on an inner
+   one, deliberately. cqw resolves against the container's CONTENT
+   box, so padding declared on the container itself would shrink the
+   very basis it is measured from, and every number would come out
+   about 16% short. */
+.pd-hero {
+  container-type: inline-size;
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000000;
   overflow: hidden;
-  background: #111111;
+  color: #FFFFFF;
+  font-family: 'DotsMono001 Specimen', ui-monospace, monospace;
+  --grain: 0.30;
 }
 
-.spec-bar {
+.pd-hero-inner {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  gap: 7.5cqw;                   /* 120 / 1600 */
+  padding: 7.5cqw;
+  box-sizing: border-box;
+}
+
+.pd-hero-name {
+  flex: none;
+  font-size: 11.5cqw;            /* 184 */
+  font-variation-settings: 'wght' 400;
+  line-height: 140%;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pd-hero-col {
+  flex: 1 1 auto;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.pd-hero-desc {
+  width: 100%;
+  font-size: 1.625cqw;           /* 26 */
+  font-variation-settings: 'wght' 300;
+  line-height: 170%;
+}
+
+.pd-hero-cue {
+  width: 100%;
+  font-size: 4.3125cqw;          /* 69 */
+  font-variation-settings: 'wght' 900;
+  line-height: 176%;
+  text-align: right;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ── 2. Tester ─────────────────────────────────────────────────*/
+
+.pd-tester {
+  margin-top: var(--space-xl);
+  border: 1px solid var(--color-muted-15);
+}
+
+.pd-tester-bar {
   display: flex;
   align-items: center;
   gap: var(--space-md);
   flex-wrap: wrap;
   padding: var(--space-sm) var(--space-md);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--color-muted-15);
 }
 
-.spec-label {
+.pd-label {
   font-family: var(--font-sans);
   font-style: italic;
   font-size: 14px;
   text-transform: capitalize;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--color-muted-50);
 }
-
-.spec-control { display: flex; align-items: center; gap: 10px; }
-.spec-control:last-of-type { margin-inline-start: auto; }
-.spec-control input { width: 120px; accent-color: #FFFFFF; }
-.spec-control output {
+.pd-control { display: flex; align-items: center; gap: 10px; }
+.pd-control:last-of-type { margin-inline-start: auto; }
+.pd-control input { width: 130px; accent-color: var(--color-ink); }
+.pd-control output {
+  min-width: 5ch;
   font-family: var(--font-sans);
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.75);
-  min-width: 4ch;
+  color: var(--color-muted);
 }
 
-/* The field itself. Editable, so a visitor types their own word —
-   which is the only way to really judge a typeface. */
 .spec-field {
   display: block;
   width: 100%;
-  min-height: 260px;
-  padding: clamp(20px, 5vw, 56px);
+  min-height: 240px;
+  padding: clamp(20px, 4vw, 48px);
   border: 0;
   background: transparent;
-  color: #FFFFFF;
+  color: var(--color-ink);
   font-family: 'DotsMono001 Specimen', ui-monospace, monospace;
-  font-size: 72px;
-  font-weight: 400;
-  line-height: 1.25;
+  font-size: 88px;
+  line-height: 1.3;
   overflow-wrap: anywhere;
 }
 .spec-field:focus { outline: none; }
 
-/* ── Product detail ────────────────────────────────────────── */
+/* ── 3. Every weight, one editable line each ───────────────────
+   Grilli's move: the specimen lines are the control. Type into one
+   and the sentence changes across the whole family, which is the
+   only way to compare weights on your own words. */
 
-.product-row {
+.pd-weights { margin-top: var(--space-2xl); }
+
+.pd-weight {
+  padding: var(--space-md) 0;
+  border-top: 1px solid var(--color-muted-15);
+}
+.pd-weight:last-child { border-bottom: 1px solid var(--color-muted-15); }
+
+.pd-weight-tag {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  text-transform: capitalize;
+  color: var(--color-muted-50);
+}
+
+.pd-weight-line {
+  font-family: 'DotsMono001 Specimen', ui-monospace, monospace;
+  font-size: clamp(24px, 3.6vw, 46px);
+  line-height: 1.25;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+.pd-weight-line:focus { outline: none; }
+
+/* ── 4. What it is ─────────────────────────────────────────────*/
+
+.pd-info { margin-top: var(--space-2xl); }
+
+/* Text on the left, the numbers on the right, both starting at the same
+   line. Two real columns rather than one narrow one and a boxed panel,
+   so the middle of the page is no longer empty. */
+.pd-info-cols {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   gap: var(--space-xl);
   align-items: start;
-  margin-top: var(--space-xl);
+  margin-top: var(--space-lg);
 }
-
-/* The category moved off the thumbnail and onto the product page. */
-.product-kicker {
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 120%;
-  text-transform: capitalize;
-  color: var(--color-muted-50);
-  margin-bottom: var(--space-xs);
-}
-.product-kicker::before { content: '/ '; }
-
-.product-name {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-size: 56px;
-  line-height: 1.1;
-  color: var(--color-muted);
-}
-
-.product-sub {
-  margin-top: 4px;
-  font-family: var(--font-sans);
-  font-size: 18px;
-  line-height: 120%;
-  text-transform: capitalize;
-  color: var(--color-muted-50);
-}
-
-.product-blurb {
-  margin-top: var(--space-md);
-  max-width: 54ch;
+.pd-body {
+  max-width: 48ch;
   font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.55;
+  color: var(--color-muted-50);
+}
+/* The paragraph that carries the idea leads, and the one that qualifies
+   it sits back. Without this the section ran 18 / 16 / 14 and read as
+   one flat grey block. */
+.pd-body--lead {
+  max-width: 42ch;
+  font-size: 22px;
+  line-height: 1.45;
   color: var(--color-muted);
 }
+.pd-body + .pd-body { margin-top: var(--space-md); }
 
-.product-buy {
-  padding: var(--space-lg);
-  border: 1px solid var(--color-muted-15);
-  border-radius: 14px;
-  background: var(--color-surface);
-}
-
-.product-price {
-  font-family: var(--font-serif);
-  font-size: 40px;
-  line-height: 1;
-  color: var(--color-ink);
-}
-.product-price small {
-  font-family: var(--font-sans);
-  font-style: italic;
-  font-size: 15px;
-  color: var(--color-muted);
-}
-
-.product-specs { margin-top: var(--space-md); }
-.product-spec {
+/* Hairline per row, no container: the rules are the structure. */
+.pd-specs { margin: 0; }
+.pd-spec {
   display: flex;
   justify-content: space-between;
   gap: var(--space-md);
-  padding: 9px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--color-muted-15);
   font-family: var(--font-sans);
   font-size: 14px;
 }
-.product-spec dt { color: var(--color-muted-50); }
-.product-spec dd { color: var(--color-ink); text-align: right; }
+.pd-spec:first-child { border-top: 1px solid var(--color-muted-15); }
+.pd-spec dt { color: var(--color-muted-50); }
+.pd-spec dd { color: var(--color-ink); text-align: right; }
 
-.product-cta { margin-top: var(--space-lg); }
-
-.product-note {
-  margin-top: var(--space-sm);
+/* Price and button on one full-width line under a rule, so the ask is
+   the last thing in the section instead of a card floating beside it. */
+.pd-take {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-muted-15);
+}
+.pd-price {
+  font-family: var(--font-serif);
+  font-size: clamp(52px, 5.5vw, 76px);
+  line-height: 1;
+  color: var(--color-ink);
+}
+.pd-price small {
+  margin-inline-start: 0.3em;
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--color-muted-50);
+}
+.pd-note {
+  flex: 1 0 100%;
+  max-width: 58ch;
   font-family: var(--font-sans);
   font-size: 13px;
   line-height: 1.5;
   color: var(--color-muted-50);
 }
 
+/* ── 5. Gallery ────────────────────────────────────────────────*/
+
+.pd-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-2xl);
+}
+.pd-shot { margin: 0; background: #000000; overflow: hidden; }
+.pd-shot--wide { grid-column: 1 / -1; }
+.pd-shot img { width: 100%; height: auto; display: block; }
+
+/* ── 6. Three ways onward ──────────────────────────────────────*/
+
+
+.pd-more-head {
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-muted-15);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 18px;
+  text-transform: capitalize;
+  color: var(--color-muted);
+}
+.pd-more-head span { color: var(--color-muted-50); margin-inline-end: 0.4em; }
+
+
+
+
+/* ── 7. The closing line — the move a case study makes ─────────*/
+
+.pd-top {
+  display: block;
+  margin-top: var(--space-3xl);
+  text-align: center;
+  font-family: var(--font-serif);
+  font-size: clamp(40px, 7vw, 80px);
+  line-height: 1.05;
+  color: var(--color-muted);
+  text-decoration: none;
+  transition: color var(--dur-sm) ease;
+}
+.pd-top:hover { color: var(--color-ink); }
+
 @media (max-width: 900px) {
-  .product-row  { grid-template-columns: 1fr; gap: var(--space-lg); }
-  .product-name { font-size: 40px; }
-  .spec-field   { font-size: 48px; min-height: 200px; }
+  .pd-info      { grid-template-columns: 1fr; }
+  .spec-field   { font-size: 52px; min-height: 180px; }
 }
 
 @media (max-width: 600px) {
-  .product    { padding: 0 var(--space-md) var(--space-3xl); }
-  .spec-field { font-size: 34px; min-height: 160px; }
-  .spec-control:last-of-type { margin-inline-start: 0; }
+  .product     { padding: 0 var(--space-md) var(--space-2xl); }
+  .pd-gallery  { grid-template-columns: 1fr; }
+  .spec-field  { font-size: 38px; min-height: 150px; }
+  .pd-control:last-of-type { margin-inline-start: 0; }
 }
 
 /* ── Empty state for Tools / Shop ──────────────────────────────*/
@@ -1027,3 +1169,469 @@ html[data-theme="dark"] .nav-logo:hover .nav-title {
   filter: url(#ditherGlow);
   inset: -8px -18px;
 }
+
+/* ── Hero artwork ──────────────────────────────────────────────
+   The exported SVG rather than live text: it is the artwork the
+   product is sold under, and vector keeps it crisp at any size. */
+.pd-hero-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DRAW ONE — the 5×7 editor
+
+   The typeface is drawn on a grid of circles, so the tool for
+   proposing a character is that same grid. Each dot is a real
+   button, so it is focusable and works from the keyboard, not only
+   under a mouse.
+════════════════════════════════════════════════════════════════ */
+
+.pd-draw { margin-top: var(--space-3xl); }
+
+.pd-draw-intro {
+  max-width: 56ch;
+  margin-top: var(--space-md);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+.pd-draw-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-xl);
+  align-items: start;
+  margin-top: var(--space-lg);
+}
+
+.pd-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: clamp(6px, 1vw, 10px);
+  padding: clamp(16px, 2.5vw, 28px);
+  background: #000000;
+  touch-action: none;              /* drag paints instead of scrolling */
+}
+
+.pd-dot {
+  width: clamp(26px, 4.4vw, 44px);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition: background var(--dur-sm) ease, transform var(--dur-sm) ease;
+}
+.pd-dot:hover { background: rgba(255, 255, 255, 0.32); }
+.pd-dot[aria-pressed="true"] { background: #FFFFFF; }
+.pd-dot:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 3px; }
+
+.pd-draw-form { display: flex; flex-direction: column; gap: var(--space-md); }
+
+.pd-field { display: flex; flex-direction: column; gap: 6px; }
+.pd-field input {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-frame);
+  font: normal 400 16px/120% var(--font-sans);
+  color: var(--color-ink);
+  transition: background var(--dur-sm) ease;
+}
+.pd-field input::placeholder { color: var(--color-muted); opacity: 1; }
+.pd-field input:focus { outline: none; background: rgba(245, 243, 240, 0.16); }
+
+.pd-draw-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  margin-top: var(--space-xs);
+}
+
+.pd-clear {
+  border: 0;
+  background: none;
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--color-muted-50);
+  cursor: pointer;
+  transition: color var(--dur-sm) ease;
+}
+.pd-clear:hover { color: var(--color-ink); }
+
+@media (max-width: 900px) {
+  .pd-draw-row { grid-template-columns: 1fr; gap: var(--space-lg); }
+  .pd-grid { justify-self: start; }
+}
+
+/* ── Tester controls ───────────────────────────────────────────
+   The two sliders sit together rather than pinned to opposite ends
+   of the bar, so they read as one set of controls. */
+.pd-tester-bar { gap: var(--space-md); }
+.pd-control:last-of-type { margin-inline-start: 0; }
+.pd-tester-bar > .pd-label:first-child { margin-inline-end: auto; }
+
+/* Uppercase on/off, in the same pill language as the filter tags. */
+.pd-toggle {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  font: normal 400 14px/120% var(--font-sans);
+  text-transform: capitalize;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background var(--dur-sm) ease, color var(--dur-sm) ease;
+}
+.pd-toggle:hover { background: rgba(245, 243, 240, 0.08); }
+.pd-toggle[aria-pressed="true"] {
+  background: rgba(245, 243, 240, 0.14);
+  color: var(--color-ink);
+}
+
+/* Share, quiet, beside the label. */
+.pd-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  font: italic 400 14px/120% var(--font-sans);
+  text-transform: capitalize;
+  color: var(--color-muted-50);
+  cursor: pointer;
+  transition: background var(--dur-sm) ease, color var(--dur-sm) ease;
+}
+.pd-share:hover { background: rgba(245, 243, 240, 0.08); color: var(--color-ink); }
+
+/* ── Floating call to action ───────────────────────────────────
+   Light on the dark ground with a shadow under it, because at the
+   point it appears nothing else says "this is a button". */
+.pd-float {
+  position: fixed;
+  right: var(--space-lg);
+  bottom: var(--space-lg);
+  z-index: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border-radius: 999px;
+  background: #F5F3F0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  font: normal 400 16px/1 var(--font-sans);
+  text-transform: capitalize;
+  color: #1A1917;
+  text-decoration: none;
+  transition: transform var(--dur-md) var(--ease-out, cubic-bezier(0.22,1,0.36,1)),
+              box-shadow var(--dur-md) ease;
+}
+.pd-float:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+.pd-float-price {
+  padding-inline-start: 10px;
+  border-inline-start: 1px solid rgba(26, 25, 23, 0.22);
+  color: rgba(26, 25, 23, 0.65);
+}
+
+/* ── Confirmation ──────────────────────────────────────────────*/
+
+/* Matches the unlock gate in site.css, which is this site's one
+   existing dialog: the page fades back into its own colour rather than
+   dimming to black, an 18px card, a serif title and an italic line
+   under it. Only the ground colour differs, because this page is dark. */
+.pd-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(26, 25, 23, 0.68);
+  backdrop-filter: blur(6px);
+}
+.pd-modal[hidden] { display: none; }
+
+.pd-modal-card {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 44px 36px 32px;
+  background: var(--color-surface);
+  border: 1px solid rgba(163, 160, 155, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.pd-modal-title {
+  margin: 0 0 10px;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 44px;
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  color: var(--color-muted);
+}
+
+.pd-modal-body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+/* ── Discover more, with thumbnails ────────────────────────────*/
+
+
+/* Submit is a real button element, so the shared pill needs its
+   native chrome cleared before it looks like the others. */
+/* A <button> carrying .contact-btn needs its native chrome cleared,
+   but NOT its font reset: 'font: inherit' is a shorthand, so it was
+   overwriting the family, style and size .contact-btn had just set and
+   the label came out in the wrong face. Clear only what the browser
+   adds. */
+button.contact-btn {
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+
+
+@media (max-width: 600px) {
+  .pd-float { right: var(--space-md); bottom: var(--space-md); padding: 12px 18px; font-size: 15px; }
+}
+
+/* The grain layer is shared, so every surface that wants it has to be
+   named — it was only reaching the shop cards. */
+.pd-hero .card-grain {
+  z-index: 1;
+  opacity: var(--grain, 0.30);
+  mix-blend-mode: screen;
+  animation: none;
+}
+
+/* Sliders sit together. The label holds the left, the controls group
+   to its right, and Caps rides with them. */
+.pd-tester-bar > .pd-label:first-child { margin-inline-end: var(--space-md); }
+
+.pd-control { gap: 8px; }
+.pd-control + .pd-control { margin-inline-start: var(--space-md); }
+
+.mtitle[hidden] { display: none; }
+
+/* ── Share, at page level ──────────────────────────────────────
+   It shares the product, not the tester, so it sits above the frame
+   rather than inside a control bar for something else. */
+.pd-topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-sm);
+}
+
+/* ── The buy button, in the panel ──────────────────────────────
+   A standing 5% white fill so it reads as a button before anyone
+   hovers it. On this ground an unfilled pill just looks like text. */
+.pd-buy .contact-btn {
+  background: rgba(255, 255, 255, 0.05);
+  transition: background var(--dur-sm) ease, color var(--dur-sm) ease;
+}
+
+/* ── Floating call to action ───────────────────────────────────
+   Squared off with a soft corner rather than a pill, and taller, so
+   it carries weight against the page. No price: the panel states it,
+   and repeating it here made the button read as a receipt. */
+.pd-float {
+  padding: 20px 28px;
+  border-radius: 8px;
+  font-size: 17px;
+}
+.pd-float-price { display: none; }
+
+@media (max-width: 600px) {
+  .pd-float { padding: 16px 22px; font-size: 15px; }
+}
+
+/* FunType's thumbnail is a live preview, the same iframe the work card
+   runs. Inert, so the click still lands on the card around it. */
+
+/* The editor sits in its own frame rather than straight on the page,
+   the way the tester above it does — it is a tool, not a paragraph. */
+.pd-draw {
+  padding: var(--space-lg);
+  border: 1px solid var(--color-muted-15);
+}
+.pd-draw .pd-more-head { border-bottom: 0; padding-bottom: 0; }
+.pd-draw-intro { margin-top: var(--space-xs); }
+
+/* ── Share ─────────────────────────────────────────────────────
+   Not a new button: the 32x32 icon button a project overlay already
+   carries, restated here so it survives on the dark ground. Same box,
+   same glyph, same quiet-to-ink hover. */
+.pd-share {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: color var(--dur-sm) ease;
+}
+.pd-share svg { display: block; flex-shrink: 0; }
+.pd-share:hover,
+.pd-share.is-copied { background: none; color: var(--color-ink); }
+
+/* Caps is a .btn-flat now; only the pressed state is its own. Stated
+   after that block so it wins, and with the class doubled so it also
+   beats .btn-flat:hover while the toggle is on. */
+.btn-flat.pd-toggle[aria-pressed="true"],
+.btn-flat.pd-toggle[aria-pressed="true"]:hover {
+  background: rgba(255, 255, 255, 0.24);
+  color: var(--color-ink);
+}
+
+/* ── The two sliders ───────────────────────────────────────────
+   The same marker the shop thumbnail uses: a bare line, and a solid
+   triangle whose tip touches it. Native chrome off on both engines,
+   so the browser's own pill doesn't come back. */
+.pd-control input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 130px;
+  height: 18px;
+  margin: 0;
+  background: none;
+  accent-color: auto;
+  cursor: pointer;
+}
+.pd-control input[type="range"]::-webkit-slider-runnable-track {
+  height: 1px;
+  border: 0;
+  background: var(--color-muted-50);
+}
+.pd-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 9px;
+  border: 0;
+  /* Relative to the track, so the flat top is 9px up and the tip
+     lands exactly on the line. */
+  margin-top: -9px;
+  background: var(--color-ink);
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+}
+.pd-control input[type="range"]::-moz-range-track {
+  height: 1px;
+  border: 0;
+  background: var(--color-muted-50);
+}
+.pd-control input[type="range"]::-moz-range-thumb {
+  width: 13px;
+  height: 9px;
+  border: 0;
+  border-radius: 0;
+  background: var(--color-ink);
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+  transform: translateY(-5px);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BUTTON — the flat one
+
+   Second button in the shared language, alongside the outlined
+   .contact-btn that site.css owns. This one carries no border: a
+   panel of white at 10%, a 4px corner, and muted text. Quiet enough
+   to repeat, and it never draws an outline the eye has to read
+   around.
+
+   Figma: 28 tall, padding 8/16, gap 4, radius 4, 16px/120%,
+   -0.01em, capitalize, #A3A09B.
+
+   The spec sets leading-trim: both / text-edge: cap, which no
+   browser implements. 8 + 12 (cap height) + 8 = 28, so the height is
+   stated outright and the label centred in it — same result, and it
+   holds whatever the font's own line box happens to be.
+   ══════════════════════════════════════════════════════════════ */
+.btn-flat {
+  display: inline-flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  font: normal 400 16px/120% var(--font-sans);
+  letter-spacing: -0.01em;
+  text-transform: capitalize;
+  /* The spec value, stated outright: --color-muted is remapped darker
+     under the dark theme, which is the wrong direction on this ground. */
+  color: #A3A09B;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-sm) ease, color var(--dur-sm) ease;
+}
+.btn-flat:hover { background: rgba(255, 255, 255, 0.18); color: var(--color-ink); }
+.btn-flat:active { background: rgba(255, 255, 255, 0.24); }
+
+/* Same button, scaled whole, for the one place on a page that is the
+   point of the page. Every number doubled except the corner, which
+   would stop reading as the same shape. */
+.btn-flat--lg {
+  height: 56px;
+  padding: 0 32px;
+  gap: 8px;
+  border-radius: 8px;
+  font-size: 20px;
+}
+
+/* ── Why the arrow was dropping to its own line ─────────────────
+   Everything in the frame is in cqw, so the widths hold their ratio
+   at any size — and at every size the row came out about a pixel
+   too wide for "Take a look ↓" to fit. The extra pixel is CSS's:
+   letter-spacing is added AFTER the last glyph of a line, which
+   Figma does not do. Cancelling that trailing space on both spaced
+   lines gives the width back, and nowrap makes sure the cue is
+   treated as the one unit it is. */
+.pd-hero-cue,
+.pd-hero-name {
+  margin-inline-end: -0.04em;
+}
+.pd-hero-cue { white-space: nowrap; }
+
+/* Sphere's wordmark, sized against the tile the way the home-page card
+   sizes it against its own. Inert, like the media under it. */

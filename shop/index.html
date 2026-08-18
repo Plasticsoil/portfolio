@@ -4,8 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Shop</title>
-<meta name="description" content="Fonts and scripts by Yam Livnat.">
-<meta name="theme-color" content="#F8F6F3">
+<meta name="description" content="Typefaces and scripts by Yam Livnat.">
+<meta name="theme-color" content="#0E0E0D">
+
+<!-- Share preview. Both views live in this one document, so a scraper
+     that does not run JS sees the product's own words and used them —
+     which is why /shop/ was previewing as Dots.Mono.001. Stated
+     explicitly here, the whole shop is what gets shared. -->
+<meta property="og:title" content="Shop — Yam Livnat">
+<meta property="og:description" content="Typefaces and scripts. Made in the work, released when they hold up.">
+<meta property="og:url" content="https://yamliv.net/shop/">
+<meta property="og:image" content="https://yamliv.net/shop/assets/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Shop — Yam Livnat">
+<meta name="twitter:description" content="Typefaces and scripts. Made in the work, released when they hold up.">
+<meta name="twitter:image" content="https://yamliv.net/shop/assets/share.png">
 
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
@@ -137,86 +153,172 @@
      ══════════════════════════════════════════════════════════ -->
 <section class="product" id="view-product" hidden>
 
-  <!-- Live specimen. The visitor types their own word — the only way
-       to really judge a typeface — and drags the weight across the
-       variable axis the font actually ships with. -->
-  <div class="spec">
-    <div class="spec-bar">
-      <span class="spec-label">Try it</span>
+  <!-- 1 ── the opening frame -->
+  <!-- Live text, not artwork. Figma frame "9", 1600x900: the name on
+       the left, the description and the cue on the right. Every size is
+       in cqw against that 1600, so the whole thing scales with the
+       frame instead of breaking up at other widths. -->
+  <!-- The same share button a project overlay carries — same 32x32
+       box, same upload glyph, drawn with currentColor so it can sit
+       on this dark ground. Nothing new invented for this page. -->
+  <div class="pd-topbar">
+    <button class="pd-share" type="button" id="pd-share"
+            data-cursor-tooltip="Share" aria-label="Share">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="M11.2267 13.2243H8.5V25H23.5V13.2243H20.7733M16 7.33645V16.5888M19.0333 10.1542L15.9083 7L12.7833 10.1542" stroke="currentColor"/>
+      </svg>
+    </button>
+  </div>
 
-      <label class="spec-control">
-        <span class="spec-label">Weight</span>
-        <input type="range" id="spec-weight" min="100" max="900" step="1" value="400"
-               aria-label="Font weight">
+  <div class="pd-hero">
+   <div class="pd-hero-inner">
+    <div class="pd-hero-name">Dots<br>Mono<br>001</div>
+    <div class="pd-hero-col">
+      <p class="pd-hero-desc">a monospace typeface where the weight is the dot size, from fine points to solid letters on one variable axis.</p>
+      <p class="pd-hero-cue">Take a look ↓</p>
+    </div>
+   </div>
+    <div class="card-grain" aria-hidden="true"></div>
+  </div>
+
+  <!-- 2 ── type it yourself -->
+  <div class="pd-tester">
+    <div class="pd-tester-bar">
+      <label class="pd-control">
+        <span class="pd-label">Weight</span>
+        <input type="range" id="spec-weight" min="100" max="900" step="1" value="400" aria-label="Font weight">
         <output id="spec-weight-out">400</output>
       </label>
-
-      <label class="spec-control">
-        <span class="spec-label">Size</span>
-        <input type="range" id="spec-size" min="24" max="140" step="1" value="72"
-               aria-label="Preview size">
-        <output id="spec-size-out">72px</output>
+      <label class="pd-control">
+        <span class="pd-label">Size</span>
+        <input type="range" id="spec-size" min="24" max="160" step="1" value="88" aria-label="Preview size">
+        <output id="spec-size-out">88px</output>
       </label>
-    </div>
 
+      <button class="btn-flat pd-toggle" type="button" id="pd-caps" aria-pressed="false">Caps</button>
+    </div>
     <div class="spec-field" id="spec-field" contenteditable="true" spellcheck="false"
-         role="textbox" aria-label="Type to preview the typeface">DOTS.MONO.001</div>
+         role="textbox" aria-label="Type to preview the typeface">Type something</div>
   </div>
 
-  <div class="product-row">
-    <div>
-      <p class="product-kicker">Typeface</p>
-      <h2 class="product-name">Dots.Mono.001</h2>
-      <p class="product-sub">Variable Monospace Typeface</p>
-      <p class="product-blurb">
-        Every pixel is a circle. A monospace display typeface built on a 5×7 grid,
-        where the weight axis is the twist: instead of thickening strokes, the dots
-        themselves grow — from small, separated points at Thin to bold, overlapping
-        letterforms at Black. Five stops on one smooth variable axis.
-      </p>
-      <p class="product-blurb">
-        Because it is fully monospace, every glyph shares the same width, so text
-        locks into a clean grid — for code-style layouts, tickers, tables, posters,
-        packaging, UI mockups and motion.
-      </p>
-    </div>
+  <!-- 3 ── every weight, one line each. Editable, the way Grilli does it:
+            change the sentence and it changes across the whole family. -->
+  <section class="pd-weights" id="pd-weights" aria-label="Weights"></section>
 
-    <div class="product-buy">
-      <div class="product-price">$12<small> + pay what you want</small></div>
+  <!-- 4 ── what it is
 
-      <dl class="product-specs">
-        <div class="product-spec"><dt>Variable</dt><dd>Weight 100–900</dd></div>
-        <div class="product-spec"><dt>Static weights</dt><dd>Thin · Light · Regular · Bold · Black</dd></div>
-        <div class="product-spec"><dt>Glyphs</dt><dd>107</dd></div>
-        <div class="product-spec"><dt>Formats</dt><dd>Variable TTF + 5 static TTF</dd></div>
-        <div class="product-spec"><dt>Licence</dt><dd>Desktop, personal &amp; commercial</dd></div>
-      </dl>
+       No panel. The page already has a section-heading pattern ("/ Draw
+       one", "/ Discover more") and this section now uses it, so the
+       hierarchy is carried by type size and hairlines rather than by a
+       box floating in the right-hand third. The name is not repeated at
+       display size either: the frame at the top of the page says it at
+       184px, and saying it again immediately below only competed. -->
+  <section class="pd-info">
+    <h3 class="pd-more-head"><span>/</span>The typeface</h3>
 
-      <!-- Gumroad's overlay: checkout opens on top of this page rather
-           than sending the visitor away. No backend, no payment data
-           ever touching this site. -->
-      <div class="product-cta">
-        <a class="contact-btn" href="https://plasticsoil.gumroad.com/l/DotsMono001"
-           data-gumroad-overlay-checkout="true"
-           data-cursor-tooltip="Secure checkout by Gumroad">
-          <span class="btn-label">Buy the typeface</span>
-        </a>
+    <div class="pd-info-cols">
+      <div class="pd-info-text">
+        <p class="pd-body pd-body--lead">
+          Every pixel is a circle. A monospace display typeface on a 5×7 grid,
+          where the weight axis grows the dots instead of thickening the strokes.
+          Separated points at Thin, overlapping letterforms at Black.
+        </p>
+        <p class="pd-body">
+          Fully monospace, so every glyph shares a width and text locks to a grid.
+          Made for code-style layouts, tickers, posters and motion.
+        </p>
       </div>
 
-      <p class="product-note">
-        Instant download. Checkout and delivery are handled by Gumroad.
-        Webfont, app, game and broadcast use are available as a separate
-        extended licence — just reach out.
+      <dl class="pd-specs">
+        <div class="pd-spec"><dt>Variable</dt><dd>Weight 100–900</dd></div>
+        <div class="pd-spec"><dt>Static weights</dt><dd>Thin / Light / Regular / Bold / Black</dd></div>
+        <div class="pd-spec"><dt>Glyphs</dt><dd>108</dd></div>
+        <div class="pd-spec"><dt>Formats</dt><dd>Variable TTF + 5 static TTF</dd></div>
+        <div class="pd-spec"><dt>Licence</dt><dd>Desktop, personal &amp; commercial</dd></div>
+      </dl>
+    </div>
+
+    <!-- No button here. The floating one is always on screen (it has no
+         show condition), so this was the same offer twice at once. -->
+    <div class="pd-take">
+      <p class="pd-price">$12<small>+ pay what you want</small></p>
+      <p class="pd-note">
+        Instant download, checkout and delivery by Gumroad. Webfont, app, game
+        and broadcast use are a separate extended licence. Just reach out.
+      </p>
+    </div>
+  </section>
+
+    <!-- 5 ── draw a glyph and send it in -->
+  <section class="pd-draw" aria-label="Draw a character">
+    <h3 class="pd-more-head"><span>/</span>Draw one</h3>
+    <p class="pd-draw-intro">
+      The typeface is a 5x7 grid where every pixel is a circle. Click the dots
+      to draw a character and send it in. Good ones go into the next release.
+    </p>
+
+    <div class="pd-draw-row">
+      <div class="pd-grid" id="pd-grid" role="group" aria-label="5 by 7 dot grid"></div>
+
+      <!-- Netlify picks this up from the markup at deploy time, so a
+           submission needs no backend of our own. The drawing travels as
+           text: seven rows of five 0s and 1s. -->
+      <form class="pd-draw-form" name="glyph" method="POST"
+            data-netlify="true" netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="glyph">
+        <p hidden><label>Leave this empty <input name="bot-field"></label></p>
+
+        <label class="pd-field">
+          <span class="pd-label">Character</span>
+          <input type="text" name="character" maxlength="12" required
+                 placeholder="e.g. @ or a smiley" autocomplete="off">
+        </label>
+
+        <label class="pd-field">
+          <span class="pd-label">Your email, if you want a reply</span>
+          <input type="email" name="email" placeholder="optional" autocomplete="email">
+        </label>
+
+        <input type="hidden" name="pattern" id="pd-pattern">
+
+        <div class="pd-draw-actions">
+          <button class="btn-flat" type="submit" data-cursor-tooltip="Send it in">Submit</button>
+          <button class="pd-clear" type="button" id="pd-clear">Clear</button>
+        </div>
+
+        <p class="pd-note" id="pd-draw-msg" role="status"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- The "discover more" row is parked. It is in git if we want it
+       back: the section, its MORE data and its renderer came out
+       together, along with .pd-more-grid / -item / -media / -label /
+       -note / -logo in pages.css. .pd-more-head stays — it is the
+       heading pattern the other sections on this page use. -->
+
+    <!-- Always reachable: the one thing the page is for, following you
+       down it. Light on the dark ground so it reads as a button rather
+       than as more page. -->
+  <a class="pd-float" id="pd-float"
+     href="https://plasticsoil.gumroad.com/l/DotsMono001"
+     data-gumroad-overlay-checkout="true"
+     data-cursor-tooltip="Secure checkout by Gumroad">
+    Get the typeface
+  </a>
+
+  <!-- Shown after a drawing is sent, so submitting isn't a leap of faith. -->
+  <div class="pd-modal" id="pd-modal" hidden>
+    <!-- No dismiss control: it says its piece and leaves on its own.
+         role="status" so it is announced rather than trapping focus,
+         which is what aria-modal would have asked for. -->
+    <div class="pd-modal-card" role="status" aria-live="polite">
+      <h3 class="pd-modal-title" id="pd-modal-t">Got it</h3>
+      <p class="pd-modal-body" id="pd-modal-body">
+        Your character is in. If it earns its place, it ships with the next release.
       </p>
     </div>
   </div>
-
-  <p class="product-note" style="max-width:60ch">
-    The preview above runs on a cut-down version of the typeface — basic Latin only,
-    no extras and no static weights. The full family comes with the purchase.
-  </p>
-
-  <p class="product-cta"><a class="page-back" href="/shop/">All products</a></p>
 
 </section>
 
@@ -435,6 +537,10 @@ var PRODUCTS = [
     var found = want && PRODUCTS.filter(function (p) { return p.id === want && !p.soon; })[0];
     index.hidden  = !!found;
     detail.hidden = !found;
+    // The drifting Shop band names the index; on a product it would be
+    // naming the wrong thing.
+    var band = document.getElementById('mtitle');
+    if (band) band.hidden = !!found;
     // Just the page, no site suffix — the tab is narrow and the name
     // is already the domain.
     document.title = found ? found.title : 'Shop';
@@ -453,29 +559,241 @@ var PRODUCTS = [
   route();
 })();
 
-/* The two specimen controls. Weight drives the real variable axis, so
-   dragging it walks the font through its actual interpolation rather
-   than swapping between static cuts. */
+/* ══════════════════════════════════════════════════════════════
+   PRODUCT PAGE
+════════════════════════════════════════════════════════════════ */
+
 (function () {
   var field = document.getElementById('spec-field');
   if (!field) return;
 
+  /* ── The tester ─────────────────────────────────────────────*/
   function bind(inputId, outId, apply, suffix) {
-    var input = document.getElementById(inputId);
-    var out   = document.getElementById(outId);
+    var input = document.getElementById(inputId), out = document.getElementById(outId);
     input.addEventListener('input', function () {
       apply(input.value);
       out.textContent = input.value + (suffix || '');
     });
   }
-
   bind('spec-weight', 'spec-weight-out', function (v) {
     field.style.fontVariationSettings = '"wght" ' + v;
   });
-
   bind('spec-size', 'spec-size-out', function (v) {
     field.style.fontSize = v + 'px';
   }, 'px');
+
+  /* ── Every weight, one line each ────────────────────────────
+     The named instances the font actually ships, so the list can't
+     drift from the family. Each line is editable and they are kept
+     in sync: type into one and the sentence changes across all of
+     them, which is how you compare weights on your own words. */
+  var WEIGHTS = [
+    { name: 'Thin',    w: 100 },
+    { name: 'Light',   w: 300 },
+    { name: 'Regular', w: 400 },
+    { name: 'Bold',    w: 700 },
+    { name: 'Black',   w: 900 }
+  ];
+  var SENTENCE = 'Every pixel is a circle';
+
+  var wrap = document.getElementById('pd-weights');
+  wrap.innerHTML = WEIGHTS.map(function (x) {
+    return '<div class="pd-weight">' +
+             '<span class="pd-weight-tag">' + x.name + ' ' + x.w + '</span>' +
+             '<div class="pd-weight-line" contenteditable="true" spellcheck="false"' +
+                  ' data-w="' + x.w + '"' +
+                  ' role="textbox" aria-label="' + x.name + ' — editable">' + SENTENCE + '</div>' +
+           '</div>';
+  }).join('');
+
+  var lines = Array.prototype.slice.call(wrap.querySelectorAll('.pd-weight-line'));
+  lines.forEach(function (line) {
+    // Set the axis here rather than in the markup, so no quoting can go
+    // wrong on the way through.
+    line.style.fontVariationSettings = '"wght" ' + line.dataset.w;
+    line.addEventListener('input', function () {
+      var t = line.textContent;
+      lines.forEach(function (o) { if (o !== line) o.textContent = t; });
+    });
+  });
+
+  /* -- The 5x7 editor ----------------------------------------
+     The typeface is drawn on a 5 by 7 grid of circles, so the tool to
+     propose a character is that same grid. Each dot is a real button:
+     clickable, focusable, and toggleable from the keyboard.
+
+     The drawing is written into a hidden field as seven rows of five
+     0s and 1s, which is both what the font source looks like and
+     something readable in an email. */
+  var COLS = 5, ROWS = 7;
+  var grid = document.getElementById('pd-grid');
+
+  if (grid) {
+    var cells = [];
+    for (var i = 0; i < COLS * ROWS; i++) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pd-dot';
+      b.setAttribute('aria-pressed', 'false');
+      b.setAttribute('aria-label', 'row ' + (Math.floor(i / COLS) + 1) + ', column ' + (i % COLS + 1));
+      grid.appendChild(b);
+      cells.push(b);
+    }
+
+    // Not 'field': that name already holds the tester, and var is
+    // function-scoped, so reusing it silently replaced it.
+    var patternField = document.getElementById('pd-pattern');
+
+    function write() {
+      var rows = [];
+      for (var r = 0; r < ROWS; r++) {
+        var row = '';
+        for (var c = 0; c < COLS; c++) {
+          row += cells[r * COLS + c].getAttribute('aria-pressed') === 'true' ? '1' : '0';
+        }
+        rows.push(row);
+      }
+      // Newline via charCode so no escaping can go wrong in transit.
+      patternField.value = rows.join(String.fromCharCode(10));
+    }
+
+    function toggle(b, on) {
+      b.setAttribute('aria-pressed', String(on));
+      write();
+    }
+
+    // Drag to paint, the way you would expect of a grid this size. The
+    // first dot decides whether the stroke is drawing or erasing.
+    var painting = false, paintTo = true;
+
+    grid.addEventListener('pointerdown', function (e) {
+      var b = e.target.closest('.pd-dot');
+      if (!b) return;
+      painting = true;
+      paintTo = b.getAttribute('aria-pressed') !== 'true';
+      toggle(b, paintTo);
+      e.preventDefault();
+    });
+    grid.addEventListener('pointerover', function (e) {
+      if (!painting) return;
+      var b = e.target.closest('.pd-dot');
+      if (b) toggle(b, paintTo);
+    });
+    window.addEventListener('pointerup', function () { painting = false; });
+
+    document.getElementById('pd-clear').addEventListener('click', function () {
+      cells.forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+      write();
+      document.getElementById('pd-draw-msg').textContent = '';
+    });
+
+
+    write();
+  }
+
+  /* ── Caps ─────────────────────────────────────────────────────
+     Uppercases the tester and every weight line at once, without
+     touching what was typed: text-transform is presentation, so
+     turning it off gives back exactly the original casing. */
+  var caps = document.getElementById('pd-caps');
+  if (caps) {
+    caps.addEventListener('click', function () {
+      var on = caps.getAttribute('aria-pressed') !== 'true';
+      caps.setAttribute('aria-pressed', String(on));
+      var v = on ? 'uppercase' : 'none';
+      field.style.textTransform = v;
+      lines.forEach(function (l) { l.style.textTransform = v; });
+    });
+  }
+
+  /* ── Share ────────────────────────────────────────────────────*/
+  var share = document.getElementById('pd-share');
+  if (share) {
+    share.addEventListener('click', async function () {
+      var url = location.href;
+      var title = document.title;
+      // The native sheet where there is one; the clipboard otherwise.
+      if (navigator.share) {
+        try { await navigator.share({ title: title, url: url }); return; } catch (e) { /* dismissed */ }
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        // Icon only now, so the confirmation goes through the tooltip
+        // the cursor is already showing.
+        share.setAttribute('data-cursor-tooltip', 'Copied');
+        share.classList.add('is-copied');
+        setTimeout(function () {
+          share.setAttribute('data-cursor-tooltip', 'Share');
+          share.classList.remove('is-copied');
+        }, 1600);
+      } catch (e) { /* clipboard refused — nothing useful to do */ }
+    });
+  }
+
+  /* ── Sending a drawing ────────────────────────────────────────
+     Posted with fetch rather than a normal form submit, so the page
+     stays where it is and can answer with the dialog. Netlify reads
+     the form from the built HTML, so this only really works once
+     deployed. On localhost the dev server answers 200 to any POST, so
+     the confirmation appears here too and is not proof that anything
+     was stored. */
+  var form  = document.querySelector('.pd-draw-form');
+  var modal = document.getElementById('pd-modal');
+  var modalBody = document.getElementById('pd-modal-body');
+
+  /* It shows for a few seconds and goes. The timer is cleared on the way
+     in as well as out, so opening it twice in a row can't leave an older
+     one running that closes the newer message early. */
+  var modalTimer = null;
+  var MODAL_MS   = 4200;
+
+  function openModal(text) {
+    if (text) modalBody.textContent = text;
+    clearTimeout(modalTimer);
+    modal.hidden = false;
+    modalTimer = setTimeout(closeModal, MODAL_MS);
+  }
+  function closeModal() {
+    clearTimeout(modalTimer);
+    modal.hidden = true;
+  }
+
+  if (modal) {
+    // Still dismissable by hand for anyone who doesn't want to wait.
+    modal.addEventListener('click', closeModal);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !modal.hidden) closeModal();
+    });
+  }
+
+  if (form) {
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      write();
+      if (document.getElementById('pd-pattern').value.indexOf('1') === -1) {
+        document.getElementById('pd-draw-msg').textContent = 'Draw something first.';
+        return;
+      }
+      var data = new URLSearchParams(new FormData(form)).toString();
+      try {
+        var res = await fetch('/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: data
+        });
+        if (res.ok) {
+          openModal('Your character is in. If it earns its place, it ships with the next release.');
+          form.reset();
+          document.getElementById('pd-clear').click();
+        } else {
+          openModal('That did not send. The form only runs on the live site, not on localhost.');
+        }
+      } catch (err) {
+        openModal('That did not send. The form only runs on the live site, not on localhost.');
+      }
+    });
+  }
+
 })();
 </script>
 </body>
