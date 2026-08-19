@@ -1359,51 +1359,9 @@ html[data-theme="dark"] .nav-logo:hover .nav-title {
    existing dialog: the page fades back into its own colour rather than
    dimming to black, an 18px card, a serif title and an italic line
    under it. Only the ground colour differs, because this page is dark. */
-.pd-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 1200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(26, 25, 23, 0.68);
-  backdrop-filter: blur(6px);
-}
-.pd-modal[hidden] { display: none; }
 
-.pd-modal-card {
-  position: relative;
-  width: min(440px, 100%);
-  padding: 44px 36px 32px;
-  background: var(--color-surface);
-  border: 1px solid rgba(163, 160, 155, 0.18);
-  border-radius: 18px;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-}
 
-.pd-modal-title {
-  margin: 0 0 10px;
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-size: 44px;
-  line-height: 1.02;
-  letter-spacing: -0.01em;
-  color: var(--color-muted);
-}
 
-.pd-modal-body {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-style: italic;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--color-muted);
-}
 
 /* ── Discover more, with thumbnails ────────────────────────────*/
 
@@ -1653,4 +1611,116 @@ button.contact-btn {
   background: #FFB9F7;
   color: #1A1917;
   text-shadow: none;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   NOTIFICATION CARD
+
+   Figma: 354.66 x 153, padding 8, rgba(46,46,46,.95) behind a
+   rgba(89,89,89,.5) hairline, 12px corner. Inside it a 110.66-wide
+   #373737 panel at 8px holding the glyph, and a 226-wide column with
+   24 padding and 16 gap.
+
+   leading-trim / text-edge are draft properties no browser implements,
+   so the two text blocks carry the heights the spec gives them (9 and
+   62) with the line box centred inside — same result, and it survives
+   whatever line box the font brings.
+   ══════════════════════════════════════════════════════════════ */
+.pd-toast {
+  position: fixed;
+  left: var(--space-lg);
+  bottom: var(--space-lg);
+  z-index: 1200;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 8px;
+  width: 354.66px;
+  height: 153px;
+  background: rgba(46, 46, 46, 0.95);
+  border: 1px solid rgba(89, 89, 89, 0.5);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  /* Enters from below and settles. The transition is on the class, so
+     nothing animates while it is still hidden. */
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity var(--dur-md) ease, transform var(--dur-md) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+}
+.pd-toast.is-in { opacity: 1; transform: none; }
+.pd-toast[hidden] { display: none; }
+
+/* Left panel: the glyph that was sent. */
+.pd-toast-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  flex: none;
+  box-sizing: border-box;
+  width: 110.66px;
+  padding: 24px;
+  background: #373737;
+  border-radius: 8px;
+}
+
+/* 5 across, 7 down, filling the 62.66 x 87 the spec leaves inside the
+   padding. The cells are all but square, so the nodes come out round
+   and near-touching — the same construction as the typeface. */
+.pd-toast-dots {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(7, 1fr);
+  width: 62.66px;
+  height: 87px;
+}
+.pd-toast-dots i {
+  border-radius: 50%;
+  background: transparent;
+}
+.pd-toast-dots i.on { background: #F8F6F3; }
+
+.pd-toast-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  flex: none;
+  box-sizing: border-box;
+  width: 226px;
+  align-self: stretch;
+  padding: 24px;
+  gap: 16px;
+}
+.pd-toast-eyebrow {
+  display: flex;
+  align-items: center;
+  height: 9px;
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 140%;
+  text-transform: capitalize;
+  color: #A3A09B;
+}
+.pd-toast-line {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 36px;
+  line-height: 100%;
+  color: #A3A09B;
+}
+
+/* On a narrow screen the fixed width would hang off the edge. */
+@media (max-width: 420px) {
+  .pd-toast {
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+  .pd-toast-text { width: auto; flex: 1; }
 }

@@ -307,16 +307,16 @@
     Get the typeface
   </a>
 
-  <!-- Shown after a drawing is sent, so submitting isn't a leap of faith. -->
-  <div class="pd-modal" id="pd-modal" hidden>
-    <!-- No dismiss control: it says its piece and leaves on its own.
-         role="status" so it is announced rather than trapping focus,
-         which is what aria-modal would have asked for. -->
-    <div class="pd-modal-card" role="status" aria-live="polite">
-      <h3 class="pd-modal-title" id="pd-modal-t">Got it</h3>
-      <p class="pd-modal-body" id="pd-modal-body">
-        Your character is in. If it earns its place, it ships with the next release.
-      </p>
+  <!-- Notification card, to the Figma frame. The left panel shows the
+       glyph that was actually sent: their own 5x7 drawing, redrawn as
+       dots the way the typeface itself is built. No dismiss control —
+       it says its piece and goes. role="status" so it is announced
+       rather than entered. -->
+  <div class="pd-toast" id="pd-toast" role="status" aria-live="polite" hidden>
+    <div class="pd-toast-glyph"><div class="pd-toast-dots" id="pd-toast-dots" aria-hidden="true"></div></div>
+    <div class="pd-toast-text">
+      <p class="pd-toast-eyebrow" id="pd-toast-eyebrow">/ Submitted</p>
+      <p class="pd-toast-line" id="pd-toast-line">Your character is in the pile</p>
     </div>
   </div>
 
@@ -738,31 +738,55 @@ var PRODUCTS = [
      the confirmation appears here too and is not proof that anything
      was stored. */
   var form  = document.querySelector('.pd-draw-form');
-  var modal = document.getElementById('pd-modal');
-  var modalBody = document.getElementById('pd-modal-body');
+  var toast        = document.getElementById('pd-toast');
+  var toastDots    = document.getElementById('pd-toast-dots');
+  var toastEyebrow = document.getElementById('pd-toast-eyebrow');
+  var toastLine    = document.getElementById('pd-toast-line');
 
   /* It shows for a few seconds and goes. The timer is cleared on the way
      in as well as out, so opening it twice in a row can't leave an older
      one running that closes the newer message early. */
-  var modalTimer = null;
-  var MODAL_MS   = 4200;
+  var toastTimer = null;
+  var TOAST_MS   = 4600;
 
-  function openModal(text) {
-    if (text) modalBody.textContent = text;
-    clearTimeout(modalTimer);
-    modal.hidden = false;
-    modalTimer = setTimeout(closeModal, MODAL_MS);
-  }
-  function closeModal() {
-    clearTimeout(modalTimer);
-    modal.hidden = true;
+  /* Redraw the pattern that was just sent, 5 across and 7 down, one
+     node per cell. The pattern string is the same one the form carries,
+     so the card can only ever show what was actually submitted. */
+  function paintToastGlyph(pattern) {
+    var rows = String(pattern || '').split(String.fromCharCode(10));
+    var html = '';
+    for (var r = 0; r < 7; r++) {
+      var row = rows[r] || '';
+      for (var c = 0; c < 5; c++) {
+        html += '<i' + (row.charAt(c) === '1' ? ' class="on"' : '') + '></i>';
+      }
+    }
+    toastDots.innerHTML = html;
   }
 
-  if (modal) {
+  function openToast(eyebrow, line, pattern) {
+    toastEyebrow.textContent = eyebrow;
+    toastLine.textContent    = line;
+    paintToastGlyph(pattern);
+    clearTimeout(toastTimer);
+    toast.hidden = false;
+    // Re-trigger the entrance even if it is already on screen.
+    toast.classList.remove('is-in');
+    void toast.offsetWidth;
+    toast.classList.add('is-in');
+    toastTimer = setTimeout(closeToast, TOAST_MS);
+  }
+  function closeToast() {
+    clearTimeout(toastTimer);
+    toast.classList.remove('is-in');
+    toast.hidden = true;
+  }
+
+  if (toast) {
     // Still dismissable by hand for anyone who doesn't want to wait.
-    modal.addEventListener('click', closeModal);
+    toast.addEventListener('click', closeToast);
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !modal.hidden) closeModal();
+      if (e.key === 'Escape' && !toast.hidden) closeToast();
     });
   }
 
@@ -774,7 +798,8 @@ var PRODUCTS = [
         document.getElementById('pd-draw-msg').textContent = 'Draw something first.';
         return;
       }
-      var data = new URLSearchParams(new FormData(form)).toString();
+      var pattern = document.getElementById('pd-pattern').value;
+      var data    = new URLSearchParams(new FormData(form)).toString();
       try {
         var res = await fetch('/', {
           method: 'POST',
@@ -782,14 +807,20 @@ var PRODUCTS = [
           body: data
         });
         if (res.ok) {
-          openModal('Your character is in. If it earns its place, it ships with the next release.');
+          openToast('/ Submitted', 'Your character is in the pile', pattern);
           form.reset();
           document.getElementById('pd-clear').click();
         } else {
-          openModal('That did not send. The form only runs on the live site, not on localhost.');
+          /* Say what actually happened. The old copy blamed localhost,
+             which read as nonsense to anyone on the live site — and
+             that is exactly where a 405 shows up when form handling
+             is off for the site. */
+          openToast('/ Not sent', res.status === 405
+            ? 'The form is not switched on yet'
+            : 'Try again in a moment', pattern);
         }
       } catch (err) {
-        openModal('That did not send. The form only runs on the live site, not on localhost.');
+        openToast('/ Not sent', 'No connection', pattern);
       }
     });
   }
