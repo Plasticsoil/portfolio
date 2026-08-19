@@ -1627,9 +1627,11 @@ button.contact-btn {
    whatever line box the font brings.
    ══════════════════════════════════════════════════════════════ */
 .pd-toast {
+  /* Centred on the screen, not tucked in a corner: it is the answer to
+     something you just did, so it belongs where you were looking. */
   position: fixed;
-  left: var(--space-lg);
-  bottom: var(--space-lg);
+  left: 50%;
+  top: 50%;
   z-index: 1200;
   box-sizing: border-box;
   display: flex;
@@ -1646,10 +1648,12 @@ button.contact-btn {
   /* Enters from below and settles. The transition is on the class, so
      nothing animates while it is still hidden. */
   opacity: 0;
-  transform: translateY(10px);
+  /* The centring translate has to be carried through both states, or
+     the card would slide out of centre as it settles. */
+  transform: translate(-50%, -50%) scale(0.97);
   transition: opacity var(--dur-md) ease, transform var(--dur-md) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
-.pd-toast.is-in { opacity: 1; transform: none; }
+.pd-toast.is-in { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 .pd-toast[hidden] { display: none; }
 
 /* Left panel: the glyph that was sent. */
@@ -1717,10 +1721,6 @@ button.contact-btn {
 
 /* On a narrow screen the fixed width would hang off the edge. */
 @media (max-width: 420px) {
-  .pd-toast {
-    left: 12px;
-    right: 12px;
-    width: auto;
-  }
+  .pd-toast { width: calc(100vw - 24px); }
   .pd-toast-text { width: auto; flex: 1; }
 }
