@@ -260,12 +260,11 @@
     <div class="pd-draw-row">
       <div class="pd-grid" id="pd-grid" role="group" aria-label="5 by 7 dot grid"></div>
 
-      <!-- Netlify picks this up from the markup at deploy time, so a
-           submission needs no backend of our own. The drawing travels as
-           text: seven rows of five 0s and 1s. -->
-      <form class="pd-draw-form" name="glyph" method="POST"
-            data-netlify="true" netlify-honeypot="bot-field">
-        <input type="hidden" name="form-name" value="glyph">
+      <!-- Posted to /api/glyph by the script below. The drawing travels
+           as text: seven rows of five 0s and 1s. bot-field is the
+           honeypot: a person leaves it empty, so anything with it
+           filled is dropped without a write. -->
+      <form class="pd-draw-form" name="glyph" method="POST" action="/api/glyph">
         <p hidden><label>Leave this empty <input name="bot-field"></label></p>
 
         <label class="pd-field">
@@ -732,11 +731,15 @@ var PRODUCTS = [
 
   /* ── Sending a drawing ────────────────────────────────────────
      Posted with fetch rather than a normal form submit, so the page
-     stays where it is and can answer with the dialog. Netlify reads
-     the form from the built HTML, so this only really works once
-     deployed. On localhost the dev server answers 200 to any POST, so
-     the confirmation appears here too and is not proof that anything
-     was stored. */
+     stays where it is and can answer with the card.
+
+     It goes to /api/glyph, a Cloudflare Pages Function, because that
+     is what actually serves this domain. Netlify still builds the repo
+     but no request reaches it, so its form handling could never have
+     seen these. Same route the moji leaderboard already takes.
+
+     On localhost there is no function, so the POST fails and the card
+     says so. That is honest: nothing is stored here. */
   var form  = document.querySelector('.pd-draw-form');
   var toast        = document.getElementById('pd-toast');
   var toastDots    = document.getElementById('pd-toast-dots');
@@ -801,7 +804,7 @@ var PRODUCTS = [
       var pattern = document.getElementById('pd-pattern').value;
       var data    = new URLSearchParams(new FormData(form)).toString();
       try {
-        var res = await fetch('/', {
+        var res = await fetch('/api/glyph', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: data
@@ -815,8 +818,8 @@ var PRODUCTS = [
              which read as nonsense to anyone on the live site — and
              that is exactly where a 405 shows up when form handling
              is off for the site. */
-          openToast('/ Not sent', res.status === 405
-            ? 'The form is not switched on yet'
+          openToast('/ Not sent', res.status === 429
+            ? 'One at a time, give it a minute'
             : 'Try again in a moment', pattern);
         }
       } catch (err) {
