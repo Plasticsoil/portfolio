@@ -433,7 +433,10 @@
 }
 
 @media (max-width: 600px) {
-  .shop       { padding: 0 var(--space-md) var(--space-3xl); }
+  /* 180px under the last card, on top of the footer's own 180px
+     margin, left a third of a screen of empty ground between the grid
+     and "Get in touch". The footer's margin is the separation. */
+  .shop       { padding: 0 var(--space-md) var(--space-lg); }
   .shop-grid  { grid-template-columns: 1fr; gap: var(--space-lg); }
   .shop-bar   { gap: var(--space-sm); }
   .shop-search { margin-inline-start: 0; width: 100%; }
@@ -736,15 +739,113 @@
 .pd-top:hover { color: var(--color-ink); }
 
 @media (max-width: 900px) {
-  .pd-info      { grid-template-columns: 1fr; }
+  /* The two columns are on .pd-info-cols. .pd-info is the section that
+     wraps it and was never a grid, so this rule did nothing and the
+     text stayed in a half-width column all the way down to a phone —
+     the lead paragraph was running six characters to the line. */
+  /* Stacked, the 80px between the columns becomes 80px of empty
+     ground in the middle of one section. */
+  .pd-info-cols { grid-template-columns: 1fr; gap: var(--space-lg); }
   .spec-field   { font-size: 52px; min-height: 180px; }
 }
 
+/* ── The opening frame, portrait ───────────────────────────────
+   Every size in .pd-hero is written in cqw against the 1600px frame
+   it was drawn at. That holds while the frame is wide; narrower, the
+   same numbers collapse with it — the description was rendering at
+   11px on a tablet and 5.6px on a phone, inside a 16:9 band too short
+   to hold anything anyway.
+
+   So below the width where the wide arrangement stops working, the
+   frame is re-proportioned rather than scaled down: the 16:9 is
+   dropped so the height comes from the contents, the name goes above
+   the column instead of beside it, and every size is restated for the
+   narrow frame. Still one piece that scales with its container —
+   drawn for the shape it is actually in.
+
+   Each size is clamped at both ends. cqw alone would put the name at
+   180px the moment the layout switched, and would go on shrinking the
+   description past readable at the narrow end; the floor and the
+   ceiling are what make one rule cover 320px through 900px. */
+@media (max-width: 900px) {
+  .pd-hero { aspect-ratio: auto; }
+
+  .pd-hero-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    height: auto;
+    gap: clamp(18px, 7cqw, 48px);
+    padding: clamp(20px, 8cqw, 56px);
+  }
+
+  .pd-hero-name {
+    font-size: clamp(52px, 22cqw, 136px);
+    /* 140% is air between three stacked lines at 184px; at this size
+       it is a gap the name comes apart across. */
+    line-height: 1.15;
+  }
+
+  .pd-hero-col {
+    flex: none;
+    width: 100%;
+    gap: clamp(14px, 5cqw, 32px);
+  }
+
+  .pd-hero-desc {
+    font-size: clamp(14px, 4.4cqw, 22px);
+    line-height: 1.55;
+  }
+
+  /* Left, with everything else. A right-aligned line in a column this
+     narrow reads as an orphan rather than as the cue it is. */
+  .pd-hero-cue {
+    font-size: clamp(20px, 7cqw, 38px);
+    line-height: 1.3;
+    text-align: left;
+  }
+}
+
 @media (max-width: 600px) {
-  .product     { padding: 0 var(--space-md) var(--space-2xl); }
+  /* Inline padding only. Writing the full shorthand here also wiped
+     the navbar clearance off the top, so the frame was opening
+     underneath the fixed bar. */
+  .product     { padding-inline: var(--space-md); }
   .pd-gallery  { grid-template-columns: 1fr; }
   .spec-field  { font-size: 38px; min-height: 150px; }
   .pd-control:last-of-type { margin-inline-start: 0; }
+
+  /* Right-aligned 13px is a caption hanging off a column that is no
+     longer there. It reads under the price instead. */
+  .pd-note {
+    margin-inline-start: 0;
+    text-align: left;
+    font-size: 14px;
+  }
+
+  /* Both were sized for a column half this wide. */
+  .pd-body      { font-size: 17px; }
+  .pd-body--lead { font-size: 24px; }
+  .pd-spec      { font-size: 15px; }
+
+  /* Fixed 40px off the bottom-right corner, it was landing in the
+     middle of whatever happened to be on screen — at the top of the
+     page, on the frame's own "take a look" cue. Full width along the
+     bottom edge instead, where it reads as the page's chrome rather
+     than as something dropped onto the artwork. The safe-area inset
+     keeps it off the home indicator; the document already opts into
+     that with viewport-fit=cover. */
+  .pd-float {
+    left: var(--space-md);
+    right: var(--space-md);
+    bottom: calc(var(--space-sm) + env(safe-area-inset-bottom, 0px));
+    justify-content: center;
+  }
+}
+
+/* On the narrowest phones 38px puts one word on three lines and the
+   tester stops showing anything about the face. */
+@media (max-width: 400px) {
+  .spec-field { font-size: 30px; }
 }
 
 /* ── Empty state for Tools / Shop ──────────────────────────────*/
@@ -1341,11 +1442,22 @@ html[data-theme="dark"] .nav-logo:hover .nav-title {
   color: #1A1917;
   text-decoration: none;
   transition: transform var(--dur-md) var(--ease-out, cubic-bezier(0.22,1,0.36,1)),
+              opacity var(--dur-md) ease,
               box-shadow var(--dur-md) ease;
 }
 .pd-float:hover {
   transform: translateY(-2px);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* Held back while the opening frame is still on screen — see the
+   observer in shop/index.html. Set on the narrow layout only, so the
+   desktop button is never affected. It leaves downwards, the way it
+   will come back, rather than fading on the spot. */
+.pd-float--held {
+  opacity: 0;
+  transform: translateY(140%);
+  pointer-events: none;
 }
 .pd-float-price {
   padding-inline-start: 10px;

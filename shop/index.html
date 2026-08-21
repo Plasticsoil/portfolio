@@ -402,7 +402,8 @@ var PRODUCTS = [
     return '<article class="shop-card' + (p.soon ? ' shop-card--soon' : '') + '"' +
              ' data-tags="' + esc((p.tags || []).join(' ')) + '"' +
              ' data-title="' + esc(p.title.toLowerCase()) + '"' +
-             (isType ? ' data-from="' + a.from + '" data-min="' + a.min + '" data-max="' + a.max + '"' : '') + '>' +
+             (isType ? ' data-from="' + a.from + '" data-to="' + a.to +
+                       '" data-min="' + a.min + '" data-max="' + a.max + '"' : '') + '>' +
              '<div class="shop-card-media' + (isType ? ' shop-card-media--type' : '') + '">' +
                media +
              '</div>' +
@@ -495,6 +496,11 @@ var PRODUCTS = [
     }
 
     function track(e) {
+      // A finger dragging the page down is not a hand reading the
+      // axis, and letting it through made the weight lurch on every
+      // scroll past the card.
+      if (e.pointerType === 'touch') return;
+
       // Only while the pointer is actually over the thumbnail — below
       // it are the title and price, and sweeping those shouldn't drag
       // the weight to its lightest.
@@ -507,6 +513,47 @@ var PRODUCTS = [
       set(lo + t * (hi - lo));
     }
 
+    /* ── Without a pointer ───────────────────────────────────────
+       A touch screen has no hover to follow, so on a phone this card
+       was three lines of type frozen at 250 beside a marker that never
+       moved — a control with nothing driving it, on the one card whose
+       whole point is the axis.
+
+       There it drives itself: while the card is on screen the weight
+       walks from its resting point to the far end and back, so the
+       thing the product is about still happens. Same set(), so the
+       marker still rides along and says where on the axis you are. */
+    function demo() {
+      var to     = +cardEl.dataset.to || hi;
+      var PERIOD = 5200;                 // there and back, once
+      var raf = 0, t0 = 0, acc = 0;
+
+      function frame(now) {
+        if (!t0) t0 = now;
+        /* Cosine rather than a sawtooth: it eases into both ends of
+           the axis instead of turning around on a corner, and it
+           lingers at Thin and at Black, which are the two readings
+           worth stopping on. */
+        var phase = ((acc + now - t0) % PERIOD) / PERIOD;
+        set(rest + (1 - Math.cos(phase * 2 * Math.PI)) / 2 * (to - rest));
+        raf = requestAnimationFrame(frame);
+      }
+
+      /* Only while it is actually on screen. Cards walking their axis
+         below the fold is battery spent on something nobody is
+         looking at. */
+      new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting) {
+          if (!raf) raf = requestAnimationFrame(frame);
+        } else if (raf) {
+          // Keep the place, so coming back doesn't snap the weight.
+          acc += performance.now() - t0;
+          cancelAnimationFrame(raf);
+          raf = 0; t0 = 0;
+        }
+      }, { threshold: 0.25 }).observe(cardEl);
+    }
+
     /* Bound to the card, not the thumbnail. The click overlay
        (.shop-card-link::after) covers the card at z-index 3 and is a
        sibling of .shop-card-media — so the pointer lands on it and its
@@ -515,7 +562,12 @@ var PRODUCTS = [
 
        Nothing on pointerleave: the weight stays where it was left, so
        the grid keeps a record of where each card was last read. */
-    cardEl.addEventListener('pointermove', track);
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      cardEl.addEventListener('pointermove', track);
+    } else if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
+               'IntersectionObserver' in window) {
+      demo();
+    }
 
     // Lets the behaviour be checked without a real pointer.
     cardEl._setWeight = set;
@@ -556,6 +608,46 @@ var PRODUCTS = [
 
   window.addEventListener('popstate', route);
   route();
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   THE BUY BAR AND THE OPENING FRAME
+
+   On a phone the floating CTA is a full-width bar along the bottom
+   edge, which means it covers the bottom of whatever is on screen —
+   and at the top of the page that is the frame's own "take a look ↓".
+   The one line telling you to go down was being cut in half by the
+   button you get to at the end of going down.
+
+   So it waits: while the frame is on screen the bar is out, and it
+   arrives as soon as you have left it. It still follows you down the
+   page, it just doesn't sit on the artwork. Only on the narrow
+   layout — the desktop button is in a corner and covers nothing.
+════════════════════════════════════════════════════════════════ */
+
+(function () {
+  var bar  = document.getElementById('pd-float');
+  var hero = document.querySelector('.pd-hero');
+  if (!bar || !hero || !('IntersectionObserver' in window)) return;
+
+  var narrow = window.matchMedia('(max-width: 600px)');
+
+  /* Any part of the frame showing counts as being on it — the cue is
+     its last line, so it is the part that survives longest. */
+  var io = new IntersectionObserver(function (entries) {
+    bar.classList.toggle('pd-float--held',
+                         narrow.matches && entries[0].isIntersecting);
+  }, { threshold: 0 });
+
+  io.observe(hero);
+
+  /* Rotating the phone can cross the breakpoint, and the observer
+     only fires when the frame's own visibility changes. */
+  (narrow.addEventListener ? narrow.addEventListener.bind(narrow, 'change')
+                           : narrow.addListener.bind(narrow))(function () {
+    bar.classList.toggle('pd-float--held',
+                         narrow.matches && hero.getBoundingClientRect().bottom > 0);
+  });
 })();
 
 /* ══════════════════════════════════════════════════════════════
