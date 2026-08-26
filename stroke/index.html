@@ -483,6 +483,7 @@ const params={
   mode:'repeater',
   uavSpan:760, uavSweep:18, uavChord:150, uavTaper:0.45, uavThick:18, uavDihedral:6,
   uavFuseLen:430, uavFuseR:30, uavNose:90, uavTailSpan:260, uavFinH:80, uavCam:0, uavRibs:4, uavSub:1, uavRound:0, uavProp:2,
+  qBodyLen:260, qBodyWid:150, qBodyHt:80, qArmLen:210, qArmAngle:38, qArmR:9, qMotorR:24, qMotorH:24, qMotorY:16, qPropR:150, qPropBlades:2, qCam:26, qLegs:70, qSub:1,
   centralN:64, mirSides:2, mirReach:320, mirInner:0, mirCover:1, mirSpin:0, mirTwist:0, mirLayers:1,
   exMode:'extrude', exScale:300, exDepth:300, exSegs:6, exWalls:24, exTwist:0, exTaper:1,
   exFill:'none', exFillN:14, exBulge:120, exRim:true, svgShape:null,
@@ -691,14 +692,14 @@ function setEase(key,idx,e){ const kf=keyframes[key][idx]; kf.ease=e; if(e==='be
 /* ---------- controls (modular) ---------- */
 const controlsEl=document.getElementById('controls'), rightEl=document.getElementById('controls-right');
 const els={}, segs={}, colorEls={};
-let radRow=null, shapeSec=null, formSec=null, uavSec=null, centralSec=null, extrudeSec=null, textSec=null, modeRows={};
+let radRow=null, shapeSec=null, formSec=null, uavSec=null, quadSec=null, centralSec=null, extrudeSec=null, textSec=null, modeRows={};
 function updateMarkerUI(){ if(radRow) radRow.style.display = (params.markerMode==='points')?'none':''; }
 let gradAngleRow=null;
 let _txtSig='';   // signature of the current text render → rebuild the rasterized outline only when a text channel changes
 function updateGradUI(){ if(gradAngleRow) gradAngleRow.style.display=(params.gradType==='linear')?'':'none'; }
-function updateTopoUI(){ const m=params.mode||'repeater', rep=m==='repeater', topo=m==='topo', uav=m==='uav', cen=m==='central', ext=m==='extrude', txt=m==='text';
+function updateTopoUI(){ const m=params.mode||'repeater', rep=m==='repeater', topo=m==='topo', uav=m==='uav', qd=m==='quad', cen=m==='central', ext=m==='extrude', txt=m==='text';
   const sh=(el,b)=>{ if(el) el.style.display=b?'':'none'; };
-  sh(shapeSec,rep); sh(uavSec,uav); sh(centralSec,cen); sh(extrudeSec,ext||txt); sh(modeRows.svgImport,ext); sh(textSec,txt); sh(formSec,rep||topo);
+  sh(shapeSec,rep); sh(uavSec,uav); sh(quadSec,qd); sh(centralSec,cen); sh(extrudeSec,ext||txt); sh(modeRows.svgImport,ext); sh(textSec,txt); sh(formSec,rep||topo);
   [modeRows.funnel,modeRows.rot,modeRows.spacing].forEach(r=>sh(r,rep));
   [modeRows.detail,modeRows.seed].forEach(r=>sh(r,topo));
   [modeRows.lines,modeRows.size,modeRows.height].forEach(r=>sh(r,rep||topo));
@@ -968,11 +969,12 @@ function buildControls(){
     repeater:'<circle cx="8" cy="8" r="2"/><circle cx="8" cy="8" r="6"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2M4.5 4.5l1.4 1.4M10.1 10.1l1.4 1.4M11.5 4.5l-1.4 1.4M5.9 10.1l-1.4 1.4"/>',
     topo:'<path d="M1.5 13l3.8-6.6 2.4 4 1.8-3L14.5 13z"/>',
     uav:'<path d="M8 1.7c.6 0 .9 1 .9 2.3v1.9l4.6 2.7v1.5L8.9 9.2v2.9l1.5 1v1.2L8 13.8l-2.4.3v-1.2l1.5-1V9.2L2.5 10.1V8.6L7.1 5.9V4c0-1.3.3-2.3.9-2.3z"/>',
+    quad:'<circle cx="8" cy="8" r="2"/><path d="M6.6 6.6L4 4M9.4 6.6L12 4M6.6 9.4L4 12M9.4 9.4L12 12"/><circle cx="4" cy="4" r="1.7"/><circle cx="12" cy="4" r="1.7"/><circle cx="4" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/>',
     central:'<path d="M8 2.2v11.6" stroke-dasharray="1.6 1.6"/><path d="M6 5.4L2.8 8 6 10.6z"/><path d="M10 5.4L13.2 8 10 10.6z"/>',
     extrude:'<path d="M8 2l5.2 3v6L8 14l-5.2-3V5z"/><path d="M2.8 5L8 8l5.2-3M8 8v6"/>',
     text:'<path d="M3 3.5h10M8 3.5v9M6 12.5h4"/>'
   };
-  [['repeater','Repeater'],['topo','Topography'],['uav','UAV'],['central','Mirror'],['extrude','Extrude'],['text','Text']].forEach(([v,t])=>{ const b=document.createElement('button');
+  [['repeater','Repeater'],['topo','Topography'],['uav','UAV'],['quad','Drone'],['central','Mirror'],['extrude','Extrude'],['text','Text']].forEach(([v,t])=>{ const b=document.createElement('button');
     b.innerHTML=`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">${MODEICON[v]}</svg>`; b.title=t;
     b.classList.toggle('active',(params.mode||'repeater')===v);
     b.onclick=()=>{ params.mode=v; params.topo=(v==='topo'); if(v==='text'&&(!params.textShape||!params.textShape.polys||!params.textShape.polys.length))buildTextShape(); modebar.querySelectorAll('button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); updateTopoUI(); render(); pushState(); };
@@ -1013,6 +1015,21 @@ function buildControls(){
   addStepper(g,{key:'uavProp',label:'Propeller blades',min:0,max:5,nokey:true,ic:'<circle cx="8" cy="8" r="1.5"/><path d="M8 6.5V2M9.3 8.7l3.8 2.2M6.7 8.7l-3.8 2.2"/>'});
   addStepper(g,{key:'uavRibs',label:'Ribs (structure)',min:0,max:12,nokey:true,ic:'<path d="M4 3v10M7 3v10M10 3v10M13 3v10"/>'});
   addStepper(g,{key:'uavSub',label:'Subdivide',min:0,max:3,nokey:true,ic:'<rect x="2.5" y="2.5" width="11" height="11"/><path d="M8 2.5v11M2.5 8h11"/>'});
+
+  // ===== Drone — parametric quadcopter wireframe (quad only) =====
+  g=group(controlsEl,'','Drone'); quadSec=g.parentElement;
+  addSlider(g,{key:'qBodyLen',label:'Body length',min:120,max:500,step:1,curve:1,ic:'<rect x="4" y="2.5" width="8" height="11" rx="3"/>'});
+  addSlider(g,{key:'qBodyWid',label:'Body width',min:60,max:320,step:1,curve:1,ic:'<rect x="2.5" y="4" width="11" height="8" rx="3"/>'});
+  addSlider(g,{key:'qBodyHt',label:'Body height',min:30,max:200,step:1,curve:1,ic:'<path d="M2 6.5c5-2 7-2 12 0M2 9.5c5 2 7 2 12 0"/>'});
+  addSlider(g,{key:'qArmLen',label:'Arm reach',min:100,max:420,step:1,curve:1,ic:'<path d="M8 8l5-4M8 8l-5 4"/><circle cx="13" cy="4" r="1.6"/><circle cx="3" cy="12" r="1.6"/>'});
+  addSlider(g,{key:'qArmAngle',label:'Arm angle °',min:10,max:80,step:1,curve:1,ic:'<path d="M8 13V4M8 13l6-3M8 13l-6-3"/>'});
+  addSlider(g,{key:'qArmR',label:'Arm width',min:3,max:26,step:1,curve:1,ic:'<path d="M3 8h10M3 6.5v3M13 6.5v3"/>'});
+  addSlider(g,{key:'qMotorR',label:'Motor size',min:8,max:60,step:1,curve:1,ic:'<circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.5"/>'});
+  addSlider(g,{key:'qPropR',label:'Propeller size',min:50,max:340,step:1,curve:1,ic:'<circle cx="8" cy="8" r="1.6"/><path d="M8 6.4V2M9.4 8.8l3.8 2.2M6.6 8.8l-3.8 2.2"/>'});
+  addStepper(g,{key:'qPropBlades',label:'Prop blades',min:2,max:5,nokey:true,ic:'<circle cx="8" cy="8" r="1.5"/><path d="M8 6.5V2M9.3 8.7l3.8 2.2M6.7 8.7l-3.8 2.2"/>'});
+  addSlider(g,{key:'qCam',label:'Gimbal camera',min:0,max:70,step:1,curve:1,ic:'<circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.8"/>'});
+  addSlider(g,{key:'qLegs',label:'Landing legs',min:0,max:180,step:1,curve:1,ic:'<path d="M5 3v7l-2 3M11 3v7l2 3"/>'});
+  addStepper(g,{key:'qSub',label:'Subdivide',min:0,max:3,nokey:true,ic:'<rect x="2.5" y="2.5" width="11" height="11"/><path d="M8 2.5v11M2.5 8h11"/>'});
 
   // ===== Mirror — 3D mandala: one base object (line→polygon) copied N-fold around the central axis =====
   g=group(controlsEl,'','Mirror'); centralSec=g.parentElement;
@@ -1304,6 +1321,54 @@ function buildSVG(transparent){
     if(prop>0){ const pz=zB+R*0.18, pr=Math.max(R*1.25, span*0.05);
       const hub=[]; for(let i=0;i<=12;i++){ const a=i/12*2*PI; hub.push([Math.cos(a)*R*0.22, Math.sin(a)*R*0.22, pz]); } add(hub);
       for(let b=0;b<prop;b++){ const a=b/prop*2*PI; add([[0,0,pz],[Math.cos(a)*pr, Math.sin(a)*pr, pz]]); } }
+    if(params.stroke>0) P.forEach(pts=>{ let d=''; pts.forEach((p,i)=>{ const c=map(project(p[0],p[1],p[2])); d+=(i?'L':'M')+c[0]+' '+c[1]+' '; }); lines+=`<path d="${d.trim()}"/>\n`; });
+    M=0;
+  } else if(params.mode==='quad'){
+    // ---- parametric quadcopter drone (DJI-style): rounded body + 4 arms/motors/props + gimbal camera + landing legs ----
+    const P=[], add=p=>P.push(p);
+    const lerp3=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+    const norm=v=>{ const l=Math.hypot(v[0],v[1],v[2])||1; return [v[0]/l,v[1]/l,v[2]/l]; };
+    const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+    const grid=(S,nu,nv)=>{ for(let i=0;i<=nu;i++){const u=i/nu,p=[];for(let j=0;j<=nv;j++)p.push(S(u,j/nv));add(p);}
+                            for(let j=0;j<=nv;j++){const v=j/nv,p=[];for(let i=0;i<=nu;i++)p.push(S(i/nu,v));add(p);} };
+    const ringAt=(cx,cy,cz,r,ax,seg)=>{ const p=[]; for(let k=0;k<=seg;k++){ const a=k/seg*2*PI, c=Math.cos(a)*r, s=Math.sin(a)*r;
+        p.push(ax==='y'?[cx+c,cy,cz+s]:[cx+c,cy+s,cz]); } return p; };
+    const sub=Math.max(0,Math.round(params.qSub||1)), subF=Math.pow(2,sub);
+    const L=params.qBodyLen||260, W=params.qBodyWid||150, H=params.qBodyHt||80;
+    const armLen=params.qArmLen||210, armAng=(params.qArmAngle||38)*PI/180, armR=params.qArmR||9, motorY=params.qMotorY||16;
+    const motorR=params.qMotorR||24, motorH=params.qMotorH||24, propR=params.qPropR||150, blades=Math.max(2,Math.round(params.qPropBlades||2));
+    const camR=params.qCam||0, legLen=params.qLegs||0;
+    // superellipse (rounded-rect) cross-section, exponent e
+    const se=(a,rx,ry,e)=>{ const c=Math.cos(a), s=Math.sin(a); return [Math.sign(c)*Math.pow(Math.abs(c),2/e)*rx, Math.sign(s)*Math.pow(Math.abs(s),2/e)*ry]; };
+    // body hull — tube along z, blunt nose, tapered tail
+    const prof=v=>{ let sc; if(v<0.16) sc=0.42+0.58*(v/0.16); else if(v>0.8) sc=1-0.62*((v-0.8)/0.2); else sc=1; return sc; };
+    grid((u,v)=>{ const z=-L/2+v*L, a=u*2*PI, sc=prof(v), p=se(a,W/2*sc,H/2*sc,4); return [p[0],p[1],z]; },
+         Math.min(56,8*subF), Math.min(44,7*subF));
+    // 4 arms + motors + props  ([signX, signZ])
+    const seg=Math.min(28,6+4*sub), longN=Math.min(16,4+2*sub);
+    [[1,1],[-1,1],[1,-1],[-1,-1]].forEach(([sx,sz])=>{
+      const mx=sx*armLen*Math.sin(armAng), mz=sz*armLen*Math.cos(armAng)*(sz>0?1:0.9), root=[sx*W*0.34,0,sz*L*0.26], tip=[mx,motorY,mz];
+      const dir=norm([tip[0]-root[0],tip[1]-root[1],tip[2]-root[2]]), up=Math.abs(dir[1])>0.9?[1,0,0]:[0,1,0], rt=norm(cross(dir,up)), un=cross(rt,dir);
+      // arm boom (tapered tube)
+      grid((u,v)=>{ const a=u*2*PI, rr=armR*(1-0.3*v), cc=Math.cos(a)*rr, si=Math.sin(a)*rr, b=lerp3(root,tip,v);
+        return [b[0]+rt[0]*cc+un[0]*si, b[1]+rt[1]*cc+un[1]*si, b[2]+rt[2]*cc+un[2]*si]; }, Math.min(14,3*subF), Math.min(10,3*subF));
+      // motor (vertical cylinder)
+      add(ringAt(mx,motorY-motorH/2,mz,motorR,'y',seg)); add(ringAt(mx,motorY+motorH/2,mz,motorR,'y',seg));
+      for(let k=0;k<longN;k++){ const a=k/longN*2*PI, c=Math.cos(a)*motorR, s=Math.sin(a)*motorR; add([[mx+c,motorY-motorH/2,mz+s],[mx+c,motorY+motorH/2,mz+s]]); }
+      // propeller (blades in the horizontal plane above the motor)
+      const py=motorY+motorH/2+4; add(ringAt(mx,py,mz,motorR*0.4,'y',12));
+      for(let b=0;b<blades;b++){ const bang=b/blades*2*PI+(sx*sz>0?0.35:-0.35), dx=Math.cos(bang), dz=Math.sin(bang), px=-Math.sin(bang), pz=Math.cos(bang), loop=[];
+        for(let k=0;k<=20;k++){ const a=k/20*2*PI, uMaj=(0.5+0.45*Math.cos(a))*propR, wMin=Math.sin(a)*propR*0.1;
+          loop.push([mx+dx*uMaj+px*wMin, py, mz+dz*uMaj+pz*wMin]); } add(loop); }
+      // landing leg (down from the front/back arm)
+      if(legLen>0){ const lx=mx*0.9, lz=mz*0.9; add([[lx,motorY-motorH*0.2,lz],[lx*1.02,motorY-motorH*0.2-legLen,lz*1.02]]); }
+    });
+    // gimbal camera (sphere + lens) at the front underside
+    if(camR>0){ const C=[0,-H*0.34,L*0.42];
+      grid((u,v)=>{ const a=u*2*PI, ph=(v-0.5)*PI, cp=Math.cos(ph); return [C[0]+cp*Math.cos(a)*camR, C[1]+Math.sin(ph)*camR, C[2]+cp*Math.sin(a)*camR]; }, Math.min(24,4*subF), Math.min(16,3*subF));
+      const d0=camR*0.7, d1=d0+camR*1.0, ly=C[1]-camR*0.25;
+      add(ringAt(C[0],ly,C[2]+d0,camR*0.55,'z',Math.min(24,12+sub*6))); add(ringAt(C[0],ly,C[2]+d1,camR*0.55,'z',Math.min(24,12+sub*6))); add(ringAt(C[0],ly,C[2]+d1,camR*0.3,'z',16));
+      add([[C[0],C[1],C[2]],[C[0],-H*0.1,C[2]-camR*0.2]]); }
     if(params.stroke>0) P.forEach(pts=>{ let d=''; pts.forEach((p,i)=>{ const c=map(project(p[0],p[1],p[2])); d+=(i?'L':'M')+c[0]+' '+c[1]+' '; }); lines+=`<path d="${d.trim()}"/>\n`; });
     M=0;
   } else if(params.mode==='central'){
@@ -1635,6 +1700,11 @@ function shuffle(){
     params.uavFuseLen=Math.round(rrange(300,640)); params.uavFuseR=Math.round(rrange(18,46));
     params.uavNose=Math.round(rrange(60,180)); params.uavTailSpan=Math.round(rrange(140,360));
     params.uavFinH=Math.round(rrange(30,140)); params.uavRibs=rpick([0,2,3,4,5]); params.uavProp=rpick([0,2,2,3]);
+  } else if(params.mode==='quad'){
+    params.qBodyLen=Math.round(rrange(160,360)); params.qBodyWid=Math.round(rrange(90,220)); params.qBodyHt=Math.round(rrange(50,140));
+    params.qArmLen=Math.round(rrange(150,320)); params.qArmAngle=Math.round(rrange(20,60)); params.qArmR=Math.round(rrange(6,16));
+    params.qMotorR=Math.round(rrange(16,38)); params.qPropR=Math.round(rrange(110,280)); params.qPropBlades=rpick([2,2,3]);
+    params.qCam=rpick([0,26,26,40]); params.qLegs=rpick([0,50,80,120]);
   } else if(params.mode==='topo'){
     params.rings=rpick([6,8,10,12,16]); params.meridianPer=rpick([0,0,1,2]);
     params.topoDetail=rpick([3,4,5,6,8]); params.topoSeed=1+Math.floor(rrange(0,60)); params.noiseSeed=1+Math.floor(rrange(0,60));
