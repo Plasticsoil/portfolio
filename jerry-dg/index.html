@@ -1,0 +1,2684 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Depth Reveal Studio &middot; Yam Liv</title>
+<meta name="description" content="Design a depth-map reveal for an image or a video, then export it as PNG, GIF, MP4, HTML or a SwiftUI + Metal shader.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Archivo:wght@400;500;600&display=swap">
+<style>
+  /* ============================================================
+     Tokens taken from FIELD's design system: two colours only —
+     --ink at some opacity, --light underneath — plus the one
+     saturated accent. Nothing here writes a raw colour.
+     ============================================================ */
+  :root{
+    --ink: 90 101 109;
+    --light: 247 249 250;
+    --veil: 255 255 255;
+    --accent: #73daff;
+
+    --bg-app:    rgb(var(--light));
+    --bg-chrome: linear-gradient(rgb(var(--veil) / .5), rgb(var(--veil) / .5)), rgb(var(--light));
+    --bg-sunken: rgb(var(--ink) / .05);
+    --bg-raised: rgb(var(--light));
+
+    --border-subtle: rgb(var(--ink) / .05);
+    --border:        rgb(var(--ink) / .2);
+    --border-strong: rgb(var(--ink) / .3);
+
+    --text:   rgb(var(--ink) / .75);
+    --text-2: rgb(var(--ink) / .5);
+    --text-3: rgb(var(--ink) / .3);
+
+    --hover:  rgb(var(--ink) / .05);
+    --active: rgb(var(--ink) / .1);
+    --shadow: 0 2px 8px rgb(var(--ink) / .12), 0 0 0 1px rgb(var(--ink) / .05);
+
+    --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:10px;
+    --row-h:26px;
+
+    --font-ui:'Inter',ui-sans-serif,system-ui,'Segoe UI',sans-serif;
+    --font-display:'Archivo','Inter',sans-serif;
+    --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg-app);color:var(--text);
+    font-family:var(--font-ui);font-size:13px;line-height:1.45;
+    -webkit-font-smoothing:antialiased;overflow:hidden;
+  }
+  ::selection{background:rgb(var(--ink) / .2)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--radius-sm)}
+
+  .app{display:grid;grid-template-columns:1fr 356px;height:100vh;height:100dvh}
+  @media (max-width:960px){
+    .app{grid-template-columns:1fr;grid-template-rows:minmax(0,50dvh) minmax(0,1fr)}
+    .panel{border-left:none;border-top:1px solid var(--border-subtle)}
+    .topbar{flex-wrap:wrap;row-gap:var(--space-2)}
+  }
+
+  /* ---------- chrome ---------- */
+  .stage{display:flex;flex-direction:column;min-width:0}
+  .topbar,.transport{
+    background:var(--bg-chrome);display:flex;align-items:center;
+    gap:var(--space-2);padding:var(--space-3) var(--space-4);flex:0 0 auto;
+  }
+  .topbar{border-bottom:1px solid var(--border-subtle)}
+  .transport{border-top:1px solid var(--border-subtle);gap:var(--space-3)}
+  .wordmark{font-family:var(--font-display);font-weight:500;letter-spacing:-.01em;white-space:nowrap}
+  .wordmark span{color:var(--text-3);font-weight:400}
+  .grow{flex:1}
+
+  .viewport{
+    flex:1;display:flex;align-items:center;justify-content:center;
+    gap:var(--space-4);padding:var(--space-4);min-height:0;background:var(--bg-sunken);
+  }
+  .slot{display:flex;flex-direction:column;align-items:center;gap:var(--space-2);min-width:0;min-height:0}
+  .slot-label{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--text-3)}
+  .frame{position:relative;line-height:0;border-radius:var(--radius-sm);overflow:hidden;box-shadow:0 0 0 1px rgb(var(--ink) / .08)}
+  canvas.out{display:block}
+  .checker{
+    background-image:
+      linear-gradient(45deg,rgb(var(--ink)/.08) 25%,transparent 25%),
+      linear-gradient(-45deg,rgb(var(--ink)/.08) 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,rgb(var(--ink)/.08) 75%),
+      linear-gradient(-45deg,transparent 75%,rgb(var(--ink)/.08) 75%);
+    background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0;
+    background-color:rgb(var(--veil));
+  }
+  .solid-dark{background:#000}
+  .solid-light{background:#fff}
+  .dropping{outline:1px dashed var(--accent);outline-offset:6px}
+  #scrub{flex:1}
+  .tnum{font-family:var(--font-mono);font-size:11px;color:var(--text-2);min-width:104px;text-align:right;font-variant-numeric:tabular-nums}
+
+  /* ---------- panel ---------- */
+  .panel{background:var(--bg-raised);border-left:1px solid var(--border-subtle);overflow-y:auto;overflow-x:hidden}
+  .panel::-webkit-scrollbar{width:9px}
+  .panel::-webkit-scrollbar-thumb{background:rgb(var(--ink) / .18);border-radius:9px}
+  details{border-bottom:1px solid var(--border-subtle)}
+  summary{
+    list-style:none;cursor:pointer;padding:var(--space-3) var(--space-4);
+    font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3);
+    display:flex;align-items:center;gap:var(--space-2);user-select:none;
+  }
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"";width:5px;height:5px;border-right:1px solid currentColor;border-bottom:1px solid currentColor;transform:rotate(-45deg);transition:transform .15s;margin-bottom:1px}
+  details[open] summary::before{transform:rotate(45deg)}
+  summary:hover{color:var(--text-2)}
+  summary em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--text-3);font-size:11px}
+  .body{padding:0 var(--space-4) var(--space-4)}
+
+  .row{display:flex;align-items:center;gap:var(--space-2);margin:var(--space-2) 0}
+  .row label{flex:1;color:var(--text-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .val{
+    font-family:var(--font-mono);font-size:11px;color:var(--text);
+    background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius-sm);
+    width:66px;padding:2px 5px;text-align:right;font-variant-numeric:tabular-nums;height:var(--row-h);
+  }
+  .val:focus{outline:none;border-color:var(--accent)}
+  select.val{width:auto;text-align:left;padding:2px 4px}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:16px;background:transparent;cursor:pointer;margin:0}
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:rgb(var(--ink) / .2);border-radius:2px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:rgb(var(--ink) / .75);margin-top:-4.5px;border:none}
+  input[type=range]:hover::-webkit-slider-thumb{background:var(--accent);box-shadow:0 0 0 1px rgb(var(--ink) / .2)}
+  input[type=range]::-moz-range-track{height:2px;background:rgb(var(--ink) / .2)}
+  input[type=range]::-moz-range-thumb{width:11px;height:11px;border:none;border-radius:50%;background:rgb(var(--ink) / .75)}
+  .slider-row{margin:0 0 var(--space-3)}
+
+  .toggle{width:30px;height:17px;border-radius:9px;background:rgb(var(--ink) / .2);position:relative;cursor:pointer;transition:background .15s;flex:0 0 auto}
+  .toggle::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:rgb(var(--veil));transition:transform .15s;box-shadow:0 1px 2px rgb(var(--ink) / .3)}
+  .toggle.on{background:var(--accent)}
+  .toggle.on::after{transform:translateX(13px)}
+
+  button{
+    font:inherit;font-size:11.5px;color:var(--text);background:transparent;
+    border:1px solid var(--border);border-radius:var(--radius-sm);
+    padding:0 var(--space-2);height:var(--row-h);cursor:pointer;white-space:nowrap;
+  }
+  button:hover{background:var(--hover)}
+  button:active{background:var(--active)}
+  button:disabled{opacity:.4;cursor:default;background:transparent}
+  button.primary{background:var(--accent);border-color:transparent;color:rgb(var(--ink));font-weight:600}
+  button.primary:hover{filter:brightness(1.05)}
+  button.icon{font-family:var(--font-mono);padding:0 var(--space-2)}
+  .btnrow{display:flex;gap:var(--space-1);flex-wrap:wrap;margin-top:var(--space-2)}
+
+  .seg{display:flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;height:var(--row-h)}
+  .seg button{border:none;border-radius:0;height:100%;color:var(--text-2)}
+  .seg button+button{border-left:1px solid var(--border)}
+  .seg button.on{background:var(--active);color:var(--text)}
+
+  #curve{width:100%;height:150px;display:block;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-sunken);cursor:crosshair;touch-action:none}
+  .hint{font-size:10.5px;color:var(--text-3);margin-top:var(--space-1);line-height:1.45}
+  .hint.tight{margin:-6px 0 var(--space-3)}
+
+  .dial-wrap{display:flex;align-items:center;gap:var(--space-3);margin:var(--space-2) 0}
+  .dial{width:60px;height:60px;flex:0 0 auto;touch-action:none;cursor:grab}
+  .dial:active{cursor:grabbing}
+
+  .grad-bar{position:relative;height:40px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);cursor:copy;margin-top:var(--space-2)}
+  .grad-stops{position:relative;height:26px;margin-top:3px}
+  .stop{
+    position:absolute;top:0;width:18px;height:18px;margin-left:-9px;border-radius:50%;
+    border:3px solid rgb(var(--veil));box-shadow:0 0 0 1px rgb(var(--ink) / .35);
+    cursor:grab;touch-action:none;
+  }
+  .stop::after{content:"";position:absolute;inset:-7px;border-radius:50%}
+  .stop.sel{box-shadow:0 0 0 2px var(--accent);transform:scale(1.15)}
+  .stop:active{cursor:grabbing}
+
+  /* ---------- sheet ---------- */
+  .sheet{position:fixed;inset:0;background:rgb(var(--ink) / .35);display:none;align-items:center;justify-content:center;padding:32px;z-index:50}
+  .sheet.open{display:flex}
+  .sheet-in{background:var(--bg-raised);border-radius:var(--radius-lg);box-shadow:var(--shadow);width:min(1020px,100%);height:100%;display:flex;flex-direction:column;overflow:hidden}
+  .sheet-top{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-subtle);background:var(--bg-chrome)}
+  .sheet-body{flex:1;display:flex;min-height:0}
+  .sheet-side{width:150px;flex:0 0 auto;border-right:1px solid var(--border-subtle);padding:var(--space-2);display:flex;flex-direction:column;gap:2px}
+  .sheet-side button{width:100%;text-align:left;border:none;border-radius:var(--radius-sm);height:28px;color:var(--text-2)}
+  .sheet-side button.on{background:var(--active);color:var(--text);font-weight:500}
+  .sheet-main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .sheet-opts{padding:var(--space-4);border-bottom:1px solid var(--border-subtle);display:grid;grid-template-columns:1fr 1fr;gap:0 var(--space-4)}
+  .sheet-opts .full{grid-column:1 / -1}
+  .sheet-out{flex:1;overflow:auto;min-height:0}
+  pre{margin:0;padding:var(--space-4);font-family:var(--font-mono);font-size:11.5px;line-height:1.5;color:var(--text);white-space:pre;tab-size:2}
+  .drop-preview{padding:var(--space-4);display:flex;flex-direction:column;align-items:center;gap:var(--space-3)}
+  .drop-preview img{max-width:100%;max-height:46vh;border-radius:var(--radius-sm);box-shadow:0 0 0 1px rgb(var(--ink) / .1)}
+  .meta{font-family:var(--font-mono);font-size:11px;color:var(--text-2)}
+  .bar{height:3px;background:var(--bg-sunken);border-radius:3px;overflow:hidden;margin-top:var(--space-2)}
+  .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .15s}
+
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:rgb(var(--ink));color:rgb(var(--light));font-size:12px;font-weight:500;
+    padding:7px 14px;border-radius:20px;opacity:0;transition:.22s;pointer-events:none;z-index:99;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .note{font-size:11px;color:var(--text-3);padding:0 var(--space-4) var(--space-4);line-height:1.5}
+  @media (prefers-reduced-motion:reduce){*{transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage">
+    <div class="topbar">
+      <div class="wordmark">Depth Reveal <span>Studio</span></div>
+      <div class="grow"></div>
+      <div class="seg" id="bgseg">
+        <button data-bg="checker" class="on">Checker</button>
+        <button data-bg="dark">Black</button>
+        <button data-bg="light">White</button>
+      </div>
+      <button id="btnUpload">Upload image or video</button>
+      <button id="btnKeys" class="icon" title="Keyboard shortcuts">?</button>
+      <button id="btnExport" class="primary">Export</button>
+    </div>
+
+    <div class="viewport" id="viewport">
+      <div class="slot" id="maskSlot">
+        <div class="frame"><canvas id="mask" class="out"></canvas></div>
+        <div class="slot-label" id="soloLabel">Alpha &middot; with feather</div>
+      </div>
+      <div class="slot">
+        <div class="frame" id="frameMain"><canvas id="view" class="out"></canvas></div>
+        <div class="slot-label" id="mainLabel">Result</div>
+      </div>
+    </div>
+
+    <div class="transport">
+      <button id="btnPlay" class="icon">&#x25b6;</button>
+      <button id="btnRestart" class="icon" title="Restart">&#x21bb;</button>
+      <div class="seg" id="dbgseg">
+        <button data-dbg="0" class="on">Result</button>
+        <button data-dbg="1">Map</button>
+        <button data-dbg="2">Field</button>
+      </div>
+      <input type="range" id="scrub" min="0" max="1000" value="0">
+      <div class="tnum" id="tnum">0 / 2400ms</div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel">
+    <details open>
+      <summary>Media <em>&mdash; what is being revealed</em></summary>
+      <div class="body" id="grp-media"></div>
+    </details>
+
+    <details open>
+      <summary>Mask <em>&mdash; the order pixels arrive in</em></summary>
+      <div class="body" id="grp-mask"></div>
+    </details>
+
+    <details open>
+      <summary>Line <em>&mdash; the shape of the moving edge</em></summary>
+      <div class="body" id="grp-line"></div>
+    </details>
+
+    <details open>
+      <summary>Colour <em>&mdash; what shows before the media</em></summary>
+      <div class="body" id="grp-colour"></div>
+    </details>
+
+    <details open>
+      <summary>Stage 1 <em>&mdash; the intro, once</em></summary>
+      <div class="body" id="grp-intro"></div>
+      <div class="body" style="padding-top:0">
+        <canvas id="curve"></canvas>
+        <div class="btnrow" id="easePresets"></div>
+        <div class="hint">Drag anchors &amp; handles &middot; double-click to add &middot; alt-click an anchor to delete &middot; alt-drag a handle to break the tangent.</div>
+      </div>
+      <div class="body" id="grp-intro2" style="padding-top:0"></div>
+    </details>
+
+    <details open>
+      <summary>Stage 2 <em>&mdash; the loop, forever</em></summary>
+      <div class="body" id="grp-loop"></div>
+    </details>
+
+    <details>
+      <summary>Presets</summary>
+      <div class="body">
+        <div class="btnrow" id="lookPresets"></div>
+        <div class="btnrow">
+          <button id="btnSave">Save local</button>
+          <button id="btnLoad">Load local</button>
+          <button id="btnCopyJson">Copy JSON</button>
+          <button id="btnPasteJson">Paste JSON</button>
+          <button id="btnReset">Reset</button>
+        </div>
+      </div>
+    </details>
+    <div class="note">The preview and every export are generated from one shared shader source, so the PNG, the GIF, the MP4, the HTML page and the Metal file all show the same thing.</div>
+  </div>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="sheet-in">
+    <div class="sheet-top">
+      <strong style="font-family:var(--font-display);font-weight:500">Export</strong>
+      <div class="grow"></div>
+      <span class="meta" id="expStatus"></span>
+      <button id="btnRun" class="primary">Render</button>
+      <button id="btnGrab">Download</button>
+      <button id="btnCopyCode">Copy code</button>
+      <button id="btnCloseSheet">Close</button>
+    </div>
+    <div class="sheet-body">
+      <div class="sheet-side" id="expside">
+        <button data-f="png" class="on">PNG</button>
+        <button data-f="gif">GIF</button>
+        <button data-f="mp4">MP4</button>
+        <button data-f="html">HTML</button>
+        <button data-f="swift">Swift + Metal</button>
+      </div>
+      <div class="sheet-main">
+        <div class="sheet-opts" id="expopts"></div>
+        <div class="sheet-out" id="expout"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file" accept="image/*,video/*" style="display:none">
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   1. SHARED SHADER CORE — written once in GLSL, transpiled to MSL.
+      Everything that shapes the reveal acts on the MASK. The media is
+      never displaced: it is sampled at its own coordinates, always.
+   ===================================================================== */
+
+const SHADER_HELPERS = `
+float hash21(vec2 p){
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  float a = hash21(i);
+  float b = hash21(i + vec2(1.0, 0.0));
+  float c = hash21(i + vec2(0.0, 1.0));
+  float d = hash21(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+float fbm(vec2 p, float oct, float t){
+  float amp = 0.5, sum = 0.0, tot = 0.0;
+  for (int i = 0; i < 6; i++){
+    float w = clamp(oct - float(i), 0.0, 1.0);
+    if (w <= 0.0) break;
+    sum += vnoise(p + t) * amp * w;
+    tot += amp * w;
+    p *= 2.03;
+    amp *= 0.5;
+  }
+  return tot > 0.0 ? sum / tot : 0.5;
+}
+`;
+
+const SHADER_BODY = `
+  vec2 suv = clamp((uv - 0.5) * uCover + 0.5, 0.0, 1.0);
+
+  // ---- 1. mask: luminance depth map, blurred, levelled ----------------
+  float d;
+  if (uSoft > 0.01) {
+    vec2 r = uSoft / uSize;
+    d  = LUMA(suv) * 0.25;
+    d += (LUMA(suv + vec2(r.x, 0.0)) + LUMA(suv - vec2(r.x, 0.0)) +
+          LUMA(suv + vec2(0.0, r.y)) + LUMA(suv - vec2(0.0, r.y))) * 0.125;
+    d += (LUMA(suv + r) + LUMA(suv - r) +
+          LUMA(suv + vec2(r.x, -r.y)) + LUMA(suv + vec2(-r.x, r.y))) * 0.0625;
+  } else {
+    d = LUMA(suv);
+  }
+  d = clamp((d - 0.5) * uContrast + 0.5 + uBias, 0.0, 1.0);
+  d = mix(d, 1.0 - d, uInvert);
+
+  // ---- 2. the line that crosses the mask ------------------------------
+  float band;
+  if (uBandShape > 0.5) {
+    // radial: a ring opening out of a point
+    float ar = uSize.x / uSize.y;
+    vec2 pc = vec2((uv.x - uBandCX) * ar, uv.y - uBandCY);
+    float maxR = length(vec2(max(uBandCX, 1.0 - uBandCX) * ar, max(uBandCY, 1.0 - uBandCY)));
+    band = clamp(length(pc) / max(0.0001, maxR), 0.0, 1.0);
+  } else {
+    float ca = cos(uAngle), sa = sin(uAngle);
+    vec2 dir = vec2(sa, -ca);
+    band = dot(uv - 0.5, dir) / max(0.0001, abs(sa) + abs(ca)) + 0.5;
+  }
+  band = mix(band, 1.0 - band, uBandFlip);
+
+  // ---- 3. threshold field, with turbulence on the LINE only -----------
+  float nz = fbm(uv * uTurbScale, uTurbDetail, uTurbEvolve * uTime) - 0.5;
+  float field = clamp(mix(band, d, uMapMix) + nz * uTurbAmt, 0.0, 1.0);
+
+  // ---- 4. stage 1: alpha reveal, dark before light --------------------
+  float f1 = max(uFeather, 0.002);
+  float front = mix(-f1, 1.0 + f1, uIntro);
+  float a = smoothstep(field - f1, field + f1, front);
+
+  // ---- 5. stage 1: colour -> media, same order, delayed ---------------
+  float f2 = max(uRealFeather, 0.002);
+  float p2 = clamp((uIntro - uHold) / max(0.0001, 1.0 - uHold), 0.0, 1.0);
+  float front2 = mix(-f2, 1.0 + f2, p2);
+  float rm = smoothstep(field - f2, field + f2, front2);
+
+  // ---- 6. gradient map ------------------------------------------------
+  float gpos = d * uGradScale + uGradOffset + uGradDrift * uIntro;
+  if (uSteps >= 2.0) gpos = floor(gpos * uSteps) / max(1.0, uSteps - 1.0);
+  float gx = (uCyclic > 0.5) ? fract(gpos) : clamp(gpos, 0.0, 1.0);
+  int gn = PALN;
+  vec3 gcol = PALC(0);
+  float wrapSpan = 1.0 - PALP(gn - 1) + PALP(0);
+  if (gx <= PALP(0)) {
+    gcol = (uCyclic > 0.5 && wrapSpan > 0.0001)
+         ? mix(PALC(gn - 1), PALC(0), (gx + 1.0 - PALP(gn - 1)) / wrapSpan)
+         : PALC(0);
+  } else if (gx >= PALP(gn - 1)) {
+    gcol = (uCyclic > 0.5 && wrapSpan > 0.0001)
+         ? mix(PALC(gn - 1), PALC(0), (gx - PALP(gn - 1)) / wrapSpan)
+         : PALC(gn - 1);
+  } else {
+    for (int i = 0; i < 7; i++){
+      if (i + 1 >= gn) break;
+      float s0 = PALP(i), s1 = PALP(i + 1);
+      if (gx >= s0 && gx <= s1){
+        gcol = mix(PALC(i), PALC(i + 1), s1 > s0 ? (gx - s0) / (s1 - s0) : 0.0);
+        break;
+      }
+    }
+  }
+
+  // ---- 7. composite ----------------------------------------------------
+  vec4 src = SAMPLE(suv);
+  vec3 col = mix(gcol, src.rgb, rm);
+  float alpha = a * src.a;
+
+  // ---- 8. stage 2: the same line, as a repeating light pass -----------
+  float sw = 0.0;
+  float halfW = max(uSweepW, 0.002);
+  if (uSweepIntro > 0.5) sw = max(sw, 1.0 - smoothstep(0.0, halfW, abs(field - front)));
+  if (uLoopOn > 0.5) {
+    float lfront = mix(-halfW, 1.0 + halfW, uLoopPhase);
+    sw = max(sw, 1.0 - smoothstep(0.0, halfW, abs(field - lfront)));
+  }
+  sw *= uSweepOp;
+  col = mix(col, uSweepCol, sw);
+  alpha = clamp(max(alpha, sw), 0.0, 1.0);
+
+  vec4 outCol = vec4(col * alpha, alpha);
+
+  // Solo views. Each one isolates a single stage so a control can be judged
+  // on its own, which is impossible in the composite where they all combine.
+  if (uDebug > 0.5) {
+    if (uDebug < 1.5)      outCol = vec4(vec3(d), 1.0);          // 1 mask
+    else if (uDebug < 2.5) outCol = vec4(vec3(field), 1.0);      // 2 field
+    else if (uDebug < 3.5) outCol = vec4(vec3(a), 1.0);          // 3 alpha
+    else if (uDebug < 4.5) outCol = vec4(vec3(band), 1.0);       // 4 the line's geometry
+    else if (uDebug < 5.5) outCol = vec4(vec3(nz + 0.5), 1.0);   // 5 turbulence alone
+    else if (uDebug < 6.5) outCol = vec4(gcol, 1.0);             // 6 gradient alone
+    else if (uDebug < 7.5) outCol = vec4(vec3(rm), 1.0);         // 7 hand-off
+    else                   outCol = vec4(uSweepCol * sw, sw);    // 8 the sweep line
+  }
+`;
+
+const toMSL = s => s.replace(/\bvec2\b/g,'float2').replace(/\bvec3\b/g,'float3').replace(/\bvec4\b/g,'float4');
+
+/* =====================================================================
+   2. RENDERERS
+   ===================================================================== */
+
+const VS = `#version 300 es
+void main(){
+  vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`;
+
+const FS_UNIFORMS = `
+uniform sampler2D uTex;
+uniform vec2  uSize, uCover;
+uniform float uIntro, uLoopPhase, uTime, uDebug;
+uniform float uAngle, uInvert, uContrast, uBias, uSoft, uMapMix;
+uniform float uBandShape, uBandCX, uBandCY, uBandFlip;
+uniform float uFeather, uHold, uRealFeather;
+uniform float uTurbAmt, uTurbScale, uTurbDetail, uTurbEvolve;
+uniform float uSteps, uCyclic, uGradOffset, uGradScale, uGradDrift;
+uniform float uSweepW, uSweepOp, uSweepIntro, uLoopOn;
+uniform vec3  uSweepCol;
+uniform float uPal[32];
+uniform int   uPalN;
+
+#define SAMPLE(u) texture(uTex, clamp((u), 0.0, 1.0))
+#define LUMA(u)   dot(SAMPLE(u).rgb, vec3(0.2126, 0.7152, 0.0722))
+#define PALC(i)   vec3(uPal[(i) * 4], uPal[(i) * 4 + 1], uPal[(i) * 4 + 2])
+#define PALP(i)   uPal[(i) * 4 + 3]
+#define PALN      (uPalN / 4)
+`;
+
+const FS = `#version 300 es
+precision highp float;
+precision highp int;
+out vec4 fragColor;
+${FS_UNIFORMS}${SHADER_HELPERS}
+void main(){
+  vec2 uv = vec2(gl_FragCoord.x / uSize.x, 1.0 - gl_FragCoord.y / uSize.y);
+${SHADER_BODY}
+  fragColor = outCol;
+}`;
+
+function makeRenderer(canvas){
+  const gl = canvas.getContext('webgl2', {alpha:true, premultipliedAlpha:true, antialias:false, preserveDrawingBuffer:true});
+  if (!gl) return null;
+  const sh = (type, src) => {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
+    return s;
+  };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS));
+  gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+  gl.bindVertexArray(gl.createVertexArray());
+
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+
+  const cache = {};
+  const loc = n => (n in cache ? cache[n] : (cache[n] = gl.getUniformLocation(prog, n)));
+  return {
+    canvas, gl,
+    upload(src){
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src); } catch (e) {}
+    },
+    draw(uni, pal, debug){
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.useProgram(prog);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.uniform1i(loc('uTex'), 0);
+      gl.uniform2f(loc('uSize'), canvas.width, canvas.height);
+      gl.uniform2f(loc('uCover'), uni.cover[0], uni.cover[1]);
+      gl.uniform3f(loc('uSweepCol'), uni.sweepCol[0], uni.sweepCol[1], uni.sweepCol[2]);
+      gl.uniform1f(loc('uDebug'), debug);
+      gl.uniform1f(loc('uSoft'), uni.softFrac * canvas.width);
+      for (const k in uni.f) gl.uniform1f(loc(k), uni.f[k]);
+      gl.uniform1fv(loc('uPal[0]'), pal);
+      gl.uniform1i(loc('uPalN'), pal.length);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+  };
+}
+
+const main  = makeRenderer(document.getElementById('view'));
+const maskR = makeRenderer(document.getElementById('mask'));
+const offR  = makeRenderer(document.createElement('canvas'));
+if (!main) alert('WebGL2 is required.');
+
+/* =====================================================================
+   3. MEDIA
+   ===================================================================== */
+
+let media = null, mediaW = 900, mediaH = 1200, isVideo = false;
+let mediaFile = null;          // kept for the HTML export
+let mediaName = 'placeholder';
+
+function setMedia(el, w, h, video, name){
+  media = el; mediaW = w; mediaH = h; isVideo = !!video; mediaName = name || 'media';
+  uploadFrame(); layout();
+}
+function uploadFrame(){
+  if (!media) return;
+  main.upload(media);
+  if (maskR) maskR.upload(media);
+}
+
+function placeholder(){
+  const c = document.createElement('canvas');
+  c.width = 900; c.height = 1200;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, 1200);
+  g.addColorStop(0, '#7d8794'); g.addColorStop(.55, '#2b3038'); g.addColorStop(1, '#0e1013');
+  x.fillStyle = g; x.fillRect(0, 0, 900, 1200);
+  for (const [bx, by, r, col] of [[430,520,300,'#f3ece2'],[330,700,190,'#8d94a3'],[600,860,240,'#20242b'],[240,330,120,'#cfd6de'],[690,380,150,'#4a5260']]){
+    const rg = x.createRadialGradient(bx, by, 0, bx, by, r);
+    rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = rg; x.beginPath(); x.arc(bx, by, r, 0, 7); x.fill();
+  }
+  x.globalAlpha = .5;
+  for (let i = 0; i < 26; i++){
+    x.strokeStyle = i % 2 ? '#ffffff22' : '#00000033';
+    x.lineWidth = 1 + (i % 4);
+    x.beginPath(); x.moveTo(0, i * 48); x.bezierCurveTo(300, i * 48 - 60, 600, i * 48 + 60, 900, i * 48); x.stroke();
+  }
+  return c;
+}
+
+const RESOLUTIONS = [
+  {k:'fit',       l:'Fit media',   w:0,    h:0},
+  {k:'1080x1920', l:'1080 x 1920', w:1080, h:1920},
+  {k:'1080x1350', l:'1080 x 1350', w:1080, h:1350},
+  {k:'1080x1080', l:'1080 x 1080', w:1080, h:1080},
+  {k:'1920x1080', l:'1920 x 1080', w:1920, h:1080},
+  {k:'1200x1600', l:'1200 x 1600', w:1200, h:1600}
+];
+function canvasAspect(){
+  const r = RESOLUTIONS.find(r => r.k === S.resolution) || RESOLUTIONS[0];
+  return (r.w && r.h) ? [r.w, r.h] : [mediaW, mediaH];
+}
+function coverScale(cw, ch){
+  const ma = mediaW / mediaH, ca = cw / ch;
+  return ca > ma ? [1, ma / ca] : [ca / ma, 1];
+}
+function layout(){
+  const vp = document.getElementById('viewport');
+  const [aw, ah] = canvasAspect();
+  const showMask = S.showMask > 0.5;
+  document.getElementById('maskSlot').style.display = showMask ? 'flex' : 'none';
+  const availH = vp.clientHeight - 52;
+  const availW = vp.clientWidth - 32 - (showMask ? 16 : 0);
+  const mainW = showMask ? availW * 0.72 : availW;
+  let w = Math.min(mainW, availH * aw / ah);
+  let h = w * ah / aw;
+  if (h > availH){ h = availH; w = h * aw / ah; }
+  sizeCanvas(main.canvas, w, h);
+  if (showMask && maskR) sizeCanvas(maskR.canvas, w / 3, h / 3);
+}
+function sizeCanvas(c, w, h){
+  w = Math.max(2, Math.round(w)); h = Math.max(2, Math.round(h));
+  c.style.width = w + 'px'; c.style.height = h + 'px';
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+}
+window.addEventListener('resize', () => { layout(); curveResize(); });
+
+/* =====================================================================
+   4. STATE  —  grouped by what each control actually affects
+   ===================================================================== */
+
+const DEFAULTS = {
+  resolution:'fit', showMask:1,
+  // mask
+  invert:0, contrast:1.15, bias:0, soft:2, mapMix:0.7,
+  // the line's geometry
+  angle:0, bandShape:0, bandCX:0.5, bandCY:0.5, bandFlip:0,
+  // the line's edge
+  feather:0.16,
+  turbOn:1, turbAmt:0.07, turbScale:3.0, turbDetail:3.0, turbEvolve:0.2,
+  // colour
+  gradOffset:0, gradScale:1, gradDrift:0.15, cyclic:1,
+  stepsOn:0, steps:6,
+  stops:[{c:'#07070c',p:0},{c:'#3a1a5e',p:.38},{c:'#e0518a',p:.72},{c:'#ffd9a0',p:1}],
+  // stage 1
+  duration:2400, hold:0.32, realFeather:0.22, ease:null,
+  // stage 2
+  loopOn:1, sweepIntro:1, loopGap:600,
+  sweepW:0.09, sweepOp:0.55, sweepCol:'#ffffff'
+};
+let S = JSON.parse(JSON.stringify(DEFAULTS));
+
+/* `solo` names the view the left panel snaps to while a control is being
+   touched, so a parameter can be judged on its own instead of inside the
+   composite where six of them combine. */
+const SPEC = [
+  ['grp-media', [
+    {type:'upload'},
+    {k:'resolution', l:'Canvas', type:'select', opts:RESOLUTIONS},
+    {k:'showMask',   l:'Show the solo panel', type:'toggle'}
+  ]],
+  ['grp-mask', [
+    {k:'mapMix',   l:'Line ↔ Map', min:0, max:1, step:0.01, dec:2, solo:2,
+     help:'0 = a plain line sweeps across. 1 = the line follows the luminance of the media, so dark areas arrive first.'},
+    {k:'invert',   l:'Invert', type:'toggle', solo:1},
+    {k:'contrast', l:'Contrast', min:0.2, max:4, step:0.01, dec:2, solo:1},
+    {k:'bias',     l:'Bias', min:-0.5, max:0.5, step:0.01, dec:2, solo:1},
+    {k:'soft',     l:'Mask blur', min:0, max:24, step:0.1, unit:'px', dec:1, solo:1,
+     help:'Softens the black-and-white mask so the reveal does not crumble in fine detail. It never reaches the media — nothing in this tool blurs, warps or displaces the image itself.'}
+  ]],
+  ['grp-line', [
+    {k:'bandShape', l:'Shape', type:'seg', solo:4,
+     opts:[{v:0, l:'Linear'}, {v:1, l:'Radial'}]},
+    {k:'angle',     l:'Direction', type:'dial', solo:4, showIf:s => s.bandShape < 0.5},
+    {k:'bandCX',    l:'Centre X', min:0, max:1, step:0.005, dec:3, solo:4, showIf:s => s.bandShape > 0.5},
+    {k:'bandCY',    l:'Centre Y', min:0, max:1, step:0.005, dec:3, solo:4, showIf:s => s.bandShape > 0.5},
+    {k:'bandFlip',  l:'Reverse', type:'toggle', solo:4},
+    {k:'feather',   l:'Feather', min:0.005, max:1, step:0.005, dec:3, solo:3},
+    {type:'group', k:'turbOn', l:'Turbulence', solo:5,
+     help:'Wobbles the line. It does not displace the mask or the media.', items:[
+      {k:'turbAmt',    l:'Amount', min:0, max:0.5, step:0.001, dec:3, solo:5},
+      {k:'turbScale',  l:'Scale', min:0.2, max:20, step:0.1, dec:1, solo:5},
+      {k:'turbDetail', l:'Detail', min:1, max:6, step:0.01, dec:2, solo:5},
+      {k:'turbEvolve', l:'Evolve', min:0, max:2, step:0.01, dec:2, solo:5}
+     ]}
+  ]],
+  ['grp-colour', [
+    {type:'gradient', solo:6},
+    {k:'gradOffset', l:'Offset', min:-1, max:1, step:0.005, dec:3, solo:6},
+    {k:'gradScale',  l:'Spread', min:0.1, max:3, step:0.01, dec:2, solo:6},
+    {k:'gradDrift',  l:'Offset moves over the intro', min:-1, max:1, step:0.005, dec:3, solo:6,
+     help:'The ramp slides through the mask while the intro plays. Your colours are never altered.'},
+    {k:'cyclic',     l:'Cycle colours', type:'toggle', solo:6,
+     help:'Lets the ramp wrap from the last stop back to the first, so the offset can keep sliding without a seam.'},
+    {type:'group', k:'stepsOn', l:'Posterise', solo:6, items:[
+      {k:'steps', l:'Steps', min:2, max:12, step:1, dec:0, solo:6}
+     ]}
+  ]],
+  ['grp-intro', [
+    {k:'duration', l:'Duration', min:200, max:8000, step:50, unit:'ms', dec:0, solo:0}
+  ]],
+  ['grp-intro2', [
+    {k:'hold',        l:'Hold on colour', min:0, max:0.95, step:0.01, dec:2, solo:7,
+     help:'How much of the intro passes before the media starts replacing the gradient.'},
+    {k:'realFeather', l:'Hand-off feather', min:0.005, max:1, step:0.005, dec:3, solo:7}
+  ]],
+  ['grp-loop', [
+    {type:'group', k:'loopOn', l:'Loop after the intro', solo:8,
+     help:'The line travels at exactly the intro’s rate, on the intro’s speed graph, in the intro’s direction — the same pass, repeated. Only the wait between passes is set here.', items:[
+      {k:'sweepIntro', l:'Line visible during the intro', type:'toggle', solo:8},
+      {k:'loopGap',    l:'Wait between passes', min:0, max:6000, step:50, unit:'ms', dec:0, solo:8},
+      {k:'sweepW',     l:'Width', min:0.005, max:0.6, step:0.005, dec:3, solo:8},
+      {k:'sweepOp',    l:'Opacity', min:0, max:1, step:0.01, dec:2, solo:8},
+      {k:'sweepCol',   l:'Colour', type:'colour', solo:8}
+     ]}
+  ]]
+];
+
+const SOLO_LABEL = ['Result','Mask','Field','Alpha · with feather','The line','Turbulence','Gradient','Hand-off','Sweep line'];
+let soloMode = 3, soloTimer = null;
+function solo(mode){
+  if (mode === undefined || mode === null) return;
+  soloMode = mode;
+  const el = document.getElementById('soloLabel');
+  if (el) el.textContent = SOLO_LABEL[mode] || 'Solo';
+  clearTimeout(soloTimer);
+  soloTimer = setTimeout(() => {
+    soloMode = 3;
+    if (el) el.textContent = SOLO_LABEL[3];
+  }, 1600);
+}
+
+/* =====================================================================
+   5. EASING
+   ===================================================================== */
+
+const makeCurve = p => JSON.parse(JSON.stringify(p));
+const EASE_PRESETS = {
+  'linear':        [{x:0,y:0,ho:{x:.33,y:.33}}, {x:1,y:1,hi:{x:.67,y:.67}}],
+  'ease out':      [{x:0,y:0,ho:{x:.16,y:.72}}, {x:1,y:1,hi:{x:.36,y:1}}],
+  'ease in-out':   [{x:0,y:0,ho:{x:.5,y:0}},    {x:1,y:1,hi:{x:.5,y:1}}],
+  'expo out':      [{x:0,y:0,ho:{x:.05,y:.9}},  {x:1,y:1,hi:{x:.2,y:1}}],
+  'back out':      [{x:0,y:0,ho:{x:.18,y:1.24}},{x:1,y:1,hi:{x:.44,y:1}}],
+  'slow-fast-slow':[{x:0,y:0,ho:{x:.42,y:0}}, {x:.5,y:.5,hi:{x:.46,y:.32},ho:{x:.54,y:.68}}, {x:1,y:1,hi:{x:.58,y:1}}]
+};
+DEFAULTS.ease = makeCurve(EASE_PRESETS['ease out']);
+S.ease = makeCurve(EASE_PRESETS['ease out']);
+
+const bez = (a,b,c,d,t) => { const m = 1-t; return m*m*m*a + 3*m*m*t*b + 3*m*t*t*c + t*t*t*d; };
+function easeAt(x){
+  const P = S.ease;
+  x = Math.min(1, Math.max(0, x));
+  let i = 0; while (i < P.length - 2 && x > P[i+1].x) i++;
+  const p0 = P[i], p3 = P[i+1];
+  const c1 = p0.ho || {x:p0.x + (p3.x-p0.x)/3, y:p0.y + (p3.y-p0.y)/3};
+  const c2 = p3.hi || {x:p3.x - (p3.x-p0.x)/3, y:p3.y - (p3.y-p0.y)/3};
+  if (p3.x - p0.x < 1e-6) return p3.y;
+  let lo = 0, hi = 1, t = (x - p0.x) / (p3.x - p0.x);
+  for (let k = 0; k < 22; k++){
+    if (bez(p0.x, c1.x, c2.x, p3.x, t) < x) lo = t; else hi = t;
+    t = (lo + hi) * 0.5;
+  }
+  return bez(p0.y, c1.y, c2.y, p3.y, t);
+}
+
+const cc = document.getElementById('curve');
+const cx = cc.getContext('2d');
+const CPAD = {l:14, r:14, t:26, b:26};
+const YMIN = -0.3, YMAX = 1.3;
+const DPR = () => Math.min(window.devicePixelRatio || 1, 2);
+const cW = () => cc.width / DPR(), cH = () => cc.height / DPR();
+function toPx(p){
+  const w = cW() - CPAD.l - CPAD.r, h = cH() - CPAD.t - CPAD.b;
+  return [CPAD.l + p.x * w, CPAD.t + (1 - (p.y - YMIN) / (YMAX - YMIN)) * h];
+}
+function toVal(px, py){
+  const w = cW() - CPAD.l - CPAD.r, h = cH() - CPAD.t - CPAD.b;
+  return {x:(px - CPAD.l) / w, y:YMIN + (1 - (py - CPAD.t) / h) * (YMAX - YMIN)};
+}
+function curveResize(){
+  const r = cc.getBoundingClientRect();
+  cc.width = Math.round(r.width * DPR()); cc.height = Math.round(150 * DPR());
+  cx.setTransform(DPR(), 0, 0, DPR(), 0, 0);
+  drawCurve();
+}
+const INK = 'rgba(90,101,109,';
+function drawCurve(){
+  const w = cW(), h = cH();
+  cx.clearRect(0, 0, w, h);
+  cx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++){
+    const [x0] = toPx({x:i/4, y:0});
+    cx.strokeStyle = INK + '.10)';
+    cx.beginPath(); cx.moveTo(x0, CPAD.t - 8); cx.lineTo(x0, h - CPAD.b + 8); cx.stroke();
+  }
+  for (const yy of [0, .5, 1]){
+    const [, y0] = toPx({x:0, y:yy});
+    cx.strokeStyle = INK + ((yy === 0 || yy === 1) ? '.2)' : '.1)');
+    cx.beginPath(); cx.moveTo(CPAD.l - 6, y0); cx.lineTo(w - CPAD.r + 6, y0); cx.stroke();
+  }
+  cx.strokeStyle = '#73daff'; cx.lineWidth = 1.8;
+  cx.beginPath();
+  for (let i = 0; i <= 140; i++){
+    const t = i / 140, [px, py] = toPx({x:t, y:easeAt(t)});
+    i ? cx.lineTo(px, py) : cx.moveTo(px, py);
+  }
+  cx.stroke();
+  const [phx] = toPx({x:introT, y:0});
+  cx.strokeStyle = INK + '.35)'; cx.lineWidth = 1;
+  cx.beginPath(); cx.moveTo(phx, CPAD.t - 8); cx.lineTo(phx, h - CPAD.b + 8); cx.stroke();
+  const [hx, hy] = toPx({x:introT, y:easeAt(introT)});
+  cx.fillStyle = 'rgb(90,101,109)'; cx.beginPath(); cx.arc(hx, hy, 3, 0, 7); cx.fill();
+  S.ease.forEach(p => {
+    const [ax, ay] = toPx(p);
+    for (const hk of ['hi','ho']){
+      if (!p[hk]) continue;
+      const [bx, by] = toPx(p[hk]);
+      cx.strokeStyle = INK + '.3)'; cx.lineWidth = 1;
+      cx.beginPath(); cx.moveTo(ax, ay); cx.lineTo(bx, by); cx.stroke();
+      cx.fillStyle = INK + '.5)';
+      cx.beginPath(); cx.arc(bx, by, 3.2, 0, 7); cx.fill();
+    }
+    cx.fillStyle = '#73daff';
+    cx.beginPath(); cx.arc(ax, ay, 4.4, 0, 7); cx.fill();
+    cx.strokeStyle = INK + '.4)'; cx.lineWidth = 1; cx.stroke();
+  });
+}
+let drag = null;
+function hitTest(mx, my){
+  for (let i = 0; i < S.ease.length; i++){
+    const p = S.ease[i];
+    for (const hk of ['hi','ho']){
+      if (!p[hk]) continue;
+      const [bx, by] = toPx(p[hk]);
+      if ((bx-mx)**2 + (by-my)**2 < 64) return {i, kind:hk};
+    }
+  }
+  for (let i = 0; i < S.ease.length; i++){
+    const [ax, ay] = toPx(S.ease[i]);
+    if ((ax-mx)**2 + (ay-my)**2 < 100) return {i, kind:'anchor'};
+  }
+  return null;
+}
+cc.addEventListener('pointerdown', e => {
+  const r = cc.getBoundingClientRect();
+  const hit = hitTest(e.clientX - r.left, e.clientY - r.top);
+  if (hit && hit.kind === 'anchor' && (e.altKey || e.button === 2)){
+    if (hit.i > 0 && hit.i < S.ease.length - 1){ S.ease.splice(hit.i, 1); drawCurve(); }
+    return;
+  }
+  if (hit){ drag = {...hit, alt:e.altKey}; cc.setPointerCapture(e.pointerId); }
+});
+cc.addEventListener('contextmenu', e => e.preventDefault());
+cc.addEventListener('dblclick', e => {
+  const r = cc.getBoundingClientRect();
+  const v = toVal(e.clientX - r.left, e.clientY - r.top);
+  const x = Math.min(0.97, Math.max(0.03, v.x));
+  let i = 0; while (i < S.ease.length - 1 && S.ease[i+1].x < x) i++;
+  const y = easeAt(x);
+  const span = Math.min(x - S.ease[i].x, S.ease[i+1].x - x) * 0.6;
+  const slope = (easeAt(Math.min(1, x + .02)) - easeAt(Math.max(0, x - .02))) / .04;
+  S.ease.splice(i + 1, 0, {x, y, hi:{x:x-span, y:y-span*slope}, ho:{x:x+span, y:y+span*slope}});
+  drawCurve();
+});
+window.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const r = cc.getBoundingClientRect();
+  const v = toVal(e.clientX - r.left, e.clientY - r.top);
+  const P = S.ease, p = P[drag.i];
+  if (drag.kind === 'anchor'){
+    const dy = v.y - p.y; let dx = 0;
+    if (drag.i > 0 && drag.i < P.length - 1){
+      const nx = Math.min(P[drag.i+1].x - .02, Math.max(P[drag.i-1].x + .02, v.x));
+      dx = nx - p.x; p.x = nx;
+    }
+    p.y = Math.min(YMAX, Math.max(YMIN, v.y));
+    for (const hk of ['hi','ho']) if (p[hk]){ p[hk].x += dx; p[hk].y += dy; }
+  } else {
+    const other = drag.kind === 'hi' ? 'ho' : 'hi';
+    const lo = drag.kind === 'hi' ? (P[drag.i-1] ? P[drag.i-1].x : 0) : p.x;
+    const hi = drag.kind === 'hi' ? p.x : (P[drag.i+1] ? P[drag.i+1].x : 1);
+    p[drag.kind] = {x:Math.min(hi, Math.max(lo, v.x)), y:v.y};
+    if (p[other] && !drag.alt){
+      const len = Math.hypot(p[other].x - p.x, p[other].y - p.y);
+      const dx = p.x - p[drag.kind].x, dy = p.y - p[drag.kind].y;
+      const m = Math.hypot(dx, dy) || 1;
+      p[other] = {x:p.x + dx/m*len, y:p.y + dy/m*len};
+      const lo2 = other === 'hi' ? (P[drag.i-1] ? P[drag.i-1].x : 0) : p.x;
+      const hi2 = other === 'hi' ? p.x : (P[drag.i+1] ? P[drag.i+1].x : 1);
+      p[other].x = Math.min(hi2, Math.max(lo2, p[other].x));
+    }
+  }
+  drawCurve();
+});
+window.addEventListener('pointerup', () => { drag = null; });
+
+/* =====================================================================
+   6. PANEL
+   ===================================================================== */
+
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function toast(msg){
+  toastEl.textContent = msg; toastEl.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+}
+/* Undo, on FIELD's keys. One snapshot per gesture, not per frame: the
+   builders call snapshot() on pointerdown and on commit, never on input. */
+const UNDO = [], REDO = [];
+let snapLock = 0;
+function snapshot(){
+  const now = performance.now();
+  if (now - snapLock < 120) return;      // one gesture, one entry
+  snapLock = now;
+  UNDO.push(JSON.stringify(S));
+  if (UNDO.length > 80) UNDO.shift();
+  REDO.length = 0;
+}
+function restoreState(json){
+  S = JSON.parse(json);
+  buildPanel(); syncPanel(); layout();
+}
+function undo(){
+  if (!UNDO.length) return toast('Nothing to undo');
+  REDO.push(JSON.stringify(S));
+  restoreState(UNDO.pop());
+  toast('Undo');
+}
+function redo(){
+  if (!REDO.length) return toast('Nothing to redo');
+  UNDO.push(JSON.stringify(S));
+  restoreState(REDO.pop());
+  toast('Redo');
+}
+
+function hexToRgb(h){
+  const n = parseInt(h.slice(1), 16);
+  return [(n >> 16 & 255)/255, (n >> 8 & 255)/255, (n & 255)/255];
+}
+function rgbToHex(rgb){
+  const c = v => Math.max(0, Math.min(255, Math.round(v * 255))).toString(16).padStart(2, '0');
+  return '#' + c(rgb[0]) + c(rgb[1]) + c(rgb[2]);
+}
+
+function buildOne(it){
+  if (it.type === 'toggle')   return buildToggle(it);
+  if (it.type === 'dial')     return buildDial(it);
+  if (it.type === 'gradient') return buildGradient(it);
+  if (it.type === 'select')   return buildSelect(it);
+  if (it.type === 'colour')   return buildColour(it);
+  if (it.type === 'upload')   return buildUpload();
+  if (it.type === 'seg')      return buildSeg(it);
+  if (it.type === 'group')    return buildGroup(it);
+  return buildSlider(it);
+}
+function buildPanel(){
+  for (const [gid, items] of SPEC){
+    const host = document.getElementById(gid);
+    host.innerHTML = '';
+    for (const it of items){
+      const el = buildOne(it);
+      el._spec = it;
+      host.appendChild(el);
+    }
+  }
+  applyVisibility();
+}
+/* Controls that only make sense in one mode disappear in the other, rather
+   than sitting there greyed out asking to be read. */
+function applyVisibility(){
+  for (const [gid] of SPEC){
+    for (const ch of document.getElementById(gid).children){
+      const sp = ch._spec;
+      if (sp && sp.showIf) ch.style.display = sp.showIf(S) ? '' : 'none';
+    }
+  }
+}
+
+/* An optional stage: unchecked it is off and out of the way; checked it
+   opens everything that belongs to it. */
+function buildGroup(it){
+  const box = document.createElement('div');
+  box.style.cssText = 'margin:var(--space-2) 0 var(--space-3);border-left:1px solid var(--border-subtle);padding-left:var(--space-3)';
+  const head = document.createElement('div'); head.className = 'row'; head.style.marginTop = '0';
+  const lab = document.createElement('label');
+  lab.textContent = it.l;
+  lab.style.color = 'var(--text)';
+  const t = document.createElement('div');
+  const kids = document.createElement('div');
+  const paint = () => {
+    const on = S[it.k] > 0.5;
+    t.className = 'toggle' + (on ? ' on' : '');
+    kids.style.display = on ? '' : 'none';
+    box.style.borderLeftColor = on ? 'var(--accent)' : 'var(--border-subtle)';
+    [...kids.children].forEach(ch => ch._sync && ch._sync());
+  };
+  t.onclick = () => { snapshot(); S[it.k] = S[it.k] > 0.5 ? 0 : 1; paint(); solo(it.solo); };
+  head.append(lab, t);
+  box.appendChild(head);
+  if (it.help){
+    const h = document.createElement('div'); h.className = 'hint';
+    h.style.margin = '0 0 var(--space-2)'; h.textContent = it.help;
+    box.appendChild(h);
+  }
+  for (const sub of it.items) kids.appendChild(buildOne(sub));
+  box.appendChild(kids);
+  paint();
+  box._sync = paint;
+  return box;
+}
+function buildSeg(it){
+  const box = document.createElement('div');
+  const row = document.createElement('div'); row.className = 'row';
+  const lab = document.createElement('label'); lab.textContent = it.l;
+  const seg = document.createElement('div'); seg.className = 'seg';
+  const paint = () => [...seg.children].forEach((b, i) => b.classList.toggle('on', +it.opts[i].v === +S[it.k]));
+  it.opts.forEach(o => {
+    const b = document.createElement('button'); b.textContent = o.l;
+    b.onclick = () => { snapshot(); S[it.k] = o.v; paint(); applyVisibility(); solo(it.solo); };
+    seg.appendChild(b);
+  });
+  paint();
+  row.append(lab, seg); box.appendChild(row);
+  addHelp(box, it);
+  box._sync = paint;
+  return box;
+}
+function addHelp(box, it){
+  if (!it.help) return;
+  const h = document.createElement('div');
+  h.className = 'hint tight'; h.textContent = it.help;
+  box.appendChild(h);
+}
+function buildUpload(){
+  const box = document.createElement('div');
+  const b = document.createElement('button');
+  b.textContent = 'Upload image or video';
+  b.style.width = '100%'; b.style.marginTop = 'var(--space-2)';
+  b.onclick = () => document.getElementById('file').click();
+  const name = document.createElement('div');
+  name.className = 'hint'; name.id = 'mediaName';
+  box.appendChild(b); box.appendChild(name);
+  box._sync = () => { name.textContent = mediaName + ' · ' + mediaW + ' x ' + mediaH + (isVideo ? ' · video' : ''); };
+  box._sync();
+  return box;
+}
+function buildToggle(it){
+  const box = document.createElement('div');
+  const row = document.createElement('div'); row.className = 'row';
+  const lab = document.createElement('label'); lab.textContent = it.l;
+  const t = document.createElement('div');
+  const paint = () => t.className = 'toggle' + (S[it.k] > 0.5 ? ' on' : '');
+  t.onclick = () => {
+    snapshot();
+    S[it.k] = S[it.k] > 0.5 ? 0 : 1;
+    paint();
+    if (it.k === 'showMask') layout(); else solo(it.solo);
+  };
+  paint();
+  row.appendChild(lab); row.appendChild(t); box.appendChild(row);
+  addHelp(box, it);
+  box._sync = paint;
+  return box;
+}
+function buildSelect(it){
+  const box = document.createElement('div');
+  const row = document.createElement('div'); row.className = 'row';
+  const lab = document.createElement('label'); lab.textContent = it.l;
+  const sel = document.createElement('select'); sel.className = 'val';
+  it.opts.forEach(o => {
+    const op = document.createElement('option'); op.value = o.k; op.textContent = o.l; sel.appendChild(op);
+  });
+  const sync = () => sel.value = S[it.k];
+  sel.onchange = () => { S[it.k] = sel.value; layout(); };
+  sync();
+  row.appendChild(lab); row.appendChild(sel); box.appendChild(row);
+  box._sync = sync;
+  return box;
+}
+function buildColour(it){
+  const box = document.createElement('div');
+  const row = document.createElement('div'); row.className = 'row';
+  const lab = document.createElement('label'); lab.textContent = it.l;
+  const sw = document.createElement('div');
+  sw.style.cssText = 'width:34px;height:20px;border-radius:4px;box-shadow:0 0 0 1px rgb(var(--ink)/.25);position:relative;overflow:hidden;cursor:pointer';
+  const inp = document.createElement('input'); inp.type = 'color';
+  inp.style.cssText = 'position:absolute;inset:-6px;width:200%;height:200%;border:none;padding:0;cursor:pointer';
+  sw.appendChild(inp);
+  const sync = () => { sw.style.background = S[it.k]; inp.value = S[it.k]; };
+  inp.onchange = () => snapshot();
+  inp.oninput = () => { S[it.k] = inp.value; sync(); solo(it.solo); };
+  sync();
+  row.appendChild(lab); row.appendChild(sw); box.appendChild(row);
+  box._sync = sync;
+  return box;
+}
+function buildSlider(it){
+  const box = document.createElement('div');
+  const row = document.createElement('div'); row.className = 'row';
+  const lab = document.createElement('label'); lab.textContent = it.l;
+  const num = document.createElement('input'); num.className = 'val'; num.type = 'text';
+  row.appendChild(lab); row.appendChild(num);
+  const sl = document.createElement('input');
+  sl.type = 'range'; sl.min = it.min; sl.max = it.max; sl.step = it.step;
+  const sr = document.createElement('div'); sr.className = 'slider-row'; sr.appendChild(sl);
+  const fmt = v => (it.dec === 0 ? Math.round(v) : (+v).toFixed(it.dec)) + (it.unit || '');
+  const sync = () => { sl.value = S[it.k]; num.value = fmt(S[it.k]); };
+  // FIELD's rule: Shift while dragging a value takes ten times the stride.
+  sl.addEventListener('pointerdown', e => { snapshot(); sl.step = e.shiftKey ? it.step * 10 : it.step; });
+  sl.addEventListener('keydown', e => { sl.step = e.shiftKey ? it.step * 10 : it.step; });
+  sl.oninput = () => { S[it.k] = +sl.value; num.value = fmt(S[it.k]); solo(it.solo); };
+  num.onchange = () => {
+    snapshot();
+    const v = parseFloat(num.value);
+    if (!isNaN(v)) S[it.k] = Math.min(it.max, Math.max(it.min, v));
+    sync(); solo(it.solo);
+  };
+  sync();
+  box.appendChild(row); box.appendChild(sr);
+  addHelp(box, it);
+  box._sync = sync;
+  return box;
+}
+function buildDial(it){
+  it = it || {};
+  const box = document.createElement('div'); box.className = 'dial-wrap';
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 64 64'); svg.setAttribute('class', 'dial');
+  svg.innerHTML =
+    '<circle cx="32" cy="32" r="26" fill="none" stroke="rgba(90,101,109,.2)"/>' +
+    '<circle cx="32" cy="32" r="2" fill="rgba(90,101,109,.4)"/>' +
+    '<line class="dl" x1="32" y1="32" x2="32" y2="9" stroke="#73daff" stroke-width="2" stroke-linecap="round"/>' +
+    '<circle class="dk" cx="32" cy="9" r="4" fill="#73daff"/>';
+  const right = document.createElement('div'); right.style.flex = '1';
+  const row = document.createElement('div'); row.className = 'row'; row.style.margin = '0 0 4px';
+  const lab = document.createElement('label'); lab.textContent = 'Direction';
+  const num = document.createElement('input'); num.className = 'val'; num.type = 'text';
+  row.appendChild(lab); row.appendChild(num);
+  const hint = document.createElement('div'); hint.className = 'hint'; hint.style.margin = '0';
+  hint.textContent = '0° = bottom to top. Shift-drag snaps to 15°.';
+  right.appendChild(row); right.appendChild(hint);
+  box.appendChild(svg); box.appendChild(right);
+  const sync = () => {
+    const rad = S.angle * Math.PI / 180;
+    const x = 32 + Math.sin(rad) * 23, y = 32 - Math.cos(rad) * 23;
+    svg.querySelector('.dl').setAttribute('x2', x);
+    svg.querySelector('.dl').setAttribute('y2', y);
+    svg.querySelector('.dk').setAttribute('cx', x);
+    svg.querySelector('.dk').setAttribute('cy', y);
+    num.value = Math.round(S.angle) + '°';
+  };
+  let dragging = false;
+  const set = e => {
+    const r = svg.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width/2), dy = e.clientY - (r.top + r.height/2);
+    let deg = Math.atan2(dx, -dy) * 180 / Math.PI;
+    if (deg < 0) deg += 360;
+    if (e.shiftKey) deg = Math.round(deg / 15) * 15;
+    S.angle = Math.round(deg * 10) / 10; sync(); solo(it.solo);
+  };
+  svg.addEventListener('pointerdown', e => { snapshot(); dragging = true; svg.setPointerCapture(e.pointerId); set(e); });
+  svg.addEventListener('pointermove', e => { if (dragging) set(e); });
+  svg.addEventListener('pointerup', () => dragging = false);
+  num.onchange = () => { const v = parseFloat(num.value); if (!isNaN(v)) S.angle = ((v % 360) + 360) % 360; sync(); };
+  sync();
+  box._sync = sync;
+  return box;
+}
+
+const COLOUR_PRESETS = {
+  'Liquid violet': [['#3B2394',0],['#7B7BE8',.34],['#A78BFA',.5],['#F26B3A',.78],['#E0432B',1]],
+  'System soft':   [['#F7F8FA',0],['#BCD3F2',.3],['#7FA8E8',.55],['#F0975A',.85],['#E8632A',1]],
+  'Pastel arc':    [['#8FC4FF',0],['#B7C6FF',.35],['#D3BEF2',.6],['#EBC7EA',.8],['#F6E3F1',1]],
+  'Aqua grain':    [['#EFF3D8',0],['#00C2F0',.4],['#2ED6C0',.65],['#A8E05F',.88],['#E9F5B0',1]],
+  'Halftone lime': [['#FFFFFF',0],['#56C8E0',.2],['#8FD62E',.55],['#C9E85A',.8],['#FBFCE8',1]],
+  'Bloom':         [['#7FB2E3',0],['#C8DDF0',.3],['#F5EFD8',.55],['#F5C33B',.8],['#F29A22',1]],
+  'Nightfall':     [['#07070C',0],['#3A1A5E',.38],['#E0518A',.72],['#FFD9A0',1]]
+};
+let selStop = 0;
+function sortStops(){
+  const cur = S.stops[selStop];
+  S.stops.sort((a, b) => a.p - b.p);
+  selStop = Math.max(0, S.stops.indexOf(cur));
+}
+const gradientCSS = () => 'linear-gradient(90deg,' + S.stops.map(s => s.c + ' ' + (s.p*100).toFixed(1) + '%').join(',') + ')';
+function colourAt(p){
+  const st = [...S.stops].sort((a, b) => a.p - b.p);
+  if (p <= st[0].p) return st[0].c;
+  if (p >= st[st.length-1].p) return st[st.length-1].c;
+  for (let i = 0; i < st.length - 1; i++){
+    if (p >= st[i].p && p <= st[i+1].p){
+      const f = (p - st[i].p) / Math.max(1e-6, st[i+1].p - st[i].p);
+      const a = hexToRgb(st[i].c), b = hexToRgb(st[i+1].c);
+      return rgbToHex(a.map((v, k) => v + (b[k] - v) * f));
+    }
+  }
+  return st[0].c;
+}
+/* The gradient editor. Dragging a 13px dot that also had to open a colour
+   picker on click was the fiddly part, so the two jobs are split: the rail
+   is for position only, and the selected stop gets its own row with a
+   swatch, a hex field, a position field and add / delete. */
+function buildGradient(it){
+  it = it || {};
+  const box = document.createElement('div');
+  const bar = document.createElement('div'); bar.className = 'grad-bar';
+  const rail = document.createElement('div'); rail.className = 'grad-stops';
+
+  const edit = document.createElement('div'); edit.className = 'row';
+  const sw = document.createElement('div');
+  sw.style.cssText = 'width:26px;height:22px;border-radius:4px;box-shadow:0 0 0 1px rgb(var(--ink)/.25);position:relative;overflow:hidden;cursor:pointer;flex:0 0 auto';
+  const pick = document.createElement('input'); pick.type = 'color';
+  pick.style.cssText = 'position:absolute;inset:-6px;width:200%;height:200%;border:none;padding:0;cursor:pointer';
+  sw.appendChild(pick);
+  const hex = document.createElement('input'); hex.className = 'val'; hex.type = 'text';
+  hex.style.width = '76px'; hex.style.textAlign = 'left';
+  const pos = document.createElement('input'); pos.className = 'val'; pos.type = 'text'; pos.style.width = '54px';
+  const bAdd = document.createElement('button'); bAdd.textContent = '+'; bAdd.title = 'Add a stop';
+  const bDel = document.createElement('button'); bDel.textContent = '−'; bDel.title = 'Delete this stop';
+  edit.append(sw, hex, pos, bAdd, bDel);
+
+  const hint = document.createElement('div'); hint.className = 'hint';
+  hint.textContent = 'Click a marker to select it, drag to move it. Double-click the bar to add one there.';
+  const chips = document.createElement('div'); chips.className = 'btnrow';
+  Object.keys(COLOUR_PRESETS).forEach(name => {
+    const b = document.createElement('button'); b.textContent = name;
+    b.onclick = () => { snapshot(); S.stops = COLOUR_PRESETS[name].map(([c, p]) => ({c, p})); selStop = 0; paint(); solo(it.solo); };
+    chips.appendChild(b);
+  });
+  const tools = document.createElement('div'); tools.className = 'btnrow';
+  const bSample = document.createElement('button'); bSample.textContent = 'Sample from media';
+  const bRev = document.createElement('button'); bRev.textContent = 'Reverse';
+  const bEven = document.createElement('button'); bEven.textContent = 'Distribute evenly';
+  tools.append(bSample, bRev, bEven);
+  bRev.onclick = () => { snapshot(); S.stops = S.stops.map((s, i, a) => ({c:a[a.length-1-i].c, p:s.p})); paint(); };
+  bEven.onclick = () => { snapshot(); S.stops.forEach((s, i, a) => s.p = a.length < 2 ? 0 : i / (a.length - 1)); paint(); };
+  bSample.onclick = () => { snapshot(); S.stops = sampleFromMedia(S.stops.length); paint(); };
+
+  bAdd.onclick = () => {
+    if (S.stops.length >= 8) return toast('Eight stops is the maximum');
+    snapshot();
+    const cur = S.stops[selStop] || S.stops[0];
+    const nxt = S.stops[selStop + 1];
+    const p = nxt ? (cur.p + nxt.p) / 2 : Math.min(1, cur.p + 0.12);
+    S.stops.push({c:colourAt(p), p});
+    selStop = S.stops.length - 1; paint(); solo(it.solo);
+  };
+  bDel.onclick = () => {
+    if (S.stops.length <= 2) return toast('Two stops is the minimum');
+    snapshot();
+    S.stops.splice(selStop, 1);
+    selStop = Math.max(0, selStop - 1); paint(); solo(it.solo);
+  };
+  pick.onchange = () => snapshot();
+  pick.oninput = () => { if (S.stops[selStop]){ S.stops[selStop].c = pick.value; paint(); solo(it.solo); } };
+  hex.onchange = () => {
+    let v = hex.value.trim();
+    if (!v.startsWith('#')) v = '#' + v;
+    if (/^#[0-9a-f]{6}$/i.test(v) && S.stops[selStop]){ snapshot(); S.stops[selStop].c = v; paint(); solo(it.solo); }
+    else paint();
+  };
+  pos.onchange = () => {
+    const v = parseFloat(pos.value);
+    if (!isNaN(v) && S.stops[selStop]){ snapshot(); S.stops[selStop].p = Math.min(1, Math.max(0, v)); paint(); solo(it.solo); }
+  };
+
+  function paint(){
+    sortStops();
+    bar.style.background = gradientCSS();
+    rail.innerHTML = '';
+    S.stops.forEach((s, i) => {
+      const m = document.createElement('div');
+      m.className = 'stop' + (i === selStop ? ' sel' : '');
+      m.style.left = (s.p * 100) + '%';
+      m.style.background = s.c;
+      m.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        selStop = i; paintChrome();
+        snapshot();
+        m.setPointerCapture(e.pointerId);
+        const rect = bar.getBoundingClientRect();
+        const move = ev => {
+          s.p = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width));
+          m.style.left = (s.p * 100) + '%';
+          bar.style.background = gradientCSS();
+          pos.value = s.p.toFixed(3);
+          solo(it.solo);
+        };
+        const up = () => {
+          m.removeEventListener('pointermove', move);
+          m.removeEventListener('pointerup', up);
+          paint();
+        };
+        m.addEventListener('pointermove', move);
+        m.addEventListener('pointerup', up);
+      });
+      rail.appendChild(m);
+    });
+    paintChrome();
+  }
+  function paintChrome(){
+    [...rail.children].forEach((m, i) => m.classList.toggle('sel', i === selStop));
+    const s = S.stops[selStop] || S.stops[0];
+    if (!s) return;
+    sw.style.background = s.c; pick.value = s.c;
+    hex.value = s.c; pos.value = s.p.toFixed(3);
+    bDel.disabled = S.stops.length <= 2;
+    bAdd.disabled = S.stops.length >= 8;
+  }
+  bar.addEventListener('dblclick', e => {
+    if (S.stops.length >= 8) return toast('Eight stops is the maximum');
+    snapshot();
+    const rect = bar.getBoundingClientRect();
+    const p = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    S.stops.push({c:colourAt(p), p});
+    selStop = S.stops.length - 1; paint(); solo(it.solo);
+  });
+  box.append(bar, rail, edit, hint, chips, tools);
+  box._sync = paint; paint();
+  return box;
+}
+function sampleFromMedia(n){
+  if (!media) return S.stops;
+  try {
+    const c = document.createElement('canvas');
+    const w = c.width = 160, h = c.height = Math.max(1, Math.round(160 * mediaH / mediaW));
+    const x = c.getContext('2d', {willReadFrequently:true});
+    x.drawImage(media, 0, 0, w, h);
+    const data = x.getImageData(0, 0, w, h).data;
+    const buckets = Array.from({length:n}, () => [0,0,0,0]);
+    for (let i = 0; i < data.length; i += 4){
+      const l = (0.2126*data[i] + 0.7152*data[i+1] + 0.0722*data[i+2]) / 255;
+      const B = buckets[Math.min(n - 1, Math.floor(l * n))];
+      B[0] += data[i]; B[1] += data[i+1]; B[2] += data[i+2]; B[3]++;
+    }
+    return buckets.map((B, i) => ({
+      c: B[3] ? rgbToHex([B[0]/B[3]/255, B[1]/B[3]/255, B[2]/B[3]/255]) : (S.stops[i] ? S.stops[i].c : '#808080'),
+      p: n < 2 ? 0 : i / (n - 1)
+    }));
+  } catch (e) {
+    toast('The browser blocked reading those pixels');
+    return S.stops;
+  }
+}
+function syncPanel(){
+  for (const [gid] of SPEC) [...document.getElementById(gid).children].forEach(ch => ch._sync && ch._sync());
+  drawCurve();
+}
+
+/* =====================================================================
+   7. PLAYBACK
+   ===================================================================== */
+
+const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let playing = !calm, introT = calm ? 1 : 0, elapsed = calm ? 9 : 0;
+let lastNow = performance.now(), clock = 0;
+
+const scrub = document.getElementById('scrub');
+const tnum = document.getElementById('tnum');
+const btnPlay = document.getElementById('btnPlay');
+btnPlay.onclick = () => { playing = !playing; btnPlay.innerHTML = playing ? '&#x2759;&#x2759;' : '&#x25b6;'; };
+document.getElementById('btnRestart').onclick = restart;
+function restart(){
+  elapsed = 0; introT = 0; clock = 0;
+  playing = true; btnPlay.innerHTML = '&#x2759;&#x2759;';
+  if (isVideo && media){ try { media.currentTime = 0; media.play(); } catch (e) {} }
+}
+scrub.oninput = () => {
+  playing = false; btnPlay.innerHTML = '&#x25b6;';
+  introT = +scrub.value / 1000;
+  elapsed = introT * S.duration / 1000;
+};
+let bgMode = 'checker';
+document.getElementById('bgseg').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...e.currentTarget.children].forEach(x => x.classList.toggle('on', x === b));
+  bgMode = b.dataset.bg;
+  document.getElementById('frameMain').className = 'frame ' +
+    (bgMode === 'checker' ? 'checker' : bgMode === 'dark' ? 'solid-dark' : 'solid-light');
+};
+let debugMode = 0;
+document.getElementById('dbgseg').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...e.currentTarget.children].forEach(x => x.classList.toggle('on', x === b));
+  debugMode = +b.dataset.dbg;
+  document.getElementById('mainLabel').textContent = b.textContent;
+};
+
+/* Stage 2 phase — mirrored verbatim in the Swift export.
+   The loop is the intro's own pass, repeated: same duration, same speed
+   graph, same direction. The only thing stage 2 adds is the wait between
+   passes, during which the line parks at 1, off-canvas. */
+function loopPhase(t){
+  if (t <= 0) return 1;
+  const dur = S.duration / 1000, gap = S.loopGap / 1000;
+  const cycle = dur + gap;
+  if (!(cycle > 0) || !(dur > 0)) return 1;
+  const inCycle = t % cycle;
+  if (inCycle >= dur) return 1;
+  return easeAt(inCycle / dur);
+}
+function uniformsFor(introV, elapsedS, clockS){
+  const [aw, ah] = canvasAspect();
+  const refPts = Math.max(1, parseFloat(main.canvas.style.width) || 400);
+  return {
+    cover: coverScale(aw, ah),
+    sweepCol: hexToRgb(S.sweepCol),
+    softFrac: S.soft / refPts,
+    f: {
+      uIntro: easeAt(introV),
+      uLoopPhase: loopPhase(elapsedS - S.duration / 1000),
+      uTime: clockS,
+      uAngle: S.angle * Math.PI / 180,
+      uBandShape: S.bandShape, uBandCX: S.bandCX, uBandCY: S.bandCY, uBandFlip: S.bandFlip,
+      uInvert: S.invert, uContrast: S.contrast, uBias: S.bias,
+      uMapMix: S.mapMix, uFeather: S.feather,
+      uHold: S.hold, uRealFeather: S.realFeather,
+      uTurbAmt: S.turbOn > 0.5 ? S.turbAmt : 0,
+      uTurbScale: S.turbScale,
+      uTurbDetail: S.turbDetail, uTurbEvolve: S.turbEvolve,
+      uSteps: S.stepsOn > 0.5 ? S.steps : 0,
+      uCyclic: S.cyclic,
+      uGradOffset: S.gradOffset, uGradScale: S.gradScale, uGradDrift: S.gradDrift,
+      uSweepW: S.sweepW, uSweepOp: S.sweepOp,
+      uSweepIntro: S.sweepIntro, uLoopOn: S.loopOn
+    }
+  };
+}
+function palFlat(){
+  const out = [];
+  [...S.stops].sort((a, b) => a.p - b.p).forEach(s => {
+    const [r, g, b] = hexToRgb(s.c);
+    out.push(r, g, b, s.p);
+  });
+  return new Float32Array(out);
+}
+function render(){
+  const now = performance.now();
+  const dt = Math.min(0.1, (now - lastNow) / 1000);
+  lastNow = now;
+  if (playing){
+    clock += dt; elapsed += dt;
+    introT = Math.min(1, S.duration > 0 ? elapsed * 1000 / S.duration : 1);
+    scrub.value = Math.round(introT * 1000);
+  }
+  tnum.textContent = Math.round(introT * S.duration) + ' / ' + Math.round(S.duration) + 'ms';
+  if (isVideo && media && media.readyState >= 2) uploadFrame();
+  const uni = uniformsFor(introT, elapsed, clock), pal = palFlat();
+  main.draw(uni, pal, debugMode);
+  if (S.showMask > 0.5 && maskR) maskR.draw(uni, pal, soloMode);
+  drawCurve();
+  requestAnimationFrame(render);
+}
+
+/* =====================================================================
+   8. MEDIA INPUT
+   ===================================================================== */
+
+const fileInput = document.getElementById('file');
+document.getElementById('btnUpload').onclick = () => fileInput.click();
+fileInput.onchange = () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); };
+
+function loadVideoURL(url, name, file){
+  const v = document.createElement('video');
+  v.src = url; v.muted = true; v.playsInline = true; v.loop = false; v.preload = 'auto';
+  v.crossOrigin = 'anonymous';
+  v.onloadeddata = () => {
+    mediaFile = file || null;
+    setMedia(v, v.videoWidth, v.videoHeight, true, name);
+    v.play().catch(() => {});
+    restart(); syncPanel();
+  };
+  return v;
+}
+function loadFile(f){
+  const url = URL.createObjectURL(f);
+  if (f.type.startsWith('video')){
+    const v = loadVideoURL(url, f.name, f);
+    v.onerror = () => toast('Could not read that video');
+    toast('Video loaded — it freezes on the last frame');
+  } else {
+    const im = new Image();
+    im.onload = () => {
+      mediaFile = f;
+      setMedia(im, im.width, im.height, false, f.name);
+      restart(); syncPanel(); toast('Image loaded');
+    };
+    im.onerror = () => toast('Could not read that image');
+    im.src = url;
+  }
+}
+const vp = document.getElementById('viewport');
+['dragenter','dragover'].forEach(ev => vp.addEventListener(ev, e => { e.preventDefault(); vp.classList.add('dropping'); }));
+['dragleave','drop'].forEach(ev => vp.addEventListener(ev, e => { e.preventDefault(); vp.classList.remove('dropping'); }));
+vp.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
+
+/* =====================================================================
+   9. PRESETS
+   ===================================================================== */
+
+const LOOKS = {
+  'Nightfall': {bandShape:0, mapMix:.78, feather:.14, contrast:1.3, turbOn:1, turbAmt:.07, turbScale:3.2,
+    turbDetail:3.4, turbEvolve:.25, hold:.34, realFeather:.24, gradDrift:.18, stepsOn:0, cyclic:1,
+    sweepCol:'#ffffff', sweepW:.09, sweepOp:.55, loopGap:600, stops:'Nightfall', ease:'ease out'},
+  'Ink bloom': {bandShape:0, mapMix:.95, feather:.06, contrast:1.9, bias:-.05, soft:5, turbOn:1, turbAmt:.14,
+    turbScale:5.5, turbDetail:4.5, turbEvolve:.1, hold:.5, realFeather:.12, gradDrift:0, stepsOn:0, cyclic:0,
+    sweepCol:'#dff2ff', sweepW:.05, sweepOp:.7, loopGap:1200, stops:'System soft', ease:'expo out'},
+  'Rising line': {bandShape:0, mapMix:.3, feather:.26, contrast:1.0, turbOn:1, turbAmt:.05, turbScale:2.0,
+    turbDetail:2.0, turbEvolve:.4, hold:.2, realFeather:.4, gradDrift:.4, stepsOn:0, cyclic:1,
+    sweepCol:'#ffffff', sweepW:.14, sweepOp:.45, loopGap:300, stops:'Pastel arc', ease:'ease in-out'},
+  'Opening out': {bandShape:1, bandCX:.5, bandCY:.55, mapMix:.45, feather:.2, contrast:1.2, turbOn:1,
+    turbAmt:.06, turbScale:2.6, turbDetail:3, turbEvolve:.3, hold:.3, realFeather:.3, gradDrift:.25,
+    stepsOn:0, cyclic:1, sweepCol:'#ffffff', sweepW:.1, sweepOp:.5, loopGap:500,
+    stops:'Bloom', ease:'ease out'},
+  'Posterised': {bandShape:0, mapMix:.85, feather:.1, contrast:1.5, turbOn:1, turbAmt:.04, turbScale:4,
+    turbDetail:2, turbEvolve:.15, hold:.55, realFeather:.18, gradDrift:.25, stepsOn:1, steps:6, cyclic:1,
+    sweepCol:'#eaff9c', sweepW:.06, sweepOp:.6, loopGap:900, stops:'Halftone lime', ease:'back out'}
+};
+const lookHost = document.getElementById('lookPresets');
+Object.keys(LOOKS).forEach(name => {
+  const b = document.createElement('button'); b.textContent = name;
+  b.onclick = () => {
+    const L = LOOKS[name];
+    for (const k in L){
+      if (k === 'ease') S.ease = makeCurve(EASE_PRESETS[L.ease]);
+      else if (k === 'stops') S.stops = COLOUR_PRESETS[L.stops].map(([c, p]) => ({c, p}));
+      else S[k] = L[k];
+    }
+    buildPanel(); syncPanel(); restart();
+  };
+  lookHost.appendChild(b);
+});
+const easeHost = document.getElementById('easePresets');
+Object.keys(EASE_PRESETS).forEach(name => {
+  const b = document.createElement('button'); b.textContent = name;
+  b.onclick = () => { S.ease = makeCurve(EASE_PRESETS[name]); drawCurve(); };
+  easeHost.appendChild(b);
+});
+document.getElementById('btnSave').onclick = () => { localStorage.setItem('depthReveal', JSON.stringify(S)); toast('Saved'); };
+document.getElementById('btnLoad').onclick = () => {
+  const raw = localStorage.getItem('depthReveal');
+  if (!raw) return toast('Nothing saved yet');
+  S = JSON.parse(raw); buildPanel(); syncPanel(); layout(); toast('Loaded');
+};
+document.getElementById('btnCopyJson').onclick = () => { navigator.clipboard.writeText(JSON.stringify(S, null, 2)); toast('JSON copied'); };
+document.getElementById('btnPasteJson').onclick = async () => {
+  try { S = JSON.parse(await navigator.clipboard.readText()); buildPanel(); syncPanel(); layout(); toast('Pasted'); }
+  catch (e) { toast('The clipboard is not valid JSON'); }
+};
+document.getElementById('btnReset').onclick = () => {
+  S = JSON.parse(JSON.stringify(DEFAULTS)); S.ease = makeCurve(EASE_PRESETS['ease out']);
+  buildPanel(); syncPanel(); layout(); restart(); toast('Reset');
+};
+
+/* =====================================================================
+   10. CODE GENERATION (Swift + Metal, and a standalone HTML page)
+   ===================================================================== */
+
+const LUT_N = 65;
+const easeLUT = () => Array.from({length:LUT_N}, (_, i) => +easeAt(i / (LUT_N - 1)).toFixed(5));
+function fmtF(v){
+  let s = (+v).toFixed(4).replace(/(\.\d*?)0+$/, '$1');
+  if (s.endsWith('.')) s += '0';
+  return s;
+}
+
+function metalSource(){
+  return `//  DepthReveal.metal
+//  Generated by Depth Reveal Studio.
+//  Drop this file into your Xcode target - SwiftUI compiles it automatically.
+//
+//  Two stages share one shader:
+//    stage 1  intro  driven by intro      (0...1, plays once)
+//    stage 2  loop   driven by loopPhase  (0...1, repeats forever)
+//  Nothing here displaces the media: turbulence acts on the reveal line only.
+
+#include <metal_stdlib>
+#include <SwiftUI/SwiftUI_Metal.h>
+using namespace metal;
+
+static inline float4 unpre(float4 c){
+  return c.a > 0.0001 ? float4(c.rgb / c.a, c.a) : c;
+}
+
+#define SAMPLE(u) unpre(float4(layer.sample(clamp((u), 0.0, 1.0) * uSize)))
+#define LUMA(u)   dot(SAMPLE(u).rgb, float3(0.2126, 0.7152, 0.0722))
+#define PALC(i)   float3(pal[(i) * 4], pal[(i) * 4 + 1], pal[(i) * 4 + 2])
+#define PALP(i)   pal[(i) * 4 + 3]
+#define PALN      (palCount / 4)
+${toMSL(SHADER_HELPERS)}
+[[ stitchable ]] half4 depthReveal(
+    float2 position,
+    SwiftUI::Layer layer,
+    float2 size,
+    float2 cover,      // aspect-fill correction; (1,1) when the view already fills
+    float  intro,      // STAGE 1 - eased 0...1
+    float  loopPhase,  // STAGE 2 - 0...1, repeating
+    float  time,       // seconds, drives turbulence evolution only
+    float4 c0,         // angle(rad), invert, contrast, bias
+    float4 c1,         // maskBlur, mapMix, feather, hold
+    float4 c2,         // handoffFeather, turbAmount, turbScale, turbDetail
+    float4 c3,         // turbEvolve, steps, cyclic, gradDrift
+    float4 c4,         // gradOffset, gradScale, unused, unused
+    float4 c5,         // lineWidth, lineOpacity, lineInIntro, loopEnabled
+    float4 c6,         // bandShape (0 linear, 1 radial), centreX, centreY, reverse
+    float4 lineColour,
+    device const float *pal,   // r,g,b,position per stop
+    int    palCount)
+{
+  float2 uSize = size;
+  float2 uCover = cover;
+  float2 uv = position / size;
+
+  float uIntro      = intro;
+  float uLoopPhase  = loopPhase;
+  float uTime       = time;
+  float uAngle      = c0.x;
+  float uInvert     = c0.y;
+  float uContrast   = c0.z;
+  float uBias       = c0.w;
+  float uSoft       = c1.x;
+  float uMapMix     = c1.y;
+  float uFeather    = c1.z;
+  float uHold       = c1.w;
+  float uRealFeather= c2.x;
+  float uTurbAmt    = c2.y;
+  float uTurbScale  = c2.z;
+  float uTurbDetail = c2.w;
+  float uTurbEvolve = c3.x;
+  float uSteps      = c3.y;
+  float uCyclic     = c3.z;
+  float uGradDrift  = c3.w;
+  float uGradOffset = c4.x;
+  float uGradScale  = c4.y;
+  float uSweepW     = c5.x;
+  float uSweepOp    = c5.y;
+  float uSweepIntro = c5.z;
+  float uLoopOn     = c5.w;
+  float uBandShape  = c6.x;
+  float uBandCX     = c6.y;
+  float uBandCY     = c6.z;
+  float uBandFlip   = c6.w;
+  float3 uSweepCol  = lineColour.rgb;
+  float uDebug      = 0.0;
+${toMSL(SHADER_BODY)}
+  return half4(outCol);
+}
+`;
+}
+
+function swiftSource(){
+  const lut = easeLUT(), rows = [];
+  for (let i = 0; i < lut.length; i += 8) rows.push('        ' + lut.slice(i, i + 8).map(v => v.toFixed(5)).join(', '));
+  const stops = [...S.stops].sort((a, b) => a.p - b.p);
+  const palStr = stops.map(s => {
+    const [r, g, b] = hexToRgb(s.c);
+    return `        ${r.toFixed(4)}, ${g.toFixed(4)}, ${b.toFixed(4)}, ${s.p.toFixed(4)},   // ${s.c}`;
+  }).join('\n');
+  const sc = hexToRgb(S.sweepCol);
+
+  return `//  DepthReveal.swift
+//  Generated by Depth Reveal Studio.
+//  Requires iOS 17 / macOS 14 and DepthReveal.metal in the same target.
+//
+//  The animation is two independent stages:
+//    STAGE 1  DepthRevealIntro - plays once, invisible -> colour -> media
+//    STAGE 2  DepthRevealLoop  - the same line, repeating forever after it
+//  Separate types, separate clocks. Set loop.enabled = false to ship the
+//  intro on its own.
+
+import SwiftUI
+
+// MARK: - Look (shared by both stages) ---------------------------------------
+
+struct DepthRevealLook {
+    // The line's geometry.
+    var shape: Float         = ${fmtF(S.bandShape)}  // 0 = linear, 1 = radial
+    var angle: Float         = ${fmtF(S.angle)}      // degrees, 0 = bottom to top (linear only)
+    var centre: SIMD2<Float> = [${fmtF(S.bandCX)}, ${fmtF(S.bandCY)}]  // radial only
+    var reverse: Float       = ${fmtF(S.bandFlip)}
+
+    // The mask: what decides the order pixels arrive in.
+    var invert: Float       = ${fmtF(S.invert)}
+    var contrast: Float     = ${fmtF(S.contrast)}
+    var bias: Float         = ${fmtF(S.bias)}
+    var maskBlur: Float     = ${fmtF(S.soft)}       // points, on the mask only
+    var mapMix: Float       = ${fmtF(S.mapMix)}     // 0 = straight line, 1 = follows the map
+
+    // The line: the shape of the moving edge.
+    var feather: Float      = ${fmtF(S.feather)}
+    var turbAmount: Float   = ${fmtF(S.turbOn > 0.5 ? S.turbAmt : 0)}    // wobble on the LINE, not the media
+    var turbScale: Float    = ${fmtF(S.turbScale)}
+    var turbDetail: Float   = ${fmtF(S.turbDetail)} // octaves, 1...6
+    var turbEvolve: Float   = ${fmtF(S.turbEvolve)}
+
+    // Colour: what shows before the media arrives.
+    var gradOffset: Float   = ${fmtF(S.gradOffset)}
+    var gradScale: Float    = ${fmtF(S.gradScale)}
+    var gradDrift: Float    = ${fmtF(S.gradDrift)}  // the ramp slides across the intro
+    var steps: Float        = ${fmtF(S.stepsOn > 0.5 ? S.steps : 0)}      // 0 = smooth, >= 2 = posterised
+    var cyclic: Float       = ${fmtF(S.cyclic)}
+
+    /// Gradient stops: r, g, b, position - four floats each, sorted by position.
+    var palette: [Float] = [
+${palStr}
+    ]
+}
+
+// MARK: - STAGE 1: intro ------------------------------------------------------
+
+struct DepthRevealIntro {
+    var duration: TimeInterval = ${(S.duration / 1000).toFixed(3)}
+    var hold: Float            = ${fmtF(S.hold)}        // share held on colour
+    var handoffFeather: Float  = ${fmtF(S.realFeather)}
+
+    /// Eased 0...1 for a given elapsed time. Past the duration it stays at 1.
+    func progress(at elapsed: TimeInterval) -> Double {
+        guard duration > 0 else { return 1 }
+        return DepthRevealEasing.value(min(1, max(0, elapsed / duration)))
+    }
+}
+
+// MARK: - STAGE 2: loop -------------------------------------------------------
+
+struct DepthRevealLoop {
+    var enabled: Bool        = ${S.loopOn > 0.5}
+    var showInIntro: Bool    = ${S.sweepIntro > 0.5}
+    /// The only timing stage 2 owns. Everything else — how fast the line
+    /// travels, its speed graph, its direction — is stage 1's, reused.
+    var gap: TimeInterval    = ${(S.loopGap / 1000).toFixed(3)}
+    var width: Float         = ${fmtF(S.sweepW)}
+    var opacity: Float       = ${fmtF(S.sweepOp)}
+    var colour: SIMD3<Float> = [${sc.map(v => v.toFixed(4)).join(', ')}]   // ${S.sweepCol}
+
+    /// 0...1 sweep position, on the intro's own duration and speed graph.
+    /// sinceIntro is seconds since stage 1 finished; while it is negative,
+    /// or during the gap, the line parks at 1, which is off-canvas.
+    func phase(sinceIntro: TimeInterval, introDuration: TimeInterval) -> Double {
+        guard enabled, introDuration > 0, sinceIntro > 0 else { return 1 }
+        let cycle = introDuration + gap
+        let inCycle = sinceIntro.truncatingRemainder(dividingBy: cycle)
+        if inCycle >= introDuration { return 1 }
+        return DepthRevealEasing.value(inCycle / introDuration)
+    }
+}
+
+// MARK: - Easing --------------------------------------------------------------
+
+/// The speed graph from the studio, baked to a table so device output matches
+/// the preview exactly. Stage 1 only - the loop sweep is linear by design.
+enum DepthRevealEasing {
+    static let table: [Double] = [
+${rows.join(',\n')}
+    ]
+    static func value(_ t: Double) -> Double {
+        let x = min(1, max(0, t))
+        let f = x * Double(table.count - 1)
+        let i = Int(f)
+        if i >= table.count - 1 { return table[table.count - 1] }
+        return table[i] + (table[i + 1] - table[i]) * (f - Double(i))
+    }
+}
+
+// MARK: - Effect --------------------------------------------------------------
+
+struct DepthRevealEffect: ViewModifier {
+    var intro: Double        // STAGE 1, already eased
+    var loopPhase: Double    // STAGE 2
+    var time: Double         // seconds, turbulence evolution only
+    var look = DepthRevealLook()
+    var introParams = DepthRevealIntro()
+    var loop = DepthRevealLoop()
+
+    func body(content: Content) -> some View {
+        content.visualEffect { view, proxy in
+            let size = proxy.size
+            let offset = CGFloat(look.maskBlur) + 2
+            return view.layerEffect(
+                ShaderLibrary.depthReveal(
+                    .float2(size),
+                    .float2(1, 1),
+                    .float(Float(intro)),
+                    .float(Float(loopPhase)),
+                    .float(Float(time)),
+                    .float4(look.angle * .pi / 180, look.invert, look.contrast, look.bias),
+                    .float4(look.maskBlur, look.mapMix, look.feather, introParams.hold),
+                    .float4(introParams.handoffFeather, look.turbAmount, look.turbScale, look.turbDetail),
+                    .float4(look.turbEvolve, look.steps, look.cyclic, look.gradDrift),
+                    .float4(look.gradOffset, look.gradScale, 0, 0),
+                    .float4(loop.width, loop.opacity, loop.showInIntro ? 1 : 0, loop.enabled ? 1 : 0),
+                    .float4(look.shape, look.centre.x, look.centre.y, look.reverse),
+                    .float4(loop.colour.x, loop.colour.y, loop.colour.z, 1),
+                    .floatArray(look.palette)
+                ),
+                maxSampleOffset: CGSize(width: offset, height: offset)
+            )
+        }
+    }
+}
+
+extension View {
+    func depthReveal(intro: Double,
+                     loopPhase: Double = 1,
+                     time: Double = 0,
+                     look: DepthRevealLook = .init(),
+                     introParams: DepthRevealIntro = .init(),
+                     loop: DepthRevealLoop = .init()) -> some View {
+        modifier(DepthRevealEffect(intro: intro, loopPhase: loopPhase, time: time,
+                                   look: look, introParams: introParams, loop: loop))
+    }
+}
+
+// MARK: - Player --------------------------------------------------------------
+
+/// Wrap any view. Stage 1 runs once on appear; stage 2 keeps going after it.
+struct DepthRevealPlayer<Content: View>: View {
+    var look = DepthRevealLook()
+    var intro = DepthRevealIntro()
+    var loop = DepthRevealLoop()
+    @ViewBuilder var content: () -> Content
+
+    @State private var start: Date? = nil
+
+    var body: some View {
+        TimelineView(.animation(paused: start == nil)) { ctx in
+            let elapsed = start.map { ctx.date.timeIntervalSince($0) } ?? 0
+            content()
+                .depthReveal(intro: intro.progress(at: elapsed),
+                             loopPhase: loop.phase(sinceIntro: elapsed - intro.duration,
+                                                   introDuration: intro.duration),
+                             time: elapsed,
+                             look: look, introParams: intro, loop: loop)
+        }
+        .onAppear { start = .now }
+    }
+
+    func restart() { start = .now }
+}
+
+#Preview {
+    DepthRevealPlayer {
+        Image("YourImage").resizable().scaledToFill()
+    }
+    .background(.black)
+}
+`;
+}
+
+/* A standalone web page running the same GLSL, with the media inlined. */
+function htmlSource(mediaDataURI){
+  const [aw, ah] = canvasAspect();
+  const uni = uniformsFor(0, 0, 0);
+  const cfg = {
+    aspect: [aw, ah], cover: uni.cover, sweepCol: uni.sweepCol,
+    pal: Array.from(palFlat()),
+    duration: S.duration, loopGap: S.loopGap,
+    ease: easeLUT(),
+    isVideo,
+    f: {...uni.f}
+  };
+  delete cfg.f.uIntro; delete cfg.f.uLoopPhase; delete cfg.f.uTime;
+  const src = mediaDataURI || '';
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Depth reveal</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;display:grid;place-items:center}
+  canvas{max-width:100%;max-height:100%;display:block}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+${src ? (cfg.isVideo
+  ? `<video id="m" muted playsinline preload="auto" style="display:none" src="${src}"></video>`
+  : `<img id="m" style="display:none" src="${src}">`) : '<!-- no media embedded -->'}
+<script>
+const CFG = ${JSON.stringify(cfg)};
+const VS = ${JSON.stringify(VS)};
+const FS = ${JSON.stringify(FS)};
+const c = document.getElementById('c'), m = document.getElementById('m');
+c.width = CFG.aspect[0]; c.height = CFG.aspect[1];
+const gl = c.getContext('webgl2', {alpha:true, premultipliedAlpha:true});
+function sh(t, s){ const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); return o; }
+const p = gl.createProgram();
+gl.attachShader(p, sh(gl.VERTEX_SHADER, VS));
+gl.attachShader(p, sh(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(p); gl.useProgram(p); gl.bindVertexArray(gl.createVertexArray());
+const tex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, tex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+const U = {}, loc = n => (n in U ? U[n] : (U[n] = gl.getUniformLocation(p, n)));
+function ease(t){
+  const T = CFG.ease, x = Math.min(1, Math.max(0, t)), f = x * (T.length - 1), i = Math.floor(f);
+  return i >= T.length - 1 ? T[T.length - 1] : T[i] + (T[i+1] - T[i]) * (f - i);
+}
+function loopPhase(t){
+  if (t <= 0) return 1;
+  const dur = CFG.duration/1000, cycle = dur + CFG.loopGap/1000;
+  if (!(dur > 0) || !(cycle > 0)) return 1;
+  const inCycle = t % cycle;
+  return inCycle >= dur ? 1 : ease(inCycle / dur);
+}
+let t0 = null;
+function frame(now){
+  if (t0 === null) t0 = now;
+  const el = (now - t0) / 1000;
+  if (m) { try { gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,m); } catch(e){} }
+  gl.viewport(0,0,c.width,c.height);
+  gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.uniform1i(loc('uTex'), 0);
+  gl.uniform2f(loc('uSize'), c.width, c.height);
+  gl.uniform2f(loc('uCover'), CFG.cover[0], CFG.cover[1]);
+  gl.uniform3f(loc('uSweepCol'), CFG.sweepCol[0], CFG.sweepCol[1], CFG.sweepCol[2]);
+  gl.uniform1f(loc('uDebug'), 0);
+  gl.uniform1f(loc('uSoft'), ${uni.softFrac.toFixed(6)} * c.width);
+  for (const k in CFG.f) gl.uniform1f(loc(k), CFG.f[k]);
+  gl.uniform1f(loc('uIntro'), ease(Math.min(1, el * 1000 / CFG.duration)));
+  gl.uniform1f(loc('uLoopPhase'), loopPhase(el - CFG.duration/1000));
+  gl.uniform1f(loc('uTime'), el);
+  gl.uniform1fv(loc('uPal[0]'), new Float32Array(CFG.pal));
+  gl.uniform1i(loc('uPalN'), CFG.pal.length);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  requestAnimationFrame(frame);
+}
+if (m && CFG.isVideo) m.play().catch(()=>{});
+requestAnimationFrame(frame);
+<\/script>
+</body>
+</html>
+`;
+}
+
+/* =====================================================================
+   11. GIF ENCODER (median cut + LZW, no dependencies)
+   ===================================================================== */
+
+function medianCut(samples, maxColors){
+  let boxes = [samples];
+  const range = box => {
+    let lo = [255,255,255], hi = [0,0,0];
+    for (const p of box) for (let i = 0; i < 3; i++){
+      if (p[i] < lo[i]) lo[i] = p[i];
+      if (p[i] > hi[i]) hi[i] = p[i];
+    }
+    let ch = 0, best = -1;
+    for (let i = 0; i < 3; i++){ const r = hi[i] - lo[i]; if (r > best){ best = r; ch = i; } }
+    return {ch, r:best};
+  };
+  while (boxes.length < maxColors){
+    let bi = -1, best = -1, bch = 0;
+    boxes.forEach((b, i) => {
+      if (b.length < 2) return;
+      const r = range(b);
+      if (r.r > best){ best = r.r; bi = i; bch = r.ch; }
+    });
+    if (bi < 0 || best <= 0) break;
+    const b = boxes[bi];
+    b.sort((p, q) => p[bch] - q[bch]);
+    const mid = b.length >> 1;
+    boxes.splice(bi, 1, b.slice(0, mid), b.slice(mid));
+  }
+  return boxes.filter(b => b.length).map(b => {
+    let r = 0, g = 0, bl = 0;
+    for (const p of b){ r += p[0]; g += p[1]; bl += p[2]; }
+    return [Math.round(r/b.length), Math.round(g/b.length), Math.round(bl/b.length)];
+  });
+}
+/* GIF LZW.
+ *
+ * The width of a code grows ONE CODE LATE, and that is the whole trick. A
+ * decoder builds its table from the codes it has already read, so it is
+ * always one entry behind the encoder; if the encoder widens as soon as its
+ * own table fills, the decoder is still reading at the old width and every
+ * byte after that point is garbage. So the check belongs after a code has
+ * been written, against the table size as it stood before this round. */
+function lzwEncode(idx, minCodeSize){
+  const MAXMAX = 4096;
+  const clear = 1 << minCodeSize, end = clear + 1;
+  let codeSize = minCodeSize + 1;
+  let maxcode = (1 << codeSize) - 1;
+  let next = end + 1;
+  let dict = new Map(), out = [], cur = 0, bits = 0, clearFlag = false;
+
+  const emit = code => {
+    cur |= code << bits; bits += codeSize;
+    while (bits >= 8){ out.push(cur & 255); cur >>= 8; bits -= 8; }
+    if (clearFlag){
+      codeSize = minCodeSize + 1;
+      maxcode = (1 << codeSize) - 1;
+      clearFlag = false;
+    } else if (next > maxcode && codeSize < 12){
+      codeSize++;
+      maxcode = codeSize === 12 ? MAXMAX : (1 << codeSize) - 1;
+    }
+  };
+
+  emit(clear);
+  let prefix = idx[0];
+  for (let i = 1; i < idx.length; i++){
+    const k = idx[i], key = prefix * 4096 + k;
+    if (dict.has(key)){ prefix = dict.get(key); continue; }
+    emit(prefix);
+    prefix = k;
+    if (next < MAXMAX) dict.set(key, next++);
+    else { dict = new Map(); next = end + 1; clearFlag = true; emit(clear); }
+  }
+  emit(prefix);
+  emit(end);
+  if (bits > 0) out.push(cur & 255);
+  return out;
+}
+function encodeGIF(frames, w, h, delayCs, maxColors, transparent){
+  // one global palette from a sample of every frame
+  // Every frame contributes the same number of samples, so the photograph at
+  // the end of the run gets as much of the palette as the dark opening does.
+  const samples = [];
+  const stride = 4 * Math.max(1, Math.round(frames[0].length / 4 / 4000));
+  for (const f of frames){
+    for (let i = 0; i < f.length; i += stride){
+      if (transparent && f[i+3] < 128) continue;
+      samples.push([f[i], f[i+1], f[i+2]]);
+    }
+  }
+  if (!samples.length) samples.push([0,0,0]);
+  const reserved = transparent ? 1 : 0;
+  let pal = medianCut(samples, Math.max(2, maxColors - reserved));
+  if (transparent) pal = [[0,0,0]].concat(pal);
+  let bits = 1; while ((1 << bits) < pal.length) bits++;
+  bits = Math.min(8, Math.max(1, bits));
+  const palSize = 1 << bits;
+
+  const cache = new Int16Array(32768).fill(-1);
+  const nearest = (r, g, b) => {
+    const key = (r >> 3) << 10 | (g >> 3) << 5 | (b >> 3);
+    if (cache[key] >= 0) return cache[key];
+    let bi = reserved, bd = Infinity;
+    for (let i = reserved; i < pal.length; i++){
+      const dr = pal[i][0]-r, dg = pal[i][1]-g, db = pal[i][2]-b;
+      const d = dr*dr + dg*dg + db*db;
+      if (d < bd){ bd = d; bi = i; }
+    }
+    cache[key] = bi;
+    return bi;
+  };
+
+  const out = [];
+  const byte = v => out.push(v & 255);
+  const word = v => { byte(v); byte(v >> 8); };
+  const str = s => { for (let i = 0; i < s.length; i++) byte(s.charCodeAt(i)); };
+
+  str('GIF89a');
+  word(w); word(h);
+  byte(0x80 | 0x70 | (bits - 1)); byte(0); byte(0);
+  for (let i = 0; i < palSize; i++){
+    const c = pal[i] || [0,0,0];
+    byte(c[0]); byte(c[1]); byte(c[2]);
+  }
+  // loop forever
+  byte(0x21); byte(0xFF); byte(11); str('NETSCAPE2.0'); byte(3); byte(1); word(0); byte(0);
+
+  const minCode = Math.max(2, bits);
+  for (const f of frames){
+    byte(0x21); byte(0xF9); byte(4);
+    byte((transparent ? 2 << 2 : 1 << 2) | (transparent ? 1 : 0));
+    word(delayCs); byte(0); byte(0);
+    byte(0x2C); word(0); word(0); word(w); word(h); byte(0);
+    const idx = new Uint8Array(w * h);
+    for (let i = 0, p = 0; i < idx.length; i++, p += 4){
+      idx[i] = (transparent && f[p+3] < 128) ? 0 : nearest(f[p], f[p+1], f[p+2]);
+    }
+    byte(minCode);
+    const data = lzwEncode(idx, minCode);
+    for (let i = 0; i < data.length; i += 255){
+      const chunk = data.slice(i, i + 255);
+      byte(chunk.length);
+      for (const b of chunk) byte(b);
+    }
+    byte(0);
+  }
+  byte(0x3B);
+  return new Uint8Array(out);
+}
+
+/* =====================================================================
+   12. EXPORT
+   ===================================================================== */
+
+const EXPORTS = {
+  png:  {label:'PNG',  opts:['width','time','bg'],                       ext:'png'},
+  gif:  {label:'GIF',  opts:['width','length','fps','colours','bg'],     ext:'gif'},
+  mp4:  {label:'MP4',  opts:['width','length','fps','bg'],               ext:'mp4'},
+  html: {label:'HTML', opts:['embed'],                                   ext:'html'},
+  swift:{label:'Swift',opts:[],                                          ext:'swift'}
+};
+const E = {width:1080, time:0.55, length:4000, fps:15, colours:128, bg:'#000000', embed:1};
+let curFmt = 'png', lastBlob = null, lastName = '';
+
+const expOpts = document.getElementById('expopts');
+const expOut = document.getElementById('expout');
+const expStatus = document.getElementById('expStatus');
+
+function optRow(key){
+  const defs = {
+    width:   {l:'Width', min:120, max:2160, step:20, dec:0, unit:'px'},
+    time:    {l:'Frame at (share of the intro)', min:0, max:1, step:0.01, dec:2},
+    length:  {l:'Length', min:500, max:12000, step:100, dec:0, unit:'ms'},
+    fps:     {l:'Frames per second', min:6, max:30, step:1, dec:0},
+    colours: {l:'Colours', min:8, max:255, step:1, dec:0}
+  };
+  if (key === 'bg'){
+    const box = document.createElement('div');
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = '<label>Background</label>';
+    const seg = document.createElement('div'); seg.className = 'seg';
+    [['transparent','None'],['#000000','Black'],['#ffffff','White']].forEach(([v, l]) => {
+      const b = document.createElement('button'); b.textContent = l;
+      b.classList.toggle('on', E.bg === v);
+      b.onclick = () => { E.bg = v; [...seg.children].forEach(x => x.classList.toggle('on', x === b)); };
+      seg.appendChild(b);
+    });
+    row.appendChild(seg); box.appendChild(row);
+    if (curFmt === 'mp4' || curFmt === 'gif'){
+      const h = document.createElement('div'); h.className = 'hint tight';
+      h.textContent = curFmt === 'mp4'
+        ? 'MP4 carries no alpha — None renders as black.'
+        : 'GIF alpha is one bit: a pixel is either there or gone. A feathered reveal needs a real background, so None will show hard edges.';
+      box.appendChild(h);
+    }
+    return box;
+  }
+  if (key === 'embed'){
+    const box = document.createElement('div');
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = '<label>Embed the media in the file</label>';
+    const t = document.createElement('div');
+    const paint = () => t.className = 'toggle' + (E.embed ? ' on' : '');
+    t.onclick = () => { E.embed = E.embed ? 0 : 1; paint(); };
+    paint(); row.appendChild(t); box.appendChild(row);
+    const h = document.createElement('div'); h.className = 'hint tight';
+    h.textContent = 'On: one self-contained file, larger. Off: the page expects the media beside it.';
+    box.appendChild(h);
+    return box;
+  }
+  const d = defs[key];
+  const box = document.createElement('div');
+  const row = document.createElement('div'); row.className = 'row';
+  const lab = document.createElement('label'); lab.textContent = d.l;
+  const num = document.createElement('input'); num.className = 'val'; num.type = 'text';
+  row.append(lab, num);
+  const sl = document.createElement('input');
+  sl.type = 'range'; sl.min = d.min; sl.max = d.max; sl.step = d.step;
+  const sr = document.createElement('div'); sr.className = 'slider-row'; sr.appendChild(sl);
+  const fmt = v => (d.dec === 0 ? Math.round(v) : (+v).toFixed(d.dec)) + (d.unit || '');
+  const sync = () => { sl.value = E[key]; num.value = fmt(E[key]); };
+  sl.oninput = () => { E[key] = +sl.value; num.value = fmt(E[key]); };
+  num.onchange = () => { const v = parseFloat(num.value); if (!isNaN(v)) E[key] = Math.min(d.max, Math.max(d.min, v)); sync(); };
+  sync();
+  box.append(row, sr);
+  return box;
+}
+function buildExportPanel(){
+  expOpts.innerHTML = '';
+  for (const k of EXPORTS[curFmt].opts) expOpts.appendChild(optRow(k));
+  if (!EXPORTS[curFmt].opts.length){
+    const d = document.createElement('div'); d.className = 'hint full';
+    d.textContent = 'Two files: the Metal shader and the Swift view. Copy code copies whichever tab is showing; Download saves both.';
+    expOpts.appendChild(d);
+  }
+  expOut.innerHTML = '';
+  lastBlob = null;
+  const run = document.getElementById('btnRun');
+  run.textContent = curFmt === 'swift' || curFmt === 'html' ? 'Generate' : 'Render';
+  document.getElementById('btnGrab').disabled = true;
+  document.getElementById('btnCopyCode').style.display = (curFmt === 'swift' || curFmt === 'html') ? '' : 'none';
+  expStatus.textContent = '';
+  if (curFmt === 'swift') showSwift();
+}
+let swiftTab = 'metal';
+function showSwift(){
+  expOut.innerHTML = '';
+  const bar = document.createElement('div'); bar.className = 'btnrow'; bar.style.padding = 'var(--space-3) var(--space-4) 0';
+  ['metal','swift','usage'].forEach(t => {
+    const b = document.createElement('button');
+    b.textContent = t === 'metal' ? 'DepthReveal.metal' : t === 'swift' ? 'DepthReveal.swift' : 'How to use';
+    b.classList.toggle('on', swiftTab === t);
+    if (swiftTab === t){ b.style.background = 'var(--active)'; }
+    b.onclick = () => { swiftTab = t; showSwift(); };
+    bar.appendChild(b);
+  });
+  const pre = document.createElement('pre');
+  pre.textContent = swiftTab === 'metal' ? metalSource() : swiftTab === 'swift' ? swiftSource() : USAGE;
+  expOut.append(bar, pre);
+  document.getElementById('btnGrab').disabled = false;
+}
+document.getElementById('expside').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...e.currentTarget.children].forEach(x => x.classList.toggle('on', x === b));
+  curFmt = b.dataset.f;
+  buildExportPanel();
+};
+document.getElementById('btnExport').onclick = () => {
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('expside').style.display = '';
+  document.getElementById('expopts').style.display = '';
+  document.getElementById('btnRun').style.display = '';
+  document.getElementById('btnGrab').style.display = '';
+  buildExportPanel();
+};
+document.getElementById('btnCloseSheet').onclick = () => document.getElementById('sheet').classList.remove('open');
+document.getElementById('sheet').addEventListener('click', e => {
+  if (e.target.id === 'sheet') e.currentTarget.classList.remove('open');
+});
+document.getElementById('btnCopyCode').onclick = () => {
+  const pre = expOut.querySelector('pre');
+  if (!pre) return toast('Generate it first');
+  navigator.clipboard.writeText(pre.textContent); toast('Copied');
+};
+
+/* --- offscreen deterministic rendering ---------------------------------
+   A frame-by-frame export has to STOP the video first. Left playing, every
+   seek is overtaken before the frame is read and the export comes out as a
+   handful of unrelated moments. So: pause, seek, wait for the frame to be
+   presented, read, and hand playback back when the export is done. */
+let resumeAfterExport = false;
+function holdVideo(){
+  resumeAfterExport = false;
+  if (isVideo && media && !media.paused){ resumeAfterExport = true; media.pause(); }
+}
+function releaseVideo(){
+  if (resumeAfterExport && media){ media.play().catch(() => {}); }
+  resumeAfterExport = false;
+}
+async function seekMedia(tSec){
+  if (!isVideo || !media) return;
+  if (!media.paused) media.pause();
+  const dur = media.duration || 0;
+  const target = Math.min(Math.max(0, tSec), Math.max(0, dur - 0.04));
+  await new Promise(res => {
+    let settled = false;
+    const finish = () => { if (!settled){ settled = true; res(); } };
+    // requestVideoFrameCallback fires once the frame is actually presented,
+    // which 'seeked' does not promise.
+    if (media.requestVideoFrameCallback) media.requestVideoFrameCallback(() => finish());
+    const onSeeked = () => { media.removeEventListener('seeked', onSeeked); setTimeout(finish, 0); };
+    media.addEventListener('seeked', onSeeked);
+    try {
+      if (Math.abs(media.currentTime - target) < 0.001) { finish(); return; }
+      media.currentTime = target;
+    } catch (e) { finish(); }
+    setTimeout(finish, 600);
+  });
+}
+function renderOffscreen(w, h, elapsedS){
+  offR.canvas.width = w; offR.canvas.height = h;
+  offR.upload(media);
+  const introV = Math.min(1, S.duration > 0 ? elapsedS * 1000 / S.duration : 1);
+  offR.draw(uniformsFor(introV, elapsedS, elapsedS), palFlat(), 0);
+}
+function composite(w, h, bg){
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  if (bg !== 'transparent'){ x.fillStyle = bg; x.fillRect(0, 0, w, h); }
+  x.drawImage(offR.canvas, 0, 0);
+  return c;
+}
+function exportSize(){
+  const [aw, ah] = canvasAspect();
+  const w = Math.round(E.width / 2) * 2;
+  return [w, Math.round(w * ah / aw / 2) * 2];
+}
+function setBlob(blob, name, previewURL){
+  lastBlob = blob; lastName = name;
+  document.getElementById('btnGrab').disabled = false;
+  expStatus.textContent = name + ' · ' + (blob.size / 1024 > 1024
+    ? (blob.size / 1048576).toFixed(1) + ' MB' : Math.round(blob.size / 1024) + ' KB');
+  expOut.innerHTML = '';
+  const wrap = document.createElement('div'); wrap.className = 'drop-preview';
+  if (previewURL){
+    const img = document.createElement('img'); img.src = previewURL; wrap.appendChild(img);
+  } else {
+    const v = document.createElement('video');
+    v.src = URL.createObjectURL(blob); v.controls = true; v.loop = true; v.muted = true;
+    v.style.cssText = 'max-width:100%;max-height:46vh;border-radius:4px';
+    wrap.appendChild(v); v.play().catch(()=>{});
+  }
+  expOut.appendChild(wrap);
+}
+function progress(pct, text){
+  expStatus.textContent = text || '';
+  let bar = expOut.querySelector('.bar');
+  if (!bar){
+    expOut.innerHTML = '<div style="padding:var(--space-4)"><div class="meta">Rendering…</div><div class="bar"><i></i></div></div>';
+    bar = expOut.querySelector('.bar');
+  }
+  bar.querySelector('i').style.width = Math.round(pct * 100) + '%';
+}
+
+document.getElementById('btnRun').onclick = async () => {
+  const btn = document.getElementById('btnRun');
+  btn.disabled = true;
+  const wasPlaying = playing; playing = false;
+  if (curFmt === 'png' || curFmt === 'gif') holdVideo();
+  try {
+    if (curFmt === 'png')  await exportPNG();
+    if (curFmt === 'gif')  await exportGIF();
+    if (curFmt === 'mp4')  await exportVideo();
+    if (curFmt === 'html') exportHTML();
+    if (curFmt === 'swift') showSwift();
+  } catch (err){
+    console.error(err);
+    toast('That export failed — ' + (err && err.message ? err.message : 'unknown error'));
+    expStatus.textContent = '';
+  }
+  releaseVideo();
+  playing = wasPlaying;
+  btn.disabled = false;
+};
+
+async function exportPNG(){
+  const [w, h] = exportSize();
+  const t = E.time * S.duration / 1000;
+  await seekMedia(t);
+  renderOffscreen(w, h, t);
+  const c = composite(w, h, E.bg);
+  const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  setBlob(blob, 'depth-reveal.png', c.toDataURL('image/png'));
+}
+
+async function exportGIF(){
+  const [w0, h0] = exportSize();
+  const w = Math.min(w0, 800), h = Math.round(h0 * w / w0);
+  const n = Math.max(2, Math.round(E.length / 1000 * E.fps));
+  const frames = [];
+  const scratch = document.createElement('canvas');
+  scratch.width = w; scratch.height = h;
+  const sx = scratch.getContext('2d', {willReadFrequently:true});
+  for (let i = 0; i < n; i++){
+    const t = i / E.fps;
+    await seekMedia(t);
+    renderOffscreen(w, h, t);
+    sx.clearRect(0, 0, w, h);
+    if (E.bg !== 'transparent'){ sx.fillStyle = E.bg; sx.fillRect(0, 0, w, h); }
+    sx.drawImage(offR.canvas, 0, 0);
+    frames.push(sx.getImageData(0, 0, w, h).data);
+    progress(i / n * 0.7, 'frame ' + (i + 1) + ' / ' + n);
+    await new Promise(r => setTimeout(r, 0));
+  }
+  progress(0.8, 'quantising…');
+  await new Promise(r => setTimeout(r, 10));
+  const bytes = encodeGIF(frames, w, h, Math.max(2, Math.round(100 / E.fps)),
+                          E.colours, E.bg === 'transparent');
+  const blob = new Blob([bytes], {type:'image/gif'});
+  setBlob(blob, 'depth-reveal.gif', URL.createObjectURL(blob));
+}
+
+async function exportVideo(){
+  const [w, h] = exportSize();
+  const types = ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+  const mime = types.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+  if (!mime) throw new Error('this browser cannot record video');
+  const ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
+  if (ext === 'webm') toast('This browser records WebM, not MP4 — Chrome exports MP4');
+
+  offR.canvas.width = w; offR.canvas.height = h;
+  const stream = offR.canvas.captureStream(E.fps);
+  const rec = new MediaRecorder(stream, {mimeType:mime, videoBitsPerSecond: Math.round(w * h * E.fps * 0.12)});
+  const chunks = [];
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  const done = new Promise(res => rec.onstop = res);
+
+  if (isVideo && media){ try { media.currentTime = 0; await media.play(); } catch (e) {} }
+  rec.start();
+  const t0 = performance.now();
+  await new Promise(res => {
+    const step = now => {
+      const el = (now - t0) / 1000;
+      if (el * 1000 >= E.length){ res(); return; }
+      offR.upload(media);
+      const introV = Math.min(1, S.duration > 0 ? el * 1000 / S.duration : 1);
+      offR.draw(uniformsFor(introV, el, el), palFlat(), 0);
+      progress(el * 1000 / E.length, Math.round(el * 1000) + ' / ' + E.length + 'ms');
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+  rec.stop();
+  await done;
+  const blob = new Blob(chunks, {type:mime});
+  setBlob(blob, 'depth-reveal.' + ext, null);
+}
+
+function exportHTML(){
+  const finish = uri => {
+    const html = htmlSource(uri);
+    const blob = new Blob([html], {type:'text/html'});
+    lastBlob = blob; lastName = 'depth-reveal.html';
+    document.getElementById('btnGrab').disabled = false;
+    expStatus.textContent = lastName + ' · ' + Math.round(blob.size / 1024) + ' KB';
+    expOut.innerHTML = '';
+    const pre = document.createElement('pre');
+    pre.textContent = uri && uri.length > 400
+      ? html.replace(uri, '[' + Math.round(uri.length / 1365) + ' KB of media, inlined]')
+      : html;
+    expOut.appendChild(pre);
+  };
+  if (E.embed && mediaFile){
+    const fr = new FileReader();
+    fr.onload = () => finish(fr.result);
+    fr.readAsDataURL(mediaFile);
+  } else {
+    finish('');
+  }
+}
+
+document.getElementById('btnGrab').onclick = () => {
+  if (curFmt === 'swift'){
+    download('DepthReveal.metal', new Blob([metalSource()], {type:'text/plain'}));
+    setTimeout(() => download('DepthReveal.swift', new Blob([swiftSource()], {type:'text/plain'})), 250);
+    return toast('Both files downloaded');
+  }
+  if (!lastBlob) return toast('Render it first');
+  download(lastName, lastBlob);
+};
+function download(name, blob){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 8000);
+}
+
+const USAGE = `HOW TO USE THE SWIFT EXPORT
+--------------------------------------------------------------
+
+1.  Add both files to your Xcode target:
+        DepthReveal.metal
+        DepthReveal.swift
+    No build-phase setup needed - SwiftUI's ShaderLibrary finds
+    [[stitchable]] functions in the app's default Metal library.
+    Minimum deployment: iOS 17 / macOS 14 / tvOS 17.
+
+2.  Simplest use - stage 1 plays once, stage 2 keeps sweeping:
+
+        DepthRevealPlayer {
+            Image("hero").resizable().scaledToFill()
+        }
+
+3.  THE TWO STAGES ARE SEPARATE IN THE CODE.
+
+        DepthRevealIntro.progress(at:)  -> stage 1, eased, clamps at 1
+        DepthRevealLoop.phase(sinceIntro:introDuration:)
+                                        -> stage 2, repeats forever, on
+                                           stage 1's duration and easing
+
+    Intro only (no loading loop):   loop.enabled = false
+    Loop only (content already up): intro: 1, and the phase call above
+    Your own clock:
+
+        myView.depthReveal(intro: introProgress,
+                           loopPhase: loopProgress,
+                           time: seconds,
+                           look: look, loop: loop)
+
+4.  VIDEO
+    Wrap a VideoPlayer the same way - layerEffect rasterises whatever it
+    wraps, frame by frame. To freeze on the last frame set the player's
+    actionAtItemEnd to .pause.
+
+5.  Nothing in this effect displaces the media. Turbulence, feather and
+    mask blur act on the reveal mask only, so the photo or video never
+    warps - it just becomes visible.
+
+6.  WHAT ANIMATES ON ITS OWN
+    gradDrift and hueDrift are multiplied by the stage-1 progress, so they
+    move across the intro with no work from you. turbEvolve runs on wall
+    time. hueShift, gradOffset, gradScale, contrast and bias are static
+    offsets - animate them yourself if you want them moving.
+
+7.  The gradient palette is flat r,g,b,position quads:
+
+        look.palette = [0,0,0.02,0.0,  0.9,0.2,0.5,0.5,  1,1,0.9,1.0]
+
+8.  USING A REAL MATTE INSTEAD OF THE FAKE DEPTH
+    Swap the LUMA() macro for a sample of a real mask:
+      - AVDepthData / kCGImageAuxiliaryDataTypeDisparity gives true depth
+        out of any portrait photo, with no ML at all.
+      - VNGenerateForegroundInstanceMaskRequest (iOS 17) cuts the subject
+        on device, no cloud, no key, in a few milliseconds.
+    Blend the mask with the luma map rather than replacing it - a hard
+    cut-out on its own makes the reveal look like two flat layers.
+`;
+
+/* =====================================================================
+   12b. KEYBOARD — FIELD's map, as far as it applies here.
+   ===================================================================== */
+
+const KEYS = [
+  {group:'Playback', items:[
+    {keys:'Space', does:'Play or pause'},
+    {keys:'L', does:'Loop the sweep on or off'},
+    {keys:'Left · Right', does:'One step back or forward through the intro'},
+    {keys:'Shift + Left · Right', does:'Ten steps'},
+    {keys:'Home · End', does:'To the start or the end of the intro'},
+    {keys:'R', does:'Restart from the top'}
+  ]},
+  {group:'The work', items:[
+    {keys:'Ctrl/Cmd + Z', does:'Undo'},
+    {keys:'Ctrl/Cmd + Shift + Z', does:'Redo'},
+    {keys:'Ctrl/Cmd + S', does:'Save the preset, and say whether it landed'},
+    {keys:'Shift while dragging a value', does:'Ten times the stride'},
+    {keys:'Shift while dragging the dial', does:'Snap to 15°'}
+  ]},
+  {group:'View', items:[
+    {keys:'~', does:'Full screen — hide the panel'},
+    {keys:'M', does:'Show or hide the solo panel'},
+    {keys:'E', does:'Open Export'},
+    {keys:'Escape', does:'Close what is open'},
+    {keys:'?', does:'This sheet'}
+  ]}
+];
+function shortcutSheet(){
+  const s = document.getElementById('sheet');
+  s.classList.add('open');
+  document.getElementById('expside').style.display = 'none';
+  document.getElementById('expopts').style.display = 'none';
+  document.getElementById('btnRun').style.display = 'none';
+  document.getElementById('btnGrab').style.display = 'none';
+  document.getElementById('btnCopyCode').style.display = 'none';
+  expStatus.textContent = 'Keyboard';
+  expOut.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-4)';
+  for (const g of KEYS){
+    const h = document.createElement('div');
+    h.style.cssText = 'font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)';
+    h.textContent = g.group;
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--space-2);margin-top:var(--space-2)';
+    for (const it of g.items){
+      const box = document.createElement('div');
+      box.style.cssText = 'border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:var(--space-3)';
+      const keys = document.createElement('div');
+      keys.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:6px';
+      it.keys.split(' · ').forEach((alt, i) => {
+        if (i){
+          const or = document.createElement('span');
+          or.style.cssText = 'color:var(--text-3);font-size:10px'; or.textContent = 'or';
+          keys.appendChild(or);
+        }
+        alt.split(' + ').forEach(part => {
+          const isKey = part.trim().split(/\s+/).length <= 2 && !/^(while|then|on)\b/i.test(part);
+          const el = document.createElement(isKey ? 'kbd' : 'span');
+          el.textContent = part;
+          el.style.cssText = isKey
+            ? 'font-family:var(--font-mono);font-size:11px;border:1px solid var(--border);border-bottom-width:2px;border-radius:4px;padding:1px 6px;background:var(--bg-app)'
+            : 'color:var(--text-2);font-size:11px';
+          keys.appendChild(el);
+        });
+      });
+      const does = document.createElement('div');
+      does.style.cssText = 'color:var(--text-2);font-size:12px';
+      does.textContent = it.does;
+      box.append(keys, does);
+      grid.appendChild(box);
+    }
+    const sec = document.createElement('div');
+    sec.append(h, grid);
+    wrap.appendChild(sec);
+  }
+  expOut.appendChild(wrap);
+}
+function closeSheet(){
+  document.getElementById('sheet').classList.remove('open');
+  document.getElementById('expside').style.display = '';
+  document.getElementById('expopts').style.display = '';
+  document.getElementById('btnRun').style.display = '';
+  document.getElementById('btnGrab').style.display = '';
+}
+document.getElementById('btnKeys').onclick = shortcutSheet;
+document.getElementById('btnCloseSheet').onclick = closeSheet;
+document.getElementById('sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
+
+let fullscreen = false;
+window.addEventListener('keydown', e => {
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
+  const meta = e.ctrlKey || e.metaKey;
+
+  if (meta && e.key.toLowerCase() === 'z'){
+    e.preventDefault(); e.shiftKey ? redo() : undo(); return;
+  }
+  if (meta && e.key.toLowerCase() === 's'){
+    e.preventDefault();
+    localStorage.setItem('depthReveal', JSON.stringify(S));
+    toast('Saved to this browser'); return;
+  }
+  if (e.key === 'Escape'){ closeSheet(); return; }
+  if (typing || meta) return;
+
+  const step = e.shiftKey ? 0.1 : 0.01;
+  switch (e.key){
+    case ' ': e.preventDefault(); btnPlay.click(); break;
+    case 'ArrowLeft':  playing = false; btnPlay.innerHTML = '&#x25b6;'; setIntro(introT - step); break;
+    case 'ArrowRight': playing = false; btnPlay.innerHTML = '&#x25b6;'; setIntro(introT + step); break;
+    case 'Home': playing = false; btnPlay.innerHTML = '&#x25b6;'; setIntro(0); break;
+    case 'End':  playing = false; btnPlay.innerHTML = '&#x25b6;'; setIntro(1); break;
+    case 'l': case 'L':
+      S.loopOn = S.loopOn > 0.5 ? 0 : 1; syncPanel();
+      toast('Loop ' + (S.loopOn ? 'on' : 'off')); break;
+    case 'r': case 'R': restart(); break;
+    case 'm': case 'M':
+      S.showMask = S.showMask > 0.5 ? 0 : 1; layout(); syncPanel(); break;
+    case 'e': case 'E':
+      document.getElementById('btnExport').click(); break;
+    case '~': case '`':
+      fullscreen = !fullscreen;
+      document.getElementById('panel').style.display = fullscreen ? 'none' : '';
+      document.querySelector('.app').style.gridTemplateColumns = fullscreen ? '1fr' : '';
+      setTimeout(() => { layout(); curveResize(); }, 0);
+      break;
+    case '?': shortcutSheet(); break;
+  }
+});
+function setIntro(v){
+  introT = Math.min(1, Math.max(0, v));
+  elapsed = introT * S.duration / 1000;
+  scrub.value = Math.round(introT * 1000);
+}
+
+/* =====================================================================
+   13. BOOT
+   ===================================================================== */
+
+btnPlay.innerHTML = playing ? '&#x2759;&#x2759;' : '&#x25b6;';
+buildPanel();
+setMedia(placeholder(), 900, 1200, false, 'placeholder');
+curveResize();
+requestAnimationFrame(render);
+
+/* The default clip sits beside this page. Where it cannot be fetched — the
+   file opened on its own, or a build that carries the clip inline instead —
+   we fall back, and last of all the procedural placeholder above stays. */
+function defaultMedia(){
+  if (window.DEFAULT_MEDIA) loadVideoURL(window.DEFAULT_MEDIA, 'default.mp4', null);
+}
+fetch('default.mp4', {method:'HEAD'})
+  .then(r => { r.ok ? loadVideoURL('default.mp4', 'default.mp4', null) : defaultMedia(); })
+  .catch(defaultMedia);
+</script>
+</body>
+</html>
