@@ -369,14 +369,25 @@ const SHADER_BODY = `
   vec2 suv = clamp((uv - 0.5) * uCover + 0.5, 0.0, 1.0);
 
   // ---- 1. mask: luminance depth map, blurred, levelled ----------------
+  // A disc of taps on the golden angle, not a cross. Nine taps arranged on
+  // the axes and diagonals leave their own shape in the result - at any real
+  // radius it reads as a texture laid over the mask rather than as softness.
+  // Sixteen taps spiralled by 137.5 degrees, spaced by sqrt so they cover the
+  // disc evenly, blur without a direction of their own.
   float d;
   if (uSoft > 0.01) {
     vec2 r = uSoft / uSize;
-    d  = LUMA(suv) * 0.25;
-    d += (LUMA(suv + vec2(r.x, 0.0)) + LUMA(suv - vec2(r.x, 0.0)) +
-          LUMA(suv + vec2(0.0, r.y)) + LUMA(suv - vec2(0.0, r.y))) * 0.125;
-    d += (LUMA(suv + r) + LUMA(suv - r) +
-          LUMA(suv + vec2(r.x, -r.y)) + LUMA(suv + vec2(-r.x, r.y))) * 0.0625;
+    d = LUMA(suv);
+    float wsum = 1.0;
+    for (int i = 0; i < 16; i++){
+      float fi = float(i) + 0.5;
+      float ang = fi * 2.3999632;
+      float rad = sqrt(fi / 16.0);
+      float wt = 1.0 - rad * 0.55;
+      d += LUMA(suv + vec2(cos(ang), sin(ang)) * rad * r) * wt;
+      wsum += wt;
+    }
+    d /= wsum;
   } else {
     d = LUMA(suv);
   }
@@ -401,6 +412,12 @@ const SHADER_BODY = `
   // ---- 3. threshold field, with turbulence on the LINE only -----------
   float nz = fbm(uv * uTurbScale, uTurbDetail, uTurbEvolve * uTime) - 0.5;
   float field = clamp(mix(band, d, uMapMix) + nz * uTurbAmt, 0.0, 1.0);
+
+  // Stretch the field onto its own measured range, so progress 0 is the
+  // first pixel and progress 1 is the last. Without this the reveal sits
+  // dead at both ends: mixing the line with a photograph's luminance almost
+  // never produces a true 0 or a true 1 anywhere in the frame.
+  field = clamp((field - uFieldLo) / max(0.0001, uFieldHi - uFieldLo), 0.0, 1.0);
 
   // ---- 4. stage 1: alpha reveal, dark before light --------------------
   float f1 = max(uFeather, 0.002);
@@ -447,7 +464,12 @@ const SHADER_BODY = `
   // ---- 8. stage 2: the same line, as a repeating light pass -----------
   float sw = 0.0;
   float halfW = max(uSweepW, 0.002);
-  if (uSweepIntro > 0.5) sw = max(sw, 1.0 - smoothstep(0.0, halfW, abs(field - front)));
+  // In the intro the line rides just AHEAD of the reveal front, so it reads
+  // as leading the image in rather than sitting on top of what has already
+  // arrived. It is the same line the loop repeats, at the same width,
+  // opacity and colour.
+  if (uSweepIntro > 0.5)
+    sw = max(sw, 1.0 - smoothstep(0.0, halfW, abs(field - (front + halfW * 0.6))));
   if (uLoopOn > 0.5) {
     float lfront = mix(-halfW, 1.0 + halfW, uLoopPhase);
     sw = max(sw, 1.0 - smoothstep(0.0, halfW, abs(field - lfront)));
@@ -490,6 +512,7 @@ uniform vec2  uSize, uCover;
 uniform float uIntro, uLoopPhase, uTime, uDebug;
 uniform float uAngle, uInvert, uContrast, uBias, uSoft, uMapMix;
 uniform float uBandShape, uBandCX, uBandCY, uBandFlip;
+uniform float uFieldLo, uFieldHi;
 uniform float uFeather, uHold, uRealFeather;
 uniform float uTurbAmt, uTurbScale, uTurbDetail, uTurbEvolve;
 uniform float uSteps, uCyclic, uGradOffset, uGradScale, uGradDrift;
@@ -664,7 +687,7 @@ const DEFAULTS = {
   // the line's geometry
   angle:0, bandShape:0, bandCX:0.5, bandCY:0.5, bandFlip:0,
   // the line's edge
-  feather:0.16,
+  feather:0.16, fillTimeline:1,
   turbOn:1, turbAmt:0.07, turbScale:3.0, turbDetail:3.0, turbEvolve:0.2,
   // colour
   gradOffset:0, gradScale:1, gradDrift:0.15, cyclic:1,
@@ -704,6 +727,8 @@ const SPEC = [
     {k:'bandCY',    l:'Centre Y', min:0, max:1, step:0.005, dec:3, solo:4, showIf:s => s.bandShape > 0.5},
     {k:'bandFlip',  l:'Reverse', type:'toggle', solo:4},
     {k:'feather',   l:'Feather', min:0.005, max:1, step:0.005, dec:3, solo:3},
+    {k:'fillTimeline', l:'Use the whole timeline', type:'toggle', solo:2,
+     help:'Stretches the mask onto its own measured range, so the first pixel appears on frame one and the last lands exactly at the end. Off, a photograph whose luminance never reaches black or white leaves the screen empty for a moment at each end.'},
     {type:'group', k:'turbOn', l:'Turbulence', solo:5,
      help:'Wobbles the line. It does not displace the mask or the media.', items:[
       {k:'turbAmt',    l:'Amount', min:0, max:0.5, step:0.001, dec:3, solo:5},
@@ -1381,7 +1406,7 @@ function syncPanel(){
 
 const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let playing = !calm, introT = calm ? 1 : 0, elapsed = calm ? 9 : 0;
-let lastNow = performance.now(), clock = 0;
+let lastNow = performance.now(), clock = 0, exporting = false;
 
 const scrub = document.getElementById('scrub');
 const tnum = document.getElementById('tnum');
@@ -1427,9 +1452,34 @@ function loopPhase(t){
   if (inCycle >= dur) return 1;
   return easeAt(inCycle / dur);
 }
-function uniformsFor(introV, elapsedS, clockS){
+/* The field's real range, measured off the GPU rather than guessed: render
+   the field to a 64x64 buffer, read it back, and take the half-percentiles.
+   Guessing from the media's luminance alone is wrong, because the field is
+   the line and the map together and their extremes rarely coincide. */
+let fieldLo = 0, fieldHi = 1, lastMeasure = -1e9;
+function measureField(){
+  if (!media || !offR) return;
+  try {
+    const N = 64;
+    offR.canvas.width = N; offR.canvas.height = N;
+    offR.upload(media);
+    offR.draw(uniformsFor(introT, elapsed, clock, true), palFlat(), 2);
+    const g = offR.gl, px = new Uint8Array(N * N * 4);
+    g.readPixels(0, 0, N, N, g.RGBA, g.UNSIGNED_BYTE, px);
+    const vals = new Array(N * N);
+    for (let i = 0, j = 0; i < px.length; i += 4, j++) vals[j] = px[i] / 255;
+    vals.sort((a, b) => a - b);
+    const lo = vals[Math.floor(vals.length * 0.005)];
+    const hi = vals[Math.floor(vals.length * 0.995)];
+    if (hi - lo > 0.04){ fieldLo = lo; fieldHi = hi; }
+    else { fieldLo = 0; fieldHi = 1; }
+  } catch (e) { fieldLo = 0; fieldHi = 1; }
+}
+
+function uniformsFor(introV, elapsedS, clockS, raw){
   const [aw, ah] = canvasAspect();
   const refPts = Math.max(1, parseFloat(main.canvas.style.width) || 400);
+  const fill = !raw && S.fillTimeline > 0.5;
   return {
     cover: coverScale(aw, ah),
     sweepCol: hexToRgb(S.sweepCol),
@@ -1440,6 +1490,7 @@ function uniformsFor(introV, elapsedS, clockS){
       uTime: clockS,
       uAngle: S.angle * Math.PI / 180,
       uBandShape: S.bandShape, uBandCX: S.bandCX, uBandCY: S.bandCY, uBandFlip: S.bandFlip,
+      uFieldLo: fill ? fieldLo : 0, uFieldHi: fill ? fieldHi : 1,
       uInvert: S.invert, uContrast: S.contrast, uBias: S.bias,
       uMapMix: S.mapMix, uFeather: S.feather,
       uHold: S.hold, uRealFeather: S.realFeather,
@@ -1473,6 +1524,7 @@ function render(){
   }
   tnum.textContent = Math.round(introT * S.duration) + ' / ' + Math.round(S.duration) + 'ms';
   if (isVideo && media && media.readyState >= 2) uploadFrame();
+  if (!exporting && now - lastMeasure > 250){ lastMeasure = now; measureField(); }
   const uni = uniformsFor(introT, elapsed, clock), pal = palFlat();
   main.draw(uni, pal, debugMode);
   if (S.showMask > 0.5 && maskR) maskR.draw(uni, pal, soloMode);
@@ -1628,7 +1680,7 @@ ${toMSL(SHADER_HELPERS)}
     float4 c1,         // maskBlur, mapMix, feather, hold
     float4 c2,         // handoffFeather, turbAmount, turbScale, turbDetail
     float4 c3,         // turbEvolve, steps, cyclic, gradDrift
-    float4 c4,         // gradOffset, gradScale, unused, unused
+    float4 c4,         // gradOffset, gradScale, fieldLo, fieldHi
     float4 c5,         // lineWidth, lineOpacity, lineInIntro, loopEnabled
     float4 c6,         // bandShape (0 linear, 1 radial), centreX, centreY, reverse
     float4 lineColour,
@@ -1660,6 +1712,8 @@ ${toMSL(SHADER_HELPERS)}
   float uGradDrift  = c3.w;
   float uGradOffset = c4.x;
   float uGradScale  = c4.y;
+  float uFieldLo    = c4.z;
+  float uFieldHi    = c4.w;
   float uSweepW     = c5.x;
   float uSweepOp    = c5.y;
   float uSweepIntro = c5.z;
@@ -1716,6 +1770,14 @@ struct DepthRevealLook {
 
     // The line: the shape of the moving edge.
     var feather: Float      = ${fmtF(S.feather)}
+
+    /// The mask's measured range, so progress 0 is the first pixel and
+    /// progress 1 is the last. These two were measured off the media you had
+    /// loaded in the studio; for a different image, measure again or set them
+    /// to 0 and 1 to switch the stretch off.
+    var fieldLo: Float      = ${fmtF(S.fillTimeline > 0.5 ? fieldLo : 0)}
+    var fieldHi: Float      = ${fmtF(S.fillTimeline > 0.5 ? fieldHi : 1)}
+
     var turbAmount: Float   = ${fmtF(S.turbOn > 0.5 ? S.turbAmt : 0)}    // wobble on the LINE, not the media
     var turbScale: Float    = ${fmtF(S.turbScale)}
     var turbDetail: Float   = ${fmtF(S.turbDetail)} // octaves, 1...6
@@ -1814,7 +1876,7 @@ struct DepthRevealEffect: ViewModifier {
                     .float4(look.maskBlur, look.mapMix, look.feather, introParams.hold),
                     .float4(introParams.handoffFeather, look.turbAmount, look.turbScale, look.turbDetail),
                     .float4(look.turbEvolve, look.steps, look.cyclic, look.gradDrift),
-                    .float4(look.gradOffset, look.gradScale, 0, 0),
+                    .float4(look.gradOffset, look.gradScale, look.fieldLo, look.fieldHi),
                     .float4(loop.width, loop.opacity, loop.showInIntro ? 1 : 0, loop.enabled ? 1 : 0),
                     .float4(look.shape, look.centre.x, look.centre.y, look.reverse),
                     .float4(loop.colour.x, loop.colour.y, loop.colour.z, 1),
@@ -2122,11 +2184,12 @@ function encodeGIF(frames, w, h, delayCs, maxColors, transparent){
 const EXPORTS = {
   png:  {label:'PNG',  opts:['width','time','bg'],                       ext:'png'},
   gif:  {label:'GIF',  opts:['width','length','fps','colours','bg'],     ext:'gif'},
-  mp4:  {label:'MP4',  opts:['width','length','fps','bg'],               ext:'mp4'},
+  mp4:  {label:'MP4',  opts:['width','length','vfps','mbps','bg'],       ext:'mp4'},
   html: {label:'HTML', opts:['embed'],                                   ext:'html'},
   swift:{label:'Swift',opts:[],                                          ext:'swift'}
 };
-const E = {width:1080, time:0.55, length:4000, fps:15, colours:128, bg:'#000000', embed:1};
+const E = {width:1080, time:0.55, length:4000, fps:12, vfps:30, mbps:24,
+           colours:128, bg:'#000000', embed:1};
 let curFmt = 'png', lastBlob = null, lastName = '';
 
 const expOpts = document.getElementById('expopts');
@@ -2139,6 +2202,8 @@ function optRow(key){
     time:    {l:'Frame at (share of the intro)', min:0, max:1, step:0.01, dec:2},
     length:  {l:'Length', min:500, max:12000, step:100, dec:0, unit:'ms'},
     fps:     {l:'Frames per second', min:6, max:30, step:1, dec:0},
+    vfps:    {l:'Frames per second', min:12, max:60, step:1, dec:0},
+    mbps:    {l:'Bitrate', min:2, max:80, step:1, dec:0, unit:' Mbps'},
     colours: {l:'Colours', min:8, max:255, step:1, dec:0}
   };
   if (key === 'bg'){
@@ -2334,6 +2399,7 @@ document.getElementById('btnRun').onclick = async () => {
   const btn = document.getElementById('btnRun');
   btn.disabled = true;
   const wasPlaying = playing; playing = false;
+  exporting = true;                     // the measure pass shares offR
   if (curFmt === 'png' || curFmt === 'gif') holdVideo();
   try {
     if (curFmt === 'png')  await exportPNG();
@@ -2347,6 +2413,7 @@ document.getElementById('btnRun').onclick = async () => {
     expStatus.textContent = '';
   }
   releaseVideo();
+  exporting = false;
   playing = wasPlaying;
   btn.disabled = false;
 };
@@ -2397,26 +2464,38 @@ async function exportVideo(){
   if (ext === 'webm') toast('This browser records WebM, not MP4 — Chrome exports MP4');
 
   offR.canvas.width = w; offR.canvas.height = h;
-  const stream = offR.canvas.captureStream(E.fps);
-  const rec = new MediaRecorder(stream, {mimeType:mime, videoBitsPerSecond: Math.round(w * h * E.fps * 0.12)});
+  const stream = offR.canvas.captureStream(E.vfps);
+  // A soft gradient reveal is exactly what a low bitrate destroys - it bands
+  // and then smears. This is deliberately generous; the file is meant to be
+  // looked at, not streamed.
+  const rec = new MediaRecorder(stream, {
+    mimeType: mime,
+    videoBitsPerSecond: Math.round(E.mbps * 1e6)
+  });
   const chunks = [];
   rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
   const done = new Promise(res => rec.onstop = res);
 
+  if (document.hidden) toast('Keep this tab in front while it records');
   if (isVideo && media){ try { media.currentTime = 0; await media.play(); } catch (e) {} }
   rec.start();
+  // Paced by a timer, not by requestAnimationFrame: rAF stops dead in a
+  // background tab and the recording would hang there for ever.
   const t0 = performance.now();
+  const deadline = t0 + E.length * 3 + 4000;
   await new Promise(res => {
-    const step = now => {
+    const iv = 1000 / E.vfps;
+    const tick = () => {
+      const now = performance.now();
       const el = (now - t0) / 1000;
-      if (el * 1000 >= E.length){ res(); return; }
+      if (el * 1000 >= E.length || now > deadline){ res(); return; }
       offR.upload(media);
       const introV = Math.min(1, S.duration > 0 ? el * 1000 / S.duration : 1);
       offR.draw(uniformsFor(introV, el, el), palFlat(), 0);
       progress(el * 1000 / E.length, Math.round(el * 1000) + ' / ' + E.length + 'ms');
-      requestAnimationFrame(step);
+      setTimeout(tick, iv);
     };
-    requestAnimationFrame(step);
+    tick();
   });
   rec.stop();
   await done;
