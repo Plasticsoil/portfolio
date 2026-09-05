@@ -458,6 +458,34 @@
   }
   .toast.show{ opacity:1; transform: translateX(-50%) translateY(0) }
   .note{ padding: 0 var(--space-16) var(--space-16); font-size: var(--text-caption); line-height:1.45; color: var(--color-text-faint) }
+
+  /* ---- the reward -------------------------------------------------------
+     Move every control and the tool plays your own effect back at you, full
+     screen, once. Quiet: it is the work that appears, not a celebration. */
+  .curtain{
+    position:fixed; inset:0; z-index: calc(var(--z-toast) + 10);
+    background: rgb(var(--ink) / 0.96);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; transition: opacity var(--dur-slow, 280ms) var(--ease-standard);
+    cursor: pointer;
+  }
+  .curtain.in{ opacity:1 }
+  .curtain canvas{ position:absolute; inset:0; width:100%; height:100% }
+  .curtain figcaption{
+    position:relative; text-align:center; max-width: 34ch;
+    color: var(--color-on-ink); opacity:0;
+    transition: opacity 900ms var(--ease-standard);
+    text-shadow: 0 1px 24px rgb(var(--ink) / 0.9);
+  }
+  .curtain figcaption.in{ opacity:1 }
+  .curtain h2{
+    font-family: var(--font-text); font-weight: 400; font-size: 28px;
+    line-height: 1.15; margin: 0 0 var(--space-8);
+  }
+  .curtain p{
+    margin:0; font-size: var(--text-caption); line-height: 1.5;
+    color: rgb(var(--light) / 0.7);
+  }
 </style>
 </head>
 <body>
@@ -1024,6 +1052,30 @@ const SPEC = [
   ]]
 ];
 
+/* Move every control there is and the tool plays your own effect back at
+   you, full screen, once. Loading a preset does not count — the point is
+   that you drove all of it yourself, so anything applied in bulk is fenced
+   off with `applyingPreset`. */
+const TOUCH_REQUIRED = (() => {
+  const keys = new Set();
+  const walk = items => items.forEach(it => {
+    if (it.type === 'group'){ keys.add(it.k); walk(it.items); }
+    else if (it.type === 'gradient') keys.add('stops');
+    else if (it.k) keys.add(it.k);
+  });
+  SPEC.forEach(([, items]) => walk(items));
+  keys.delete('showMask');   // a preview toggle, not a parameter of the effect
+  keys.add('ease');          // the speed graph counts, and it has no key of its own
+  return keys;
+})();
+const touched = new Set();
+let applyingPreset = false;
+function touch(k){
+  if (applyingPreset || !k || touched.has(k) || !TOUCH_REQUIRED.has(k)) return;
+  touched.add(k);
+  if (touched.size === TOUCH_REQUIRED.size) surprise();
+}
+
 const SOLO_LABEL = ['Result','Mask','Field','Alpha · with feather','The line','Turbulence','Gradient','Hand-off','Sweep line'];
 let soloMode = 3, soloTimer = null;
 function solo(mode){
@@ -1171,6 +1223,7 @@ cc.addEventListener('dblclick', e => {
   const span = Math.min(x - S.ease[i].x, S.ease[i+1].x - x) * 0.6;
   const slope = (easeAt(Math.min(1, x + .02)) - easeAt(Math.max(0, x - .02))) / .04;
   S.ease.splice(i + 1, 0, {x, y, hi:{x:x-span, y:y-span*slope}, ho:{x:x+span, y:y+span*slope}});
+  touch('ease');
   drawCurve();
 });
 window.addEventListener('pointermove', e => {
@@ -1201,6 +1254,7 @@ window.addEventListener('pointermove', e => {
       p[other].x = Math.min(hi2, Math.max(lo2, p[other].x));
     }
   }
+  touch('ease');
   drawCurve();
 });
 window.addEventListener('pointerup', () => { drag = null; });
@@ -1228,8 +1282,13 @@ function snapshot(){
   REDO.length = 0;
 }
 function restoreState(json){
-  S = JSON.parse(json);
-  buildPanel(); syncPanel(); layout();
+  bulk(() => { S = JSON.parse(json); buildPanel(); syncPanel(); layout(); });
+}
+/* Anything that sets many values at once. The reward is for driving the
+   controls, not for loading someone else's answer. */
+function bulk(fn){
+  applyingPreset = true;
+  try { fn(); } finally { applyingPreset = false; }
 }
 function undo(){
   if (!UNDO.length) return toast('Nothing to undo');
@@ -1297,7 +1356,7 @@ function buildGroup(it){
   const kids = document.createElement('div');
   const c = checkbox(
     () => S[it.k] > 0.5,
-    () => { snapshot(); S[it.k] = S[it.k] > 0.5 ? 0 : 1; solo(it.solo); }
+    () => { snapshot(); S[it.k] = S[it.k] > 0.5 ? 0 : 1; solo(it.solo); touch(it.k); }
   );
   const paint = () => {
     const on = S[it.k] > 0.5;
@@ -1327,7 +1386,7 @@ function buildSeg(it){
   const paint = () => [...seg.children].forEach((b, i) => b.classList.toggle('on', +it.opts[i].v === +S[it.k]));
   it.opts.forEach(o => {
     const b = document.createElement('button'); b.textContent = o.l;
-    b.onclick = () => { snapshot(); S[it.k] = o.v; paint(); applyVisibility(); solo(it.solo); };
+    b.onclick = () => { snapshot(); S[it.k] = o.v; paint(); applyVisibility(); solo(it.solo); touch(it.k); };
     seg.appendChild(b);
   });
   paint();
@@ -1390,6 +1449,7 @@ function buildToggle(it){
       snapshot();
       S[it.k] = S[it.k] > 0.5 ? 0 : 1;
       if (it.k === 'showMask') layout(); else solo(it.solo);
+      touch(it.k);
     }
   );
   row.appendChild(lab); row.appendChild(c.el); box.appendChild(row);
@@ -1406,7 +1466,7 @@ function buildSelect(it){
     const op = document.createElement('option'); op.value = o.k; op.textContent = o.l; sel.appendChild(op);
   });
   const sync = () => sel.value = S[it.k];
-  sel.onchange = () => { S[it.k] = sel.value; layout(); };
+  sel.onchange = () => { S[it.k] = sel.value; layout(); touch(it.k); };
   sync();
   row.appendChild(lab); row.appendChild(shell(sel)); box.appendChild(row);
   box._sync = sync;
@@ -1421,7 +1481,7 @@ function buildColour(it){
   sw.appendChild(inp);
   const sync = () => { sw.style.background = S[it.k]; inp.value = S[it.k]; };
   inp.onchange = () => snapshot();
-  inp.oninput = () => { S[it.k] = inp.value; sync(); solo(it.solo); };
+  inp.oninput = () => { S[it.k] = inp.value; sync(); solo(it.solo); touch(it.k); };
   sync();
   row.appendChild(lab); row.appendChild(sw); box.appendChild(row);
   box._sync = sync;
@@ -1449,12 +1509,12 @@ function buildSlider(it){
   // FIELD's rule: Shift while dragging a value takes ten times the stride.
   sl.addEventListener('pointerdown', e => { snapshot(); sl.step = e.shiftKey ? it.step * 10 : it.step; });
   sl.addEventListener('keydown', e => { sl.step = e.shiftKey ? it.step * 10 : it.step; });
-  sl.oninput = () => { S[it.k] = +sl.value; num.value = fmt(S[it.k]); paintFill(); solo(it.solo); };
+  sl.oninput = () => { S[it.k] = +sl.value; num.value = fmt(S[it.k]); paintFill(); solo(it.solo); touch(it.k); };
   num.onchange = () => {
     snapshot();
     const v = parseFloat(num.value);
     if (!isNaN(v)) S[it.k] = Math.min(it.max, Math.max(it.min, v));
-    sync(); solo(it.solo);
+    sync(); solo(it.solo); touch(it.k);
   };
   sync();
   box.appendChild(row); box.appendChild(sr);
@@ -1497,7 +1557,7 @@ function buildDial(it){
     let deg = Math.atan2(dx, -dy) * 180 / Math.PI;
     if (deg < 0) deg += 360;
     if (e.shiftKey) deg = Math.round(deg / 15) * 15;
-    S.angle = Math.round(deg * 10) / 10; sync(); solo(it.solo);
+    S.angle = Math.round(deg * 10) / 10; sync(); solo(it.solo); touch('angle');
   };
   svg.addEventListener('pointerdown', e => { snapshot(); dragging = true; svg.setPointerCapture(e.pointerId); set(e); });
   svg.addEventListener('pointermove', e => { if (dragging) set(e); });
@@ -1603,8 +1663,11 @@ function buildGradient(it){
     if (!isNaN(v) && S.stops[selStop]){ snapshot(); S.stops[selStop].p = Math.min(1, Math.max(0, v)); paint(); solo(it.solo); }
   };
 
+  let lastStops = JSON.stringify(S.stops);
   function paint(){
     sortStops();
+    const now = JSON.stringify(S.stops);
+    if (now !== lastStops){ lastStops = now; touch('stops'); }
     bar.style.background = gradientCSS();
     rail.innerHTML = '';
     S.stops.forEach((s, i) => {
@@ -1885,7 +1948,7 @@ const LOOKS = {
 const lookHost = document.getElementById('lookPresets');
 Object.keys(LOOKS).forEach(name => {
   const b = document.createElement('button'); b.textContent = name;
-  b.onclick = () => {
+  b.onclick = () => bulk(() => {
     const L = LOOKS[name];
     for (const k in L){
       if (k === 'ease') S.ease = makeCurve(EASE_PRESETS[L.ease]);
@@ -1893,29 +1956,33 @@ Object.keys(LOOKS).forEach(name => {
       else S[k] = L[k];
     }
     buildPanel(); syncPanel(); restart();
-  };
+  });
   lookHost.appendChild(b);
 });
 const easeHost = document.getElementById('easePresets');
 Object.keys(EASE_PRESETS).forEach(name => {
   const b = document.createElement('button'); b.textContent = name;
-  b.onclick = () => { S.ease = makeCurve(EASE_PRESETS[name]); drawCurve(); };
+  b.onclick = () => { S.ease = makeCurve(EASE_PRESETS[name]); touch('ease'); drawCurve(); };
   easeHost.appendChild(b);
 });
 document.getElementById('btnSave').onclick = () => { localStorage.setItem('depthReveal', JSON.stringify(S)); toast('Saved'); };
 document.getElementById('btnLoad').onclick = () => {
   const raw = localStorage.getItem('depthReveal');
   if (!raw) return toast('Nothing saved yet');
-  S = JSON.parse(raw); buildPanel(); syncPanel(); layout(); toast('Loaded');
+  bulk(() => { S = JSON.parse(raw); buildPanel(); syncPanel(); layout(); }); toast('Loaded');
 };
 document.getElementById('btnCopyJson').onclick = () => { navigator.clipboard.writeText(JSON.stringify(S, null, 2)); toast('JSON copied'); };
 document.getElementById('btnPasteJson').onclick = async () => {
-  try { S = JSON.parse(await navigator.clipboard.readText()); buildPanel(); syncPanel(); layout(); toast('Pasted'); }
+  try { const t = await navigator.clipboard.readText();
+        bulk(() => { S = JSON.parse(t); buildPanel(); syncPanel(); layout(); }); toast('Pasted'); }
   catch (e) { toast('The clipboard is not valid JSON'); }
 };
 document.getElementById('btnReset').onclick = () => {
-  S = JSON.parse(JSON.stringify(DEFAULTS)); S.ease = makeCurve(EASE_PRESETS['ease out']);
-  buildPanel(); syncPanel(); layout(); restart(); toast('Reset');
+  bulk(() => {
+    S = JSON.parse(JSON.stringify(DEFAULTS)); S.ease = makeCurve(EASE_PRESETS['ease out']);
+    buildPanel(); syncPanel(); layout(); restart();
+  });
+  touched.clear(); toast('Reset');
 };
 
 /* =====================================================================
@@ -3029,6 +3096,80 @@ function setIntro(v){
   introT = Math.min(1, Math.max(0, v));
   elapsed = introT * S.duration / 1000;
   scrub.value = Math.round(introT * 1000);
+}
+
+/* =====================================================================
+   12c. THE REWARD
+
+   Nothing announces it and nothing counts down to it. Move every one of
+   the controls yourself and the tool stops being an interface for a
+   moment: your own effect, at your own values, across the whole screen,
+   once. Then it hands you the preset and gets out of the way.
+   ===================================================================== */
+
+function surprise(){
+  if (document.querySelector('.curtain')) return;
+  const cur = document.createElement('figure');
+  cur.className = 'curtain'; cur.style.margin = '0';
+  const cv = document.createElement('canvas');
+  const cap = document.createElement('figcaption');
+  const h = document.createElement('h2');
+  h.textContent = 'Every control moved.';
+  const p = document.createElement('p');
+  p.textContent = 'All ' + TOUCH_REQUIRED.size + ' of them, by hand. This one is ' +
+                  'yours — the preset is on your clipboard.';
+  cap.append(h, p);
+  cur.append(cv, cap);
+  document.body.appendChild(cur);
+  // A timer rather than rAF: rAF is throttled in a background tab and the
+  // curtain would sit at zero opacity over a running render.
+  setTimeout(() => cur.classList.add('in'), 16);
+
+  // A hidden tab reports a window of zero, and a zero canvas paints nothing.
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const fit = () => {
+    const w = window.innerWidth  || document.documentElement.clientWidth  || 1280;
+    const h = window.innerHeight || document.documentElement.clientHeight || 720;
+    cv.width  = Math.max(2, Math.round(w * dpr));
+    cv.height = Math.max(2, Math.round(h * dpr));
+  };
+  fit();
+  window.addEventListener('resize', fit);
+  const R = makeRenderer(cv);
+
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    try { navigator.clipboard.writeText(JSON.stringify(S, null, 2)); } catch (e) {}
+    window.removeEventListener('keydown', onKey);
+    window.removeEventListener('resize', fit);
+    cur.classList.remove('in');
+    setTimeout(() => cur.remove(), 400);
+  };
+  const onKey = e => { if (e.key === 'Escape') finish(); };
+  cur.onclick = finish;
+  window.addEventListener('keydown', onKey);
+
+  // The intro, then one loop pass, then a beat to read the line.
+  const total = S.duration / 1000 * 2 + S.loopGap / 1000 + 1.4;
+  if (calm || !R){ cap.classList.add('in'); setTimeout(finish, 4200); return; }
+
+  const t0 = performance.now();
+  (function frame(now){
+    if (done) return;
+    const el = (now - t0) / 1000;
+    if (media) R.upload(media);
+    const uni = uniformsFor(Math.min(1, S.duration > 0 ? el * 1000 / S.duration : 1), el, el);
+    // Cover the window rather than the tool's canvas; the blur's fraction is
+    // left alone so the look holds at this size.
+    const ma = mediaW / mediaH, ca = cv.width / cv.height;
+    uni.cover = ca > ma ? [1, ma / ca] : [ca / ma, 1];
+    R.draw(uni, palFlat(), 0);
+    if (el > total * 0.55) cap.classList.add('in');
+    if (el > total) return finish();
+    requestAnimationFrame(frame);
+  })(performance.now());
 }
 
 /* =====================================================================
