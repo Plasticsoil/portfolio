@@ -108,6 +108,7 @@ const ARENA_LIGHT = 0.10;       // … and this much lighter (a card tint when t
    set of three gives every card its own background and gradient.
    anchor is unused. */
 export const p = [
+  { frame: "#49C7FD", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FFFFFF" },   // Yam's pick: blue · pink · yellow
   { frame: "#A9FF67", card: "#FFFFFF", ink: "#5BE03A", anchor: "#49C7FD" },
   { frame: "#49C7FD", card: "#FFFFFF", ink: "#5BE03A", anchor: "#A9FF67" },
   { frame: "#FFFFFF", card: "#49C7FD", ink: "#5BE03A", anchor: "#D9FF93" },
@@ -258,10 +259,9 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     words.forEach((w, wi) => {
       const col = rtl ? words.length - 1 - wi : wi;
       const cx = x0 + col * tileSize + tileSize / 2;
-      const t = words.length > 1 ? col / (words.length - 1) : 0;   // colour: one step per tower, left to right
       for (let i = w.length - 1; i >= 0; i--) {
         const fromFloor = w.length - 1 - i;                 // last letter lands first, on the floor
-        plan.push({ ch: w[i], cx, landCy: STAGE - tileSize / 2 - fromFloor * tileSize, t });
+        plan.push({ ch: w[i], cx, landCy: STAGE - tileSize / 2 - fromFloor * tileSize });
       }
     });
     seq.push(...plan.map((p) => p.ch));
@@ -324,15 +324,17 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     const el = document.createElement("div");
     /* A blank (Snake's space) is an invisible tile: present in the
        chain, so the gap is real, but never painted. Every other tile is
-       one step of the gradient: Snake steps by letter over the text,
-       Towers gives each tower one step (left to right), and Chaos,
-       whose loop length is set by the closing arena, steps with the
-       arena. */
+       one step of the gradient: Snake and Towers step by letter over
+       the text, and Chaos, whose loop length is set by the closing
+       arena, steps with the arena. */
     const blank = ch === " ";
     let t = 0;
-    if (chaos) t = (inset - INSET0) / ((STAGE - ARENA_MIN) / 2 - INSET0);
-    else if (rows) t = towerT;                    // Towers: one colour per tower
-    else t = steps > 1 ? hue / (steps - 1) : 0;
+    if (chaos) {
+      /* Chaos: the arena's progress, folded forth → back → forth so the
+         colour keeps moving even while the arena closes slowly. */
+      const a = 3 * (inset - INSET0) / ((STAGE - ARENA_MIN) / 2 - INSET0);
+      t = a <= 1 ? a : a <= 2 ? 2 - a : a - 2;
+    } else t = steps > 1 ? hue / (steps - 1) : 0;   // Snake, Towers: one step per letter
     if (!blank) hue++;
     const fill = blank ? "transparent" : mix(pal.card, pal.ink, Math.min(1, Math.max(0, t)));
     const tilt = (rand() * 2 - 1) * TILT;
@@ -427,10 +429,8 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     heights[col]++;                               // reserved: the next one in this column lands on top
   }
   /* Pillars: drop the next planned letter down its column. */
-  let towerT = 0;
   function slideIn(i) {
     const p = plan[i];
-    towerT = p.t;
     const L = makeLetter(p.ch, p.cx, -tileSize / 2, 0, FALL0);
     L.landCy = p.landCy;
   }
