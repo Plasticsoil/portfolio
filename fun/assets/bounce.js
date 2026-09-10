@@ -16,7 +16,8 @@
              one's path with a delay: one long snake. The text repeats
              (space-separated) to fill 50 beats.
      Chaos — the new letter starts from the centre in a fresh random
-             direction. The text plays once.
+             direction. The text repeats to 80 beats, until the stage
+             is properly full.
 
    Once the sequence is complete, after a short hold, the walls "open":
    each square leaves through the next wall it touches, and once the
@@ -40,7 +41,8 @@ const FONT_SIZE = 72;           // letter size inside the square
 const SPEED = 520;              // px / second, in stage units
 const SPEED_STEP = 12;          // every new letter makes everything this much faster
 const SPAWN_DELAY = 230;        // ms between a wall hit and the next letter (≈120px along the path)
-const SLOTS = 50;               // the word repeats (space-separated) to fill this many beats
+const SLOTS_SNAKE = 50;         // the word repeats (space-separated) to fill this many beats
+const SLOTS_CHAOS = 80;         // Chaos keeps going until the stage is properly full
 const HOLD_MS = 1600;           // pause once the sequence is complete, before the walls open
 const FPS = 12;                 // stop-motion: the picture only updates this often
 const JITTER = 2;               // px of hand-held wobble per frame
@@ -134,18 +136,15 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   stage.style.cssText = `position:relative;width:${STAGE}px;height:${STAGE}px;overflow:hidden;isolation:isolate;background:${pal.frame};`;
 
   /* Build the beat sequence: the typed text, uppercased, with runs of
-     whitespace collapsed to one space. Snake repeats it (with a space
-     between repeats) until it fills SLOTS beats; Chaos plays it once. */
+     whitespace collapsed to one space, repeated (with a space between
+     repeats) until it fills the mode's beat count. */
   const base = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   if (!base.filter((c) => c !== " ").length) return { stop() {} };
   const seq = [];
-  if (snake) {
-    while (seq.length < SLOTS) {
-      if (seq.length) seq.push(" ");
-      for (const c of base) { if (seq.length < SLOTS) seq.push(c); }
-    }
-  } else {
-    seq.push(...base);
+  const slots = snake ? SLOTS_SNAKE : SLOTS_CHAOS;
+  while (seq.length < slots) {
+    if (seq.length) seq.push(" ");
+    for (const c of base) { if (seq.length < slots) seq.push(c); }
   }
 
   const layer = document.createElement("div");
