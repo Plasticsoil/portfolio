@@ -39,8 +39,9 @@
              top to bottom; words go left to right (right to left for
              Hebrew). Same quickening cadence as Tower.
 
-   Tower and Pillars end with a quake: everything shakes, then the
-   floor gives way and the whole pile drops out of the frame.
+   Tower and Pillars end with a quake: the whole ground shakes as one,
+   gently at first and harder and harder, then the floor gives way and
+   the whole pile drops out of the frame.
 
    Once the sequence is complete, after a short hold, the walls "open":
    each square leaves through the next wall it touches, and once the
@@ -90,8 +91,8 @@ const IMPACT_DIP = 0.3;         // … to this fraction of full speed at the mom
 const GAP0 = 760;               // Tower: ms between the first two cubes
 const GAP_DECAY = 0.94;         // … each cube shortens the gap by this factor
 const GAP_MIN = 110;            // … down to this
-const QUAKE_MS = 650;           // Tower / Pillars ending: a quake this long, then the floor gives way
-const QUAKE = 7;                // … how hard it shakes, as a multiple of the usual wobble
+const QUAKE_MS = 1100;          // Tower / Pillars ending: a quake this long, then the floor gives way
+const QUAKE_MAX = 26;           // … the ground's shake grows from nothing to this many px (sideways; less up and down)
 const ARENA_SAT = 0.18;         // arena colour = the background, this much more saturated…
 const ARENA_LIGHT = 0.10;       // … and this much lighter (a card tint when the background is already white)
 
@@ -335,8 +336,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
        along the wall, then springs back (a half-sine over SQUASH_MS);
      - birth: a new square pops in from 40% with a little overshoot. */
   function place(L, now) {
-    const shake = phase === "quake" ? JITTER * QUAKE : JITTER;
-    const jx = L.ox + wobble(L.id, frame, 0) * shake, jy = L.oy + wobble(L.id, frame, 1) * shake;
+    const jx = L.ox + wobble(L.id, frame, 0) * JITTER, jy = L.oy + wobble(L.id, frame, 1) * JITTER;
     let sx = 1, sy = 1;
     const th = noScale ? 1 : (now - L.hitAt) / SQUASH_MS;   // cube versions: no scale bounce at all
     if (th >= 0 && th < 1) {
@@ -361,7 +361,8 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     }
     if (tower || rows) {
       phase = "quake";
-      timers.push(setTimeout(() => { phase = "drain"; }, QUAKE_MS));
+      quakeAt = performance.now();
+      timers.push(setTimeout(() => { phase = "drain"; layer.style.transform = ""; }, QUAKE_MS));
       return;
     }
     phase = "hold";
@@ -397,6 +398,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
      shortens the gap to the next one (gravity stays the same). A space
      is a silent beat: one gap with no cube. */
   let gap = GAP0;
+  let quakeAt = 0;
   function scheduleDrop() {
     if (cursor >= seq.length) { finish(); return; }
     const ch = seq[cursor++];
@@ -430,6 +432,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     count = 0;
     hue = 0;
     phase = "fill";
+    layer.style.transform = "";
     if (arenaEl) { inset = INSET0; arenaEl.style.inset = INSET0 + "px"; layer.style.clipPath = ""; }
     if (tower) { heights.fill(0); gap = GAP0; dropIn(seq[cursor++]); scheduleDrop(); return; }
     if (rows) { gap = GAP0; slideIn(cursor++); scheduleDrop(); return; }
@@ -531,7 +534,17 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       if (!letters.length) start();
     }
     acc += dt;
-    if (acc >= 1 / FPS) { acc = 0; frame++; noise.roll(frame); letters.forEach((L) => place(L, now)); }
+    if (acc >= 1 / FPS) {
+      acc = 0; frame++; noise.roll(frame);
+      letters.forEach((L) => place(L, now));
+      /* The quake moves the whole ground as one: a shared offset that
+         ramps up from nothing, mostly sideways. */
+      if (phase === "quake") {
+        const t = Math.min(1, (now - quakeAt) / QUAKE_MS);
+        const amp = QUAKE_MAX * t * t;
+        layer.style.transform = `translate(${(wobble(7, frame, 0) * amp).toFixed(1)}px, ${(wobble(7, frame, 1) * amp * 0.4).toFixed(1)}px)`;
+      }
+    }
   }
 
   /* Click: play the sequence again from the first letter. */
