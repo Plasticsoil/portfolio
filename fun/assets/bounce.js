@@ -7,8 +7,11 @@
    The rest of the word arrives one letter per wall hit: the newest
    letter is the "spawner"; the first time it touches a wall, the next
    letter pops out from that collision point a beat later, travelling
-   the same way, layered *behind* every letter before it. Once the word
-   is complete, everything just keeps bouncing.
+   the same way, layered *behind* every letter before it. A space is a
+   silent beat — a wall hit that spawns nothing — so words stay apart.
+   The text repeats (space-separated) to fill 50 beats; then, after a
+   short hold, the walls "open": each letter leaves through the next
+   wall it touches, and once the stage is empty the word starts over.
 
    Written as a plain, readable ES module (the rest of FunType is a
    minified Vite build); it plugs into the same effect contract:
@@ -20,23 +23,23 @@ const STAGE = 1080;
 const FONT_SIZE = 345;          // px, in stage units (0.75 of the first cut)
 const SPEED = 520;              // px / second, in stage units
 const SPAWN_DELAY = 140;        // ms between a wall hit and the next letter
+const SLOTS = 50;               // the word repeats (space-separated) to fill this many beats
+const HOLD_MS = 1600;           // pause once the sequence is complete, before the walls open
 const FONT = `900 ${FONT_SIZE}px "Switzer", "Rubik", system-ui, sans-serif`;
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-/* Palette from Yam: tarot-poster pink / teal / orange / cream / green,
-   lifted to the bright, vibrant register of Collections 01–02.
-   Roles: frame = background, ink = letter; card / anchor are kept
-   for the shuffle pill. */
-const PINK = "#FF8A80", TEAL = "#2A9BD6", ORANGE = "#FF6A1F",
-      CREAM = "#FFF1DA", GREEN = "#1FA35A";
+/* Collection 01's palettes (same values as the Corner / Orbit / Block
+   cards). frame = background; each letter takes the next of
+   ink → card → anchor, all three designed to sit on that frame. */
 export const p = [
-  { frame: PINK,   card: CREAM,  ink: TEAL,   anchor: ORANGE },
-  { frame: TEAL,   card: PINK,   ink: CREAM,  anchor: ORANGE },
-  { frame: ORANGE, card: TEAL,   ink: CREAM,  anchor: PINK },
-  { frame: CREAM,  card: PINK,   ink: ORANGE, anchor: TEAL },
-  { frame: PINK,   card: TEAL,   ink: ORANGE, anchor: GREEN },
-  { frame: GREEN,  card: ORANGE, ink: PINK,   anchor: CREAM },
+  { frame: "#FA8EFA", card: "#FFFFFF", ink: "#FF7300", anchor: "#FFDD00" },
+  { frame: "#FFFFFF", card: "#FFFF66", ink: "#FF42FF", anchor: "#FF7300" },
+  { frame: "#FFFF66", card: "#FF42FF", ink: "#FFFFFF", anchor: "#FA8EFA" },
+  { frame: "#FFDD00", card: "#FFFFFF", ink: "#FF7300", anchor: "#FF42FF" },
+  { frame: "#FF42FF", card: "#FFDD00", ink: "#FFFFFF", anchor: "#FFFF66" },
+  { frame: "#FF7300", card: "#FA8EFA", ink: "#FFFFFF", anchor: "#FFFF66" },
 ];
+const LETTER_ROLES = ["ink", "card", "anchor"];
 
 /* Small seeded RNG (mulberry32) so a `seed` gives a repeatable launch. */
 function rng(seed) {
@@ -103,10 +106,16 @@ export function m(stage, { word = "", palette, seed = 0 } = {}) {
   stage.innerHTML = "";
   stage.style.cssText = `position:relative;width:${STAGE}px;height:${STAGE}px;overflow:hidden;background:${pal.frame};`;
 
-  const chars = [...String(word).trim()]
-    .filter((c) => /\S/.test(c))
-    .map((c) => c.toUpperCase());
-  if (!chars.length) return { stop() {} };
+  /* Build the beat sequence: the typed text, uppercased, with runs of
+     whitespace collapsed to one space, repeated with a space between
+     repeats until it fills SLOTS beats. */
+  const base = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
+  if (!base.filter((c) => c !== " ").length) return { stop() {} };
+  const seq = [];
+  while (seq.length < SLOTS) {
+    if (seq.length) seq.push(" ");
+    for (const c of base) { if (seq.length < SLOTS) seq.push(c); }
+  }
 
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", `0 0 ${STAGE} ${STAGE}`);
@@ -114,24 +123,29 @@ export function m(stage, { word = "", palette, seed = 0 } = {}) {
   stage.appendChild(svg);
 
   const rand = rng(seed);
-  const boxes = chars.map(measure);
+  const boxes = {};
+  const boxOf = (ch) => boxes[ch] || (boxes[ch] = measure(ch));
   let letters = [];          // in spawn order; letters[0] is on top
   let timers = [];
   let raf = 0, last = 0;
+  let cursor = 0;            // next beat in seq
+  let visible = 0;           // letters spawned so far (for colour cycling)
+  let phase = "fill";        // fill → hold → drain → (restart)
 
-  function makeLetter(i, x, y, vx, vy) {
+  function makeLetter(ch, x, y, vx, vy) {
     const g = document.createElementNS(SVG_NS, "g");
     const text = document.createElementNS(SVG_NS, "text");
-    text.textContent = chars[i];
+    text.textContent = ch;
     text.setAttribute("font-family", '"Switzer", "Rubik", system-ui, sans-serif');
     text.setAttribute("font-weight", "900");
     text.setAttribute("font-size", FONT_SIZE);
-    text.setAttribute("fill", pal.ink);
+    text.setAttribute("fill", pal[LETTER_ROLES[visible % LETTER_ROLES.length]]);
+    visible++;
     g.appendChild(text);
     /* Earlier letters stay on top: new ones go to the back of the
        paint order (SVG paints first child first). */
     svg.insertBefore(g, svg.firstChild);
-    const L = { i, g, text, box: boxes[i], x, y, vx, vy, spawned: false };
+    const L = { ch, g, text, box: boxOf(ch), x, y, vx, vy, spawned: false };
     place(L);
     return L;
   }
@@ -144,47 +158,60 @@ export function m(stage, { word = "", palette, seed = 0 } = {}) {
     L.g.setAttribute("transform", `translate(${L.x.toFixed(2)} ${L.y.toFixed(2)})`);
   }
 
-  /* The next letter pops out of the point where the spawner hit the
-     wall: same centre, same (post-bounce) direction, a beat later. */
-  function spawnFrom(L) {
+  /* The spawner touched a wall: consume one beat. A space is silent
+     (the spawner keeps its role and will try again at the next wall);
+     a letter pops out of the collision point a beat later — same
+     centre, same post-bounce direction — and becomes the new spawner. */
+  function onSpawnerHit(L) {
+    if (cursor >= seq.length) { phase = "hold"; timers.push(setTimeout(openWalls, HOLD_MS)); return; }
+    const ch = seq[cursor++];
+    if (ch === " ") return;
     L.spawned = true;
-    const next = L.i + 1;
-    if (next >= chars.length) return;
     const cx = L.x + L.box.w / 2, cy = L.y + L.box.h / 2;
     const vx = L.vx, vy = L.vy;
-    const b = boxes[next];
+    const b = boxOf(ch);
     timers.push(setTimeout(() => {
       const x = Math.min(Math.max(0, cx - b.w / 2), STAGE - b.w);
       const y = Math.min(Math.max(0, cy - b.h / 2), STAGE - b.h);
-      letters.push(makeLetter(next, x, y, vx, vy));
+      letters.push(makeLetter(ch, x, y, vx, vy));
+      if (cursor >= seq.length) { phase = "hold"; timers.push(setTimeout(openWalls, HOLD_MS)); }
     }, SPAWN_DELAY));
   }
+
+  /* Sequence complete: the walls open. Letters no longer reflect; each
+     flies out through whichever wall it reaches next, so they leave
+     one by one over a second or two. */
+  function openWalls() { phase = "drain"; }
 
   function start() {
     timers.forEach(clearTimeout);
     timers = [];
     letters.forEach((L) => L.g.remove());
     letters = [];
-    const b = boxes[0];
+    cursor = 0;
+    visible = 0;
+    phase = "fill";
+    const ch = seq[cursor++];
+    const b = boxOf(ch);
     const ang = heading(rand);
-    letters.push(makeLetter(0, (STAGE - b.w) / 2, (STAGE - b.h) / 2,
+    letters.push(makeLetter(ch, (STAGE - b.w) / 2, (STAGE - b.h) / 2,
       Math.cos(ang) * SPEED, Math.sin(ang) * SPEED));
   }
 
   /* Fonts can land after mount; re-measure so the boxes match the real
      Switzer glyphs, keeping each letter centred where it was. */
   const remeasure = () => {
-    for (let i = 0; i < chars.length; i++) boxes[i] = measure(chars[i]);
+    for (const ch of Object.keys(boxes)) boxes[ch] = measure(ch);
     letters.forEach((L) => {
       const cx = L.x + L.box.w / 2, cy = L.y + L.box.h / 2;
-      L.box = boxes[L.i];
+      L.box = boxes[L.ch];
       L.x = cx - L.box.w / 2;
       L.y = cy - L.box.h / 2;
     });
   };
   if (document.fonts) {
     document.fonts.ready.then(remeasure);
-    document.fonts.load(FONT, chars.join("")).then(remeasure, () => {});
+    document.fonts.load(FONT, base.join("")).then(remeasure, () => {});
   }
 
   function tick(now) {
@@ -195,20 +222,30 @@ export function m(stage, { word = "", palette, seed = 0 } = {}) {
     for (const L of letters) {
       L.x += L.vx * dt;
       L.y += L.vy * dt;
-      /* Perfect elastic reflection off each wall. */
       const maxX = STAGE - L.box.w, maxY = STAGE - L.box.h;
-      let hit = false;
-      if (L.x < 0) { L.x = -L.x; L.vx = Math.abs(L.vx); hit = true; }
-      else if (L.x > maxX) { L.x = 2 * maxX - L.x; L.vx = -Math.abs(L.vx); hit = true; }
-      if (L.y < 0) { L.y = -L.y; L.vy = Math.abs(L.vy); hit = true; }
-      else if (L.y > maxY) { L.y = 2 * maxY - L.y; L.vy = -Math.abs(L.vy); hit = true; }
-      if (hit && L === spawner && !L.spawned) spawnFrom(L);
+      if (phase === "drain") {
+        /* Walls are open: mark the letter gone once fully outside. */
+        if (L.x + L.box.w < 0 || L.x > STAGE || L.y + L.box.h < 0 || L.y > STAGE) L.gone = true;
+      } else {
+        /* Perfect elastic reflection off each wall. */
+        let hit = false;
+        if (L.x < 0) { L.x = -L.x; L.vx = Math.abs(L.vx); hit = true; }
+        else if (L.x > maxX) { L.x = 2 * maxX - L.x; L.vx = -Math.abs(L.vx); hit = true; }
+        if (L.y < 0) { L.y = -L.y; L.vy = Math.abs(L.vy); hit = true; }
+        else if (L.y > maxY) { L.y = 2 * maxY - L.y; L.vy = -Math.abs(L.vy); hit = true; }
+        if (hit && phase === "fill" && L === spawner && !L.spawned) onSpawnerHit(L);
+      }
       place(L);
+    }
+    if (phase === "drain") {
+      letters.filter((L) => L.gone).forEach((L) => L.g.remove());
+      letters = letters.filter((L) => !L.gone);
+      if (!letters.length) start();
     }
     raf = requestAnimationFrame(tick);
   }
 
-  /* Click: play the word again from the first letter. */
+  /* Click: play the sequence again from the first letter. */
   const onClick = () => start();
   stage.addEventListener("click", onClick);
 
