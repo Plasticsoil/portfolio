@@ -19,9 +19,10 @@
              direction. The text repeats to 80 beats, until the stage
              is properly full.
 
-   Tower — letters drop from random points along the top, fall under
-           gravity, land on the floor and on each other, and pile up.
-           The newest tile's first contact drops the next letter.
+   Tower — the stage is a grid of columns. Each letter drops down a
+           random column and lands exactly on the floor or on the top
+           tile of that column, with a small hop. The newest tile's
+           first landing drops the next letter.
 
    Each flavour also has a "frame" version: the walls themselves are an
    inner square in a nearby shade, and every wall touch pulls them in a
@@ -56,7 +57,8 @@ const HOLD_MS = 1600;           // pause once the sequence is complete, before t
 const GRAVITY = 2200;           // Tower: px / s², in stage units
 const FALL0 = 420;              // Tower: a letter's speed as it enters from the top
 const REST = 0.28;              // Tower: how much bounce is left after a landing
-const BAND = 380;               // Tower: letters drop within ± this of the centre, so they pile up
+const COLS = Math.floor(STAGE / SIZE);          // Tower: the stage is a grid of this many columns
+const COL0 = (STAGE - COLS * SIZE) / 2 + SIZE / 2; // … and this is the first column's centre x
 const FPS = 12;                 // stop-motion: the picture only updates this often
 const JITTER = 3;               // px of hand-held wobble per frame
 const OFFSET = 10;              // px: each tile sits a little off its true spot, fixed for its life
@@ -275,13 +277,22 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
   /* Tower: the next letter drops from a random point along the top,
      a beat after the newest one first touches anything. A space is a
      silent beat here too — one extra beat of waiting. */
+  const heights = new Array(COLS).fill(0);       // Tower: tiles stacked per column
+  function dropIn(ch) {
+    const open = heights.map((h, i) => (h < COLS ? i : -1)).filter((i) => i >= 0);
+    if (!open.length) { cursor = seq.length; finish(); return; }
+    const col = open[Math.floor(rand() * open.length)];
+    const L = makeLetter(ch, COL0 + col * SIZE, -SIZE / 2, 0, FALL0);
+    L.col = col;
+    L.landCy = STAGE - SIZE / 2 - heights[col] * SIZE;
+    heights[col]++;                               // reserved: the next one in this column lands on top
+  }
   function dropNext() {
     if (cursor >= seq.length) { finish(); return; }
     const ch = seq[cursor++];
     timers.push(setTimeout(() => {
       if (ch === " ") { dropNext(); return; }
-      const x = STAGE / 2 + (rand() * 2 - 1) * BAND;
-      makeLetter(ch, x, -SIZE / 2, 0, FALL0);
+      dropIn(ch);
       if (cursor >= seq.length) finish();
     }, SPAWN_DELAY));
   }
@@ -310,10 +321,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     count = 0;
     phase = "fill";
     if (arenaEl) { inset = 0; arenaEl.style.inset = "0px"; }
-    if (tower) {
-      makeLetter(seq[cursor++], STAGE / 2 + (rand() * 2 - 1) * BAND, -SIZE / 2, 0, FALL0);
-      return;
-    }
+    if (tower) { heights.fill(0); dropIn(seq[cursor++]); return; }
     const ang = heading(rand);
     makeLetter(seq[cursor++], STAGE / 2, STAGE / 2, Math.cos(ang) * SPEED, Math.sin(ang) * SPEED);
   }
@@ -363,13 +371,11 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     raf = requestAnimationFrame(tick);
   }
 
-  /* Tower physics. A tile is either falling or asleep. Falling tiles
-     feel gravity and land on the floor or on sleeping tiles; a landing
-     with some speed gives a small positional hop, a slow one puts the
-     tile to sleep, and sleeping tiles are rock-solid supports. A tile
-     that comes down on just a corner of another slides off it, and one
-     that drifts into the side of a sleeping tile is pushed clear. The
-     newest tile's first landing drops the next letter. */
+  /* Tower physics: each tile falls straight down its column under
+     gravity to a landing height fixed when it was dropped (the floor,
+     or the top of that column's stack). A fast landing hops a little;
+     a slow one puts the tile to sleep. The newest tile's first landing
+     drops the next letter. When the walls open, everything falls out. */
   function touch(L, axis, speedAlong) {
     if (Math.abs(speedAlong) > 90) { L.hitAt = now_; L.hitAxis = axis; }
     if (L === spawner_ && !L.spawned && phase === "fill") onSpawnerHit(L);
@@ -377,46 +383,17 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
   let now_ = 0, spawner_ = null;
   function tickTower(dt, now, spawner) {
     now_ = now; spawner_ = spawner;
-    const half = SIZE / 2, floorY = STAGE - half;
-    const solids = phase === "drain" ? [] : letters.filter((L) => L.asleep);
     for (const L of letters) {
       if (phase === "drain") L.asleep = false;
       if (L.asleep) continue;
       L.vy += GRAVITY * dt;
-      L.vx *= Math.max(0, 1 - 3 * dt);
-      const wasBottom = L.cy + half;
-      L.cx += L.vx * dt;
       L.cy += L.vy * dt;
-      if (L.cx < half) { L.cx = half; L.vx = Math.abs(L.vx) * 0.3; }
-      else if (L.cx > STAGE - half) { L.cx = STAGE - half; L.vx = -Math.abs(L.vx) * 0.3; }
-      if (phase === "drain") { if (L.cy - half > STAGE) L.gone = true; continue; }
-
-      /* Where would it land? The floor, or the highest sleeping tile it
-         overlaps and was above. Side hits get pushed clear instead. */
-      let landCy = floorY, support = null;
-      for (const S of solids) {
-        const overlap = SIZE - Math.abs(S.cx - L.cx);
-        if (overlap <= 0) continue;
-        const sTop = S.cy - half;
-        if (wasBottom <= sTop + 6) {
-          if (S.cy - SIZE < landCy) { landCy = S.cy - SIZE; support = S; }
-        } else if (L.cy < S.cy + SIZE && L.cy > S.cy - SIZE) {
-          const dir = L.cx < S.cx ? -1 : 1;
-          L.cx = S.cx + dir * SIZE;
-          L.vx = dir * 160;
-        }
-      }
-      if (L.cy >= landCy) {
-        if (support && SIZE - Math.abs(support.cx - L.cx) < SIZE * 0.35) {
-          /* Only a corner caught it: slide off and keep falling. */
-          const dir = L.cx < support.cx ? -1 : 1;
-          L.vx = dir * 240;
-          continue;
-        }
+      if (phase === "drain") { if (L.cy - SIZE / 2 > STAGE) L.gone = true; continue; }
+      if (L.cy >= L.landCy) {
         const v = L.vy;
-        L.cy = landCy;
+        L.cy = L.landCy;
         if (v > 160) { L.vy = -v * REST; }
-        else { L.vy = 0; L.vx = 0; L.asleep = true; }
+        else { L.vy = 0; L.asleep = true; }
         touch(L, "y", v);
       }
     }
