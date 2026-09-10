@@ -1,4 +1,4 @@
-/* FunType — Collection 03 / "Bounce"
+/* FunType — Collection 03 / "Bounce" (Snake + Chaos)
    The first letter of the word sits in a sticker circle, drops in at
    the middle of the stage, picks a random direction and travels in a
    straight line at constant speed. When the circle touches a wall it
@@ -6,12 +6,21 @@
 
    The rest of the word arrives one letter per wall hit: the newest
    circle is the "spawner"; the first time it touches a wall, the next
-   letter pops out from that collision point a beat later, travelling
-   the same way, layered *behind* every circle before it. A space is a
-   silent beat — a wall hit that spawns nothing — so words stay apart.
-   The text repeats (space-separated) to fill 50 beats; then, after a
-   short hold, the walls "open": each circle leaves through the next
-   wall it touches, and once the stage is empty the word starts over.
+   letter appears a beat later and becomes the new spawner. The newest
+   circle is always painted on top. A space is a silent beat — a wall
+   hit that spawns nothing — so words stay apart.
+
+   Two flavours:
+     Snake — the new letter pops out of the collision point on exactly
+             the spawner's heading, so every letter follows the first
+             one's path with a delay: one long snake. The text repeats
+             (space-separated) to fill 50 beats.
+     Chaos — the new letter starts from the centre in a fresh random
+             direction. The text plays once.
+
+   Once the sequence is complete, after a short hold, the walls "open":
+   each circle leaves through the next wall it touches, and once the
+   stage is empty the word starts over.
 
    Look: same sticker circles as Collection 02's Stickers (Pack) —
    circle in card / ink / anchor, slate letter at weight 500.
@@ -26,7 +35,6 @@ const SPEED = 520;              // px / second, in stage units
 const SPAWN_DELAY = 140;        // ms between a wall hit and the next letter
 const SLOTS = 50;               // the word repeats (space-separated) to fill this many beats
 const HOLD_MS = 1600;           // pause once the sequence is complete, before the walls open
-const SPREAD = 10;              // ± degrees a new circle deviates from its spawner's heading
 const LETTER = "#4E4B5D";       // Stickers' slate letter colour
 const FONT_SIZE = RADIUS * 0.75; // Stickers' ratio
 
@@ -63,7 +71,11 @@ function heading(rand) {
   return quadrant * (Math.PI / 2) + a;
 }
 
-export function m(stage, { word = "", palette, seed = 0 } = {}) {
+export const m = (stage, opts) => mount(stage, { ...opts, mode: "snake" });
+export const c = (stage, opts) => mount(stage, { ...opts, mode: "chaos" });
+
+function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
+  const snake = mode === "snake";
   const pal = palette || p[0];
   stage.innerHTML = "";
   stage.style.cssText = `position:relative;width:${STAGE}px;height:${STAGE}px;overflow:hidden;background:${pal.frame};`;
@@ -74,9 +86,13 @@ export function m(stage, { word = "", palette, seed = 0 } = {}) {
   const base = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   if (!base.filter((c) => c !== " ").length) return { stop() {} };
   const seq = [];
-  while (seq.length < SLOTS) {
-    if (seq.length) seq.push(" ");
-    for (const c of base) { if (seq.length < SLOTS) seq.push(c); }
+  if (snake) {
+    while (seq.length < SLOTS) {
+      if (seq.length) seq.push(" ");
+      for (const c of base) { if (seq.length < SLOTS) seq.push(c); }
+    }
+  } else {
+    seq.push(...base);
   }
 
   const layer = document.createElement("div");
@@ -98,8 +114,8 @@ export function m(stage, { word = "", palette, seed = 0 } = {}) {
     count++;
     el.style.cssText = `position:absolute;left:0;top:0;width:${D}px;height:${D}px;border-radius:50%;background:${fill};display:flex;align-items:center;justify-content:center;font-family:"Switzer","Rubik",system-ui,sans-serif;font-weight:500;font-size:${FONT_SIZE}px;line-height:1;color:${LETTER};text-transform:uppercase;letter-spacing:-0.02em;will-change:transform;`;
     el.textContent = ch;
-    /* Earlier circles stay on top: new ones go to the back. */
-    layer.insertBefore(el, layer.firstChild);
+    /* The newest circle is always on top. */
+    layer.appendChild(el);
     const L = { el, x, y, vx, vy, spawned: false };
     place(L);
     return L;
@@ -116,19 +132,17 @@ export function m(stage, { word = "", palette, seed = 0 } = {}) {
 
   /* The spawner touched a wall: consume one beat. A space is silent
      (the spawner keeps its role and will try again at the next wall);
-     a letter pops out of the collision point a beat later — same
-     spot, same post-bounce direction — and becomes the new spawner. */
+     a letter appears a beat later and becomes the new spawner. */
   function onSpawnerHit(L) {
     if (cursor >= seq.length) { finish(); return; }
     const ch = seq[cursor++];
     if (ch === " ") return;
     L.spawned = true;
-    /* Equal circles on the exact same heading would trail each other
-       forever as one snake, hiding every letter but the first — so each
-       new circle leaves at a slightly different angle and the train
-       fans out over time. */
-    const { x, y } = L;
-    const ang = Math.atan2(L.vy, L.vx) + ((rand() * 2 - 1) * SPREAD * Math.PI) / 180;
+    /* Snake: out of the collision point, on the spawner's exact heading,
+       so it rides the same path a beat behind. Chaos: from the centre,
+       in a fresh random direction. */
+    const x = snake ? L.x : MAX / 2, y = snake ? L.y : MAX / 2;
+    const ang = snake ? Math.atan2(L.vy, L.vx) : heading(rand);
     const vx = Math.cos(ang) * SPEED, vy = Math.sin(ang) * SPEED;
     timers.push(setTimeout(() => {
       letters.push(makeLetter(ch, x, y, vx, vy));
