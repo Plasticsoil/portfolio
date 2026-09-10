@@ -109,10 +109,13 @@ const ARENA_LIGHT = 0.05;       // … and a touch lighter (a card tint when the
 
 /* This collection's colour rule: three colours — frame is the
    background, and the tiles run a stepped gradient from card (first
-   letter) to ink (last letter). Same on every card. anchor is unused.
-   The other entries are Collection 02's palettes, read the same way. */
+   letter) to ink (last letter). anchor is unused. The first three
+   entries are the cards' own sets (white ground, a different pair
+   each); the rest are Collection 02's palettes, read the same way. */
 export const p = [
-  { frame: "#C7A6FF", card: "#49C7FD", ink: "#FA8EFA", anchor: "#FFFFFF" },   // Yam's pick: lilac, blue → pink
+  { frame: "#FFFFFF", card: "#49C7FD", ink: "#FA8EFA", anchor: "#FFFF66" },   // Snake:  blue → pink
+  { frame: "#FFFFFF", card: "#FFFF66", ink: "#49C7FD", anchor: "#FA8EFA" },   // Shrink: yellow → blue
+  { frame: "#FFFFFF", card: "#FA8EFA", ink: "#FFFF66", anchor: "#49C7FD" },   // Towers: pink → yellow
   { frame: "#A9FF67", card: "#FFFFFF", ink: "#5BE03A", anchor: "#49C7FD" },
   { frame: "#49C7FD", card: "#FFFFFF", ink: "#5BE03A", anchor: "#A9FF67" },
   { frame: "#FFFFFF", card: "#49C7FD", ink: "#5BE03A", anchor: "#D9FF93" },
@@ -214,7 +217,7 @@ function shift(hex, ds, dl) {
    background can't go lighter, so it takes a tint of the card colour. */
 function arenaColour(pal) {
   const c = shift(pal.frame, ARENA_SAT, ARENA_LIGHT);
-  return c.toLowerCase() === pal.frame.toLowerCase() ? mix(pal.frame, pal.card, 0.35) : c;
+  return c.toLowerCase() === pal.frame.toLowerCase() ? mix(pal.frame, pal.card, 0.2) : c;
 }
 
 export const m = (stage, opts) => mount(stage, { ...opts, mode: "snake" });
