@@ -23,9 +23,9 @@
            gravity, land on the floor and on each other, and pile up.
            The newest tile's first contact drops the next letter.
 
-   Each flavour also has a "frame" version: the tile carries an inner
-   square in a nearby shade, and the frame around it gets a little
-   thinner at every wall touch — a tally of its bounces.
+   Each flavour also has a "frame" version: the walls themselves are an
+   inner square in a nearby shade, and every wall touch pulls them in a
+   little, so the letters end up more and more crowded.
 
    Once the sequence is complete, after a short hold, the walls "open":
    each square leaves through the next wall it touches, and once the
@@ -64,10 +64,9 @@ const SQUASH_MS = 320;          // and how long the squash-and-spring lasts
 const POP_MS = 260;             // a new letter pops in from small to full size
 const TILT = 0;                 // ± degrees, a fixed tilt per square (off)
 const LETTER = "#4E4B5D";       // Stickers' slate letter colour
-const FRAME0 = 40;              // frame variant: frame thickness at birth (px)
-const FRAME_STEP = 6;           // … thinner by this much at every wall touch
-const FRAME_MIN = 5;            // … but never thinner than this
-const INNER_MIX = 0.22;         // inner square = tile colour mixed this far toward the background
+const SHRINK = 0.7;             // frame variant: the arena closes in this much per side at every wall touch
+const ARENA_MIN = 420;          // … but never smaller than this
+const ARENA_MIX = 0.10;         // arena colour = background mixed this far toward the letter slate
 
 /* Collection 02's palettes (same values as Dots / Stickers / Loop).
    frame = background; squares cycle card → ink → anchor, so two
@@ -174,6 +173,22 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     for (const c of base) { if (seq.length < slots) seq.push(c); }
   }
 
+  /* Frame variant: the arena is a visible inner square that closes in. */
+  let inset = 0;
+  let arenaEl = null;
+  if (framed) {
+    arenaEl = document.createElement("div");
+    arenaEl.style.cssText = `position:absolute;inset:0;background:${mix(pal.frame, LETTER, ARENA_MIX)};`;
+    stage.appendChild(arenaEl);
+  }
+  function shrinkArena() {
+    inset = Math.min(inset + SHRINK, (STAGE - ARENA_MIN) / 2);
+    arenaEl.style.inset = inset.toFixed(1) + "px";
+    for (const L of letters) {
+      L.cx = Math.min(Math.max(inset + L.half, L.cx), STAGE - inset - L.half);
+      L.cy = Math.min(Math.max(inset + L.half, L.cy), STAGE - inset - L.half);
+    }
+  }
   const layer = document.createElement("div");
   layer.style.cssText = "position:absolute;inset:0;";
   stage.appendChild(layer);
@@ -207,14 +222,6 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     const rad = (tilt * Math.PI) / 180;
     const half = (SIZE / 2) * (Math.abs(Math.cos(rad)) + Math.abs(Math.sin(rad)));
     el.style.cssText = `position:absolute;left:${-SIZE / 2}px;top:${-SIZE / 2}px;width:${SIZE}px;height:${SIZE}px;border-radius:${CORNER}px;background:${fill};display:flex;align-items:center;justify-content:center;will-change:transform;`;
-    /* Frame variant: an inner square in a nearby shade; the frame
-       around it (the tile's own colour) thins at every wall touch. */
-    let inner = null;
-    if (framed) {
-      inner = document.createElement("div");
-      inner.style.cssText = `position:absolute;inset:${FRAME0}px;background:${mix(fill, pal.frame, INNER_MIX)};`;
-      el.appendChild(inner);
-    }
     /* The letter is its own element so the tile can squash and pop
        around it while the glyph itself stays rigid. */
     const glyph = document.createElement("span");
@@ -222,7 +229,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     glyph.textContent = ch;
     el.appendChild(glyph);
     layer.appendChild(el);                         // newest on top
-    const L = { el, glyph, inner, hits: 0, id: count++, cx, cy, vx, vy, tilt, half, spawned: false,
+    const L = { el, glyph, id: count++, cx, cy, vx, vy, tilt, half, spawned: false,
                 born: performance.now(), hitAt: -1e9, hitAxis: "x" };
     letters.push(L);
     if (!tower) { speed = SPEED + SPEED_STEP * (count - 1); repace(); }
@@ -237,12 +244,12 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
   function place(L, now) {
     const jx = wobble(L.id, frame, 0) * JITTER, jy = wobble(L.id, frame, 1) * JITTER;
     let sx = 1, sy = 1;
-    const th = (now - L.hitAt) / SQUASH_MS;
+    const th = tower ? 1 : (now - L.hitAt) / SQUASH_MS;   // Tower: no scale bounce at all
     if (th >= 0 && th < 1) {
       const k = Math.sin(th * Math.PI) * SQUASH;
       if (L.hitAxis === "x") { sx = 1 - k; sy = 1 + k; } else { sx = 1 + k; sy = 1 - k; }
     }
-    const tb = (now - L.born) / POP_MS;
+    const tb = tower ? 1 : (now - L.born) / POP_MS;
     if (tb < 1) {
       const pop = 0.4 + 0.6 * (1 + 1.8 * Math.pow(tb - 1, 3) + 0.8 * Math.pow(tb - 1, 2)); // ease-out-back
       sx *= pop; sy *= pop;
@@ -300,6 +307,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     cursor = 0;
     count = 0;
     phase = "fill";
+    if (arenaEl) { inset = 0; arenaEl.style.inset = "0px"; }
     if (tower) {
       makeLetter(seq[cursor++], STAGE / 2 + (rand() * 2 - 1) * BAND, -SIZE / 2, 0, FALL0);
       return;
@@ -321,16 +329,17 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
         /* Walls are open: mark the square gone once fully outside. */
         if (L.cx + L.half < 0 || L.cx - L.half > STAGE || L.cy + L.half < 0 || L.cy - L.half > STAGE) L.gone = true;
       } else {
-        /* Perfect elastic reflection off each wall. */
-        const lo = L.half, hi = STAGE - L.half;
+        /* Perfect elastic reflection off each wall (the arena's, in
+           the frame variant — and every touch pulls the arena in). */
+        const lo = inset + L.half, hi = STAGE - inset - L.half;
         let hit = false;
         if (L.cx < lo) { L.cx = 2 * lo - L.cx; L.vx = Math.abs(L.vx); hit = "x"; }
         else if (L.cx > hi) { L.cx = 2 * hi - L.cx; L.vx = -Math.abs(L.vx); hit = "x"; }
         if (L.cy < lo) { L.cy = 2 * lo - L.cy; L.vy = Math.abs(L.vy); hit = "y"; }
         else if (L.cy > hi) { L.cy = 2 * hi - L.cy; L.vy = -Math.abs(L.vy); hit = "y"; }
         if (hit) {
-          L.hitAt = now; L.hitAxis = hit; L.hits++;
-          if (L.inner) L.inner.style.inset = Math.max(FRAME_MIN, FRAME0 - FRAME_STEP * L.hits) + "px";
+          L.hitAt = now; L.hitAxis = hit;
+          if (arenaEl) shrinkArena();
         }
         if (hit && phase === "fill" && L === spawner && !L.spawned) onSpawnerHit(L);
       }
@@ -357,8 +366,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
      overlap. A landing squashes the tile; the newest tile's first
      contact with anything drops the next letter. */
   function touch(L, axis, speedAlong) {
-    if (Math.abs(speedAlong) > 90) { L.hitAt = now_; L.hitAxis = axis; L.hits++;
-      if (L.inner) L.inner.style.inset = Math.max(FRAME_MIN, FRAME0 - FRAME_STEP * L.hits) + "px"; }
+    if (Math.abs(speedAlong) > 90) { L.hitAt = now_; L.hitAxis = axis; }
     if (L === spawner_ && !L.spawned && phase === "fill") onSpawnerHit(L);
   }
   let now_ = 0, spawner_ = null;
