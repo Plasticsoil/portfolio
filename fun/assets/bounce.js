@@ -16,22 +16,21 @@
              one's path with a delay: one long snake. The text repeats
              (space-separated) to fill 50 beats.
      Chaos — the new letter starts from the centre in a fresh random
-             direction. The text repeats to 80 beats, until the stage
-             is properly full.
+             direction. The walls are a visible inner square that
+             closes in a little at every touch; the text repeats until
+             the arena is down to a single tile, then the round is over.
+             No squash here: a wall hit knocks the speed down and it
+             eases back, which is the bounce feel.
 
    Tower — the stage is a grid of columns. Each letter drops down a
            random column and lands exactly on the floor or on the top
-           tile of that column, with a small hop. The newest tile's
-           first landing drops the next letter.
+           tile of that column, with a small hop. Cubes drop on a
+           cadence that gets quicker with every cube.
 
    Rows — the text is typeset: each word is a row of tiles, rows are
           stacked and centred, and the block shrinks to fit. Tiles
           slide in along their row and stop against the previous tile,
           so a row fills left to right (right to left for Hebrew).
-
-   Each flavour also has a "frame" version: the walls themselves are an
-   inner square in a nearby shade, and every wall touch pulls them in a
-   little, so the letters end up more and more crowded.
 
    Once the sequence is complete, after a short hold, the walls "open":
    each square leaves through the next wall it touches, and once the
@@ -56,8 +55,8 @@ const SPEED = 520;              // px / second, in stage units
 const SPEED_STEP = 12;          // every new letter makes everything this much faster
 const SPAWN_DELAY = 230;        // ms between a wall hit and the next letter (≈120px along the path)
 const SLOTS_SNAKE = 50;         // the word repeats (space-separated) to fill this many beats
-const SLOTS_CHAOS = 80;         // Chaos keeps going until the stage is properly full
-const SLOTS_TOWER = 32;         // Tower stacks this many beats
+const SLOTS_CHAOS = 400;        // Chaos keeps going until its arena has closed (see SHRINK); this is just "plenty"
+const SLOTS_TOWER = 42;         // Tower stacks this many beats
 const HOLD_MS = 1600;           // pause once the sequence is complete, before the walls open
 const GRAVITY = 2200;           // Tower: px / s², in stage units
 const FALL0 = 420;              // Tower: a letter's speed as it enters from the top
@@ -72,8 +71,13 @@ const SQUASH_MS = 320;          // and how long the squash-and-spring lasts
 const POP_MS = 260;             // a new letter pops in from small to full size
 const TILT = 0;                 // ± degrees, a fixed tilt per square (off)
 const LETTER = "#4E4B5D";       // Stickers' slate letter colour
-const SHRINK = 0.7;             // frame variant: the arena closes in this much per side at every wall touch
-const ARENA_MIN = 420;          // … but never smaller than this
+const SHRINK = 0.9;             // Chaos: the arena closes in this much per side at every wall touch
+const ARENA_MIN = SIZE;         // … until it is exactly one tile — then the round is over
+const IMPACT_MS = 260;          // Chaos: a wall hit knocks the speed down, and it eases back over this long
+const IMPACT_DIP = 0.3;         // … to this fraction of full speed at the moment of impact
+const GAP0 = 760;               // Tower: ms between the first two cubes
+const GAP_DECAY = 0.94;         // … each cube shortens the gap by this factor
+const GAP_MIN = 110;            // … down to this
 const ARENA_MIX = 0.10;         // arena colour = background mixed this far toward the letter slate
 
 /* Collection 02's palettes (same values as Dots / Stickers / Loop).
@@ -159,14 +163,13 @@ function mix(a, b, t) {
 
 export const m = (stage, opts) => mount(stage, { ...opts, mode: "snake" });
 export const c = (stage, opts) => mount(stage, { ...opts, mode: "chaos" });
-export const f = (stage, opts) => mount(stage, { ...opts, mode: "snake", frame: true });
-export const g = (stage, opts) => mount(stage, { ...opts, mode: "chaos", frame: true });
 export const t = (stage, opts) => mount(stage, { ...opts, mode: "tower" });
 export const r = (stage, opts) => mount(stage, { ...opts, mode: "rows" });
 
-function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: framed = false } = {}) {
-  const snake = mode === "snake", tower = mode === "tower", rows = mode === "rows";
-  const noScale = tower || rows;                 // the cube versions never squash or pop
+function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
+  const snake = mode === "snake", chaos = mode === "chaos", tower = mode === "tower", rows = mode === "rows";
+  const framed = chaos;                          // Chaos plays inside a closing arena
+  const noScale = !snake;                        // only Snake squashes and pops
   const pal = palette || p[0];
   stage.innerHTML = "";
   stage.style.cssText = `position:relative;width:${STAGE}px;height:${STAGE}px;overflow:hidden;isolation:isolate;background:${pal.frame};`;
@@ -213,8 +216,10 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     stage.appendChild(arenaEl);
   }
   function shrinkArena() {
-    inset = Math.min(inset + SHRINK, (STAGE - ARENA_MIN) / 2);
+    const max = (STAGE - ARENA_MIN) / 2;
+    inset = Math.min(inset + SHRINK, max);
     arenaEl.style.inset = inset.toFixed(1) + "px";
+    if (inset >= max && phase === "fill") finish();   // one tile left: the round is over
     for (const L of letters) {
       L.cx = Math.min(Math.max(inset + L.half, L.cx), STAGE - inset - L.half);
       L.cy = Math.min(Math.max(inset + L.half, L.cy), STAGE - inset - L.half);
@@ -323,18 +328,31 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     const L = makeLetter(p.ch, p.dir < 0 ? STAGE + tileSize / 2 : -tileSize / 2, p.cy, p.dir * FALL0, 0);
     L.landCx = p.cx; L.dir = p.dir;
   }
+  /* Tower: cubes come on their own cadence, and every cube shortens
+     the gap to the next one (gravity stays the same). A space is a
+     silent beat: one gap with no cube. */
+  let gap = GAP0;
+  function scheduleDrop() {
+    if (cursor >= seq.length) { finish(); return; }
+    const ch = seq[cursor++];
+    timers.push(setTimeout(() => {
+      if (ch !== " ") { dropIn(ch); gap = Math.max(GAP_MIN, gap * GAP_DECAY); }
+      if (cursor >= seq.length) finish(); else scheduleDrop();
+    }, gap));
+  }
   function dropNext() {
     if (cursor >= seq.length) { finish(); return; }
     const ch = seq[cursor++];
     timers.push(setTimeout(() => {
       if (ch === " ") { dropNext(); return; }
-      if (rows) slideIn(cursor - 1); else dropIn(ch);
+      slideIn(cursor - 1);
       if (cursor >= seq.length) finish();
     }, SPAWN_DELAY));
   }
 
   function onSpawnerHit(L) {
-    if (tower || rows) { L.spawned = true; dropNext(); return; }
+    if (tower) return;                              // Tower runs on its own clock
+    if (rows) { L.spawned = true; dropNext(); return; }
     if (cursor >= seq.length) { finish(); return; }
     const ch = seq[cursor++];
     if (ch === " ") return;
@@ -357,7 +375,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     count = 0;
     phase = "fill";
     if (arenaEl) { inset = 0; arenaEl.style.inset = "0px"; }
-    if (tower) { heights.fill(0); dropIn(seq[cursor++]); return; }
+    if (tower) { heights.fill(0); gap = GAP0; dropIn(seq[cursor++]); scheduleDrop(); return; }
     if (rows) { slideIn(cursor++); return; }
     const ang = heading(rand);
     makeLetter(seq[cursor++], STAGE / 2, STAGE / 2, Math.cos(ang) * SPEED, Math.sin(ang) * SPEED);
@@ -371,8 +389,15 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     if (tower) { tickTower(dt, now, spawner); raf = requestAnimationFrame(tick); return; }
     if (rows) { tickRows(dt, now, spawner); raf = requestAnimationFrame(tick); return; }
     for (const L of letters) {
-      L.cx += L.vx * dt;
-      L.cy += L.vy * dt;
+      /* Chaos: right after a wall hit the tile moves at a fraction of
+         its speed and eases back up — the "bounce" without any scale. */
+      let k = 1;
+      if (chaos) {
+        const ti = (now - L.hitAt) / IMPACT_MS;
+        if (ti >= 0 && ti < 1) k = IMPACT_DIP + (1 - IMPACT_DIP) * (1 - Math.pow(1 - ti, 3));
+      }
+      L.cx += L.vx * k * dt;
+      L.cy += L.vy * k * dt;
       if (phase === "drain") {
         /* Walls are open: mark the square gone once fully outside. */
         if (L.cx + L.half < 0 || L.cx - L.half > STAGE || L.cy + L.half < 0 || L.cy - L.half > STAGE) L.gone = true;
