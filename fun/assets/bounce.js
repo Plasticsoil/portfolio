@@ -19,6 +19,10 @@
              direction. The text repeats to 80 beats, until the stage
              is properly full.
 
+   Each flavour also has a "frame" version: the tile carries an inner
+   square in a nearby shade, and the frame around it gets a little
+   thinner at every wall touch — a tally of its bounces.
+
    Once the sequence is complete, after a short hold, the walls "open":
    each square leaves through the next wall it touches, and once the
    stage is empty the word starts over.
@@ -51,6 +55,10 @@ const SQUASH_MS = 320;          // and how long the squash-and-spring lasts
 const POP_MS = 260;             // a new letter pops in from small to full size
 const TILT = 0;                 // ± degrees, a fixed tilt per square (off)
 const LETTER = "#4E4B5D";       // Stickers' slate letter colour
+const FRAME0 = 40;              // frame variant: frame thickness at birth (px)
+const FRAME_STEP = 6;           // … thinner by this much at every wall touch
+const FRAME_MIN = 5;            // … but never thinner than this
+const INNER_MIX = 0.22;         // inner square = tile colour mixed this far toward the background
 
 /* Collection 02's palettes (same values as Dots / Stickers / Loop).
    frame = background; squares cycle card → ink → anchor, so two
@@ -126,10 +134,19 @@ function grain(stage) {
   return { roll(frame) { el.style.backgroundImage = tiles[frame % tiles.length]; } };
 }
 
+/* Mix two hex colours: t = 0 → a, t = 1 → b. */
+function mix(a, b, t) {
+  const A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16);
+  const ch = (sh) => Math.round(((A >> sh) & 255) * (1 - t) + ((B >> sh) & 255) * t);
+  return "#" + [16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, "0")).join("");
+}
+
 export const m = (stage, opts) => mount(stage, { ...opts, mode: "snake" });
 export const c = (stage, opts) => mount(stage, { ...opts, mode: "chaos" });
+export const f = (stage, opts) => mount(stage, { ...opts, mode: "snake", frame: true });
+export const g = (stage, opts) => mount(stage, { ...opts, mode: "chaos", frame: true });
 
-function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
+function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: framed = false } = {}) {
   const snake = mode === "snake";
   const pal = palette || p[0];
   stage.innerHTML = "";
@@ -179,10 +196,23 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     const tilt = (rand() * 2 - 1) * TILT;
     const rad = (tilt * Math.PI) / 180;
     const half = (SIZE / 2) * (Math.abs(Math.cos(rad)) + Math.abs(Math.sin(rad)));
-    el.style.cssText = `position:absolute;left:${-SIZE / 2}px;top:${-SIZE / 2}px;width:${SIZE}px;height:${SIZE}px;border-radius:${CORNER}px;background:${fill};display:flex;align-items:center;justify-content:center;font-family:"Switzer","Rubik",system-ui,sans-serif;font-weight:500;font-size:${FONT_SIZE}px;line-height:1;color:${LETTER};text-transform:uppercase;letter-spacing:-0.02em;will-change:transform;`;
-    el.textContent = ch;
+    el.style.cssText = `position:absolute;left:${-SIZE / 2}px;top:${-SIZE / 2}px;width:${SIZE}px;height:${SIZE}px;border-radius:${CORNER}px;background:${fill};display:flex;align-items:center;justify-content:center;will-change:transform;`;
+    /* Frame variant: an inner square in a nearby shade; the frame
+       around it (the tile's own colour) thins at every wall touch. */
+    let inner = null;
+    if (framed) {
+      inner = document.createElement("div");
+      inner.style.cssText = `position:absolute;inset:${FRAME0}px;background:${mix(fill, pal.frame, INNER_MIX)};`;
+      el.appendChild(inner);
+    }
+    /* The letter is its own element so the tile can squash and pop
+       around it while the glyph itself stays rigid. */
+    const glyph = document.createElement("span");
+    glyph.style.cssText = `position:relative;font-family:"Switzer","Rubik",system-ui,sans-serif;font-weight:500;font-size:${FONT_SIZE}px;line-height:1;color:${LETTER};text-transform:uppercase;letter-spacing:-0.02em;will-change:transform;`;
+    glyph.textContent = ch;
+    el.appendChild(glyph);
     layer.appendChild(el);                         // newest on top
-    const L = { el, id: count++, cx, cy, vx, vy, tilt, half, spawned: false,
+    const L = { el, glyph, inner, hits: 0, id: count++, cx, cy, vx, vy, tilt, half, spawned: false,
                 born: performance.now(), hitAt: -1e9, hitAxis: "x" };
     letters.push(L);
     speed = SPEED + SPEED_STEP * (count - 1);
@@ -209,6 +239,8 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       sx *= pop; sy *= pop;
     }
     L.el.style.transform = `translate(${(L.cx + jx).toFixed(1)}px, ${(L.cy + jy).toFixed(1)}px) rotate(${L.tilt.toFixed(1)}deg) scale(${sx.toFixed(3)}, ${sy.toFixed(3)})`;
+    /* Undo the tile's scale on the glyph so only the frame bounces. */
+    L.glyph.style.transform = sx === 1 && sy === 1 ? "" : `scale(${(1 / sx).toFixed(3)}, ${(1 / sy).toFixed(3)})`;
   }
 
   function finish() {
@@ -267,7 +299,10 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
         else if (L.cx > hi) { L.cx = 2 * hi - L.cx; L.vx = -Math.abs(L.vx); hit = "x"; }
         if (L.cy < lo) { L.cy = 2 * lo - L.cy; L.vy = Math.abs(L.vy); hit = "y"; }
         else if (L.cy > hi) { L.cy = 2 * hi - L.cy; L.vy = -Math.abs(L.vy); hit = "y"; }
-        if (hit) { L.hitAt = now; L.hitAxis = hit; }
+        if (hit) {
+          L.hitAt = now; L.hitAxis = hit; L.hits++;
+          if (L.inner) L.inner.style.inset = Math.max(FRAME_MIN, FRAME0 - FRAME_STEP * L.hits) + "px";
+        }
         if (hit && phase === "fill" && L === spawner && !L.spawned) onSpawnerHit(L);
       }
     }
