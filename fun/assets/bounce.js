@@ -16,8 +16,9 @@
              the spawner's heading, so every letter follows the first
              one's path with a delay: one long snake. The text plays
              once, so the loop is as long as the text; when the last
-             letter is in, the walls open and the snake carries on out
-             of the frame.
+             letter is in, every tile takes three more wall hits and
+             then sails straight out of the frame — head first, tail
+             following along the very same path.
      Chaos — the new letter starts from the centre in a fresh random
              direction. The walls are a visible inner square that
              closes in a little at every touch; the text repeats until
@@ -65,7 +66,7 @@ const FONT_SIZE = 72;           // letter size inside the square
 const SPEED = 520;              // px / second, in stage units
 const SPEED_STEP = 12;          // every new letter makes everything this much faster
 const SPAWN_DELAY = 230;        // ms between a wall hit and the next letter (≈120px along the path)
-const SNAKE_HOLD = 1200;        // Snake: once the last letter is in, this long before the walls open
+const SNAKE_BOUNCES = 3;        // Snake: once the last letter is in, each tile takes this many more wall hits, then sails out
 const SLOTS_CHAOS = 400;        // Chaos keeps going until its arena has closed (see SHRINK); this is just "plenty"
 const SLOTS_TOWER = 42;         // Tower stacks this many beats
 const HOLD_MS = 1600;           // pause once the sequence is complete, before the walls open
@@ -324,7 +325,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     layer.appendChild(el);                         // newest on top
     const L = { el, glyph, id: count++, cx, cy, vx, vy, tilt, half, spawned: false,
                 ox: (rand() * 2 - 1) * OFFSET, oy: (rand() * 2 - 1) * OFFSET,   // hand-placed offset (visual only)
-                born: performance.now(), hitAt: -1e9, hitAxis: "x", asleep: false };
+                born: performance.now(), hitAt: -1e9, hitAxis: "x", asleep: false, lastHits: 0, free: false };
     letters.push(L);
     if (!tower && !rows) { speed = SPEED + SPEED_STEP * (count - 1); repace(); }
     place(L, performance.now());
@@ -354,11 +355,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   }
 
   function finish() {
-    if (snake) {
-      phase = "hold";
-      timers.push(setTimeout(() => { phase = "drain"; }, SNAKE_HOLD));   // then it just leaves
-      return;
-    }
+    if (snake) { phase = "hold"; return; }         // tiles free themselves one by one, see tick()
     if (tower || rows) {
       phase = "quake";
       quakeAt = performance.now();
@@ -457,7 +454,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       }
       L.cx += L.vx * k * dt;
       L.cy += L.vy * k * dt;
-      if (phase === "drain") {
+      if (phase === "drain" || L.free) {
         /* Walls are open: mark the square gone once fully outside. */
         if (L.cx + L.half < 0 || L.cx - L.half > STAGE || L.cy + L.half < 0 || L.cy - L.half > STAGE) L.gone = true;
       } else {
@@ -473,11 +470,14 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
         if (hit) {
           L.hitAt = now; L.hitAxis = hit;
           if (arenaEl) shrinkArena();
+          /* Snake, text complete: count this tile's hits; after the
+             last allowed one it stops reflecting and leaves. */
+          if (snake && phase === "hold" && ++L.lastHits >= SNAKE_BOUNCES) L.free = true;
         }
         if (hit && phase === "fill" && L === spawner && !L.spawned) onSpawnerHit(L);
       }
     }
-    if (phase === "drain") {
+    if (phase === "drain" || (snake && phase === "hold")) {
       letters.filter((L) => L.gone).forEach((L) => L.el.remove());
       letters = letters.filter((L) => !L.gone);
       if (!letters.length) start();
