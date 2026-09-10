@@ -74,7 +74,7 @@ const SPEED = 520;              // px / second, in stage units
 const SPEED_STEP = 12;          // every new letter makes everything this much faster
 const SPAWN_DELAY = 230;        // ms between a wall hit and the next letter (≈120px along the path)
 const SNAKE_BOUNCES = 3;        // Snake: once the last letter is in, each tile takes this many more wall hits, then sails out
-const FOLD_ABOVE = 8;           // Snake / Towers: up to this many letters the gradient runs once; above it, forth → back → forth
+const FOLD_ABOVE = 8;           // Snake: up to this many letters the gradient runs once; above it, forth → back → forth
 const SLOTS_CHAOS = 400;        // Chaos keeps going until its arena has closed (see SHRINK); this is just "plenty"
 const SLOTS_TOWER = 42;         // Tower stacks this many beats
 const HOLD_MS = 1600;           // pause once the sequence is complete, before the walls open
@@ -344,12 +344,12 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       const a = 3 * (inset - INSET0) / ((STAGE - ARENA_MIN) / 2 - INSET0);
       t = a <= 1 ? a : a <= 2 ? 2 - a : a - 2;
     } else {
-      /* Snake, Towers: one step per letter. A short text runs the
-         gradient once; a long one folds it forth → back → forth so the
-         colour keeps moving from tile to tile. */
+      /* Snake, Towers: one step per letter. Towers always runs the
+         gradient once; Snake folds a long text forth → back → forth so
+         the colour keeps moving from tile to tile. */
       const a = steps > 1 ? hue / (steps - 1) : 0;
-      if (steps > FOLD_ABOVE) { const b = a * 3; t = b <= 1 ? b : b <= 2 ? 2 - b : b - 2; }
-      else t = a;
+      if (snake && steps > FOLD_ABOVE) { const b = a * 3; t = b <= 1 ? b : b <= 2 ? 2 - b : b - 2; }
+      else t = a;                                  // Towers: always one straight run, first tile to last
     }
     if (!blank) hue++;
     const fill = blank ? "transparent" : mix(pal.card, pal.ink, Math.min(1, Math.max(0, t)));
