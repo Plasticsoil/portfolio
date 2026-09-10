@@ -92,18 +92,21 @@ const CLOSE_SPEED = 90;         // Chaos: once at one tile, the frame keeps clos
 const ARENA_MIN = SIZE;         // … until it is exactly one tile — then the round is over
 const IMPACT_MS = 260;          // Chaos: a wall hit knocks the speed down, and it eases back over this long
 const IMPACT_DIP = 0.3;         // … to this fraction of full speed at the moment of impact
-const GAP0 = 760;               // Tower: ms between the first two cubes
-const GAP_DECAY = 0.94;         // … each cube shortens the gap by this factor
-const GAP_MIN = 110;            // … down to this
+const GAP0 = 820;               // Towers: ms between the first two cubes
+const GAP_DECAY = 0.9;          // … each cube shortens the gap by this factor
+const GAP_MIN = 90;             // … down to this
 const QUAKE_MS = 1100;          // Tower / Pillars ending: a quake this long, then the floor gives way
 const QUAKE_MAX = 26;           // … the ground's shake grows from nothing to this many px (sideways; less up and down)
 const ARENA_SAT = 0.18;         // arena colour = the background, this much more saturated…
 const ARENA_LIGHT = 0.10;       // … and this much lighter (a card tint when the background is already white)
 
 /* Collection 02's palettes (same values as Dots / Stickers / Loop),
-   read with this collection's own rule: frame = background, and the
-   tiles run a stepped gradient from card (first letter) to ink (last
-   letter). anchor is unused. */
+   read with this collection's own rule: three colours — frame, card,
+   ink — and each card rotates them. Snake: background = frame, tiles
+   run a stepped gradient card → ink. Chaos: background = card, tiles
+   ink → frame. Towers: background = ink, tiles frame → card. So one
+   set of three gives every card its own background and gradient.
+   anchor is unused. */
 export const p = [
   { frame: "#A9FF67", card: "#FFFFFF", ink: "#5BE03A", anchor: "#49C7FD" },
   { frame: "#49C7FD", card: "#FFFFFF", ink: "#5BE03A", anchor: "#A9FF67" },
@@ -218,7 +221,11 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   const snake = mode === "snake", chaos = mode === "chaos", tower = mode === "tower", rows = mode === "pillars";
   const framed = chaos;                          // Chaos plays inside a closing arena
   const noScale = !snake;                        // only Snake squashes and pops
-  const pal = palette || p[0];
+  const given = palette || p[0];
+  /* Rotate the three colours per card (see the note by the palettes). */
+  const tri = [given.frame, given.card, given.ink];
+  const rot = snake ? 0 : chaos ? 1 : 2;
+  const pal = { frame: tri[rot], card: tri[(rot + 1) % 3], ink: tri[(rot + 2) % 3], anchor: given.anchor };
   stage.innerHTML = "";
   stage.style.cssText = `position:relative;width:${STAGE}px;height:${STAGE}px;overflow:hidden;isolation:isolate;background:${pal.frame};`;
 
@@ -272,8 +279,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   function shrinkArena() {
     if (phase !== "fill") return;                  // once closing, hits no longer steer the frame
     const max = (STAGE - ARENA_MIN) / 2;
-    inset = Math.min(inset + SHRINK, max);
-    arenaEl.style.inset = inset.toFixed(1) + "px";
+    inset = Math.min(inset + SHRINK, max);         // drawn on the next stop-motion frame, see tick()
     if (inset >= max && phase === "fill") phase = "close";   // one tile left: the frame closes as a mask
     for (const L of letters) {
       L.cx = Math.min(Math.max(inset + L.half, L.cx), STAGE - inset - L.half);
@@ -342,7 +348,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     layer.appendChild(el);                         // newest on top
     const L = { el, glyph, id: count++, cx, cy, vx, vy, tilt, half, spawned: false,
                 ox: (rand() * 2 - 1) * OFFSET, oy: (rand() * 2 - 1) * OFFSET,   // hand-placed offset (visual only)
-                born: performance.now(), hitAt: -1e9, hitAxis: "x", asleep: false, lastHits: 0, free: false };
+                born: performance.now(), hitAt: -1e9, hitAxis: "x", hitSide: -1, asleep: false, lastHits: 0, free: false };
     letters.push(L);
     if (!tower && !rows) { speed = SPEED + SPEED_STEP * (count - 1); repace(); }
     place(L, performance.now());
@@ -354,12 +360,30 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
        along the wall, then springs back (a half-sine over SQUASH_MS);
      - birth: a new square pops in from 40% with a little overshoot. */
   function place(L, now) {
-    const jx = L.ox + wobble(L.id, frame, 0) * JITTER, jy = L.oy + wobble(L.id, frame, 1) * JITTER;
+    let jx = L.ox + wobble(L.id, frame, 0) * JITTER, jy = L.oy + wobble(L.id, frame, 1) * JITTER;
     let sx = 1, sy = 1;
     const th = noScale ? 1 : (now - L.hitAt) / SQUASH_MS;   // cube versions: no scale bounce at all
     if (th >= 0 && th < 1) {
       const k = Math.sin(th * Math.PI) * SQUASH;
       if (L.hitAxis === "x") { sx = 1 - k; sy = 1 + k; } else { sx = 1 + k; sy = 1 - k; }
+      /* Squash against the wall, not about the centre: the flattened
+         side stays pressed to the wall it hit. */
+      if (L.hitAxis === "x") jx += (1 - sx) * L.half * -L.hitSide;
+      else jy += (1 - sy) * L.half * -L.hitSide;
+    }
+    /* Bouncing cards: the hand-placed offset and wobble never lift a
+       tile off a wall — the drawn tile is clamped to the arena. And
+       since at 12 fps the true moment of contact falls between frames,
+       the first frame after a hit draws the tile exactly on the wall. */
+    if (!tower && !rows && phase !== "drain" && !L.free) {
+      const wall = Math.min(inset, (STAGE - ARENA_MIN) / 2);
+      const lo = wall + L.half, hi = STAGE - wall - L.half;
+      if (now - L.hitAt < 1000 / FPS + 20) {
+        if (L.hitAxis === "x") jx = (L.hitSide < 0 ? lo : hi) - L.cx + (th < 1 ? (1 - sx) * L.half * -L.hitSide : 0);
+        else jy = (L.hitSide < 0 ? lo : hi) - L.cy + (th < 1 ? (1 - sy) * L.half * -L.hitSide : 0);
+      }
+      jx = Math.min(Math.max(L.cx + jx, lo), hi) - L.cx;
+      jy = Math.min(Math.max(L.cy + jy, lo), hi) - L.cy;
     }
     const tb = noScale ? 1 : (now - L.born) / POP_MS;
     if (tb < 1) {
@@ -488,6 +512,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
         else if (L.cy > hi) { L.cy = 2 * hi - L.cy; L.vy = -Math.abs(L.vy); hit = "y"; }
         if (hit) {
           L.hitAt = now; L.hitAxis = hit;
+          L.hitSide = hit === "x" ? (L.vx > 0 ? -1 : 1) : (L.vy > 0 ? -1 : 1);   // -1: the low wall (left / top)
           if (arenaEl) shrinkArena();
           /* Snake, text complete: count this tile's hits; after the
              last allowed one it stops reflecting and leaves. */
@@ -506,8 +531,6 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     if (phase === "close") {
       inset += CLOSE_SPEED * dt;
       if (inset >= STAGE / 2) { start(); return void (raf = requestAnimationFrame(tick)); }
-      arenaEl.style.inset = inset.toFixed(1) + "px";
-      layer.style.clipPath = `inset(${inset.toFixed(1)}px)`;
     }
     /* Stop-motion: the simulation runs smoothly, the picture updates
        at FPS — and each new frame re-rolls the grain and the wobble. */
@@ -517,6 +540,11 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       frame++;
       noise.roll(frame);
       letters.forEach((L) => place(L, now));
+      /* The arena is stop-motion too: its size only changes on a frame. */
+      if (arenaEl) {
+        arenaEl.style.inset = inset.toFixed(1) + "px";
+        layer.style.clipPath = phase === "close" ? `inset(${inset.toFixed(1)}px)` : "";
+      }
     }
     raf = requestAnimationFrame(tick);
   }
