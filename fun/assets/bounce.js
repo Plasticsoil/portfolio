@@ -19,7 +19,9 @@
      Chaos — the new letter starts from the centre in a fresh random
              direction. The walls are a visible inner square that
              closes in a little at every touch; the text repeats until
-             the arena is down to a single tile, then the round is over.
+             the arena is down to a single tile. Then the frame keeps
+             closing as a mask over the letters until nothing is left,
+             and the round starts over.
              No squash here: a wall hit knocks the speed down and it
              eases back, which is the bounce feel.
 
@@ -74,7 +76,8 @@ const SQUASH_MS = 320;          // and how long the squash-and-spring lasts
 const POP_MS = 260;             // a new letter pops in from small to full size
 const TILT = 0;                 // ± degrees, a fixed tilt per square (off)
 const LETTER = "#4E4B5D";       // Stickers' slate letter colour
-const SHRINK = 0.9;             // Chaos: the arena closes in this much per side at every wall touch
+const SHRINK = 1.4;             // Chaos: the arena closes in this much per side at every wall touch
+const CLOSE_SPEED = 90;         // Chaos: once at one tile, the frame keeps closing as a mask at this px/s per side
 const ARENA_MIN = SIZE;         // … until it is exactly one tile — then the round is over
 const IMPACT_MS = 260;          // Chaos: a wall hit knocks the speed down, and it eases back over this long
 const IMPACT_DIP = 0.3;         // … to this fraction of full speed at the moment of impact
@@ -250,10 +253,11 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     stage.appendChild(arenaEl);
   }
   function shrinkArena() {
+    if (phase !== "fill") return;                  // once closing, hits no longer steer the frame
     const max = (STAGE - ARENA_MIN) / 2;
     inset = Math.min(inset + SHRINK, max);
     arenaEl.style.inset = inset.toFixed(1) + "px";
-    if (inset >= max && phase === "fill") finish();   // one tile left: the round is over
+    if (inset >= max && phase === "fill") phase = "close";   // one tile left: the frame closes as a mask
     for (const L of letters) {
       L.cx = Math.min(Math.max(inset + L.half, L.cx), STAGE - inset - L.half);
       L.cy = Math.min(Math.max(inset + L.half, L.cy), STAGE - inset - L.half);
@@ -412,7 +416,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     count = 0;
     hue = 0;
     phase = "fill";
-    if (arenaEl) { inset = 0; arenaEl.style.inset = "0px"; }
+    if (arenaEl) { inset = 0; arenaEl.style.inset = "0px"; layer.style.clipPath = ""; }
     if (snake) timers.push(setTimeout(() => { phase = "drain"; }, SNAKE_LIFE));   // no hold: the snake just leaves
     if (tower) { heights.fill(0); gap = GAP0; dropIn(seq[cursor++]); scheduleDrop(); return; }
     if (rows) { slideIn(cursor++); return; }
@@ -443,7 +447,8 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       } else {
         /* Perfect elastic reflection off each wall (the arena's, in
            the frame variant — and every touch pulls the arena in). */
-        const lo = inset + L.half, hi = STAGE - inset - L.half;
+        const wall = Math.min(inset, (STAGE - ARENA_MIN) / 2);
+        const lo = wall + L.half, hi = STAGE - wall - L.half;
         let hit = false;
         if (L.cx < lo) { L.cx = 2 * lo - L.cx; L.vx = Math.abs(L.vx); hit = "x"; }
         else if (L.cx > hi) { L.cx = 2 * hi - L.cx; L.vx = -Math.abs(L.vx); hit = "x"; }
@@ -460,6 +465,14 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       letters.filter((L) => L.gone).forEach((L) => L.el.remove());
       letters = letters.filter((L) => !L.gone);
       if (!letters.length) start();
+    }
+    /* Chaos ending: the frame keeps closing past one tile, now as a
+       mask over the still-bouncing letters, until it is gone. */
+    if (phase === "close") {
+      inset += CLOSE_SPEED * dt;
+      if (inset >= STAGE / 2) { start(); return void (raf = requestAnimationFrame(tick)); }
+      arenaEl.style.inset = inset.toFixed(1) + "px";
+      layer.style.clipPath = `inset(${inset.toFixed(1)}px)`;
     }
     /* Stop-motion: the simulation runs smoothly, the picture updates
        at FPS — and each new frame re-rolls the grain and the wobble. */
