@@ -100,9 +100,10 @@ const QUAKE_MAX = 26;           // … the ground's shake grows from nothing to 
 const ARENA_SAT = 0.18;         // arena colour = the background, this much more saturated…
 const ARENA_LIGHT = 0.10;       // … and this much lighter (a card tint when the background is already white)
 
-/* Collection 02's palettes (same values as Dots / Stickers / Loop).
-   frame = background; squares cycle card → ink → anchor, so two
-   neighbouring letters never share a colour. */
+/* Collection 02's palettes (same values as Dots / Stickers / Loop),
+   read with this collection's own rule: frame = background, and the
+   tiles run a stepped gradient from card (first letter) to ink (last
+   letter). anchor is unused. */
 export const p = [
   { frame: "#A9FF67", card: "#FFFFFF", ink: "#5BE03A", anchor: "#49C7FD" },
   { frame: "#49C7FD", card: "#FFFFFF", ink: "#5BE03A", anchor: "#A9FF67" },
@@ -111,7 +112,7 @@ export const p = [
   { frame: "#B9F1FA", card: "#A9FF67", ink: "#D9FF93", anchor: "#49C7FD" },
   { frame: "#D9FF93", card: "#5BE03A", ink: "#FFFFFF", anchor: "#49C7FD" },
 ];
-const ROLES = ["card", "ink", "anchor"];
+
 
 /* Small seeded RNG (mulberry32) so a `seed` gives a repeatable launch. */
 function rng(seed) {
@@ -278,6 +279,9 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       L.cy = Math.min(Math.max(inset + L.half, L.cy), STAGE - inset - L.half);
     }
   }
+  /* How many painted tiles a loop holds, for the gradient steps. */
+  const steps = rows ? plan.length : seq.filter((c) => c !== " ").length;
+
   const layer = document.createElement("div");
   layer.style.cssText = "position:absolute;inset:0;";
   stage.appendChild(layer);
@@ -290,7 +294,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   let raf = 0, last = 0;
   let cursor = 0;            // next beat in seq
   let count = 0;             // squares spawned so far (wobble id, pace)
-  let hue = 0;               // visible letters so far (colour cycling)
+  let hue = 0;               // visible letters so far (gradient step)
   let phase = "fill";        // fill → hold → drain → (restart)
   let acc = 0, frame = 0;    // stop-motion clock
   let speed = SPEED;         // current pace, shared by every square
@@ -312,9 +316,16 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     const sz = tileSize;
     const el = document.createElement("div");
     /* A blank (Snake's space) is an invisible tile: present in the
-       chain, so the gap is real, but never painted. */
+       chain, so the gap is real, but never painted. Every other tile is
+       one step of the gradient: Snake and Towers step by letter index
+       over the letters in the loop; Chaos, whose loop length is set by
+       the closing arena, steps with the arena instead. */
     const blank = ch === " ";
-    const fill = blank ? "transparent" : pal[ROLES[hue++ % ROLES.length]];
+    let t = 0;
+    if (chaos) t = (inset - INSET0) / ((STAGE - ARENA_MIN) / 2 - INSET0);
+    else t = steps > 1 ? hue / (steps - 1) : 0;
+    if (!blank) hue++;
+    const fill = blank ? "transparent" : mix(pal.card, pal.ink, Math.min(1, Math.max(0, t)));
     const tilt = (rand() * 2 - 1) * TILT;
     const rad = (tilt * Math.PI) / 180;
     const half = (sz / 2) * (Math.abs(Math.cos(rad)) + Math.abs(Math.sin(rad)));
