@@ -33,16 +33,19 @@
            tile of that column, with a small hop. Cubes drop on a
            cadence that gets quicker with every cube.
 
-   Pillars — like Tower, but typeset: each word is its own pillar, the
-             pillars stand side by side in the middle, and the tile
-             shrinks so the longest word and the number of words both
-             fit. Letters drop in last-to-first so each pillar reads
-             top to bottom; words go left to right (right to left for
-             Hebrew). Same quickening cadence as Tower.
+   Pillars — shown in the studio as "Towers": each word is its own
+             tower, the towers stand side by side in the middle, and
+             the tile shrinks so the longest word and the number of
+             words both fit. Letters drop in last-to-first so each
+             tower reads top to bottom; words go left to right (right
+             to left for Hebrew). Cubes come on a quickening cadence.
 
-   Tower and Pillars end with a quake: the whole ground shakes as one,
-   gently at first and harder and harder, then the floor gives way and
-   the whole pile drops out of the frame.
+   (The "tower" mode — random columns — is still here for the export
+   and embed pages but no longer has a card.)
+
+   Both end with a quake: the whole ground shakes as one, gently at
+   first and harder and harder, then the floor gives way and the whole
+   pile drops out of the frame.
 
    Once the sequence is complete, after a short hold, the walls "open":
    each square leaves through the next wall it touches, and once the
