@@ -1,45 +1,47 @@
 /* FunType — Collection 03 / "Bounce"
-   The first letter of the word is dropped in the middle of the stage,
-   picks a random direction and travels in a straight line at constant
-   speed. When the ink of the glyph touches a wall it reflects off it
-   (angle in = angle out, speed unchanged) — and keeps going forever.
+   The first letter of the word sits in a sticker circle, drops in at
+   the middle of the stage, picks a random direction and travels in a
+   straight line at constant speed. When the circle touches a wall it
+   reflects off it (angle in = angle out, speed unchanged).
 
    The rest of the word arrives one letter per wall hit: the newest
-   letter is the "spawner"; the first time it touches a wall, the next
+   circle is the "spawner"; the first time it touches a wall, the next
    letter pops out from that collision point a beat later, travelling
-   the same way, layered *behind* every letter before it. A space is a
+   the same way, layered *behind* every circle before it. A space is a
    silent beat — a wall hit that spawns nothing — so words stay apart.
    The text repeats (space-separated) to fill 50 beats; then, after a
-   short hold, the walls "open": each letter leaves through the next
+   short hold, the walls "open": each circle leaves through the next
    wall it touches, and once the stage is empty the word starts over.
+
+   Look: same sticker circles as Collection 02's Stickers (Pack) —
+   circle in card / ink / anchor, slate letter at weight 500.
 
    Written as a plain, readable ES module (the rest of FunType is a
    minified Vite build); it plugs into the same effect contract:
-     mount(stageEl, { word, palette, seed }) -> { stop() }
-   Palette roles: frame = background, ink = the letter.
-   card / anchor are unused for now (kept for the shuffle pill). */
+     mount(stageEl, { word, palette, seed }) -> { stop() } */
 
 const STAGE = 1080;
-const FONT_SIZE = 345;          // px, in stage units (0.75 of the first cut)
+const RADIUS = 120;             // sticker circle radius, in stage units
 const SPEED = 520;              // px / second, in stage units
 const SPAWN_DELAY = 140;        // ms between a wall hit and the next letter
 const SLOTS = 50;               // the word repeats (space-separated) to fill this many beats
 const HOLD_MS = 1600;           // pause once the sequence is complete, before the walls open
-const FONT = `900 ${FONT_SIZE}px "Switzer", "Rubik", system-ui, sans-serif`;
-const SVG_NS = "http://www.w3.org/2000/svg";
+const SPREAD = 10;              // ± degrees a new circle deviates from its spawner's heading
+const LETTER = "#4E4B5D";       // Stickers' slate letter colour
+const FONT_SIZE = RADIUS * 0.75; // Stickers' ratio
 
-/* Collection 01's palettes (same values as the Corner / Orbit / Block
-   cards). frame = background; each letter takes the next of
-   ink → card → anchor, all three designed to sit on that frame. */
+/* Collection 02's palettes (same values as Dots / Stickers / Loop).
+   frame = background; circles cycle card → ink → anchor, so two
+   neighbouring letters never share a colour. */
 export const p = [
-  { frame: "#FA8EFA", card: "#FFFFFF", ink: "#FF7300", anchor: "#FFDD00" },
-  { frame: "#FFFFFF", card: "#FFFF66", ink: "#FF42FF", anchor: "#FF7300" },
-  { frame: "#FFFF66", card: "#FF42FF", ink: "#FFFFFF", anchor: "#FA8EFA" },
-  { frame: "#FFDD00", card: "#FFFFFF", ink: "#FF7300", anchor: "#FF42FF" },
-  { frame: "#FF42FF", card: "#FFDD00", ink: "#FFFFFF", anchor: "#FFFF66" },
-  { frame: "#FF7300", card: "#FA8EFA", ink: "#FFFFFF", anchor: "#FFFF66" },
+  { frame: "#A9FF67", card: "#FFFFFF", ink: "#5BE03A", anchor: "#49C7FD" },
+  { frame: "#49C7FD", card: "#FFFFFF", ink: "#5BE03A", anchor: "#A9FF67" },
+  { frame: "#FFFFFF", card: "#49C7FD", ink: "#5BE03A", anchor: "#D9FF93" },
+  { frame: "#5BE03A", card: "#49C7FD", ink: "#B9F1FA", anchor: "#A9FF67" },
+  { frame: "#B9F1FA", card: "#A9FF67", ink: "#D9FF93", anchor: "#49C7FD" },
+  { frame: "#D9FF93", card: "#5BE03A", ink: "#FFFFFF", anchor: "#49C7FD" },
 ];
-const LETTER_ROLES = ["ink", "card", "anchor"];
+const CIRCLE_ROLES = ["card", "ink", "anchor"];
 
 /* Small seeded RNG (mulberry32) so a `seed` gives a repeatable launch. */
 function rng(seed) {
@@ -53,52 +55,12 @@ function rng(seed) {
   };
 }
 
-let ctx;
-/* Exact ink box of the glyph, by rasterising it once and scanning the
-   pixels. Browser text metrics (actualBoundingBox*) are only
-   approximate — iOS in particular leaves a gap on the left — and the
-   whole point is that the *letter shape* is what touches the wall. */
-function measure(ch) {
-  const pad = FONT_SIZE;
-  const size = FONT_SIZE * 3;
-  if (!ctx) {
-    const c = document.createElement("canvas");
-    c.width = c.height = size;
-    ctx = c.getContext("2d", { willReadFrequently: true });
-  }
-  ctx.clearRect(0, 0, size, size);
-  ctx.font = FONT;
-  ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = "#000";
-  ctx.fillText(ch, pad, pad * 1.5);           // origin at (pad, pad*1.5)
-  const d = ctx.getImageData(0, 0, size, size).data;
-  let minX = size, minY = size, maxX = -1, maxY = -1;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      if (d[(y * size + x) * 4 + 3] > 8) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-      }
-    }
-  }
-  if (maxX < 0) return { left: 0, asc: FONT_SIZE * 0.72, w: 1, h: 1 };
-  return {
-    left: pad - minX,                 // origin sits this far right of the ink's left edge
-    asc: pad * 1.5 - minY,            // and this far below its top
-    w: maxX - minX + 1,
-    h: maxY - minY + 1,
-  };
-}
-
-/* A random heading that stays clear of the axes, so the letter never
+/* A random heading that stays clear of the axes, so the circle never
    crawls along a wall or ping-pongs straight up and down. */
 function heading(rand) {
   const quadrant = Math.floor(rand() * 4);
   const a = (20 + rand() * 50) * (Math.PI / 180);   // 20°–70°
-  const base = quadrant * (Math.PI / 2);
-  return base + a;
+  return quadrant * (Math.PI / 2) + a;
 }
 
 export function m(stage, { word = "", palette, seed = 0 } = {}) {
@@ -117,101 +79,74 @@ export function m(stage, { word = "", palette, seed = 0 } = {}) {
     for (const c of base) { if (seq.length < SLOTS) seq.push(c); }
   }
 
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("viewBox", `0 0 ${STAGE} ${STAGE}`);
-  svg.style.cssText = "position:absolute;inset:0;width:100%;height:100%;";
-  stage.appendChild(svg);
+  const layer = document.createElement("div");
+  layer.style.cssText = "position:absolute;inset:0;";
+  stage.appendChild(layer);
 
   const rand = rng(seed);
-  const boxes = {};
-  const boxOf = (ch) => boxes[ch] || (boxes[ch] = measure(ch));
+  const D = RADIUS * 2, MAX = STAGE - D;
   let letters = [];          // in spawn order; letters[0] is on top
   let timers = [];
   let raf = 0, last = 0;
   let cursor = 0;            // next beat in seq
-  let visible = 0;           // letters spawned so far (for colour cycling)
+  let count = 0;             // circles spawned so far (for colour cycling)
   let phase = "fill";        // fill → hold → drain → (restart)
 
   function makeLetter(ch, x, y, vx, vy) {
-    const g = document.createElementNS(SVG_NS, "g");
-    const text = document.createElementNS(SVG_NS, "text");
-    text.textContent = ch;
-    text.setAttribute("font-family", '"Switzer", "Rubik", system-ui, sans-serif');
-    text.setAttribute("font-weight", "900");
-    text.setAttribute("font-size", FONT_SIZE);
-    text.setAttribute("fill", pal[LETTER_ROLES[visible % LETTER_ROLES.length]]);
-    visible++;
-    g.appendChild(text);
-    /* Earlier letters stay on top: new ones go to the back of the
-       paint order (SVG paints first child first). */
-    svg.insertBefore(g, svg.firstChild);
-    const L = { ch, g, text, box: boxOf(ch), x, y, vx, vy, spawned: false };
+    const el = document.createElement("div");
+    const fill = pal[CIRCLE_ROLES[count % CIRCLE_ROLES.length]];
+    count++;
+    el.style.cssText = `position:absolute;left:0;top:0;width:${D}px;height:${D}px;border-radius:50%;background:${fill};display:flex;align-items:center;justify-content:center;font-family:"Switzer","Rubik",system-ui,sans-serif;font-weight:500;font-size:${FONT_SIZE}px;line-height:1;color:${LETTER};text-transform:uppercase;letter-spacing:-0.02em;will-change:transform;`;
+    el.textContent = ch;
+    /* Earlier circles stay on top: new ones go to the back. */
+    layer.insertBefore(el, layer.firstChild);
+    const L = { el, x, y, vx, vy, spawned: false };
     place(L);
     return L;
   }
 
-  /* Place the ink box's top-left at (x, y). The text origin sits
-     `left` px in from the box edge and `asc` px down from its top. */
   function place(L) {
-    L.text.setAttribute("x", L.box.left);
-    L.text.setAttribute("y", L.box.asc);
-    L.g.setAttribute("transform", `translate(${L.x.toFixed(2)} ${L.y.toFixed(2)})`);
+    L.el.style.transform = `translate(${L.x.toFixed(2)}px, ${L.y.toFixed(2)}px)`;
+  }
+
+  function finish() {
+    phase = "hold";
+    timers.push(setTimeout(() => { phase = "drain"; }, HOLD_MS));
   }
 
   /* The spawner touched a wall: consume one beat. A space is silent
      (the spawner keeps its role and will try again at the next wall);
      a letter pops out of the collision point a beat later — same
-     centre, same post-bounce direction — and becomes the new spawner. */
+     spot, same post-bounce direction — and becomes the new spawner. */
   function onSpawnerHit(L) {
-    if (cursor >= seq.length) { phase = "hold"; timers.push(setTimeout(openWalls, HOLD_MS)); return; }
+    if (cursor >= seq.length) { finish(); return; }
     const ch = seq[cursor++];
     if (ch === " ") return;
     L.spawned = true;
-    const cx = L.x + L.box.w / 2, cy = L.y + L.box.h / 2;
-    const vx = L.vx, vy = L.vy;
-    const b = boxOf(ch);
+    /* Equal circles on the exact same heading would trail each other
+       forever as one snake, hiding every letter but the first — so each
+       new circle leaves at a slightly different angle and the train
+       fans out over time. */
+    const { x, y } = L;
+    const ang = Math.atan2(L.vy, L.vx) + ((rand() * 2 - 1) * SPREAD * Math.PI) / 180;
+    const vx = Math.cos(ang) * SPEED, vy = Math.sin(ang) * SPEED;
     timers.push(setTimeout(() => {
-      const x = Math.min(Math.max(0, cx - b.w / 2), STAGE - b.w);
-      const y = Math.min(Math.max(0, cy - b.h / 2), STAGE - b.h);
       letters.push(makeLetter(ch, x, y, vx, vy));
-      if (cursor >= seq.length) { phase = "hold"; timers.push(setTimeout(openWalls, HOLD_MS)); }
+      if (cursor >= seq.length) finish();
     }, SPAWN_DELAY));
   }
-
-  /* Sequence complete: the walls open. Letters no longer reflect; each
-     flies out through whichever wall it reaches next, so they leave
-     one by one over a second or two. */
-  function openWalls() { phase = "drain"; }
 
   function start() {
     timers.forEach(clearTimeout);
     timers = [];
-    letters.forEach((L) => L.g.remove());
+    letters.forEach((L) => L.el.remove());
     letters = [];
     cursor = 0;
-    visible = 0;
+    count = 0;
     phase = "fill";
-    const ch = seq[cursor++];
-    const b = boxOf(ch);
     const ang = heading(rand);
-    letters.push(makeLetter(ch, (STAGE - b.w) / 2, (STAGE - b.h) / 2,
+    letters.push(makeLetter(seq[cursor++], MAX / 2, MAX / 2,
       Math.cos(ang) * SPEED, Math.sin(ang) * SPEED));
-  }
-
-  /* Fonts can land after mount; re-measure so the boxes match the real
-     Switzer glyphs, keeping each letter centred where it was. */
-  const remeasure = () => {
-    for (const ch of Object.keys(boxes)) boxes[ch] = measure(ch);
-    letters.forEach((L) => {
-      const cx = L.x + L.box.w / 2, cy = L.y + L.box.h / 2;
-      L.box = boxes[L.ch];
-      L.x = cx - L.box.w / 2;
-      L.y = cy - L.box.h / 2;
-    });
-  };
-  if (document.fonts) {
-    document.fonts.ready.then(remeasure);
-    document.fonts.load(FONT, base.join("")).then(remeasure, () => {});
   }
 
   function tick(now) {
@@ -222,23 +157,22 @@ export function m(stage, { word = "", palette, seed = 0 } = {}) {
     for (const L of letters) {
       L.x += L.vx * dt;
       L.y += L.vy * dt;
-      const maxX = STAGE - L.box.w, maxY = STAGE - L.box.h;
       if (phase === "drain") {
-        /* Walls are open: mark the letter gone once fully outside. */
-        if (L.x + L.box.w < 0 || L.x > STAGE || L.y + L.box.h < 0 || L.y > STAGE) L.gone = true;
+        /* Walls are open: mark the circle gone once fully outside. */
+        if (L.x + D < 0 || L.x > STAGE || L.y + D < 0 || L.y > STAGE) L.gone = true;
       } else {
         /* Perfect elastic reflection off each wall. */
         let hit = false;
         if (L.x < 0) { L.x = -L.x; L.vx = Math.abs(L.vx); hit = true; }
-        else if (L.x > maxX) { L.x = 2 * maxX - L.x; L.vx = -Math.abs(L.vx); hit = true; }
+        else if (L.x > MAX) { L.x = 2 * MAX - L.x; L.vx = -Math.abs(L.vx); hit = true; }
         if (L.y < 0) { L.y = -L.y; L.vy = Math.abs(L.vy); hit = true; }
-        else if (L.y > maxY) { L.y = 2 * maxY - L.y; L.vy = -Math.abs(L.vy); hit = true; }
+        else if (L.y > MAX) { L.y = 2 * MAX - L.y; L.vy = -Math.abs(L.vy); hit = true; }
         if (hit && phase === "fill" && L === spawner && !L.spawned) onSpawnerHit(L);
       }
       place(L);
     }
     if (phase === "drain") {
-      letters.filter((L) => L.gone).forEach((L) => L.g.remove());
+      letters.filter((L) => L.gone).forEach((L) => L.el.remove());
       letters = letters.filter((L) => !L.gone);
       if (!letters.length) start();
     }
