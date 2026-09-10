@@ -11,16 +11,17 @@
    card / anchor are unused for now (kept for the shuffle pill). */
 
 const STAGE = 1080;
-const FONT_SIZE = 460;          // px, in stage units
+const FONT_SIZE = 345;          // px, in stage units (0.75 of the first cut)
 const SPEED = 520;              // px / second, in stage units
 const FONT = `900 ${FONT_SIZE}px "Switzer", "Rubik", system-ui, sans-serif`;
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 /* Palette from Yam: tarot-poster pink / teal / orange / cream / green,
-   pushed ~18% more saturated than the print. Roles: frame = background,
-   ink = letter; card / anchor are kept for the shuffle pill. */
-const PINK = "#F27C77", TEAL = "#1F6F92", ORANGE = "#F5601A",
-      CREAM = "#F4E6D0", GREEN = "#124A24";
+   lifted to the bright, vibrant register of Collections 01–02.
+   Roles: frame = background, ink = letter; card / anchor are kept
+   for the shuffle pill. */
+const PINK = "#FF8A80", TEAL = "#2A9BD6", ORANGE = "#FF6A1F",
+      CREAM = "#FFF1DA", GREEN = "#1FA35A";
 export const p = [
   { frame: PINK,   card: CREAM,  ink: TEAL,   anchor: ORANGE },
   { frame: TEAL,   card: PINK,   ink: CREAM,  anchor: ORANGE },
