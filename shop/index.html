@@ -321,6 +321,43 @@
 
 </section>
 
+<!-- ══════════════════════════════════════════════════════════
+     REVIEW — what people drew, for one reader
+     /shop/?p=dots-mono-001&review=<key>. Unlinked from anywhere, and
+     the endpoint only hands over addresses and verdicts to a caller
+     holding the key, so the link is the lock. A verdict is kept in KV
+     beside the submission it is about, so this reads the same from
+     any device.
+     ══════════════════════════════════════════════════════════ -->
+<section class="product review" id="view-review" hidden aria-labelledby="rv-head">
+  <div class="rv-top">
+    <h1 class="rv-title" id="rv-head">Proposed characters</h1>
+    <p class="rv-count" id="rv-count" role="status">Loading…</p>
+  </div>
+  <p class="rv-note">
+    Everything sent in from the editor on the product page, newest first.
+    Liked gets a reply button; Pass keeps the row but greys it. Press a
+    verdict again to take it back.
+  </p>
+
+  <div class="rv-tablewrap">
+    <table class="rv-table" id="rv-table" hidden>
+      <thead>
+        <tr>
+          <th scope="col">Drawing</th>
+          <th scope="col">Meant as</th>
+          <th scope="col">From</th>
+          <th scope="col">Sent</th>
+          <th scope="col">Verdict</th>
+          <th scope="col">Reply</th>
+        </tr>
+      </thead>
+      <tbody id="rv-body"></tbody>
+    </table>
+  </div>
+  <p class="rv-empty" id="rv-empty" hidden></p>
+</section>
+
 <script src="/shared/nav.js"></script>
 <script defer src="/shared/cursor.js"></script>
 <script defer src="/shared/footer.js"></script>
@@ -530,20 +567,27 @@ var PRODUCTS = [
 (function () {
   var index = document.getElementById('view-index');
   var detail = document.getElementById('view-product');
+  var review = document.getElementById('view-review');
 
   function route() {
-    var want = new URLSearchParams(location.search).get('p');
+    var params = new URLSearchParams(location.search);
+    var want = params.get('p');
     var found = want && PRODUCTS.filter(function (p) { return p.id === want && !p.soon; })[0];
+    // The review page is a sub-page of the product: the same p, plus a
+    // key. It stands in for the product view rather than sitting under it.
+    var reviewing = !!found && params.has('review') && !!review;
     index.hidden  = !!found;
-    detail.hidden = !found;
+    detail.hidden = !found || reviewing;
+    if (review) review.hidden = !reviewing;
     // The drifting Shop band names the index; on a product it would be
     // naming the wrong thing.
     var band = document.getElementById('mtitle');
     if (band) band.hidden = !!found;
     // Just the page, no site suffix — the tab is narrow and the name
     // is already the domain.
-    document.title = found ? found.title : 'Shop';
+    document.title = reviewing ? 'Proposed characters' : (found ? found.title : 'Shop');
     window.scrollTo({ top: 0 });
+    if (reviewing) window.dispatchEvent(new Event('shop:review'));
   }
 
   document.addEventListener('click', function (e) {
@@ -828,6 +872,217 @@ var PRODUCTS = [
     });
   }
 
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   REVIEW — /shop/?p=dots-mono-001&review=<key>
+
+   What people drew, laid out as a list of decisions: the drawing, what
+   it was meant as, who sent it, and a verdict. The verdict is written
+   back to the submission through the same function, so it is not lost
+   with the tab. Nothing here is reachable without the key in the
+   address: without it the function withholds the addresses, and the
+   page never shows.
+════════════════════════════════════════════════════════════════ */
+
+(function () {
+  var view = document.getElementById('view-review');
+  if (!view) return;
+
+  var params = new URLSearchParams(location.search);
+  var KEY    = params.get('review') || '';
+  var local  = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  /* There is no function on localhost, so ?api= can point the page at a
+     file or at the live feed to check the layout. Only honoured locally;
+     on the site the data comes from the site. */
+  var API    = (local && params.get('api')) || '/api/glyph';
+
+  var body  = document.getElementById('rv-body');
+  var table = document.getElementById('rv-table');
+  var count = document.getElementById('rv-count');
+  var empty = document.getElementById('rv-empty');
+  var items = [], replyFrom = '', loaded = false;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* The drawing, 5 across and 7 down, one node per cell — the same
+     construction the notification card uses. */
+  function dots(pattern) {
+    var rows = String(pattern || '').split('\n');
+    var html = '';
+    for (var r = 0; r < 7; r++) {
+      var row = rows[r] || '';
+      for (var c = 0; c < 5; c++) html += '<i' + (row.charAt(c) === '1' ? ' class="on"' : '') + '></i>';
+    }
+    return html;
+  }
+
+  /* The same drawing as plain text, for the reply: a lit node is ●, an
+     empty one ·, spaced so it lines up in any mail client. */
+  function ascii(pattern) {
+    return String(pattern || '').split('\n').map(function (r) {
+      return r.replace(/1/g, '●').replace(/0/g, '·').split('').join(' ');
+    }).join('\n');
+  }
+
+  function when(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return iso || '';
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) +
+           ', ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+
+  /* A label of one character is a glyph; anything longer was meant as a
+     ligature or a description. */
+  function kindOf(label) {
+    return Array.from(String(label || '')).length === 1 ? 'a single character' : 'a ligature or a phrase';
+  }
+
+  /* The thank-you, written out and addressed, with their own drawing in
+     it. Gmail compose opens it in the browser in the PlasticSoil
+     account when GLYPH_REPLY_FROM names it; the mail app link is the
+     same message for whatever client the machine has. */
+  function replyLinks(it) {
+    var label = it.character;
+    var subject = 'Your "' + label + '" is going into Dots.Mono.001';
+    var msg =
+      'Hi,\n\n' +
+      'Thank you for sending in your "' + label + '" for Dots.Mono.001 — I really liked it, ' +
+      'and it is going into the next version of the typeface.\n\n' +
+      'This is the drawing you sent, the way it sits on the grid:\n\n' +
+      ascii(it.pattern) + '\n\n' +
+      'I will let you know when the release with it in is out.\n\n' +
+      'Thanks again,\n' +
+      'PlasticSoil\n' +
+      'yamliv.net';
+    return {
+      gmail: 'https://mail.google.com/mail/?view=cm&fs=1' +
+             (replyFrom ? '&authuser=' + encodeURIComponent(replyFrom) : '') +
+             '&to=' + encodeURIComponent(it.email) +
+             '&su=' + encodeURIComponent(subject) +
+             '&body=' + encodeURIComponent(msg),
+      mailto: 'mailto:' + it.email +
+              '?subject=' + encodeURIComponent(subject) +
+              '&body=' + encodeURIComponent(msg)
+    };
+  }
+
+  function row(it) {
+    var liked = it.review === 'liked', passed = it.review === 'passed';
+    var reply;
+    if (liked && it.email) {
+      var l = replyLinks(it);
+      reply = '<a class="btn-flat rv-reply" href="' + esc(l.gmail) + '" target="_blank" rel="noopener">Thank them ↗</a>' +
+              '<a class="rv-mailto" href="' + esc(l.mailto) + '">mail app</a>';
+    } else if (liked) {
+      reply = '<span class="rv-dash">No address left</span>';
+    } else {
+      reply = '<span class="rv-dash">—</span>';
+    }
+    return '<tr data-id="' + esc(it.id) + '"' + (passed ? ' class="is-passed"' : liked ? ' class="is-liked"' : '') + '>' +
+      '<td data-label="Drawing"><span class="rv-art"><span class="rv-dots" aria-hidden="true">' + dots(it.pattern) + '</span></span></td>' +
+      '<td data-label="Meant as"><span class="rv-char">' + esc(it.character) + '</span>' +
+        '<span class="rv-kind">' + kindOf(it.character) + '</span></td>' +
+      '<td data-label="From">' + (it.email
+        ? '<a href="mailto:' + esc(it.email) + '">' + esc(it.email) + '</a>'
+        : '<span class="rv-dash">no address</span>') + '</td>' +
+      '<td data-label="Sent"><span class="rv-when">' + esc(when(it.at)) + '</span></td>' +
+      '<td data-label="Verdict" class="rv-cell-verdict"><span class="rv-verdicts">' +
+        '<button class="btn-flat rv-verdict" type="button" data-v="liked" aria-pressed="' + liked + '">Liked</button>' +
+        '<button class="btn-flat rv-verdict" type="button" data-v="passed" aria-pressed="' + passed + '">Pass</button>' +
+      '</span><span class="rv-row-err" role="alert" hidden></span></td>' +
+      '<td data-label="Reply">' + reply + '</td>' +
+    '</tr>';
+  }
+
+  function summary() {
+    var n = items.length, liked = items.filter(function (x) { return x.review === 'liked'; }).length;
+    return n + (n === 1 ? ' character' : ' characters') + (liked ? ' · ' + liked + ' liked' : '');
+  }
+
+  function render() {
+    count.textContent = summary();
+    table.hidden = !items.length;
+    body.innerHTML = items.map(row).join('');
+    empty.hidden = items.length > 0;
+    empty.classList.remove('is-err');
+    if (!items.length) empty.textContent = 'No characters yet.';
+  }
+
+  /* One verdict at a time per row. Pressing the one already on takes it
+     off again. The row only changes once the function has said yes. */
+  body.addEventListener('click', async function (e) {
+    var b = e.target.closest('button.rv-verdict');
+    if (!b) return;
+    var tr = b.closest('tr');
+    var it = items.filter(function (x) { return x.id === tr.dataset.id; })[0];
+    if (!it) return;
+    var verdict = it.review === b.dataset.v ? 'clear' : b.dataset.v;
+    var err = tr.querySelector('.rv-row-err');
+    var buttons = tr.querySelectorAll('.rv-verdict');
+    err.hidden = true;
+    Array.prototype.forEach.call(buttons, function (x) { x.disabled = true; });
+    try {
+      var res = await fetch('/api/glyph', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'review', key: KEY, id: it.id, verdict: verdict })
+      });
+      var data = null;
+      try { data = await res.json(); } catch (_) { /* answered with no body */ }
+      if (!res.ok || !data || !data.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+      it.review = data.item.review;
+      it.reviewedAt = data.item.reviewedAt;
+      tr.outerHTML = row(it);
+      count.textContent = summary();
+    } catch (x) {
+      Array.prototype.forEach.call(buttons, function (b2) { b2.disabled = false; });
+      err.textContent = 'Could not save — ' + x.message;
+      err.hidden = false;
+    }
+  });
+
+  /* Out of search even if the address ever reaches a crawler. */
+  function noindex() {
+    if (document.querySelector('meta[name="robots"]')) return;
+    var m = document.createElement('meta');
+    m.name = 'robots';
+    m.content = 'noindex, nofollow';
+    document.head.appendChild(m);
+  }
+
+  async function load() {
+    loaded = true;
+    noindex();
+    count.textContent = 'Loading…';
+    try {
+      var res = await fetch(API + (API.indexOf('?') > -1 ? '&' : '?') + 'key=' + encodeURIComponent(KEY),
+                            { cache: 'no-store' });
+      if (res.status === 401) throw new Error('This link is not valid. Check the key at the end of the address.');
+      if (res.status === 503) throw new Error('The review key is not set on the server yet (GLYPH_REVIEW_KEY in the Cloudflare Pages settings).');
+      if (!res.ok) throw new Error('The site answered ' + res.status + '.');
+      var data = await res.json();
+      items = data.items || [];
+      replyFrom = data.replyFrom || '';
+      render();
+      if (data.truncated) {
+        empty.hidden = false;
+        empty.textContent = 'Showing the first 1000; there are more in KV.';
+      }
+    } catch (x) {
+      count.textContent = '';
+      table.hidden = true;
+      empty.hidden = false;
+      empty.classList.add('is-err');
+      empty.textContent = x.message;
+    }
+  }
+
+  if (!view.hidden) load();
+  window.addEventListener('shop:review', function () { if (!loaded) load(); });
 })();
 </script>
 </body>
