@@ -106,17 +106,17 @@ const QUAKE_MAX = 26;           // … the ground's shake grows from nothing to 
 const ARENA_SAT = 0.18;         // arena colour = the background, this much more saturated…
 const ARENA_LIGHT = 0.10;       // … and this much lighter (a card tint when the background is already white)
 
-/* This collection's colour rule: four colours — frame, card, ink,
-   anchor — and each card takes one as background and two as a stepped
-   gradient across the tiles:
+/* This collection's colour rule: three colours — frame, card, ink —
+   and each card rotates them, taking one as background and the other
+   two as a stepped gradient across the tiles:
      Snake   background frame,  tiles card → ink
-     Chaos   background card,   tiles ink  → anchor
+     Shrink  background card,   tiles ink  → frame
      Towers  background ink,    tiles frame → card
-   So one set gives every card its own background and gradient, and no
-   card has to use the one pair that doesn't sing. The other entries
-   are Collection 02's palettes, read the same way. */
+   So one set of three gives every card its own background and
+   gradient. anchor is unused. The other entries are Collection 02's
+   palettes, read the same way. */
 export const p = [
-  { frame: "#49C7FD", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FF7300" },   // Yam's pick: blue · pink · yellow · orange
+  { frame: "#49C7FD", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FFFFFF" },   // Yam's pick: blue · pink · yellow
   { frame: "#A9FF67", card: "#FFFFFF", ink: "#5BE03A", anchor: "#49C7FD" },
   { frame: "#49C7FD", card: "#FFFFFF", ink: "#5BE03A", anchor: "#A9FF67" },
   { frame: "#FFFFFF", card: "#49C7FD", ink: "#5BE03A", anchor: "#D9FF93" },
@@ -231,10 +231,10 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   const framed = chaos;                          // Chaos plays inside a closing arena
   const noScale = !snake;                        // only Snake squashes and pops
   const given = palette || p[0];
-  /* Deal the four colours per card (see the note by the palettes). */
-  const c4 = [given.frame, given.card, given.ink, given.anchor];
-  const deal = snake ? [0, 1, 2] : chaos ? [1, 2, 3] : [2, 0, 1];
-  const pal = { frame: c4[deal[0]], card: c4[deal[1]], ink: c4[deal[2]], anchor: given.anchor };
+  /* Rotate the three colours per card (see the note by the palettes). */
+  const tri = [given.frame, given.card, given.ink];
+  const rot = snake ? 0 : chaos ? 1 : 2;
+  const pal = { frame: tri[rot], card: tri[(rot + 1) % 3], ink: tri[(rot + 2) % 3], anchor: given.anchor };
   stage.innerHTML = "";
   stage.style.cssText = `position:relative;width:${STAGE}px;height:${STAGE}px;overflow:hidden;isolation:isolate;background:${pal.frame};`;
 
