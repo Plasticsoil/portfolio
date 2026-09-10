@@ -16,9 +16,12 @@
              the spawner's heading, so every letter follows the first
              one's path with a delay: one long snake. The text plays
              once, so the loop is as long as the text; when the last
-             letter is in, every tile takes three more wall hits and
-             then sails straight out of the frame — head first, tail
-             following along the very same path.
+             letter is in, the head takes three more wall hits and then
+             sails straight out of the frame; every tile behind it goes
+             free at that same wall, so the whole snake leaves through
+             one point, along the very same path. A wall hit briefly
+             slows the tile that hit, so the gaps along the snake
+             squeeze at the wall and stretch again after it.
      Chaos — the new letter starts from the centre in a fresh random
              direction. The walls are a visible inner square that
              closes in a little at every touch; the text repeats until
@@ -43,9 +46,9 @@
    (The "tower" mode — random columns — is still here for the export
    and embed pages but no longer has a card.)
 
-   Both end with a quake: the whole ground shakes as one, gently at
-   first and harder and harder, then the floor gives way and the whole
-   pile drops out of the frame.
+   Both end with a moment of stillness, then a quake: the whole ground
+   shakes as one, gently at first and harder and harder, then the floor
+   gives way and the whole pile drops out of the frame.
 
    Once the sequence is complete, after a short hold, the walls "open":
    each square leaves through the next wall it touches, and once the
@@ -96,20 +99,23 @@ const IMPACT_DIP = 0.3;         // … to this fraction of full speed at the mom
 const GAP0 = 820;               // Towers: ms between the first two cubes
 const GAP_DECAY = 0.9;          // … each cube shortens the gap by this factor
 const GAP_MIN = 90;             // … down to this
-const QUAKE_MS = 1100;          // Tower / Pillars ending: a quake this long, then the floor gives way
+const TOWER_HOLD = 1500;        // Towers: the finished build stands still this long…
+const QUAKE_MS = 1100;          // … then a quake this long, then the floor gives way
 const QUAKE_MAX = 26;           // … the ground's shake grows from nothing to this many px (sideways; less up and down)
 const ARENA_SAT = 0.18;         // arena colour = the background, this much more saturated…
 const ARENA_LIGHT = 0.10;       // … and this much lighter (a card tint when the background is already white)
 
-/* Collection 02's palettes (same values as Dots / Stickers / Loop),
-   read with this collection's own rule: three colours — frame, card,
-   ink — and each card rotates them. Snake: background = frame, tiles
-   run a stepped gradient card → ink. Chaos: background = card, tiles
-   ink → frame. Towers: background = ink, tiles frame → card. So one
-   set of three gives every card its own background and gradient.
-   anchor is unused. */
+/* This collection's colour rule: four colours — frame, card, ink,
+   anchor — and each card takes one as background and two as a stepped
+   gradient across the tiles:
+     Snake   background frame,  tiles card → ink
+     Chaos   background card,   tiles ink  → anchor
+     Towers  background ink,    tiles frame → card
+   So one set gives every card its own background and gradient, and no
+   card has to use the one pair that doesn't sing. The other entries
+   are Collection 02's palettes, read the same way. */
 export const p = [
-  { frame: "#49C7FD", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FFFFFF" },   // Yam's pick: blue · pink · yellow
+  { frame: "#49C7FD", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FF7300" },   // Yam's pick: blue · pink · yellow · orange
   { frame: "#A9FF67", card: "#FFFFFF", ink: "#5BE03A", anchor: "#49C7FD" },
   { frame: "#49C7FD", card: "#FFFFFF", ink: "#5BE03A", anchor: "#A9FF67" },
   { frame: "#FFFFFF", card: "#49C7FD", ink: "#5BE03A", anchor: "#D9FF93" },
@@ -224,10 +230,10 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   const framed = chaos;                          // Chaos plays inside a closing arena
   const noScale = !snake;                        // only Snake squashes and pops
   const given = palette || p[0];
-  /* Rotate the three colours per card (see the note by the palettes). */
-  const tri = [given.frame, given.card, given.ink];
-  const rot = snake ? 0 : chaos ? 1 : 2;
-  const pal = { frame: tri[rot], card: tri[(rot + 1) % 3], ink: tri[(rot + 2) % 3], anchor: given.anchor };
+  /* Deal the four colours per card (see the note by the palettes). */
+  const c4 = [given.frame, given.card, given.ink, given.anchor];
+  const deal = snake ? [0, 1, 2] : chaos ? [1, 2, 3] : [2, 0, 1];
+  const pal = { frame: c4[deal[0]], card: c4[deal[1]], ink: c4[deal[2]], anchor: given.anchor };
   stage.innerHTML = "";
   stage.style.cssText = `position:relative;width:${STAGE}px;height:${STAGE}px;overflow:hidden;isolation:isolate;background:${pal.frame};`;
 
@@ -357,8 +363,10 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     el.appendChild(glyph);
     layer.appendChild(el);                         // newest on top
     const L = { el, glyph, id: count++, cx, cy, vx, vy, tilt, half, spawned: false,
-                ox: (rand() * 2 - 1) * OFFSET, oy: (rand() * 2 - 1) * OFFSET,   // hand-placed offset (visual only)
-                born: performance.now(), hitAt: -1e9, hitAxis: "x", hitSide: -1, asleep: false, lastHits: 0, free: false };
+                ox: (rand() * 2 - 1) * OFFSET,                                   // hand-placed offset (visual only)
+                oy: rows ? 0 : (rand() * 2 - 1) * OFFSET,                        // Towers: sideways only, stacks stay flush
+                born: performance.now(), hitAt: -1e9, hitAxis: "x", hitSide: -1, asleep: false,
+                idx: count - 1, hits: 0, lastHits: 0, free: false };
     letters.push(L);
     if (!tower && !rows) { speed = SPEED + SPEED_STEP * (count - 1); repace(); }
     place(L, performance.now());
@@ -408,9 +416,12 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   function finish() {
     if (snake) { phase = "hold"; return; }         // tiles free themselves one by one, see tick()
     if (tower || rows) {
-      phase = "quake";
-      quakeAt = performance.now();
-      timers.push(setTimeout(() => { phase = "drain"; layer.style.transform = ""; }, QUAKE_MS));
+      phase = "hold";                              // a moment to take the building in
+      timers.push(setTimeout(() => {
+        phase = "quake";
+        quakeAt = performance.now();
+        timers.push(setTimeout(() => { phase = "drain"; layer.style.transform = ""; }, QUAKE_MS));
+      }, TOWER_HOLD));
       return;
     }
     phase = "hold";
@@ -447,6 +458,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
      is a silent beat: one gap with no cube. */
   let gap = GAP0;
   let quakeAt = 0;
+  let freeAt = null;         // Snake: the head's hit count at the wall it left through
   function scheduleDrop() {
     if (cursor >= seq.length) { finish(); return; }
     const ch = seq[cursor++];
@@ -479,6 +491,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     cursor = 0;
     count = 0;
     hue = 0;
+    freeAt = null;
     phase = "fill";
     layer.style.transform = "";
     if (arenaEl) { inset = INSET0; arenaEl.style.inset = INSET0 + "px"; layer.style.clipPath = ""; }
@@ -499,7 +512,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       /* Chaos: right after a wall hit the tile moves at a fraction of
          its speed and eases back up — the "bounce" without any scale. */
       let k = 1;
-      if (chaos) {
+      if (chaos || snake) {
         const ti = (now - L.hitAt) / IMPACT_MS;
         if (ti >= 0 && ti < 1) k = IMPACT_DIP + (1 - IMPACT_DIP) * (1 - Math.pow(1 - ti, 3));
       }
@@ -522,9 +535,15 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
           L.hitAt = now; L.hitAxis = hit;
           L.hitSide = hit === "x" ? (L.vx > 0 ? -1 : 1) : (L.vy > 0 ? -1 : 1);   // -1: the low wall (left / top)
           if (arenaEl) shrinkArena();
-          /* Snake, text complete: count this tile's hits; after the
-             last allowed one it stops reflecting and leaves. */
-          if (snake && phase === "hold" && ++L.lastHits >= SNAKE_BOUNCES) L.free = true;
+          /* Snake: every tile counts its wall hits from birth. Once the
+             text is complete the head takes SNAKE_BOUNCES more and goes
+             free; tile k was born at wall k, so it goes free when it
+             has taken (head's total − k) hits — the very same wall. */
+          L.hits++;
+          if (snake) {
+            if (freeAt === null && phase === "hold" && L.idx === 0 && ++L.lastHits >= SNAKE_BOUNCES) freeAt = L.hits;
+            if (freeAt !== null && L.hits >= freeAt - L.idx) L.free = true;
+          }
         }
         if (hit && phase === "fill" && L === spawner && !L.spawned) onSpawnerHit(L);
       }
