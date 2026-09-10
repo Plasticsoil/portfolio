@@ -23,7 +23,7 @@
    stage is empty the word starts over.
 
    Look: Collection 02's sticker language (card / ink / anchor fills,
-   slate letter at weight 500, drawn as an outline) on squares, with the house
+   slate letter at weight 500) on squares, with the house
    hand-made finish: 12 fps stop-motion, animated grain, ±2px jitter.
    Every new letter nudges the speed of the whole group up a notch, so
    the snake stays one snake while the pace builds.
@@ -45,7 +45,6 @@ const FPS = 12;                 // stop-motion: the picture only updates this of
 const JITTER = 2;               // px of hand-held wobble per frame
 const TILT = 0;                 // ± degrees, a fixed tilt per square (off)
 const LETTER = "#4E4B5D";       // Stickers' slate letter colour
-const STROKE = 2.5;             // px — the letter is drawn as an outline
 
 /* Collection 02's palettes (same values as Dots / Stickers / Loop).
    frame = background; squares cycle card → ink → anchor, so two
@@ -177,7 +176,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     const tilt = (rand() * 2 - 1) * TILT;
     const rad = (tilt * Math.PI) / 180;
     const half = (SIZE / 2) * (Math.abs(Math.cos(rad)) + Math.abs(Math.sin(rad)));
-    el.style.cssText = `position:absolute;left:${-SIZE / 2}px;top:${-SIZE / 2}px;width:${SIZE}px;height:${SIZE}px;border-radius:${CORNER}px;background:${fill};display:flex;align-items:center;justify-content:center;font-family:"Switzer","Rubik",system-ui,sans-serif;font-weight:500;font-size:${FONT_SIZE}px;line-height:1;color:transparent;-webkit-text-stroke:${STROKE}px ${LETTER};paint-order:stroke;text-transform:uppercase;letter-spacing:-0.02em;will-change:transform;`;
+    el.style.cssText = `position:absolute;left:${-SIZE / 2}px;top:${-SIZE / 2}px;width:${SIZE}px;height:${SIZE}px;border-radius:${CORNER}px;background:${fill};display:flex;align-items:center;justify-content:center;font-family:"Switzer","Rubik",system-ui,sans-serif;font-weight:500;font-size:${FONT_SIZE}px;line-height:1;color:${LETTER};text-transform:uppercase;letter-spacing:-0.02em;will-change:transform;`;
     el.textContent = ch;
     layer.appendChild(el);                         // newest on top
     const L = { el, id: count++, cx, cy, vx, vy, tilt, half, spawned: false };
