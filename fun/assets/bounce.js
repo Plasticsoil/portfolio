@@ -16,12 +16,18 @@ const SPEED = 520;              // px / second, in stage units
 const FONT = `900 ${FONT_SIZE}px "Switzer", "Rubik", system-ui, sans-serif`;
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-/* Grayscale starter palettes (a proper one is coming from Yam). */
+/* Palette from Yam: tarot-poster pink / teal / orange / cream / green,
+   pushed ~18% more saturated than the print. Roles: frame = background,
+   ink = letter; card / anchor are kept for the shuffle pill. */
+const PINK = "#F27C77", TEAL = "#1F6F92", ORANGE = "#F5601A",
+      CREAM = "#F4E6D0", GREEN = "#124A24";
 export const p = [
-  { frame: "#EBEBEB", card: "#FFFFFF", ink: "#141414", anchor: "#8A8A8A" },
-  { frame: "#141414", card: "#2B2B2B", ink: "#F2F2F2", anchor: "#8A8A8A" },
-  { frame: "#FFFFFF", card: "#EBEBEB", ink: "#4D4D4D", anchor: "#B3B3B3" },
-  { frame: "#4D4D4D", card: "#8A8A8A", ink: "#FFFFFF", anchor: "#EBEBEB" },
+  { frame: PINK,   card: CREAM,  ink: TEAL,   anchor: ORANGE },
+  { frame: TEAL,   card: PINK,   ink: CREAM,  anchor: ORANGE },
+  { frame: ORANGE, card: TEAL,   ink: CREAM,  anchor: PINK },
+  { frame: CREAM,  card: PINK,   ink: ORANGE, anchor: TEAL },
+  { frame: PINK,   card: TEAL,   ink: ORANGE, anchor: GREEN },
+  { frame: GREEN,  card: ORANGE, ink: PINK,   anchor: CREAM },
 ];
 
 /* Small seeded RNG (mulberry32) so a `seed` gives a repeatable launch. */
