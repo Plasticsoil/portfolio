@@ -7,16 +7,15 @@
    The rest of the word arrives one letter per wall hit: the newest
    square is the "spawner"; the first time it touches a wall, the next
    letter appears a beat later and becomes the new spawner. The newest
-   square is always painted on top. In Snake a space is a blank tile in
-   the background colour that rides along like any letter, so words
-   stay apart; in Chaos it is a silent beat — a wall hit that spawns
-   nothing.
+   square is always painted on top. In Snake a space is an invisible
+   tile that rides along like any letter, so words stay apart; in Chaos
+   it is a silent beat — a wall hit that spawns nothing.
 
    Two flavours:
      Snake — the new letter pops out of the collision point on exactly
              the spawner's heading, so every letter follows the first
-             one's path with a delay: one long snake. The text repeats
-             (space-separated) to fill 50 beats.
+             one's path with a delay: one long snake. After 15 seconds
+             the walls open and the snake carries on out of the frame.
      Chaos — the new letter starts from the centre in a fresh random
              direction. The walls are a visible inner square that
              closes in a little at every touch; the text repeats until
@@ -58,6 +57,7 @@ const SPEED = 520;              // px / second, in stage units
 const SPEED_STEP = 12;          // every new letter makes everything this much faster
 const SPAWN_DELAY = 230;        // ms between a wall hit and the next letter (≈120px along the path)
 const SLOTS_SNAKE = 50;         // the word repeats (space-separated) to fill this many beats
+const SNAKE_LIFE = 15000;       // ms: then the walls open and the snake just carries on out of the frame
 const SLOTS_CHAOS = 400;        // Chaos keeps going until its arena has closed (see SHRINK); this is just "plenty"
 const SLOTS_TOWER = 42;         // Tower stacks this many beats
 const HOLD_MS = 1600;           // pause once the sequence is complete, before the walls open
@@ -289,9 +289,10 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   function makeLetter(ch, cx, cy, vx, vy) {
     const sz = tileSize;
     const el = document.createElement("div");
-    /* A blank (Snake's space) is a tile in the background colour. */
+    /* A blank (Snake's space) is an invisible tile: present in the
+       chain, so the gap is real, but never painted. */
     const blank = ch === " ";
-    const fill = blank ? pal.frame : pal[ROLES[hue++ % ROLES.length]];
+    const fill = blank ? "transparent" : pal[ROLES[hue++ % ROLES.length]];
     const tilt = (rand() * 2 - 1) * TILT;
     const rad = (tilt * Math.PI) / 180;
     const half = (sz / 2) * (Math.abs(Math.cos(rad)) + Math.abs(Math.sin(rad)));
@@ -412,6 +413,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     hue = 0;
     phase = "fill";
     if (arenaEl) { inset = 0; arenaEl.style.inset = "0px"; }
+    if (snake) timers.push(setTimeout(() => { phase = "drain"; }, SNAKE_LIFE));   // no hold: the snake just leaves
     if (tower) { heights.fill(0); gap = GAP0; dropIn(seq[cursor++]); scheduleDrop(); return; }
     if (rows) { slideIn(cursor++); return; }
     const ang = heading(rand);
