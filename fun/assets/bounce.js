@@ -24,7 +24,8 @@
 
    Look: Collection 02's sticker language (card / ink / anchor fills,
    slate letter at weight 500) on squares, with the house
-   hand-made finish: 12 fps stop-motion, animated grain, ±2px jitter.
+   hand-made finish: 12 fps stop-motion, animated grain, ±2px jitter,
+   squash-and-stretch on impact and a pop when a letter is born.
    Every new letter nudges the speed of the whole group up a notch, so
    the snake stays one snake while the pace builds.
 
@@ -43,6 +44,9 @@ const SLOTS = 50;               // the word repeats (space-separated) to fill th
 const HOLD_MS = 1600;           // pause once the sequence is complete, before the walls open
 const FPS = 12;                 // stop-motion: the picture only updates this often
 const JITTER = 2;               // px of hand-held wobble per frame
+const SQUASH = 0.28;            // how much a square flattens against the wall on impact
+const SQUASH_MS = 320;          // and how long the squash-and-spring lasts
+const POP_MS = 260;             // a new letter pops in from small to full size
 const TILT = 0;                 // ± degrees, a fixed tilt per square (off)
 const LETTER = "#4E4B5D";       // Stickers' slate letter colour
 
@@ -179,17 +183,33 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     el.style.cssText = `position:absolute;left:${-SIZE / 2}px;top:${-SIZE / 2}px;width:${SIZE}px;height:${SIZE}px;border-radius:${CORNER}px;background:${fill};display:flex;align-items:center;justify-content:center;font-family:"Switzer","Rubik",system-ui,sans-serif;font-weight:500;font-size:${FONT_SIZE}px;line-height:1;color:${LETTER};text-transform:uppercase;letter-spacing:-0.02em;will-change:transform;`;
     el.textContent = ch;
     layer.appendChild(el);                         // newest on top
-    const L = { el, id: count++, cx, cy, vx, vy, tilt, half, spawned: false };
+    const L = { el, id: count++, cx, cy, vx, vy, tilt, half, spawned: false,
+                born: performance.now(), hitAt: -1e9, hitAxis: "x" };
     letters.push(L);
     speed = SPEED + SPEED_STEP * (count - 1);
     repace();
-    place(L);
+    place(L, performance.now());
     return L;
   }
 
-  function place(L) {
+  /* Bounce feel, on top of the straight-line physics:
+     - impact: the square squashes along the wall's normal and stretches
+       along the wall, then springs back (a half-sine over SQUASH_MS);
+     - birth: a new square pops in from 40% with a little overshoot. */
+  function place(L, now) {
     const jx = wobble(L.id, frame, 0) * JITTER, jy = wobble(L.id, frame, 1) * JITTER;
-    L.el.style.transform = `translate(${(L.cx + jx).toFixed(1)}px, ${(L.cy + jy).toFixed(1)}px) rotate(${L.tilt.toFixed(1)}deg)`;
+    let sx = 1, sy = 1;
+    const th = (now - L.hitAt) / SQUASH_MS;
+    if (th >= 0 && th < 1) {
+      const k = Math.sin(th * Math.PI) * SQUASH;
+      if (L.hitAxis === "x") { sx = 1 - k; sy = 1 + k; } else { sx = 1 + k; sy = 1 - k; }
+    }
+    const tb = (now - L.born) / POP_MS;
+    if (tb < 1) {
+      const pop = 0.4 + 0.6 * (1 + 1.8 * Math.pow(tb - 1, 3) + 0.8 * Math.pow(tb - 1, 2)); // ease-out-back
+      sx *= pop; sy *= pop;
+    }
+    L.el.style.transform = `translate(${(L.cx + jx).toFixed(1)}px, ${(L.cy + jy).toFixed(1)}px) rotate(${L.tilt.toFixed(1)}deg) scale(${sx.toFixed(3)}, ${sy.toFixed(3)})`;
   }
 
   function finish() {
@@ -244,10 +264,11 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
         /* Perfect elastic reflection off each wall. */
         const lo = L.half, hi = STAGE - L.half;
         let hit = false;
-        if (L.cx < lo) { L.cx = 2 * lo - L.cx; L.vx = Math.abs(L.vx); hit = true; }
-        else if (L.cx > hi) { L.cx = 2 * hi - L.cx; L.vx = -Math.abs(L.vx); hit = true; }
-        if (L.cy < lo) { L.cy = 2 * lo - L.cy; L.vy = Math.abs(L.vy); hit = true; }
-        else if (L.cy > hi) { L.cy = 2 * hi - L.cy; L.vy = -Math.abs(L.vy); hit = true; }
+        if (L.cx < lo) { L.cx = 2 * lo - L.cx; L.vx = Math.abs(L.vx); hit = "x"; }
+        else if (L.cx > hi) { L.cx = 2 * hi - L.cx; L.vx = -Math.abs(L.vx); hit = "x"; }
+        if (L.cy < lo) { L.cy = 2 * lo - L.cy; L.vy = Math.abs(L.vy); hit = "y"; }
+        else if (L.cy > hi) { L.cy = 2 * hi - L.cy; L.vy = -Math.abs(L.vy); hit = "y"; }
+        if (hit) { L.hitAt = now; L.hitAxis = hit; }
         if (hit && phase === "fill" && L === spawner && !L.spawned) onSpawnerHit(L);
       }
     }
@@ -263,7 +284,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       acc = 0;
       frame++;
       noise.roll(frame);
-      letters.forEach(place);
+      letters.forEach((L) => place(L, now));
     }
     raf = requestAnimationFrame(tick);
   }
