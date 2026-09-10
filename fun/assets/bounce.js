@@ -22,7 +22,8 @@
              one point, along the very same path. A wall hit briefly
              slows the tile that hit, so the gaps along the snake
              squeeze at the wall and stretch again after it.
-     Chaos — the new letter starts from the centre in a fresh random
+     Chaos — shown in the studio as "Shrink": the new letter starts
+             from the centre in a fresh random
              direction. The walls are a visible inner square that
              closes in a little at every touch; the text repeats until
              the arena is down to a single tile. Then the frame keeps
