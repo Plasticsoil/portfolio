@@ -104,20 +104,15 @@ const EXIT_FADE = 700;          // ms: on the way out, every card also fades its
 const TOWER_HOLD = 1500;        // Towers: the finished build stands still this long…
 const QUAKE_MS = 1100;          // … then a quake this long, then the floor gives way
 const QUAKE_MAX = 26;           // … the ground's shake grows from nothing to this many px (sideways; less up and down)
-const ARENA_SAT = 0.18;         // arena colour = the background, this much more saturated…
-const ARENA_LIGHT = 0.10;       // … and this much lighter (a card tint when the background is already white)
+const ARENA_SAT = 0.08;         // arena colour = the background, a touch more saturated…
+const ARENA_LIGHT = 0.05;       // … and a touch lighter (a card tint when the background is already white)
 
-/* This collection's colour rule: three colours — frame, card, ink —
-   and each card rotates them, taking one as background and the other
-   two as a stepped gradient across the tiles:
-     Snake   background frame,  tiles card → ink
-     Shrink  background card,   tiles ink  → frame
-     Towers  background ink,    tiles frame → card
-   So one set of three gives every card its own background and
-   gradient. anchor is unused. The other entries are Collection 02's
-   palettes, read the same way. */
+/* This collection's colour rule: three colours — frame is the
+   background, and the tiles run a stepped gradient from card (first
+   letter) to ink (last letter). Same on every card. anchor is unused.
+   The other entries are Collection 02's palettes, read the same way. */
 export const p = [
-  { frame: "#49C7FD", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FFFFFF" },   // Yam's pick: blue · pink · yellow
+  { frame: "#C7A6FF", card: "#49C7FD", ink: "#FA8EFA", anchor: "#FFFFFF" },   // Yam's pick: lilac, blue → pink
   { frame: "#A9FF67", card: "#FFFFFF", ink: "#5BE03A", anchor: "#49C7FD" },
   { frame: "#49C7FD", card: "#FFFFFF", ink: "#5BE03A", anchor: "#A9FF67" },
   { frame: "#FFFFFF", card: "#49C7FD", ink: "#5BE03A", anchor: "#D9FF93" },
@@ -232,10 +227,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   const framed = chaos;                          // Chaos plays inside a closing arena
   const noScale = !snake;                        // only Snake squashes and pops
   const given = palette || p[0];
-  /* Rotate the three colours per card (see the note by the palettes). */
-  const tri = [given.frame, given.card, given.ink];
-  const rot = snake ? 0 : chaos ? 1 : 2;
-  const pal = { frame: tri[rot], card: tri[(rot + 1) % 3], ink: tri[(rot + 2) % 3], anchor: given.anchor };
+  const pal = given;
   stage.innerHTML = "";
   stage.style.cssText = `position:relative;width:${STAGE}px;height:${STAGE}px;overflow:hidden;isolation:isolate;background:${pal.frame};`;
 
