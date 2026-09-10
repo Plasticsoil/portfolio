@@ -30,11 +30,15 @@
            tile of that column, with a small hop. Cubes drop on a
            cadence that gets quicker with every cube.
 
-   Rows — like Tower, but typeset: each word is its own column, the
-          columns sit side by side in the middle, and the tile shrinks
-          so the longest word and the number of words both fit. Letters
-          drop in last-to-first so each column reads top to bottom.
-          Words go left to right (right to left for Hebrew).
+   Pillars — like Tower, but typeset: each word is its own pillar, the
+             pillars stand side by side in the middle, and the tile
+             shrinks so the longest word and the number of words both
+             fit. Letters drop in last-to-first so each pillar reads
+             top to bottom; words go left to right (right to left for
+             Hebrew). Same quickening cadence as Tower.
+
+   Tower and Pillars end with a quake: everything shakes, then the
+   floor gives way and the whole pile drops out of the frame.
 
    Once the sequence is complete, after a short hold, the walls "open":
    each square leaves through the next wall it touches, and once the
@@ -84,6 +88,8 @@ const IMPACT_DIP = 0.3;         // … to this fraction of full speed at the mom
 const GAP0 = 760;               // Tower: ms between the first two cubes
 const GAP_DECAY = 0.94;         // … each cube shortens the gap by this factor
 const GAP_MIN = 110;            // … down to this
+const QUAKE_MS = 650;           // Tower / Pillars ending: a quake this long, then the floor gives way
+const QUAKE = 7;                // … how hard it shakes, as a multiple of the usual wobble
 const ARENA_SAT = 0.18;         // arena colour = the background, this much more saturated…
 const ARENA_LIGHT = 0.10;       // … and this much lighter (a card tint when the background is already white)
 
@@ -198,10 +204,10 @@ function arenaColour(pal) {
 export const m = (stage, opts) => mount(stage, { ...opts, mode: "snake" });
 export const c = (stage, opts) => mount(stage, { ...opts, mode: "chaos" });
 export const t = (stage, opts) => mount(stage, { ...opts, mode: "tower" });
-export const r = (stage, opts) => mount(stage, { ...opts, mode: "rows" });
+export const r = (stage, opts) => mount(stage, { ...opts, mode: "pillars" });
 
 function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
-  const snake = mode === "snake", chaos = mode === "chaos", tower = mode === "tower", rows = mode === "rows";
+  const snake = mode === "snake", chaos = mode === "chaos", tower = mode === "tower", rows = mode === "pillars";
   const framed = chaos;                          // Chaos plays inside a closing arena
   const noScale = !snake;                        // only Snake squashes and pops
   const pal = palette || p[0];
@@ -220,7 +226,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     for (const c of base) { if (seq.length < slots) seq.push(c); }
   }
 
-  /* Rows: typeset the words as columns standing on the floor. The tile
+  /* Pillars: typeset the words as columns standing on the floor. The tile
      shrinks so the longest word (tallest column) and the number of
      words (columns) both fit. Each slot knows its column x and where
      its tile lands; letters are queued last-to-first so the finished
@@ -282,7 +288,9 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   /* Set everyone to the current pace, keeping their headings. */
   function repace() {
     for (const L of letters) {
-      const k = speed / Math.hypot(L.vx, L.vy);
+      const v = Math.hypot(L.vx, L.vy);
+      if (!v) continue;
+      const k = speed / v;
       L.vx *= k; L.vy *= k;
     }
   }
@@ -312,7 +320,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
                 ox: (rand() * 2 - 1) * OFFSET, oy: (rand() * 2 - 1) * OFFSET,   // hand-placed offset (visual only)
                 born: performance.now(), hitAt: -1e9, hitAxis: "x", asleep: false };
     letters.push(L);
-    if (!tower) { speed = SPEED + SPEED_STEP * (count - 1); repace(); }
+    if (!tower && !rows) { speed = SPEED + SPEED_STEP * (count - 1); repace(); }
     place(L, performance.now());
     return L;
   }
@@ -322,7 +330,8 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
        along the wall, then springs back (a half-sine over SQUASH_MS);
      - birth: a new square pops in from 40% with a little overshoot. */
   function place(L, now) {
-    const jx = L.ox + wobble(L.id, frame, 0) * JITTER, jy = L.oy + wobble(L.id, frame, 1) * JITTER;
+    const shake = phase === "quake" ? JITTER * QUAKE : JITTER;
+    const jx = L.ox + wobble(L.id, frame, 0) * shake, jy = L.oy + wobble(L.id, frame, 1) * shake;
     let sx = 1, sy = 1;
     const th = noScale ? 1 : (now - L.hitAt) / SQUASH_MS;   // cube versions: no scale bounce at all
     if (th >= 0 && th < 1) {
@@ -340,6 +349,11 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   }
 
   function finish() {
+    if (tower || rows) {
+      phase = "quake";
+      timers.push(setTimeout(() => { phase = "drain"; }, QUAKE_MS));
+      return;
+    }
     phase = "hold";
     timers.push(setTimeout(() => { phase = "drain"; }, HOLD_MS));
   }
@@ -363,37 +377,27 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     L.landCy = STAGE - SIZE / 2 - heights[col] * SIZE;
     heights[col]++;                               // reserved: the next one in this column lands on top
   }
-  /* Rows: drop the next planned letter down its column. */
+  /* Pillars: drop the next planned letter down its column. */
   function slideIn(i) {
     const p = plan[i];
     const L = makeLetter(p.ch, p.cx, -tileSize / 2, 0, FALL0);
     L.landCy = p.landCy;
   }
-  /* Tower: cubes come on their own cadence, and every cube shortens
-     the gap to the next one (gravity stays the same). A space is a
-     silent beat: one gap with no cube. */
+  /* Tower and Pillars: cubes come on their own cadence, and every cube
+     shortens the gap to the next one (gravity stays the same). A space
+     is a silent beat: one gap with no cube. */
   let gap = GAP0;
   function scheduleDrop() {
     if (cursor >= seq.length) { finish(); return; }
     const ch = seq[cursor++];
     timers.push(setTimeout(() => {
-      if (ch !== " ") { dropIn(ch); gap = Math.max(GAP_MIN, gap * GAP_DECAY); }
+      if (ch !== " ") { if (rows) slideIn(cursor - 1); else dropIn(ch); gap = Math.max(GAP_MIN, gap * GAP_DECAY); }
       if (cursor >= seq.length) finish(); else scheduleDrop();
     }, gap));
   }
-  function dropNext() {
-    if (cursor >= seq.length) { finish(); return; }
-    const ch = seq[cursor++];
-    timers.push(setTimeout(() => {
-      if (ch === " ") { dropNext(); return; }
-      slideIn(cursor - 1);
-      if (cursor >= seq.length) finish();
-    }, SPAWN_DELAY));
-  }
 
   function onSpawnerHit(L) {
-    if (tower) return;                              // Tower runs on its own clock
-    if (rows) { L.spawned = true; dropNext(); return; }
+    if (tower || rows) return;                      // these run on their own clock
     if (cursor >= seq.length) { finish(); return; }
     const ch = seq[cursor++];
     if (ch === " " && !snake) return;              // Chaos: a silent beat. Snake: a blank tile rides along.
@@ -419,7 +423,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     if (arenaEl) { inset = 0; arenaEl.style.inset = "0px"; layer.style.clipPath = ""; }
     if (snake) timers.push(setTimeout(() => { phase = "drain"; }, SNAKE_LIFE));   // no hold: the snake just leaves
     if (tower) { heights.fill(0); gap = GAP0; dropIn(seq[cursor++]); scheduleDrop(); return; }
-    if (rows) { slideIn(cursor++); return; }
+    if (rows) { gap = GAP0; slideIn(cursor++); scheduleDrop(); return; }
     const ang = heading(rand);
     makeLetter(seq[cursor++], STAGE / 2, STAGE / 2, Math.cos(ang) * SPEED, Math.sin(ang) * SPEED);
   }
