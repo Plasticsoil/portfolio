@@ -19,6 +19,10 @@
              direction. The text repeats to 80 beats, until the stage
              is properly full.
 
+   Tower — letters drop from random points along the top, fall under
+           gravity, land on the floor and on each other, and pile up.
+           The newest tile's first contact drops the next letter.
+
    Each flavour also has a "frame" version: the tile carries an inner
    square in a nearby shade, and the frame around it gets a little
    thinner at every wall touch — a tally of its bounces.
@@ -42,12 +46,17 @@ const STAGE = 1080;
 const SIZE = 150;               // sticker square side, in stage units
 const CORNER = 0;               // its corner radius (sharp)
 const FONT_SIZE = 72;           // letter size inside the square
-const SPEED = 520;              // px / second, in stage units
+const SPEED = 640;              // px / second, in stage units
 const SPEED_STEP = 12;          // every new letter makes everything this much faster
 const SPAWN_DELAY = 230;        // ms between a wall hit and the next letter (≈120px along the path)
 const SLOTS_SNAKE = 50;         // the word repeats (space-separated) to fill this many beats
 const SLOTS_CHAOS = 80;         // Chaos keeps going until the stage is properly full
+const SLOTS_TOWER = 45;         // Tower stacks this many beats
 const HOLD_MS = 1600;           // pause once the sequence is complete, before the walls open
+const GRAVITY = 2200;           // Tower: px / s², in stage units
+const FALL0 = 420;              // Tower: a letter's speed as it enters from the top
+const REST = 0.28;              // Tower: how much bounce is left after a landing
+const BAND = 300;               // Tower: letters drop within ± this of the centre, so they pile up
 const FPS = 12;                 // stop-motion: the picture only updates this often
 const JITTER = 2;               // px of hand-held wobble per frame
 const SQUASH = 0.28;            // how much a square flattens against the wall on impact
@@ -145,9 +154,10 @@ export const m = (stage, opts) => mount(stage, { ...opts, mode: "snake" });
 export const c = (stage, opts) => mount(stage, { ...opts, mode: "chaos" });
 export const f = (stage, opts) => mount(stage, { ...opts, mode: "snake", frame: true });
 export const g = (stage, opts) => mount(stage, { ...opts, mode: "chaos", frame: true });
+export const t = (stage, opts) => mount(stage, { ...opts, mode: "tower" });
 
 function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: framed = false } = {}) {
-  const snake = mode === "snake";
+  const snake = mode === "snake", tower = mode === "tower";
   const pal = palette || p[0];
   stage.innerHTML = "";
   stage.style.cssText = `position:relative;width:${STAGE}px;height:${STAGE}px;overflow:hidden;isolation:isolate;background:${pal.frame};`;
@@ -158,7 +168,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
   const base = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   if (!base.filter((c) => c !== " ").length) return { stop() {} };
   const seq = [];
-  const slots = snake ? SLOTS_SNAKE : SLOTS_CHAOS;
+  const slots = snake ? SLOTS_SNAKE : tower ? SLOTS_TOWER : SLOTS_CHAOS;
   while (seq.length < slots) {
     if (seq.length) seq.push(" ");
     for (const c of base) { if (seq.length < slots) seq.push(c); }
@@ -215,8 +225,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     const L = { el, glyph, inner, hits: 0, id: count++, cx, cy, vx, vy, tilt, half, spawned: false,
                 born: performance.now(), hitAt: -1e9, hitAxis: "x" };
     letters.push(L);
-    speed = SPEED + SPEED_STEP * (count - 1);
-    repace();
+    if (!tower) { speed = SPEED + SPEED_STEP * (count - 1); repace(); }
     place(L, performance.now());
     return L;
   }
@@ -254,7 +263,22 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
      Snake: out of the collision point, on the spawner's exact heading,
      so it rides the same path a beat behind. Chaos: from the centre,
      in a fresh random direction. */
+  /* Tower: the next letter drops from a random point along the top,
+     a beat after the newest one first touches anything. A space is a
+     silent beat here too — one extra beat of waiting. */
+  function dropNext() {
+    if (cursor >= seq.length) { finish(); return; }
+    const ch = seq[cursor++];
+    timers.push(setTimeout(() => {
+      if (ch === " ") { dropNext(); return; }
+      const x = STAGE / 2 + (rand() * 2 - 1) * BAND;
+      makeLetter(ch, x, -SIZE / 2, 0, FALL0);
+      if (cursor >= seq.length) finish();
+    }, SPAWN_DELAY));
+  }
+
   function onSpawnerHit(L) {
+    if (tower) { L.spawned = true; dropNext(); return; }
     if (cursor >= seq.length) { finish(); return; }
     const ch = seq[cursor++];
     if (ch === " ") return;
@@ -276,6 +300,10 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     cursor = 0;
     count = 0;
     phase = "fill";
+    if (tower) {
+      makeLetter(seq[cursor++], STAGE / 2 + (rand() * 2 - 1) * BAND, -SIZE / 2, 0, FALL0);
+      return;
+    }
     const ang = heading(rand);
     makeLetter(seq[cursor++], STAGE / 2, STAGE / 2, Math.cos(ang) * SPEED, Math.sin(ang) * SPEED);
   }
@@ -285,6 +313,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     const spawner = letters[letters.length - 1];
+    if (tower) { tickTower(dt, now, spawner); raf = requestAnimationFrame(tick); return; }
     for (const L of letters) {
       L.cx += L.vx * dt;
       L.cy += L.vy * dt;
@@ -321,6 +350,66 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
       letters.forEach((L) => place(L, now));
     }
     raf = requestAnimationFrame(tick);
+  }
+
+  /* Tower physics: gravity, side walls, a floor (unless the walls are
+     open), and square-on-square contact resolved along the shallower
+     overlap. A landing squashes the tile; the newest tile's first
+     contact with anything drops the next letter. */
+  function touch(L, axis, speedAlong) {
+    if (Math.abs(speedAlong) > 90) { L.hitAt = now_; L.hitAxis = axis; L.hits++;
+      if (L.inner) L.inner.style.inset = Math.max(FRAME_MIN, FRAME0 - FRAME_STEP * L.hits) + "px"; }
+    if (L === spawner_ && !L.spawned && phase === "fill") onSpawnerHit(L);
+  }
+  let now_ = 0, spawner_ = null;
+  function tickTower(dt, now, spawner) {
+    now_ = now; spawner_ = spawner;
+    const half = SIZE / 2, floor = STAGE - half;
+    for (const L of letters) {
+      L.vy += GRAVITY * dt;
+      L.vx *= Math.max(0, 1 - 2 * dt);              // a little air drag sideways
+      L.cx += L.vx * dt;
+      L.cy += L.vy * dt;
+      if (L.cx < half) { L.cx = half; L.vx = -L.vx * 0.4; }
+      else if (L.cx > STAGE - half) { L.cx = STAGE - half; L.vx = -L.vx * 0.4; }
+      if (phase === "drain") { if (L.cy - half > STAGE) L.gone = true; continue; }
+      if (L.cy > floor) {
+        const v = L.vy;
+        L.cy = floor;
+        L.vy = v > 90 ? -v * REST : 0;
+        touch(L, "y", v);
+      }
+    }
+    if (phase !== "drain") {
+      for (let pass = 0; pass < 3; pass++) {
+        for (let i = 0; i < letters.length; i++) for (let j = i + 1; j < letters.length; j++) {
+          const A = letters[i], B = letters[j];
+          const dx = B.cx - A.cx, dy = B.cy - A.cy;
+          const ox = SIZE - Math.abs(dx), oy = SIZE - Math.abs(dy);
+          if (ox <= 0 || oy <= 0) continue;
+          if (ox < oy) {
+            const sgn = dx < 0 ? -1 : 1;
+            A.cx -= (ox / 2) * sgn; B.cx += (ox / 2) * sgn;
+            const rel = (B.vx - A.vx) * sgn;
+            if (rel < 0) { const k = rel * 0.5; A.vx += k * sgn; B.vx -= k * sgn; }
+            if (pass === 0) { touch(A, "x", rel); touch(B, "x", rel); }
+          } else {
+            const top = dy > 0 ? A : B, bot = dy > 0 ? B : A;   // top sits above bot
+            const rel = top.vy - bot.vy;                           // closing speed
+            top.cy -= oy * 0.75; bot.cy += oy * 0.25;
+            if (rel > 0) { top.vy = bot.vy - rel * REST; if (rel > 90) bot.vy += rel * 0.1; }
+            if (pass === 0) { touch(top, "y", rel); touch(bot, "y", rel); }
+          }
+        }
+      }
+      for (const L of letters) if (L.cy > floor) { L.cy = floor; if (L.vy > 0) L.vy = 0; }
+    } else {
+      letters.filter((L) => L.gone).forEach((L) => L.el.remove());
+      letters = letters.filter((L) => !L.gone);
+      if (!letters.length) start();
+    }
+    acc += dt;
+    if (acc >= 1 / FPS) { acc = 0; frame++; noise.roll(frame); letters.forEach((L) => place(L, now)); }
   }
 
   /* Click: play the sequence again from the first letter. */
