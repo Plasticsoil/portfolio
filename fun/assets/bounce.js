@@ -7,8 +7,10 @@
    The rest of the word arrives one letter per wall hit: the newest
    square is the "spawner"; the first time it touches a wall, the next
    letter appears a beat later and becomes the new spawner. The newest
-   square is always painted on top. A space is a silent beat — a wall
-   hit that spawns nothing — so words stay apart.
+   square is always painted on top. In Snake a space is a blank tile in
+   the background colour that rides along like any letter, so words
+   stay apart; in Chaos it is a silent beat — a wall hit that spawns
+   nothing.
 
    Two flavours:
      Snake — the new letter pops out of the collision point on exactly
@@ -27,10 +29,11 @@
            tile of that column, with a small hop. Cubes drop on a
            cadence that gets quicker with every cube.
 
-   Rows — the text is typeset: each word is a row of tiles, rows are
-          stacked and centred, and the block shrinks to fit. Tiles
-          slide in along their row and stop against the previous tile,
-          so a row fills left to right (right to left for Hebrew).
+   Rows — like Tower, but typeset: each word is its own column, the
+          columns sit side by side in the middle, and the tile shrinks
+          so the longest word and the number of words both fit. Letters
+          drop in last-to-first so each column reads top to bottom.
+          Words go left to right (right to left for Hebrew).
 
    Once the sequence is complete, after a short hold, the walls "open":
    each square leaves through the next wall it touches, and once the
@@ -78,7 +81,8 @@ const IMPACT_DIP = 0.3;         // … to this fraction of full speed at the mom
 const GAP0 = 760;               // Tower: ms between the first two cubes
 const GAP_DECAY = 0.94;         // … each cube shortens the gap by this factor
 const GAP_MIN = 110;            // … down to this
-const ARENA_MIX = 0.10;         // arena colour = background mixed this far toward the letter slate
+const ARENA_SAT = 0.18;         // arena colour = the background, this much more saturated…
+const ARENA_LIGHT = 0.10;       // … and this much lighter (a card tint when the background is already white)
 
 /* Collection 02's palettes (same values as Dots / Stickers / Loop).
    frame = background; squares cycle card → ink → anchor, so two
@@ -161,6 +165,33 @@ function mix(a, b, t) {
   return "#" + [16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, "0")).join("");
 }
 
+/* Nudge a hex colour's saturation and lightness (HSL), clamped. */
+function shift(hex, ds, dl) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, sat = 0, l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    sat = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h /= 6;
+  }
+  sat = Math.min(1, Math.max(0, sat + ds));
+  l = Math.min(1, Math.max(0, l + dl));
+  const q = l < 0.5 ? l * (1 + sat) : l + sat - l * sat, p2 = 2 * l - q;
+  const f = (t) => { t = (t + 1) % 1; return t < 1 / 6 ? p2 + (q - p2) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p2 + (q - p2) * (2 / 3 - t) * 6 : p2; };
+  const to = (v) => Math.round(v * 255).toString(16).padStart(2, "0");
+  return "#" + to(f(h + 1 / 3)) + to(f(h)) + to(f(h - 1 / 3));
+}
+
+/* The arena tint: the background, lighter and more saturated. A white
+   background can't go lighter, so it takes a tint of the card colour. */
+function arenaColour(pal) {
+  const c = shift(pal.frame, ARENA_SAT, ARENA_LIGHT);
+  return c.toLowerCase() === pal.frame.toLowerCase() ? mix(pal.frame, pal.card, 0.35) : c;
+}
+
 export const m = (stage, opts) => mount(stage, { ...opts, mode: "snake" });
 export const c = (stage, opts) => mount(stage, { ...opts, mode: "chaos" });
 export const t = (stage, opts) => mount(stage, { ...opts, mode: "tower" });
@@ -186,23 +217,26 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     for (const c of base) { if (seq.length < slots) seq.push(c); }
   }
 
-  /* Rows: typeset the words into a centred block of tile slots. The
-     tile shrinks so the longest word and the number of rows both fit.
-     Each slot knows where its tile stops and which way it comes in. */
+  /* Rows: typeset the words as columns standing on the floor. The tile
+     shrinks so the longest word (tallest column) and the number of
+     words (columns) both fit. Each slot knows its column x and where
+     its tile lands; letters are queued last-to-first so the finished
+     column reads top to bottom. */
   let tileSize = SIZE;
   const plan = [];
   if (rows) {
     const words = base.join("").split(" ").filter(Boolean).map((w) => [...w]);
     const longest = Math.max(...words.map((w) => w.length));
     tileSize = Math.min(SIZE, Math.floor((STAGE - 40) / longest), Math.floor((STAGE - 40) / words.length));
-    const blockW = longest * tileSize, blockH = words.length * tileSize;
-    const x0 = (STAGE - blockW) / 2, y0 = (STAGE - blockH) / 2;
-    words.forEach((w, ri) => {
-      const rtl = /[\u0590-\u05FF\u0600-\u06FF]/.test(w.join(""));
-      w.forEach((ch, i) => {
-        const slot = rtl ? longest - 1 - i : i;
-        plan.push({ ch, cx: x0 + slot * tileSize + tileSize / 2, cy: y0 + ri * tileSize + tileSize / 2, dir: rtl ? 1 : -1 });
-      });
+    const rtl = /[\u0590-\u05FF\u0600-\u06FF]/.test(base.join(""));
+    const x0 = (STAGE - words.length * tileSize) / 2;
+    words.forEach((w, wi) => {
+      const col = rtl ? words.length - 1 - wi : wi;
+      const cx = x0 + col * tileSize + tileSize / 2;
+      for (let i = w.length - 1; i >= 0; i--) {
+        const fromFloor = w.length - 1 - i;                 // last letter lands first, on the floor
+        plan.push({ ch: w[i], cx, landCy: STAGE - tileSize / 2 - fromFloor * tileSize });
+      }
     });
     seq.push(...plan.map((p) => p.ch));
   }
@@ -212,7 +246,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   let arenaEl = null;
   if (framed) {
     arenaEl = document.createElement("div");
-    arenaEl.style.cssText = `position:absolute;inset:0;background:${mix(pal.frame, LETTER, ARENA_MIX)};`;
+    arenaEl.style.cssText = `position:absolute;inset:0;background:${arenaColour(pal)};`;
     stage.appendChild(arenaEl);
   }
   function shrinkArena() {
@@ -235,7 +269,8 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   let timers = [];
   let raf = 0, last = 0;
   let cursor = 0;            // next beat in seq
-  let count = 0;             // squares spawned so far (colour cycling, wobble id)
+  let count = 0;             // squares spawned so far (wobble id, pace)
+  let hue = 0;               // visible letters so far (colour cycling)
   let phase = "fill";        // fill → hold → drain → (restart)
   let acc = 0, frame = 0;    // stop-motion clock
   let speed = SPEED;         // current pace, shared by every square
@@ -254,7 +289,9 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   function makeLetter(ch, cx, cy, vx, vy) {
     const sz = tileSize;
     const el = document.createElement("div");
-    const fill = pal[ROLES[count % ROLES.length]];
+    /* A blank (Snake's space) is a tile in the background colour. */
+    const blank = ch === " ";
+    const fill = blank ? pal.frame : pal[ROLES[hue++ % ROLES.length]];
     const tilt = (rand() * 2 - 1) * TILT;
     const rad = (tilt * Math.PI) / 180;
     const half = (sz / 2) * (Math.abs(Math.cos(rad)) + Math.abs(Math.sin(rad)));
@@ -321,12 +358,11 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     L.landCy = STAGE - SIZE / 2 - heights[col] * SIZE;
     heights[col]++;                               // reserved: the next one in this column lands on top
   }
-  /* Rows: the tile enters from the side its row fills toward and
-     slides along the row to its slot. */
+  /* Rows: drop the next planned letter down its column. */
   function slideIn(i) {
     const p = plan[i];
-    const L = makeLetter(p.ch, p.dir < 0 ? STAGE + tileSize / 2 : -tileSize / 2, p.cy, p.dir * FALL0, 0);
-    L.landCx = p.cx; L.dir = p.dir;
+    const L = makeLetter(p.ch, p.cx, -tileSize / 2, 0, FALL0);
+    L.landCy = p.landCy;
   }
   /* Tower: cubes come on their own cadence, and every cube shortens
      the gap to the next one (gravity stays the same). A space is a
@@ -355,7 +391,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     if (rows) { L.spawned = true; dropNext(); return; }
     if (cursor >= seq.length) { finish(); return; }
     const ch = seq[cursor++];
-    if (ch === " ") return;
+    if (ch === " " && !snake) return;              // Chaos: a silent beat. Snake: a blank tile rides along.
     L.spawned = true;
     const cx = snake ? L.cx : STAGE / 2, cy = snake ? L.cy : STAGE / 2;
     const ang = snake ? Math.atan2(L.vy, L.vx) : heading(rand);
@@ -373,6 +409,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     letters = [];
     cursor = 0;
     count = 0;
+    hue = 0;
     phase = "fill";
     if (arenaEl) { inset = 0; arenaEl.style.inset = "0px"; }
     if (tower) { heights.fill(0); gap = GAP0; dropIn(seq[cursor++]); scheduleDrop(); return; }
@@ -387,7 +424,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     last = now;
     const spawner = letters[letters.length - 1];
     if (tower) { tickTower(dt, now, spawner); raf = requestAnimationFrame(tick); return; }
-    if (rows) { tickRows(dt, now, spawner); raf = requestAnimationFrame(tick); return; }
+    if (rows) { tickTower(dt, now, spawner); raf = requestAnimationFrame(tick); return; }
     for (const L of letters) {
       /* Chaos: right after a wall hit the tile moves at a fraction of
          its speed and eases back up — the "bounce" without any scale. */
@@ -451,46 +488,13 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       if (L.asleep) continue;
       L.vy += GRAVITY * dt;
       L.cy += L.vy * dt;
-      if (phase === "drain") { if (L.cy - SIZE / 2 > STAGE) L.gone = true; continue; }
+      if (phase === "drain") { if (L.cy - tileSize / 2 > STAGE) L.gone = true; continue; }
       if (L.cy >= L.landCy) {
         const v = L.vy;
         L.cy = L.landCy;
         if (v > 160) { L.vy = -v * REST; }
         else { L.vy = 0; L.asleep = true; }
         touch(L, "y", v);
-      }
-    }
-    if (phase === "drain") {
-      letters.filter((L) => L.gone).forEach((L) => L.el.remove());
-      letters = letters.filter((L) => !L.gone);
-      if (!letters.length) start();
-    }
-    acc += dt;
-    if (acc >= 1 / FPS) { acc = 0; frame++; noise.roll(frame); letters.forEach((L) => place(L, now)); }
-  }
-
-  /* Rows physics: sideways "gravity" along the row toward the slot,
-     a hop back on a fast arrival, sleep on a slow one. When the walls
-     open, everything drops out through the floor. */
-  function tickRows(dt, now, spawner) {
-    now_ = now; spawner_ = spawner;
-    for (const L of letters) {
-      if (phase === "drain") {
-        L.asleep = false;
-        L.vy += GRAVITY * dt; L.cy += L.vy * dt;
-        if (L.cy - tileSize / 2 > STAGE) L.gone = true;
-        continue;
-      }
-      if (L.asleep) continue;
-      L.vx += L.dir * GRAVITY * dt;
-      L.cx += L.vx * dt;
-      const arrived = L.dir < 0 ? L.cx <= L.landCx : L.cx >= L.landCx;
-      if (arrived) {
-        const v = L.vx * L.dir;                       // speed toward the slot
-        L.cx = L.landCx;
-        if (v > 160) { L.vx = -L.dir * v * REST; }
-        else { L.vx = 0; L.asleep = true; }
-        touch(L, "x", v);
       }
     }
     if (phase === "drain") {
