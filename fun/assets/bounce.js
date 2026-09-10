@@ -14,8 +14,10 @@
    Two flavours:
      Snake — the new letter pops out of the collision point on exactly
              the spawner's heading, so every letter follows the first
-             one's path with a delay: one long snake. After 15 seconds
-             the walls open and the snake carries on out of the frame.
+             one's path with a delay: one long snake. The text plays
+             once, so the loop is as long as the text; when the last
+             letter is in, the walls open and the snake carries on out
+             of the frame.
      Chaos — the new letter starts from the centre in a fresh random
              direction. The walls are a visible inner square that
              closes in a little at every touch; the text repeats until
@@ -26,7 +28,7 @@
              eases back, which is the bounce feel.
 
    Tower — the stage is a grid of columns. Each letter drops down a
-           random column and lands exactly on the floor or on the top
+           random column (a fresh roll every round, whatever the seed) and lands exactly on the floor or on the top
            tile of that column, with a small hop. Cubes drop on a
            cadence that gets quicker with every cube.
 
@@ -62,8 +64,7 @@ const FONT_SIZE = 72;           // letter size inside the square
 const SPEED = 520;              // px / second, in stage units
 const SPEED_STEP = 12;          // every new letter makes everything this much faster
 const SPAWN_DELAY = 230;        // ms between a wall hit and the next letter (≈120px along the path)
-const SLOTS_SNAKE = 50;         // the word repeats (space-separated) to fill this many beats
-const SNAKE_LIFE = 15000;       // ms: then the walls open and the snake just carries on out of the frame
+const SNAKE_HOLD = 1200;        // Snake: once the last letter is in, this long before the walls open
 const SLOTS_CHAOS = 400;        // Chaos keeps going until its arena has closed (see SHRINK); this is just "plenty"
 const SLOTS_TOWER = 42;         // Tower stacks this many beats
 const HOLD_MS = 1600;           // pause once the sequence is complete, before the walls open
@@ -220,7 +221,8 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   const base = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   if (!base.filter((c) => c !== " ").length) return { stop() {} };
   const seq = [];
-  const slots = rows ? 0 : snake ? SLOTS_SNAKE : tower ? SLOTS_TOWER : SLOTS_CHAOS;
+  const slots = rows ? 0 : tower ? SLOTS_TOWER : chaos ? SLOTS_CHAOS : 0;
+  if (snake) seq.push(...base);                  // Snake: once through, as typed
   while (seq.length < slots) {
     if (seq.length) seq.push(" ");
     for (const c of base) { if (seq.length < slots) seq.push(c); }
@@ -274,7 +276,8 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   stage.appendChild(layer);
   const noise = grain(stage);
 
-  const rand = rng(seed);
+  /* Tower ignores the seed on purpose: every building must differ. */
+  const rand = rng(tower ? 0 : seed);
   let letters = [];          // in spawn order; the last one is on top
   let timers = [];
   let raf = 0, last = 0;
@@ -349,6 +352,11 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   }
 
   function finish() {
+    if (snake) {
+      phase = "hold";
+      timers.push(setTimeout(() => { phase = "drain"; }, SNAKE_HOLD));   // then it just leaves
+      return;
+    }
     if (tower || rows) {
       phase = "quake";
       timers.push(setTimeout(() => { phase = "drain"; }, QUAKE_MS));
@@ -421,7 +429,6 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     hue = 0;
     phase = "fill";
     if (arenaEl) { inset = 0; arenaEl.style.inset = "0px"; layer.style.clipPath = ""; }
-    if (snake) timers.push(setTimeout(() => { phase = "drain"; }, SNAKE_LIFE));   // no hold: the snake just leaves
     if (tower) { heights.fill(0); gap = GAP0; dropIn(seq[cursor++]); scheduleDrop(); return; }
     if (rows) { gap = GAP0; slideIn(cursor++); scheduleDrop(); return; }
     const ang = heading(rand);
