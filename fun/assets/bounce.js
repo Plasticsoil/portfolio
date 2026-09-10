@@ -100,6 +100,7 @@ const IMPACT_DIP = 0.3;         // … to this fraction of full speed at the mom
 const GAP0 = 820;               // Towers: ms between the first two cubes
 const GAP_DECAY = 0.9;          // … each cube shortens the gap by this factor
 const GAP_MIN = 90;             // … down to this
+const EXIT_FADE = 700;          // ms: on the way out, every card also fades its tiles to nothing
 const TOWER_HOLD = 1500;        // Towers: the finished build stands still this long…
 const QUAKE_MS = 1100;          // … then a quake this long, then the floor gives way
 const QUAKE_MAX = 26;           // … the ground's shake grows from nothing to this many px (sideways; less up and down)
@@ -410,6 +411,11 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       sx *= pop; sy *= pop;
     }
     L.el.style.transform = `translate(${(L.cx + jx).toFixed(1)}px, ${(L.cy + jy).toFixed(1)}px) rotate(${L.tilt.toFixed(1)}deg) scale(${sx.toFixed(3)}, ${sy.toFixed(3)})`;
+    /* Exit fade: a tile on its way out also dissolves. */
+    let fade = 1;
+    if (L.free) fade = 1 - (now - L.freedAt) / EXIT_FADE;
+    else if (phase === "drain") fade = 1 - (now - drainAt) / EXIT_FADE;
+    L.el.style.opacity = fade >= 1 ? "" : Math.max(0, fade).toFixed(2);
     /* Undo the tile's scale on the glyph so only the frame bounces. */
     L.glyph.style.transform = sx === 1 && sy === 1 ? "" : `scale(${(1 / sx).toFixed(3)}, ${(1 / sy).toFixed(3)})`;
   }
@@ -421,12 +427,12 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       timers.push(setTimeout(() => {
         phase = "quake";
         quakeAt = performance.now();
-        timers.push(setTimeout(() => { phase = "drain"; layer.style.transform = ""; }, QUAKE_MS));
+        timers.push(setTimeout(() => { phase = "drain"; drainAt = performance.now(); layer.style.transform = ""; }, QUAKE_MS));
       }, TOWER_HOLD));
       return;
     }
     phase = "hold";
-    timers.push(setTimeout(() => { phase = "drain"; }, HOLD_MS));
+    timers.push(setTimeout(() => { phase = "drain"; drainAt = performance.now(); }, HOLD_MS));
   }
 
   /* The spawner touched a wall: consume one beat. A space is silent
@@ -460,6 +466,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   let gap = GAP0;
   let quakeAt = 0;
   let freeAt = null;         // Snake: the head's hit count at the wall it left through
+  let drainAt = 0;           // when the floor / walls gave way (for the exit fade)
   function scheduleDrop() {
     if (cursor >= seq.length) { finish(); return; }
     const ch = seq[cursor++];
@@ -495,6 +502,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     freeAt = null;
     phase = "fill";
     layer.style.transform = "";
+    layer.style.opacity = "";
     if (arenaEl) { inset = INSET0; arenaEl.style.inset = INSET0 + "px"; layer.style.clipPath = ""; }
     if (tower) { heights.fill(0); gap = GAP0; dropIn(seq[cursor++]); scheduleDrop(); return; }
     if (rows) { gap = GAP0; slideIn(cursor++); scheduleDrop(); return; }
@@ -543,7 +551,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
           L.hits++;
           if (snake) {
             if (freeAt === null && phase === "hold" && L.idx === 0 && ++L.lastHits >= SNAKE_BOUNCES) freeAt = L.hits;
-            if (freeAt !== null && L.hits >= freeAt - L.idx) L.free = true;
+            if (freeAt !== null && !L.free && L.hits >= freeAt - L.idx) { L.free = true; L.freedAt = now; }
           }
         }
         if (hit && phase === "fill" && L === spawner && !L.spawned) onSpawnerHit(L);
@@ -572,6 +580,8 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
       if (arenaEl) {
         arenaEl.style.inset = inset.toFixed(1) + "px";
         layer.style.clipPath = phase === "close" ? `inset(${inset.toFixed(1)}px)` : "";
+        const max = (STAGE - ARENA_MIN) / 2;
+        layer.style.opacity = phase === "close" ? (1 - (inset - max) / (STAGE / 2 - max)).toFixed(2) : "";
       }
     }
     raf = requestAnimationFrame(tick);
