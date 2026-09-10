@@ -24,8 +24,9 @@
 
    Look: Collection 02's sticker language (card / ink / anchor fills,
    slate letter at weight 500) on rounded squares, with the house
-   hand-made finish: 12 fps stop-motion, animated grain, ±2px jitter
-   and a fixed small tilt per square.
+   hand-made finish: 12 fps stop-motion, animated grain, ±2px jitter.
+   Every new letter nudges the speed of the whole group up a notch, so
+   the snake stays one snake while the pace builds.
 
    Written as a plain, readable ES module (the rest of FunType is a
    minified Vite build); it plugs into the same effect contract:
@@ -33,15 +34,16 @@
 
 const STAGE = 1080;
 const SIZE = 150;               // sticker square side, in stage units
-const CORNER = 28;              // its corner radius
-const FONT_SIZE = 100;          // letter size — tight inside the square
+const CORNER = 0;               // its corner radius (sharp)
+const FONT_SIZE = 72;           // letter size inside the square
 const SPEED = 520;              // px / second, in stage units
+const SPEED_STEP = 12;          // every new letter makes everything this much faster
 const SPAWN_DELAY = 230;        // ms between a wall hit and the next letter (≈120px along the path)
 const SLOTS = 50;               // the word repeats (space-separated) to fill this many beats
 const HOLD_MS = 1600;           // pause once the sequence is complete, before the walls open
 const FPS = 12;                 // stop-motion: the picture only updates this often
 const JITTER = 2;               // px of hand-held wobble per frame
-const TILT = 9;                 // ± degrees, a fixed tilt per square
+const TILT = 0;                 // ± degrees, a fixed tilt per square (off)
 const LETTER = "#4E4B5D";       // Stickers' slate letter colour
 
 /* Collection 02's palettes (same values as Dots / Stickers / Loop).
@@ -136,6 +138,15 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   let count = 0;             // squares spawned so far (colour cycling, wobble id)
   let phase = "fill";        // fill → hold → drain → (restart)
   let acc = 0, frame = 0;    // stop-motion clock
+  let speed = SPEED;         // current pace, shared by every square
+
+  /* Set everyone to the current pace, keeping their headings. */
+  function repace() {
+    for (const L of letters) {
+      const k = speed / Math.hypot(L.vx, L.vy);
+      L.vx *= k; L.vy *= k;
+    }
+  }
 
   /* Squares are tracked by their centre. A tilted square is wider than
      SIZE on the axes, so each keeps its own half-extent for the walls:
@@ -150,6 +161,9 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     el.textContent = ch;
     layer.appendChild(el);                         // newest on top
     const L = { el, id: count++, cx, cy, vx, vy, tilt, half, spawned: false };
+    letters.push(L);
+    speed = SPEED + SPEED_STEP * (count - 1);
+    repace();
     place(L);
     return L;
   }
@@ -177,9 +191,9 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     L.spawned = true;
     const cx = snake ? L.cx : STAGE / 2, cy = snake ? L.cy : STAGE / 2;
     const ang = snake ? Math.atan2(L.vy, L.vx) : heading(rand);
-    const vx = Math.cos(ang) * SPEED, vy = Math.sin(ang) * SPEED;
+    const vx = Math.cos(ang) * speed, vy = Math.sin(ang) * speed;
     timers.push(setTimeout(() => {
-      letters.push(makeLetter(ch, cx, cy, vx, vy));
+      makeLetter(ch, cx, cy, vx, vy);
       if (cursor >= seq.length) finish();
     }, SPAWN_DELAY));
   }
@@ -193,8 +207,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     count = 0;
     phase = "fill";
     const ang = heading(rand);
-    letters.push(makeLetter(seq[cursor++], STAGE / 2, STAGE / 2,
-      Math.cos(ang) * SPEED, Math.sin(ang) * SPEED));
+    makeLetter(seq[cursor++], STAGE / 2, STAGE / 2, Math.cos(ang) * SPEED, Math.sin(ang) * SPEED);
   }
 
   function tick(now) {
