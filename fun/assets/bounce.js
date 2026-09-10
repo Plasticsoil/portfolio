@@ -23,7 +23,7 @@
    stage is empty the word starts over.
 
    Look: Collection 02's sticker language (card / ink / anchor fills,
-   slate letter at weight 500) on rounded squares, with the house
+   slate letter at weight 500, drawn as an outline) on squares, with the house
    hand-made finish: 12 fps stop-motion, animated grain, ±2px jitter.
    Every new letter nudges the speed of the whole group up a notch, so
    the snake stays one snake while the pace builds.
@@ -45,6 +45,7 @@ const FPS = 12;                 // stop-motion: the picture only updates this of
 const JITTER = 2;               // px of hand-held wobble per frame
 const TILT = 0;                 // ± degrees, a fixed tilt per square (off)
 const LETTER = "#4E4B5D";       // Stickers' slate letter colour
+const STROKE = 2.5;             // px — the letter is drawn as an outline
 
 /* Collection 02's palettes (same values as Dots / Stickers / Loop).
    frame = background; squares cycle card → ink → anchor, so two
@@ -88,17 +89,36 @@ function heading(rand) {
   return quadrant * (Math.PI / 2) + a;
 }
 
-/* Film grain: the same overlay the other collections use. Returns the
-   turbulence node so the seed can be re-rolled every frame. */
+/* Film grain. The other collections use an SVG feTurbulence filter,
+   which iOS Safari often refuses to paint inside a scaled stage — so
+   this one rasterises a few noise tiles once on a canvas and cycles
+   them as a blended background, one tile per stop-motion frame. */
+const GRAIN_TILES = 6, GRAIN_TILE = 192, GRAIN_OPACITY = 0.6;
+let grainTiles;
+function makeGrainTiles() {
+  if (grainTiles) return grainTiles;
+  grainTiles = [];
+  const c = document.createElement("canvas");
+  c.width = c.height = GRAIN_TILE;
+  const g = c.getContext("2d");
+  for (let t = 0; t < GRAIN_TILES; t++) {
+    const img = g.createImageData(GRAIN_TILE, GRAIN_TILE);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = (Math.random() * 255) | 0;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+      img.data[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    grainTiles.push(`url(${c.toDataURL()})`);
+  }
+  return grainTiles;
+}
 function grain(stage) {
-  const id = "fxg" + Math.floor(Math.random() * 1e6);
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 1080 1080");
-  svg.setAttribute("preserveAspectRatio", "none");
-  svg.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;mix-blend-mode:overlay;opacity:0.5;z-index:9;";
-  svg.innerHTML = `<filter id="${id}"><feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="2" stitchTiles="stitch" seed="1"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope="0" intercept="1"/></feComponentTransfer></filter><rect width="1080" height="1080" filter="url(#${id})"/>`;
-  stage.appendChild(svg);
-  return svg.querySelector("feTurbulence");
+  const tiles = makeGrainTiles();
+  const el = document.createElement("div");
+  el.style.cssText = `position:absolute;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:${GRAIN_OPACITY};z-index:9;background-size:${GRAIN_TILE}px ${GRAIN_TILE}px;background-image:${tiles[0]};`;
+  stage.appendChild(el);
+  return { roll(frame) { el.style.backgroundImage = tiles[frame % tiles.length]; } };
 }
 
 export const m = (stage, opts) => mount(stage, { ...opts, mode: "snake" });
@@ -157,7 +177,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     const tilt = (rand() * 2 - 1) * TILT;
     const rad = (tilt * Math.PI) / 180;
     const half = (SIZE / 2) * (Math.abs(Math.cos(rad)) + Math.abs(Math.sin(rad)));
-    el.style.cssText = `position:absolute;left:${-SIZE / 2}px;top:${-SIZE / 2}px;width:${SIZE}px;height:${SIZE}px;border-radius:${CORNER}px;background:${fill};display:flex;align-items:center;justify-content:center;font-family:"Switzer","Rubik",system-ui,sans-serif;font-weight:500;font-size:${FONT_SIZE}px;line-height:1;color:${LETTER};text-transform:uppercase;letter-spacing:-0.02em;will-change:transform;`;
+    el.style.cssText = `position:absolute;left:${-SIZE / 2}px;top:${-SIZE / 2}px;width:${SIZE}px;height:${SIZE}px;border-radius:${CORNER}px;background:${fill};display:flex;align-items:center;justify-content:center;font-family:"Switzer","Rubik",system-ui,sans-serif;font-weight:500;font-size:${FONT_SIZE}px;line-height:1;color:transparent;-webkit-text-stroke:${STROKE}px ${LETTER};paint-order:stroke;text-transform:uppercase;letter-spacing:-0.02em;will-change:transform;`;
     el.textContent = ch;
     layer.appendChild(el);                         // newest on top
     const L = { el, id: count++, cx, cy, vx, vy, tilt, half, spawned: false };
@@ -243,7 +263,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     if (acc >= 1 / FPS) {
       acc = 0;
       frame++;
-      noise.setAttribute("seed", frame % 97);
+      noise.roll(frame);
       letters.forEach(place);
     }
     raf = requestAnimationFrame(tick);
