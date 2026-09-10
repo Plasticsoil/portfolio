@@ -46,19 +46,20 @@ const STAGE = 1080;
 const SIZE = 150;               // sticker square side, in stage units
 const CORNER = 0;               // its corner radius (sharp)
 const FONT_SIZE = 72;           // letter size inside the square
-const SPEED = 640;              // px / second, in stage units
+const SPEED = 520;              // px / second, in stage units
 const SPEED_STEP = 12;          // every new letter makes everything this much faster
 const SPAWN_DELAY = 230;        // ms between a wall hit and the next letter (≈120px along the path)
 const SLOTS_SNAKE = 50;         // the word repeats (space-separated) to fill this many beats
 const SLOTS_CHAOS = 80;         // Chaos keeps going until the stage is properly full
-const SLOTS_TOWER = 45;         // Tower stacks this many beats
+const SLOTS_TOWER = 32;         // Tower stacks this many beats
 const HOLD_MS = 1600;           // pause once the sequence is complete, before the walls open
 const GRAVITY = 2200;           // Tower: px / s², in stage units
 const FALL0 = 420;              // Tower: a letter's speed as it enters from the top
 const REST = 0.28;              // Tower: how much bounce is left after a landing
-const BAND = 300;               // Tower: letters drop within ± this of the centre, so they pile up
+const BAND = 380;               // Tower: letters drop within ± this of the centre, so they pile up
 const FPS = 12;                 // stop-motion: the picture only updates this often
-const JITTER = 2;               // px of hand-held wobble per frame
+const JITTER = 3;               // px of hand-held wobble per frame
+const OFFSET = 10;              // px: each tile sits a little off its true spot, fixed for its life
 const SQUASH = 0.28;            // how much a square flattens against the wall on impact
 const SQUASH_MS = 320;          // and how long the squash-and-spring lasts
 const POP_MS = 260;             // a new letter pops in from small to full size
@@ -230,7 +231,8 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     el.appendChild(glyph);
     layer.appendChild(el);                         // newest on top
     const L = { el, glyph, id: count++, cx, cy, vx, vy, tilt, half, spawned: false,
-                born: performance.now(), hitAt: -1e9, hitAxis: "x" };
+                ox: (rand() * 2 - 1) * OFFSET, oy: (rand() * 2 - 1) * OFFSET,   // hand-placed offset (visual only)
+                born: performance.now(), hitAt: -1e9, hitAxis: "x", asleep: false };
     letters.push(L);
     if (!tower) { speed = SPEED + SPEED_STEP * (count - 1); repace(); }
     place(L, performance.now());
@@ -242,7 +244,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
        along the wall, then springs back (a half-sine over SQUASH_MS);
      - birth: a new square pops in from 40% with a little overshoot. */
   function place(L, now) {
-    const jx = wobble(L.id, frame, 0) * JITTER, jy = wobble(L.id, frame, 1) * JITTER;
+    const jx = L.ox + wobble(L.id, frame, 0) * JITTER, jy = L.oy + wobble(L.id, frame, 1) * JITTER;
     let sx = 1, sy = 1;
     const th = tower ? 1 : (now - L.hitAt) / SQUASH_MS;   // Tower: no scale bounce at all
     if (th >= 0 && th < 1) {
@@ -361,10 +363,13 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
     raf = requestAnimationFrame(tick);
   }
 
-  /* Tower physics: gravity, side walls, a floor (unless the walls are
-     open), and square-on-square contact resolved along the shallower
-     overlap. A landing squashes the tile; the newest tile's first
-     contact with anything drops the next letter. */
+  /* Tower physics. A tile is either falling or asleep. Falling tiles
+     feel gravity and land on the floor or on sleeping tiles; a landing
+     with some speed gives a small positional hop, a slow one puts the
+     tile to sleep, and sleeping tiles are rock-solid supports. A tile
+     that comes down on just a corner of another slides off it, and one
+     that drifts into the side of a sleeping tile is pushed clear. The
+     newest tile's first landing drops the next letter. */
   function touch(L, axis, speedAlong) {
     if (Math.abs(speedAlong) > 90) { L.hitAt = now_; L.hitAxis = axis; }
     if (L === spawner_ && !L.spawned && phase === "fill") onSpawnerHit(L);
@@ -372,46 +377,50 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake", frame: fra
   let now_ = 0, spawner_ = null;
   function tickTower(dt, now, spawner) {
     now_ = now; spawner_ = spawner;
-    const half = SIZE / 2, floor = STAGE - half;
+    const half = SIZE / 2, floorY = STAGE - half;
+    const solids = phase === "drain" ? [] : letters.filter((L) => L.asleep);
     for (const L of letters) {
+      if (phase === "drain") L.asleep = false;
+      if (L.asleep) continue;
       L.vy += GRAVITY * dt;
-      L.vx *= Math.max(0, 1 - 2 * dt);              // a little air drag sideways
+      L.vx *= Math.max(0, 1 - 3 * dt);
+      const wasBottom = L.cy + half;
       L.cx += L.vx * dt;
       L.cy += L.vy * dt;
-      if (L.cx < half) { L.cx = half; L.vx = -L.vx * 0.4; }
-      else if (L.cx > STAGE - half) { L.cx = STAGE - half; L.vx = -L.vx * 0.4; }
+      if (L.cx < half) { L.cx = half; L.vx = Math.abs(L.vx) * 0.3; }
+      else if (L.cx > STAGE - half) { L.cx = STAGE - half; L.vx = -Math.abs(L.vx) * 0.3; }
       if (phase === "drain") { if (L.cy - half > STAGE) L.gone = true; continue; }
-      if (L.cy > floor) {
+
+      /* Where would it land? The floor, or the highest sleeping tile it
+         overlaps and was above. Side hits get pushed clear instead. */
+      let landCy = floorY, support = null;
+      for (const S of solids) {
+        const overlap = SIZE - Math.abs(S.cx - L.cx);
+        if (overlap <= 0) continue;
+        const sTop = S.cy - half;
+        if (wasBottom <= sTop + 6) {
+          if (S.cy - SIZE < landCy) { landCy = S.cy - SIZE; support = S; }
+        } else if (L.cy < S.cy + SIZE && L.cy > S.cy - SIZE) {
+          const dir = L.cx < S.cx ? -1 : 1;
+          L.cx = S.cx + dir * SIZE;
+          L.vx = dir * 160;
+        }
+      }
+      if (L.cy >= landCy) {
+        if (support && SIZE - Math.abs(support.cx - L.cx) < SIZE * 0.35) {
+          /* Only a corner caught it: slide off and keep falling. */
+          const dir = L.cx < support.cx ? -1 : 1;
+          L.vx = dir * 240;
+          continue;
+        }
         const v = L.vy;
-        L.cy = floor;
-        L.vy = v > 90 ? -v * REST : 0;
+        L.cy = landCy;
+        if (v > 160) { L.vy = -v * REST; }
+        else { L.vy = 0; L.vx = 0; L.asleep = true; }
         touch(L, "y", v);
       }
     }
-    if (phase !== "drain") {
-      for (let pass = 0; pass < 3; pass++) {
-        for (let i = 0; i < letters.length; i++) for (let j = i + 1; j < letters.length; j++) {
-          const A = letters[i], B = letters[j];
-          const dx = B.cx - A.cx, dy = B.cy - A.cy;
-          const ox = SIZE - Math.abs(dx), oy = SIZE - Math.abs(dy);
-          if (ox <= 0 || oy <= 0) continue;
-          if (ox < oy) {
-            const sgn = dx < 0 ? -1 : 1;
-            A.cx -= (ox / 2) * sgn; B.cx += (ox / 2) * sgn;
-            const rel = (B.vx - A.vx) * sgn;
-            if (rel < 0) { const k = rel * 0.5; A.vx += k * sgn; B.vx -= k * sgn; }
-            if (pass === 0) { touch(A, "x", rel); touch(B, "x", rel); }
-          } else {
-            const top = dy > 0 ? A : B, bot = dy > 0 ? B : A;   // top sits above bot
-            const rel = top.vy - bot.vy;                           // closing speed
-            top.cy -= oy * 0.75; bot.cy += oy * 0.25;
-            if (rel > 0) { top.vy = bot.vy - rel * REST; if (rel > 90) bot.vy += rel * 0.1; }
-            if (pass === 0) { touch(top, "y", rel); touch(bot, "y", rel); }
-          }
-        }
-      }
-      for (const L of letters) if (L.cy > floor) { L.cy = floor; if (L.vy > 0) L.vy = 0; }
-    } else {
+    if (phase === "drain") {
       letters.filter((L) => L.gone).forEach((L) => L.el.remove());
       letters = letters.filter((L) => !L.gone);
       if (!letters.length) start();
