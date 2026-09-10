@@ -81,6 +81,7 @@ const SQUASH_MS = 320;          // and how long the squash-and-spring lasts
 const POP_MS = 260;             // a new letter pops in from small to full size
 const TILT = 0;                 // ± degrees, a fixed tilt per square (off)
 const LETTER = "#4E4B5D";       // Stickers' slate letter colour
+const ARENA_START = 0.9;        // Chaos: the arena starts at this fraction of the stage
 const SHRINK = 1.4;             // Chaos: the arena closes in this much per side at every wall touch
 const CLOSE_SPEED = 90;         // Chaos: once at one tile, the frame keeps closing as a mask at this px/s per side
 const ARENA_MIN = SIZE;         // … until it is exactly one tile — then the round is over
@@ -253,11 +254,12 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
   }
 
   /* Frame variant: the arena is a visible inner square that closes in. */
-  let inset = 0;
+  const INSET0 = (STAGE * (1 - ARENA_START)) / 2;
+  let inset = INSET0;
   let arenaEl = null;
   if (framed) {
     arenaEl = document.createElement("div");
-    arenaEl.style.cssText = `position:absolute;inset:0;background:${arenaColour(pal)};`;
+    arenaEl.style.cssText = `position:absolute;inset:${INSET0}px;background:${arenaColour(pal)};`;
     stage.appendChild(arenaEl);
   }
   function shrinkArena() {
@@ -428,7 +430,7 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     count = 0;
     hue = 0;
     phase = "fill";
-    if (arenaEl) { inset = 0; arenaEl.style.inset = "0px"; layer.style.clipPath = ""; }
+    if (arenaEl) { inset = INSET0; arenaEl.style.inset = INSET0 + "px"; layer.style.clipPath = ""; }
     if (tower) { heights.fill(0); gap = GAP0; dropIn(seq[cursor++]); scheduleDrop(); return; }
     if (rows) { gap = GAP0; slideIn(cursor++); scheduleDrop(); return; }
     const ang = heading(rand);
