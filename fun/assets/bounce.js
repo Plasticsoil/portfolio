@@ -251,9 +251,10 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     words.forEach((w, wi) => {
       const col = rtl ? words.length - 1 - wi : wi;
       const cx = x0 + col * tileSize + tileSize / 2;
+      const t = words.length > 1 ? col / (words.length - 1) : 0;   // colour: one step per tower, left to right
       for (let i = w.length - 1; i >= 0; i--) {
         const fromFloor = w.length - 1 - i;                 // last letter lands first, on the floor
-        plan.push({ ch: w[i], cx, landCy: STAGE - tileSize / 2 - fromFloor * tileSize });
+        plan.push({ ch: w[i], cx, landCy: STAGE - tileSize / 2 - fromFloor * tileSize, t });
       }
     });
     seq.push(...plan.map((p) => p.ch));
@@ -317,12 +318,14 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     const el = document.createElement("div");
     /* A blank (Snake's space) is an invisible tile: present in the
        chain, so the gap is real, but never painted. Every other tile is
-       one step of the gradient: Snake and Towers step by letter index
-       over the letters in the loop; Chaos, whose loop length is set by
-       the closing arena, steps with the arena instead. */
+       one step of the gradient: Snake steps by letter over the text,
+       Towers gives each tower one step (left to right), and Chaos,
+       whose loop length is set by the closing arena, steps with the
+       arena. */
     const blank = ch === " ";
     let t = 0;
     if (chaos) t = (inset - INSET0) / ((STAGE - ARENA_MIN) / 2 - INSET0);
+    else if (rows) t = towerT;                    // Towers: one colour per tower
     else t = steps > 1 ? hue / (steps - 1) : 0;
     if (!blank) hue++;
     const fill = blank ? "transparent" : mix(pal.card, pal.ink, Math.min(1, Math.max(0, t)));
@@ -400,8 +403,10 @@ function mount(stage, { word = "", palette, seed = 0, mode = "snake" } = {}) {
     heights[col]++;                               // reserved: the next one in this column lands on top
   }
   /* Pillars: drop the next planned letter down its column. */
+  let towerT = 0;
   function slideIn(i) {
     const p = plan[i];
+    towerT = p.t;
     const L = makeLetter(p.ch, p.cx, -tileSize / 2, 0, FALL0);
     L.landCy = p.landCy;
   }
