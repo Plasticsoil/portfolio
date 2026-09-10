@@ -44,16 +44,42 @@ function rng(seed) {
 }
 
 let ctx;
-/* Tight ink box of the glyph, from canvas text metrics. */
+/* Exact ink box of the glyph, by rasterising it once and scanning the
+   pixels. Browser text metrics (actualBoundingBox*) are only
+   approximate — iOS in particular leaves a gap on the left — and the
+   whole point is that the *letter shape* is what touches the wall. */
 function measure(ch) {
-  ctx || (ctx = document.createElement("canvas").getContext("2d"));
+  const pad = FONT_SIZE;
+  const size = FONT_SIZE * 3;
+  if (!ctx) {
+    const c = document.createElement("canvas");
+    c.width = c.height = size;
+    ctx = c.getContext("2d", { willReadFrequently: true });
+  }
+  ctx.clearRect(0, 0, size, size);
   ctx.font = FONT;
-  const m = ctx.measureText(ch);
-  const left = m.actualBoundingBoxLeft || 0;
-  const right = m.actualBoundingBoxRight || m.width;
-  const asc = m.actualBoundingBoxAscent || FONT_SIZE * 0.72;
-  const desc = m.actualBoundingBoxDescent || 0;
-  return { left, asc, w: Math.max(1, left + right), h: Math.max(1, asc + desc) };
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#000";
+  ctx.fillText(ch, pad, pad * 1.5);           // origin at (pad, pad*1.5)
+  const d = ctx.getImageData(0, 0, size, size).data;
+  let minX = size, minY = size, maxX = -1, maxY = -1;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (d[(y * size + x) * 4 + 3] > 8) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0) return { left: 0, asc: FONT_SIZE * 0.72, w: 1, h: 1 };
+  return {
+    left: pad - minX,                 // origin sits this far right of the ink's left edge
+    asc: pad * 1.5 - minY,            // and this far below its top
+    w: maxX - minX + 1,
+    h: maxY - minY + 1,
+  };
 }
 
 /* A random heading that stays clear of the axes, so the letter never
@@ -113,7 +139,10 @@ export function m(stage, { word = "", palette, seed = 0 } = {}) {
     x = cx - box.w / 2;
     y = cy - box.h / 2;
   };
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
+  if (document.fonts) {
+    document.fonts.ready.then(remeasure);
+    document.fonts.load(FONT, ch).then(remeasure, () => {});
+  }
 
   let raf = 0, last = 0;
   function tick(now) {
