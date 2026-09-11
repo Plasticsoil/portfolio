@@ -8,9 +8,9 @@
 # secret and it cannot reach anyone's disk over the network, but a
 # CMS-shaped page on a portfolio is an invitation to go poking.
 #
-# Sent home rather than 404'd on purpose: this site has no 404.html, and
-# adding one would change what every unmatched URL does, which is a much
-# bigger change than hiding one folder.
+# Sent home rather than 404'd on purpose. There is a 404 page now, but
+# it announces that a page is missing — and nothing is missing here, the
+# studio simply is not for the web. Home is the honest answer.
 #
 # _redirects is read by the deploy, never by a local server, so the
 # studio keeps working on localhost either way.
