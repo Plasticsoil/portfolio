@@ -806,28 +806,6 @@
       pointer-events: none;
       display: block;
     }
-    .card-b-body--funtype .ft-lock-icon {
-      position: absolute;
-      top: 14px;
-      right: 14px;
-      z-index: 2;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      /* Same near-black as the custom cursor (#26251E) so the lock reads
-         as part of the cursor language, not as a chip. Hidden by default,
-         revealed only while the host card is hovered (matches the rest
-         of the card's hover-reveal language). */
-      color: var(--color-ink, #26251E);
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.25s ease;
-    }
-    .card-b:hover .card-b-body--funtype .ft-lock-icon {
-      opacity: 1;
-    }
 
     /* moji interactive thumbnail card */
     .card-b-body--mojithumb { background: rgba(255,255,255,0.5); overflow: visible; border-radius: 8px; }
@@ -4766,20 +4744,13 @@
         body.appendChild(logo);
       }
       // FunType — live Corner-effect preview embedded via iframe from /fun/
-      // thumb.html (typewriter cycle COMING ↔ SOON). The iframe is
-      // pointer-events:none so card clicks still reach the password gate;
-      // mouse motion is forwarded over postMessage so the in-thumb hover-
-      // pull animation still feels live. A small lock icon sits top-right.
+      // thumb.html. The iframe is pointer-events:none so card clicks still
+      // reach the card; mouse motion is forwarded over postMessage so the
+      // in-thumb hover-pull animation still feels live.
       else if (project.funtypeThumb) {
         body.classList.add('card-b-body--funtype');
         body.innerHTML =
-          '<iframe class="ft-preview" src="/fun/thumb.html" title="FunType preview" loading="lazy" tabindex="-1" aria-hidden="true"></iframe>' +
-          '<div class="ft-lock-icon" aria-label="Private">' +
-            '<svg width="16" height="18" viewBox="0 0 16 18" fill="none">' +
-              '<rect x="2" y="8" width="12" height="9" rx="1.6" stroke="currentColor" stroke-width="1.4"/>' +
-              '<path d="M4.5 8V5.2C4.5 3.21 6.07 1.6 8 1.6C9.93 1.6 11.5 3.21 11.5 5.2V8" stroke="currentColor" stroke-width="1.4"/>' +
-            '</svg>' +
-          '</div>';
+          '<iframe class="ft-preview" src="/fun/thumb.html" title="FunType preview" loading="lazy" tabindex="-1" aria-hidden="true"></iframe>';
 
         // Forward host mouse motion into the iframe — it receives no native
         // events while pointer-events:none, so the thumb listens for these

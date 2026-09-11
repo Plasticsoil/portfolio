@@ -1,23 +1,16 @@
 /* FunType — interactive kinetic-typography studio (Vite build).
-   Lives at /funtype/ as its own page; the card grows into the page on
-   click after a gentle password gate (requirePassword). The check is
-   client-side only — a soft barrier, not real protection. */
+   Lives at /fun/ as its own page; the card grows into the page on click. */
 window.__PROJECTS__['funtype'] = {
   id: 'funtype',
   title: 'FunType',
   tags: ['Tool', 'Type', 'Vibecoding'],
   overlayTags: ['Tool', 'Type', 'Vibecoding'],
 
-  // Custom in-page thumbnail (built in buildCard): cream card with serif
-  // "FunType" wordmark + small lock indicator.
+  // Custom in-page thumbnail (built in buildCard): live Corner-effect
+  // preview embedded from /fun/thumb.html.
   funtypeThumb: true,
 
   // Card opens the built FunType app (Vite output copied to /fun/).
   link: '/fun/',
-  linkBg: '#F8F6F3',           // grow-to-fullscreen transition colour (matches FunType bg + site bg)
-  cursorTooltip: 'Unlock',
-
-  // Gentle gate — JS prompts for this password before navigating. Once entered
-  // correctly, sessionStorage('funtype-ok') keeps the gate open for this tab.
-  requirePassword: 'funfunfun'
+  linkBg: '#F8F6F3'            // grow-to-fullscreen transition colour (matches FunType bg + site bg)
 };
