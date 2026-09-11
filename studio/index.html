@@ -198,6 +198,16 @@
   }
   .st-rule { height: 1px; background: var(--color-muted-15); margin: 22px 0; }
 
+  .st-hero-check {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13.5px;
+    color: var(--color-ink);
+    cursor: pointer;
+  }
+  .st-hero-check input { width: 15px; height: 15px; accent-color: var(--color-ink); flex: none; }
+
   /* ── A block card ────────────────────────────────────────── */
   .st-blk {
     border: 1px solid var(--color-muted-15);
@@ -414,6 +424,7 @@
   <span class="st-brand"><i>/</i>Studio</span>
   <span class="st-mode" id="st-mode" data-ok="no">checking…</span>
   <span class="st-spacer"></span>
+  <a class="st-btn" href="/studio/hero.html" style="text-decoration:none">Hero</a>
   <button class="st-btn" type="button" id="st-meta-toggle" aria-pressed="false">Details</button>
   <button class="st-btn" type="button" id="st-connect">Choose site folder</button>
   <button class="st-btn" type="button" id="st-load">Open a project</button>
@@ -501,6 +512,26 @@
     <div class="st-field">
       <div id="p-thumb-slot"></div>
       <p class="st-hint">Also the share image. 144:173 &mdash; a link preview crops it to landscape.</p>
+    </div>
+
+    <div class="st-rule"></div>
+
+    <!-- The hero is a composition, not a list, and its numbers are
+         arrived at by eye — so nothing here tries to place anything.
+         This is only the one decision that is a decision: whether this
+         project belongs up there at all. It writes no config; it puts
+         a line in the handover so the question is asked out loud
+         instead of being remembered. -->
+    <h2 class="st-sec"><i>/</i>Hero</h2>
+
+    <div class="st-field">
+      <label class="st-hero-check">
+        <input type="checkbox" id="p-hero">
+        <span>This one belongs in the hero</span>
+      </label>
+      <div id="p-hero-slot" hidden></div>
+      <p class="st-hint" id="p-hero-hint">Four objects are up there now. Place them on the
+        <a href="/studio/hero.html">Hero</a> page &mdash; x, y and scale are dragged, not typed.</p>
     </div>
 
     <div class="st-rule"></div>
@@ -595,6 +626,7 @@
     tlogoAsset: null,   // spun instead of the flat card
     cimgAsset:  null,   // follows the mouse over the card
     link: '', linkBg: '', cursorTooltip: '', cursorLight: false,
+    hero: false, heroAsset: null,
     blocks: []
   };
 
@@ -826,7 +858,8 @@
     /* The two optional ones. No shape to meet — a spun logo and a
        cursor image are whatever they are — so they get a plain slot
        with no verdict attached. */
-    [['p-tlogo-slot', 'tlogoAsset'], ['p-cimg-slot', 'cimgAsset']].forEach(function (row) {
+    [['p-tlogo-slot', 'tlogoAsset'], ['p-cimg-slot', 'cimgAsset'],
+     ['p-hero-slot', 'heroAsset']].forEach(function (row) {
       var host = $(row[0]);
       if (!host) return;
       host.innerHTML = '';
@@ -1126,6 +1159,17 @@
       .filter(Boolean);
   });
 
+  /* The slot only matters once the box is ticked, so it is not shown
+     until then — an asset picker for a thing you have not opted into
+     is just another empty control to scroll past. */
+  $('p-hero').addEventListener('change', function () {
+    project.hero = this.checked;
+    $('p-hero-slot').hidden = !this.checked;
+    $('p-hero-hint').textContent = this.checked
+      ? 'Named in the handover. Give it the file the hero should show — a .glb turns, an image stands still.'
+      : 'Four objects are up there now. Placement stays in hero/hero-config.js — x, y and scale are eye decisions, not fields.';
+  });
+
   $('p-link').addEventListener('input',   function () { project.link = this.value.trim(); });
   $('p-linkbg').addEventListener('input', function () { project.linkBg = this.value.trim(); });
   $('p-ctip').addEventListener('input',   function () { project.cursorTooltip = this.value.trim(); });
@@ -1342,6 +1386,7 @@
     take(project.thumbAsset);
     take(project.tlogoAsset);
     take(project.cimgAsset);
+    if (project.hero) take(project.heroAsset);
     project.blocks.forEach(function (b) {
       take(b.asset);
       (b.items || []).forEach(function (i) { take(i.asset); });
@@ -1380,6 +1425,25 @@
           ? 'and copy these into  projects/' + project.id + '/assets/ :\n' +
             used.map(function (k) { return '  ' + assets[k].name; }).join('\n')
           : 'There is no media to copy.');
+    }
+
+    /* Said in the report rather than written into project.json,
+       because it is not a project field — the hero keeps its own
+       config, by hand, and this is the request to go and edit it. */
+    if (project.hero) {
+      var a = project.heroAsset && assets[project.heroAsset];
+      report += '
+
+HERO — wants an entry in hero/hero-config.js:
+' +
+        '  projectId: '' + (project.id || '') + ''
+' +
+        '  ' + (a ? (a.kind === 'glb' ? 'model' : 'image') + ": '" + assetPath(project.heroAsset) + "'"
+                  : '(no file chosen — needs one)') + '
+' +
+        '  label: '' + (project.title || '') + ''
+' +
+        '  x, y, scale: to be placed by eye';
     }
 
     $('st-out-report').textContent = report;
@@ -1458,6 +1522,10 @@
     project.linkBg        = data.linkBg || '';
     project.cursorTooltip = data.cursorTooltip || '';
     project.cursorLight   = !!data.cursorLight;
+    project.hero = false;            /* the hero config is a separate file */
+    project.heroAsset = null;
+    $('p-hero').checked = false;
+    $('p-hero-slot').hidden = true;
     $('p-link').value   = project.link;
     $('p-linkbg').value = project.linkBg;
     $('p-ctip').value   = project.cursorTooltip;

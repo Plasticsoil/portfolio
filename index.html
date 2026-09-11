@@ -4044,6 +4044,13 @@
         } else if (existing && entry.model) {
           existing.setAttribute('src', entry.model);
         }
+        // Size. The stage is scale(1.6) in CSS; `scale` multiplies that, so
+        // an image or a model can be sized like the emoji already could.
+        // Emoji keep their own font-size path above — scaling the stage as
+        // well would apply it twice.
+        if (stage && entry.scale && !entry.emoji) {
+          stage.style.transform = 'scale(' + (1.6 * entry.scale) + ')';
+        }
         if (entry.tooltip) card.setAttribute('data-cursor-tooltip', entry.tooltip);
         const tagName = card.querySelector('.ring-tag-name');
         if (tagName) {
