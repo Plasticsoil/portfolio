@@ -115,12 +115,39 @@
   .st-btn--go:hover { background: #000; border-color: #000; color: #fff; }
   .st-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-  /* ── The two panes ───────────────────────────────────────── */
-  .st-main { display: grid; grid-template-columns: 430px 1fr; min-height: 0; }
+  /* ── The three panes ─────────────────────────────────────── */
+  /* Three columns, each scrolling on its own: the blocks you are
+     stacking, the page they make, and the fields that are not blocks.
+     They were one column before, which meant scrolling past the whole
+     project header to reach the block you wanted to edit. */
+  .st-main { display: grid; grid-template-columns: 370px 1fr 330px; min-height: 0; }
+
+  /* Two sidebars cost 700px before the preview gets any. On a laptop
+     that leaves it too narrow to judge a desktop layout in, so they
+     give ground first — and below 1100 the right-hand one folds away
+     behind a toggle rather than squeezing the preview to nothing. */
+  @media (max-width: 1400px) {
+    .st-main { grid-template-columns: 320px 1fr 300px; }
+    .st-edit, .st-meta { padding: 16px; }
+  }
+  @media (max-width: 1100px) {
+    .st-main { grid-template-columns: 300px 1fr; }
+    .st-meta { display: none; }
+    body[data-meta="open"] .st-main { grid-template-columns: 300px 1fr 300px; }
+    body[data-meta="open"] .st-meta { display: block; }
+  }
+  /* The toggle only exists at that width. */
+  #st-meta-toggle { display: none; }
+  @media (max-width: 1100px) { #st-meta-toggle { display: inline-block; } }
   .st-edit {
     overflow-y: auto;
     padding: 20px;
     border-inline-end: 1px solid var(--color-muted-15);
+  }
+  .st-meta {
+    overflow-y: auto;
+    padding: 20px;
+    border-inline-start: 1px solid var(--color-muted-15);
   }
   .st-view {
     display: flex;
@@ -387,6 +414,7 @@
   <span class="st-brand"><i>/</i>Studio</span>
   <span class="st-mode" id="st-mode" data-ok="no">checking…</span>
   <span class="st-spacer"></span>
+  <button class="st-btn" type="button" id="st-meta-toggle" aria-pressed="false">Details</button>
   <button class="st-btn" type="button" id="st-connect">Choose site folder</button>
   <button class="st-btn" type="button" id="st-load">Open a project</button>
   <button class="st-btn st-btn--go" type="button" id="st-save">Save</button>
@@ -394,8 +422,42 @@
 
 <div class="st-main">
 
-  <!-- ── Left: the editor ─────────────────────────────────── -->
+  <!-- ── Left: the blocks, in order ────────────────────────── -->
   <div class="st-edit">
+    <h2 class="st-sec"><i>/</i>Blocks</h2>
+    <div id="st-blocks"></div>
+
+    <div class="st-field">
+      <label class="st-label" for="st-add">Add a block</label>
+      <select class="st-select" id="st-add">
+        <option value="">Choose…</option>
+        <option value="title">Title — the project name, big</option>
+        <option value="text">Text — one, two or three columns</option>
+        <option value="media">Media — one thing, 16:9</option>
+        <option value="grid">Grid — several across</option>
+        <option value="rows">Rows — media and words, alternating</option>
+        <option value="quote">Quote</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ── Middle: the real thing ───────────────────────────── -->
+  <div class="st-view">
+    <div class="st-view-bar">
+      <button class="st-w" type="button" data-w="0"    aria-pressed="true">Desktop</button>
+      <button class="st-w" type="button" data-w="834"  aria-pressed="false">Tablet</button>
+      <button class="st-w" type="button" data-w="390"  aria-pressed="false">Phone</button>
+      <span class="st-w-size" id="st-w-size">full width</span>
+      <span class="st-spacer"></span>
+      <span class="st-w-size">the real blocks.css — what you see is the page</span>
+    </div>
+    <div class="st-frame-wrap">
+      <iframe id="st-frame" src="/studio/preview.html" title="Live preview"></iframe>
+    </div>
+  </div>
+
+  <!-- ── Right: everything that is not a block ─────────────── -->
+  <div class="st-meta">
     <h2 class="st-sec"><i>/</i>Project</h2>
 
     <div class="st-row">
@@ -490,39 +552,6 @@
         <p class="st-hint">Replaces the worded tooltip on hover.</p>
       </div>
     </details>
-
-    <div class="st-rule"></div>
-
-    <h2 class="st-sec"><i>/</i>Blocks</h2>
-    <div id="st-blocks"></div>
-
-    <div class="st-field">
-      <label class="st-label" for="st-add">Add a block</label>
-      <select class="st-select" id="st-add">
-        <option value="">Choose…</option>
-        <option value="title">Title — the project name, big</option>
-        <option value="text">Text — one, two or three columns</option>
-        <option value="media">Media — one thing, 16:9</option>
-        <option value="grid">Grid — several across</option>
-        <option value="rows">Rows — media and words, alternating</option>
-        <option value="quote">Quote</option>
-      </select>
-    </div>
-  </div>
-
-  <!-- ── Right: the real thing ────────────────────────────── -->
-  <div class="st-view">
-    <div class="st-view-bar">
-      <button class="st-w" type="button" data-w="0"    aria-pressed="true">Desktop</button>
-      <button class="st-w" type="button" data-w="834"  aria-pressed="false">Tablet</button>
-      <button class="st-w" type="button" data-w="390"  aria-pressed="false">Phone</button>
-      <span class="st-w-size" id="st-w-size">full width</span>
-      <span class="st-spacer"></span>
-      <span class="st-w-size">the real blocks.css — what you see is the page</span>
-    </div>
-    <div class="st-frame-wrap">
-      <iframe id="st-frame" src="/studio/preview.html" title="Live preview"></iframe>
-    </div>
   </div>
 </div>
 
@@ -1208,6 +1237,14 @@
       return new File([f], n, { type: f.type });
     });
     intake(stamped);
+  });
+
+  /* Only reachable under 1100px, where the right-hand pane is folded
+     away to leave the preview something to work with. */
+  $('st-meta-toggle').addEventListener('click', function () {
+    var open = document.body.dataset.meta === 'open';
+    document.body.dataset.meta = open ? '' : 'open';
+    this.setAttribute('aria-pressed', open ? 'false' : 'true');
   });
 
   /* ── Preview width ───────────────────────────────────────── */
