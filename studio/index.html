@@ -39,6 +39,23 @@
      that working in it feels like working on the site — but it is a
      tool: denser, plainer, and it never competes with the preview. */
 
+  /* ── Give the mouse pointer back ──────────────────────────────
+     site.css hides the OS cursor everywhere with `cursor: none
+     !important`, because on the site a custom #cursor div draws it
+     instead. The studio loads that stylesheet for the palette and
+     the faces, but it is an editor, not the site — it has forms to
+     type into and text to select, and the site's cursor is not
+     loaded here to stand in. Without this you get no pointer at all.
+
+     The preview frame is the opposite case and handles it the
+     opposite way: it loads cursor.js, so the real cursor appears
+     there. Which is right — inside that frame you are looking at
+     the page, not at a tool. */
+  *, *::before, *::after { cursor: auto !important; }
+  button, select, .st-drop, .st-w, .st-mini { cursor: pointer !important; }
+  input, textarea { cursor: text !important; }
+  button:disabled, .st-mini:disabled { cursor: not-allowed !important; }
+
   * { box-sizing: border-box; }
 
   body {
@@ -225,6 +242,20 @@
     flex: none;
   }
 
+  /* The resolution read off the file, and the verdict on it. */
+  .st-dims {
+    font-size: 11.5px;
+    line-height: 1.5;
+    margin: 0 0 7px;
+    padding: 6px 9px;
+    border: 1px solid var(--color-muted-15);
+    border-top: 0;
+    color: var(--color-muted);
+  }
+  .st-dims b { color: var(--color-ink); font-weight: 500; }
+  .st-dims[data-verdict="warn"] { border-color: var(--color-ink); color: var(--color-ink); }
+  .st-dims em { font-style: italic; color: var(--color-muted-50); }
+
   /* ── Preview frame ───────────────────────────────────────── */
   .st-view-bar {
     display: flex;
@@ -367,6 +398,86 @@
       <input class="st-input" id="p-sub" type="text" placeholder="A brand system for a lighting studio">
     </div>
 
+    <div class="st-field">
+      <label class="st-label" for="p-tags">Tags</label>
+      <input class="st-input" id="p-tags" type="text" placeholder="Web, Motion, Brand Design">
+      <p class="st-hint">Separated by commas. These are the tags on the card and on the
+        overlay — the existing projects use the same list for both.</p>
+    </div>
+
+    <div class="st-rule"></div>
+
+    <h2 class="st-sec"><i>/</i>The two images</h2>
+    <p class="st-hint" style="margin-bottom:12px">Neither of these is a block. The thumbnail is
+      the card in the work grid; the share image is what appears when someone sends the link on.
+      Drop one in and the actual pixel size is read off the file and checked here.</p>
+
+    <div class="st-field">
+      <label class="st-label">Thumbnail — the card</label>
+      <div id="p-thumb-slot"></div>
+    </div>
+
+    <div class="st-field">
+      <label class="st-label">Share image — the link preview</label>
+      <div id="p-share-slot"></div>
+    </div>
+
+    <div class="st-rule"></div>
+
+    <!-- The rest of what a project.js can carry. Rare — one project in
+         the repo spins a logo instead of showing a flat card, three
+         send you to a live page instead of opening a case study — but
+         they exist, so they are here rather than being something you
+         have to come back and ask for. -->
+    <details>
+      <summary class="st-sec" style="cursor:pointer"><i>/</i>The rest, if you need it</summary>
+
+      <p class="st-hint" style="margin:10px 0 14px">Every one of these is optional and most
+        projects leave them all empty.</p>
+
+      <div class="st-field">
+        <label class="st-label">Spinning logo — instead of the flat card</label>
+        <div id="p-tlogo-slot"></div>
+        <p class="st-hint">An SVG or a .glb. Given one, the card turns this rather than
+          showing the thumbnail. Only SHLTR does this today.</p>
+      </div>
+
+      <div class="st-row">
+        <div class="st-field">
+          <label class="st-label" for="p-link">Opens this page instead</label>
+          <input class="st-input" id="p-link" type="text" placeholder="/moji/">
+        </div>
+        <div class="st-field">
+          <label class="st-label" for="p-linkbg">Its background colour</label>
+          <input class="st-input" id="p-linkbg" type="text" placeholder="#F8F6F3">
+        </div>
+      </div>
+      <p class="st-hint">For a card that goes somewhere live rather than opening a case study.
+        The colour is what the card grows into on the way there, so it should match the page
+        you land on.</p>
+
+      <div class="st-row">
+        <div class="st-field">
+          <label class="st-label" for="p-ctip">Hover says</label>
+          <input class="st-input" id="p-ctip" type="text" placeholder="Visit">
+        </div>
+        <div class="st-field">
+          <label class="st-label" for="p-clight">On a dark card</label>
+          <select class="st-select" id="p-clight">
+            <option value="">No</option>
+            <option value="1">Yes — draw the cursor light</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="st-field">
+        <label class="st-label">Cursor becomes this image</label>
+        <div id="p-cimg-slot"></div>
+        <p class="st-hint">A small logo that follows the mouse over the card, instead of the
+          usual worded tooltip.</p>
+      </div>
+    </details>
+
     <div class="st-rule"></div>
 
     <h2 class="st-sec"><i>/</i>Blocks</h2>
@@ -430,7 +541,27 @@
 
   var project = {
     id: '', title: '', year: '', role: '', sub: '',
+    tags: [],
+    thumbAsset: null,   // the card in the work grid
+    shareAsset: null,   // the link preview
+    tlogoAsset: null,   // spun instead of the flat card
+    cimgAsset:  null,   // follows the mouse over the card
+    link: '', linkBg: '', cursorTooltip: '', cursorLight: false,
     blocks: []
+  };
+
+  /* What the two fixed images are supposed to be.
+
+     The card's shape is not a preference — .card-b-body is
+     aspect-ratio 144/173 in site.css, so anything else gets cropped
+     to it. 800×960 is the same shape at 2x, which is what the two
+     thumbnails already in the repo are.
+
+     1200×630 is the Open Graph size every platform scales from, and
+     what /shop/assets/share.png already is. */
+  var IMAGE_SPEC = {
+    thumb: { label: 'the card',          ratio: 144 / 173, ideal: '800 × 960',  minW: 600,  tol: 0.04 },
+    share: { label: 'the link preview',  ratio: 1200 / 630, ideal: '1200 × 630', minW: 1000, tol: 0.04 }
   };
 
   /* Media lives outside `project` while it is still a File in
@@ -495,13 +626,56 @@
 
   function addAsset(file) {
     var key = 'a' + (++assetSeq);
-    assets[key] = {
+    var a = {
       file: file,
       url:  URL.createObjectURL(file),
       name: cleanName(file.name),
-      kind: kindOf(file.name)
+      kind: kindOf(file.name),
+      w: null, h: null
     };
+    assets[key] = a;
+    measure(a);
     return key;
+  }
+
+  /* Read the real pixel size off the file. Only images — a video's
+     dimensions would need it decoded, and nothing here judges one.
+     It lands a moment after the drop, so the editor is redrawn when
+     it arrives rather than waiting for it. */
+  function measure(a) {
+    if (a.kind !== 'img' || /\.svg$/i.test(a.name)) return;
+    var img = new Image();
+    img.onload = function () {
+      a.w = img.naturalWidth;
+      a.h = img.naturalHeight;
+      renderFixedSlots();
+      renderEditor();
+    };
+    img.src = a.url;
+  }
+
+  /* Does this file suit the slot it was dropped into? Says what it
+     is either way — a verdict without the numbers is not much use. */
+  function verdict(a, spec) {
+    if (!a) return null;
+    if (/\.svg$/i.test(a.name)) return { ok: true, text: 'Vector — it scales to anything.' };
+    if (a.w == null) return { ok: true, text: 'Reading the size…' };
+
+    var r = a.w / a.h;
+    var offShape = Math.abs(r - spec.ratio) / spec.ratio > spec.tol;
+    var tooSmall = a.w < spec.minW;
+
+    if (!offShape && !tooSmall) return { ok: true, text: 'Right shape, big enough.' };
+
+    var says = [];
+    if (offShape) {
+      says.push('This is ' + r.toFixed(2) + ':1 and ' + spec.label + ' is ' +
+                spec.ratio.toFixed(2) + ':1, so it will be cropped to fit.');
+    }
+    if (tooSmall) {
+      says.push('At ' + a.w + 'px wide it will look soft — ' + spec.ideal + ' is the size to aim for.');
+    }
+    return { ok: false, text: says.join(' ') };
   }
 
   /* The path a block will carry once the file is on disk. */
@@ -593,8 +767,45 @@
                          .filter(Boolean);
   }
 
+  /* ── The two fixed images ────────────────────────────────── */
+  function renderFixedSlots() {
+    [['p-thumb-slot', 'thumbAsset', IMAGE_SPEC.thumb],
+     ['p-share-slot', 'shareAsset', IMAGE_SPEC.share]].forEach(function (row) {
+      var host = $(row[0]);
+      if (!host) return;
+      var key  = project[row[1]];
+      var spec = row[2];
+      host.innerHTML = '';
+
+      var a = key && assets[key];
+      if (a) {
+        var v = verdict(a, spec);
+        var line = el('p', 'st-dims');
+        line.dataset.verdict = v.ok ? 'ok' : 'warn';
+        line.innerHTML = (a.w ? '<b>' + a.w + ' &times; ' + a.h + '</b> &nbsp;·&nbsp; ' : '') +
+                         v.text + ' <em>Wanted: ' + spec.ideal + '.</em>';
+        host.appendChild(mediaSlot(key, function (k) { project[row[1]] = k; draw(); }));
+        host.appendChild(line);
+      } else {
+        host.appendChild(mediaSlot(null, function (k) { project[row[1]] = k; draw(); }));
+        host.appendChild(el('p', 'st-hint', 'Nothing yet. Wanted: ' + spec.ideal + '.'));
+      }
+    });
+
+    /* The two optional ones. No shape to meet — a spun logo and a
+       cursor image are whatever they are — so they get a plain slot
+       with no verdict attached. */
+    [['p-tlogo-slot', 'tlogoAsset'], ['p-cimg-slot', 'cimgAsset']].forEach(function (row) {
+      var host = $(row[0]);
+      if (!host) return;
+      host.innerHTML = '';
+      host.appendChild(mediaSlot(project[row[1]], function (k) { project[row[1]] = k; draw(); }));
+    });
+  }
+
   /* ── Draw ────────────────────────────────────────────────── */
   function draw() {
+    renderFixedSlots();
     renderEditor();
     pushPreview();
   }
@@ -878,6 +1089,17 @@
     $('p-' + k).addEventListener('input', function () { project[k] = this.value; });
   });
 
+  $('p-tags').addEventListener('input', function () {
+    project.tags = this.value.split(',')
+      .map(function (t) { return t.trim(); })
+      .filter(Boolean);
+  });
+
+  $('p-link').addEventListener('input',   function () { project.link = this.value.trim(); });
+  $('p-linkbg').addEventListener('input', function () { project.linkBg = this.value.trim(); });
+  $('p-ctip').addEventListener('input',   function () { project.cursorTooltip = this.value.trim(); });
+  $('p-clight').addEventListener('change', function () { project.cursorLight = !!this.value; });
+
   $('st-add').addEventListener('change', function () {
     var b = blankBlock(this.value);
     this.value = '';
@@ -914,15 +1136,46 @@
     } catch (e) { /* dismissed */ }
   });
 
+  /* The shape an existing project.js already has, so what comes out
+     of here can be dropped straight into the registry. tags and
+     overlayTags are written from the one list because every project
+     in the repo has them identical — split them by hand on the rare
+     one where the card and the overlay should say different things. */
   function projectJson() {
-    return {
-      id:     project.id || 'untitled',
-      title:  project.title || '',
-      year:   project.year || '',
-      role:   project.role || '',
-      sub:    project.sub || '',
-      blocks: blocksFor(true)
+    var out = {
+      id:           project.id || 'untitled',
+      title:        project.title || '',
+      year:         project.year || '',
+      role:         project.role || '',
+      sub:          project.sub || '',
+      tags:         project.tags.slice(),
+      overlayTags:  project.tags.slice(),
+      thumbnail:    project.thumbAsset ? assetPath(project.thumbAsset) : null,
+      shareImage:   project.shareAsset ? assetPath(project.shareAsset) : null,
+      turntableLogo:  project.tlogoAsset ? assetPath(project.tlogoAsset) : null,
+      turntableModel: null,
+      caseStudy:    { blocks: blocksFor(true) }
     };
+
+    /* A .glb in the spinning-logo slot is a model, not a flat logo —
+       they are two different fields on a project and the file itself
+       says which one it is, so there is no third control to get wrong. */
+    if (project.tlogoAsset && assets[project.tlogoAsset] &&
+        assets[project.tlogoAsset].kind === 'glb') {
+      out.turntableModel = out.turntableLogo;
+      out.turntableLogo  = null;
+    }
+
+    /* The rest are left out entirely when empty rather than written as
+       null — index.html tests for their presence, and an absent key and
+       a null one are the same to it, but the file stays readable. */
+    if (project.link)          out.link = project.link;
+    if (project.linkBg)        out.linkBg = project.linkBg;
+    if (project.cursorTooltip) out.cursorTooltip = project.cursorTooltip;
+    if (project.cursorLight)   out.cursorLight = true;
+    if (project.cimgAsset)     out.cursorImage = assetPath(project.cimgAsset);
+
+    return out;
   }
 
   async function writeInto(dir, name, blob) {
@@ -937,10 +1190,21 @@
 
     var data = projectJson();
     var json = JSON.stringify(data, null, 2);
+    /* Everything that still has a File behind it. An asset that came
+       back from a saved project has a path but no file — it is
+       already on disk, and rewriting it would be copying it onto
+       itself. */
     var used = [];
+    function take(k) {
+      if (k && assets[k] && assets[k].file && used.indexOf(k) < 0) used.push(k);
+    }
+    take(project.thumbAsset);
+    take(project.shareAsset);
+    take(project.tlogoAsset);
+    take(project.cimgAsset);
     project.blocks.forEach(function (b) {
-      [b.asset].concat((b.items || []).map(function (i) { return i.asset; }))
-        .forEach(function (k) { if (k && assets[k] && used.indexOf(k) < 0) used.push(k); });
+      take(b.asset);
+      (b.items || []).forEach(function (i) { take(i.asset); });
     });
 
     var report;
@@ -1024,25 +1288,50 @@
     project.year = data.year || '';
     project.role = data.role || '';
     project.sub = data.sub || '';
+    project.tags = data.tags || [];
     $('p-title').value = project.title;
     $('p-slug').value  = project.id;
     $('p-year').value  = project.year;
     $('p-role').value  = project.role;
     $('p-sub').value   = project.sub;
+    $('p-tags').value  = project.tags.join(', ');
     slugTouched = true;
 
+    /* A path, not a File. It is already on disk, so it is recorded
+       with file:null — which is what keeps Save from copying it over
+       itself — and measured from the served URL so the resolution
+       line still has something to say. */
     function keyForPath(p) {
       if (!p) return null;
       var key = 'a' + (++assetSeq);
-      assets[key] = { file: null, url: '/' + String(p).replace(/^\//, ''),
-                      name: String(p).split('/').pop(), kind: kindOf(p) };
+      var a = { file: null, url: '/' + String(p).replace(/^\//, ''),
+                name: String(p).split('/').pop(), kind: kindOf(p), w: null, h: null };
+      assets[key] = a;
+      measure(a);
       return key;
     }
+
+    project.thumbAsset = keyForPath(data.thumbnail);
+    project.shareAsset = keyForPath(data.shareImage);
+    project.tlogoAsset = keyForPath(data.turntableModel || data.turntableLogo);
+    project.cimgAsset  = keyForPath(data.cursorImage);
+    project.link          = data.link || '';
+    project.linkBg        = data.linkBg || '';
+    project.cursorTooltip = data.cursorTooltip || '';
+    project.cursorLight   = !!data.cursorLight;
+    $('p-link').value   = project.link;
+    $('p-linkbg').value = project.linkBg;
+    $('p-ctip').value   = project.cursorTooltip;
+    $('p-clight').value = project.cursorLight ? '1' : '';
     function pathIn(m) {
       return m.img || m.video || m.lottie || m.glb || m.embed || null;
     }
 
-    project.blocks = (data.blocks || []).map(function (b) {
+    /* caseStudy.blocks is where a project.js keeps them; a bare
+       `blocks` is accepted too so an earlier save still opens. */
+    var saved = (data.caseStudy && data.caseStudy.blocks) || data.blocks || [];
+
+    project.blocks = saved.map(function (b) {
       if (b.type === 'title') return { type: 'title', text: b.text || '' };
       if (b.type === 'text')  return { type: 'text', heading: b.heading || '', cols: b.cols || [b.text || ''] };
       if (b.type === 'media') return { type: 'media', heading: b.heading || '', asset: keyForPath(pathIn(b)),

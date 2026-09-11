@@ -47,6 +47,12 @@
   <p class="pv-empty">Nothing yet. Add a block on the left and it appears here.</p>
 </div>
 
+<!-- The site's own cursor. site.css hides the OS one everywhere, so
+     without this the frame would have no pointer at all — and more to
+     the point, tooltips like "Interactive 3D — drag to rotate" ride on
+     the custom cursor, so this is the only way to see whether a block's
+     hover actually reads. -->
+<script defer src="/shared/cursor.js"></script>
 <script src="/shared/blocks.js"></script>
 <script>
 /* The frame owns no state. The studio posts the whole block array on
