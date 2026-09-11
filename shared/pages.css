@@ -1826,45 +1826,7 @@ button.contact-btn {
   font-size: 11px;
   color: var(--color-muted-50);
 }
-.rv-table a {
-  color: var(--color-muted);
-  text-decoration: underline;
-  text-decoration-color: var(--color-muted-50);
-  text-underline-offset: 3px;
-}
-.rv-table a:hover { color: var(--color-ink); }
 .rv-when { font-size: 13px; white-space: nowrap; color: var(--color-muted-50); }
-.rv-dash { color: var(--color-muted-50); }
-
-.rv-verdicts { display: inline-flex; gap: 8px; }
-.rv-verdict:disabled { opacity: 0.5; cursor: default; }
-/* Liked fills light, the way the buy button does; Pass fills at the
-   pressed-toggle level. The two states read apart at a glance. */
-.rv-verdict[data-v="liked"][aria-pressed="true"],
-.rv-verdict[data-v="liked"][aria-pressed="true"]:hover {
-  background: #F5F3F0;
-  color: #1A1917;
-}
-.rv-verdict[data-v="passed"][aria-pressed="true"],
-.rv-verdict[data-v="passed"][aria-pressed="true"]:hover {
-  background: rgba(255, 255, 255, 0.24);
-  color: var(--color-ink);
-}
-tr.is-passed td { opacity: 0.45; }
-tr.is-passed td.rv-cell-verdict { opacity: 1; }
-
-.rv-reply { text-decoration: none; }
-.rv-table a.rv-reply { color: #A3A09B; text-decoration: none; }
-.rv-table a.rv-reply:hover { color: var(--color-ink); }
-.rv-png { margin-inline-start: 8px; }
-.rv-mailto { margin-inline-start: 10px; font-size: 12px; white-space: nowrap; }
-.rv-row-err {
-  display: block;
-  margin-top: 6px;
-  font-size: 12px;
-  color: #FFB9F7;
-}
-.rv-row-err[hidden] { display: none; }
 
 .rv-empty {
   margin: var(--space-xl) 0;
@@ -1875,31 +1837,6 @@ tr.is-passed td.rv-cell-verdict { opacity: 1; }
 }
 .rv-empty.is-err { color: #FFB9F7; }
 .rv-empty[hidden] { display: none; }
-
-/* The key field, for a browser that does not hold the key yet. */
-.rv-unlock {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-}
-.rv-unlock[hidden] { display: none; }
-.rv-unlock label { font-size: 14px; color: var(--color-muted); }
-.rv-unlock input {
-  min-width: 260px;
-  padding: 8px 12px;
-  font: inherit;
-  font-size: 14px;
-  color: #F8F6F3;
-  background: rgba(255, 255, 255, 0.06);
-  border: 0.5px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
-  outline: none;
-}
-.rv-unlock input:focus { border-color: rgba(255, 255, 255, 0.5); }
-.rv-unlock-err { flex-basis: 100%; margin: 0; font-size: 13px; color: #FFB9F7; }
-.rv-unlock-err[hidden] { display: none; }
 
 /* Narrow: each row becomes a small card, the column names travelling
    with their cells. */
