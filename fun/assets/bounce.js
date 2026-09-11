@@ -33,7 +33,8 @@
 
    Shared: Collection 02's sticker language (Switzer 500, slate letter),
    12 fps stop-motion, animated grain, a small fixed offset per tile and
-   a per-frame wobble, a stepped colour gradient across the tiles.
+   a per-frame wobble, a random colour per tile drawn from a pool of
+   three (seeded, so it repeats with the seed) — no gradient.
 
    Effect contract (studio / embed):  mount(stage, { word, palette, seed }) → { stop() }
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
@@ -47,7 +48,6 @@ const SPAWN_DELAY = 230;        // ms between a wall hit and the next letter
 const SLOTS_CHAOS = 400;        // Shrink keeps going until its arena has closed; this is just "plenty"
 const SLOTS_TOWER = 42;         // (random-column Tower, no card) stacks this many beats
 const SNAKE_BOUNCES = 3;        // Snake: once the last letter is in, the head takes this many more wall hits, then sails out
-const FOLD_ABOVE = 8;           // Snake: up to this many letters the gradient runs once; above it, forth → back → forth
 const HOLD_MS = 1600;           // generic pause once a sequence is complete, before the walls open
 const FPS = 12;                 // stop-motion: the picture only updates this often
 const JITTER = 3;               // px of hand-held wobble per frame
@@ -79,14 +79,15 @@ const QUAKE_MAX = 26;           // the ground's shake grows from nothing to this
 const COLS = Math.floor(STAGE / SIZE);            // random-column Tower: grid columns
 const COL0 = (STAGE - COLS * SIZE) / 2 + SIZE / 2;
 
-/* Colour rule: three colours — frame, card, ink — and each card
-   rotates them, taking one as background and the other two as a
-   stepped gradient across the tiles (first letter → last letter):
-     Snake   background frame,  tiles card → ink
-     Shrink  background card,   tiles ink  → frame
-     Towers  background ink,    tiles frame → card
-   anchor is unused. The first set is the collection's own; the rest
-   are Collection 02's palettes, read the same way. */
+/* Colour rule: four colours — frame, card, ink, anchor — and each
+   card rotates them by one slot, taking the first as background and
+   the other three as a pool the tiles draw from at random (seeded,
+   so a given seed always draws the same sequence) — no gradient:
+     Snake   background frame,  tiles from card · ink · anchor
+     Shrink  background card,   tiles from ink · anchor · frame
+     Towers  background ink,    tiles from anchor · frame · card
+   The first set is the collection's own; the rest are Collection
+   02's palettes, read the same way. */
 export const p = [
   { frame: "#49C7FD", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FFFFFF" },   // blue · pink · yellow
   { frame: "#A9FF67", card: "#FFFFFF", ink: "#5BE03A", anchor: "#49C7FD" },
@@ -97,9 +98,9 @@ export const p = [
   { frame: "#D9FF93", card: "#5BE03A", ink: "#FFFFFF", anchor: "#49C7FD" },
 ];
 function dealPalette(mode, given) {
-  const tri = [given.frame, given.card, given.ink];
+  const quad = [given.frame, given.card, given.ink, given.anchor];
   const rot = mode === "snake" ? 0 : mode === "chaos" ? 1 : 2;
-  return { frame: tri[rot], card: tri[(rot + 1) % 3], ink: tri[(rot + 2) % 3], anchor: given.anchor };
+  return { frame: quad[rot], card: quad[(rot + 1) % 4], ink: quad[(rot + 2) % 4], anchor: quad[(rot + 3) % 4] };
 }
 
 /* ---------- small helpers ---------- */
@@ -201,21 +202,21 @@ function engine(mode, { word = "", palette, seed = 0, shrink = SHRINK } = {}) {
     });
     seq.push(...plan.map((q) => q.ch));
   }
-  const steps = rows ? plan.length : seq.filter((c) => c !== " ").length;
   const INSET0 = (STAGE * (1 - ARENA_START)) / 2;
   const ARENA_MAX = (STAGE - ARENA_MIN) / 2;
 
-  const rand = rng(seed);
+  let rand = rng(seed);
   let now = 0;               // virtual ms
   let timers = [];           // { at, fn }
   let letters = [];
-  let cursor = 0, count = 0, hue = 0;
+  let cursor = 0, count = 0;
   let phase = "fill";        // fill → hold → (quake) → drain | close → restart
   let speed = SPEED;
   let inset = INSET0;
   let gap = GAP0;
   let quakeAt = 0, drainAt = 0, freeAt = null;
   let loops = 0;
+  let lastFill = null, lastFillRun = 0;
   const heights = new Array(COLS).fill(0);
 
   const after = (ms, fn) => timers.push({ at: now + ms, fn });
@@ -229,19 +230,18 @@ function engine(mode, { word = "", palette, seed = 0, shrink = SHRINK } = {}) {
     }
   }
 
+  const POOL = [pal.card, pal.ink, pal.anchor];
+  function pickFill() {
+    const choices = lastFillRun >= 2 ? POOL.filter((c) => c !== lastFill) : POOL;
+    const pool = choices.length ? choices : POOL;
+    const c = pool[Math.floor(rand() * pool.length)];
+    lastFillRun = c === lastFill ? lastFillRun + 1 : 1;
+    lastFill = c;
+    return c;
+  }
   function makeLetter(ch, cx, cy, vx, vy) {
     const blank = ch === " ";
-    let t = 0;
-    if (chaos) {
-      const a = 3 * (inset - INSET0) / (ARENA_MAX - INSET0);
-      t = a <= 1 ? a : a <= 2 ? 2 - a : a - 2;
-    } else {
-      const a = steps > 1 ? hue / (steps - 1) : 0;
-      if (snake && steps > FOLD_ABOVE) { const b = a * 3; t = b <= 1 ? b : b <= 2 ? 2 - b : b - 2; }
-      else t = a;
-    }
-    if (!blank) hue++;
-    const fill = blank ? null : mix(pal.card, pal.ink, Math.min(1, Math.max(0, t)));
+    const fill = blank ? null : pickFill();
     const L = {
       id: count, idx: count, ch, blank, fill, size: tileSize, half: tileSize / 2,
       cx, cy, vx, vy, spawned: false, asleep: false, gone: false,
@@ -314,7 +314,7 @@ function engine(mode, { word = "", palette, seed = 0, shrink = SHRINK } = {}) {
 
   function start() {
     timers = []; letters = [];
-    cursor = 0; count = 0; hue = 0; freeAt = null;
+    cursor = 0; count = 0; freeAt = null; lastFill = null; lastFillRun = 0;
     phase = "fill"; inset = INSET0; gap = GAP0; speed = SPEED;
     heights.fill(0);
     if (empty) return;
@@ -323,7 +323,11 @@ function engine(mode, { word = "", palette, seed = 0, shrink = SHRINK } = {}) {
     const ang = heading(rand);
     makeLetter(seq[cursor++], STAGE / 2, STAGE / 2, Math.cos(ang) * SPEED, Math.sin(ang) * SPEED);
   }
-  function restart() { loops++; start(); }
+  /* Every fresh round reshuffles from a brand-new random seed — the first
+     round still honours the seed it was given (so a shared link or an
+     export replays identically), but restarts (loop or click) never repeat
+     the exact same colour draw forever. */
+  function restart() { loops++; rand = rng((Math.random() * 4294967296) >>> 0); start(); }
 
   function stepBounce(dt) {
     const spawner = letters[letters.length - 1];
@@ -444,12 +448,12 @@ function engine(mode, { word = "", palette, seed = 0, shrink = SHRINK } = {}) {
   }
 
   start();
-  return { step, snapshot, restart, get loops() { return loops; }, get now() { return now; }, pal, empty };
+  return { step, snapshot, restart, get loops() { return loops; }, get now() { return now; }, get phase() { return phase; }, pal, empty };
 }
 
 /* ---------- DOM renderer (studio, embed) ---------- */
 
-const GRAIN_TILES = 6, GRAIN_TILE = 192, GRAIN_OPACITY = 0.6;
+const GRAIN_TILES = 6, GRAIN_TILE = 192, GRAIN_OPACITY = 0.5;
 let grainTiles;
 function makeGrainTiles() {
   if (grainTiles) return grainTiles;
@@ -622,3 +626,7 @@ export const x = {
   "bounce-chaos": (o) => scene("chaos", o),
   "bounce-pillars": (o) => scene("pillars", o),
 };
+
+/* Exposed so the export page can sample a single still frame (SVG) straight
+   off the real simulation instead of re-implementing it. */
+export { engine };
