@@ -86,42 +86,19 @@
   </filter>
 </svg>
 
-<!-- A slim band in place of the full-height hero, so the products start
-     near the top of the screen. The word repeats and drifts right to
-     left; the track is built from one set duplicated, which is what
-     lets the -50% travel loop seamlessly. -->
-<section class="mtitle" id="mtitle" aria-label="Shop"></section>
+<!-- The hero. It keeps the id the router already knows: route() hides
+     #mtitle on a product page, because the shop's own name has no
+     business sitting above one product.
 
-<script>
-(function () {
-  var band = document.getElementById('mtitle');
-  var SET  = 6;                    // repeats per set
+     It replaces a band of the word "Shop" repeating and drifting right
+     to left. This says the same thing once, and moves.
 
-  /* One unit = the word, then the three rings. They are slanted ovals,
-     not circles, so this is the exported artwork rather than CSS
-     shapes. stroke="currentColor" lets them follow the theme — they
-     have to go light on the dark ground. */
-  var RINGS =
-    '<svg class="mtitle-rings" viewBox="0 0 115 79" fill="none" ' +
-         'xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-      '<path d="M44.9361 48.6892C33.4762 68.5383 16.8191 80.3759 7.73158 75.1292C-1.35598 69.8825 0.567193 49.5383 12.0271 29.6892C23.487 9.84004 40.144 -1.99758 49.2316 3.24913C58.3191 8.49583 56.396 28.84 44.9361 48.6892Z" stroke="currentColor" stroke-width="3"/>' +
-      '<path d="M73.9028 48.6892C62.4429 68.5383 45.7858 80.3759 36.6983 75.1292C27.6107 69.8825 29.5339 49.5383 40.9938 29.6892C52.4537 9.84004 69.1107 -1.99758 78.1983 3.24913C87.2858 8.49583 85.3627 28.84 73.9028 48.6892Z" stroke="currentColor" stroke-width="3"/>' +
-      '<path d="M102.869 48.6892C91.4096 68.5383 74.7526 80.3759 65.665 75.1292C56.5774 69.8825 58.5006 49.5383 69.9605 29.6892C81.4204 9.84004 98.0774 -1.99758 107.165 3.24913C116.253 8.49583 114.329 28.84 102.869 48.6892Z" stroke="currentColor" stroke-width="3"/>' +
-    '</svg>';
-
-  var unit =
-    '<span class="mtitle-unit">' +
-      '<span class="mtitle-word">Shop</span>' +
-      RINGS +
-    '</span>';
-
-  var one = '';
-  for (var i = 0; i < SET; i++) one += unit;
-
-  // Two identical sets: the second lands exactly where the first began.
-  band.innerHTML = '<div class="mtitle-track" aria-hidden="true">' + one + one + '</div>';
-})();
-</script>
+     White on transparent, so the page's own ground shows through. The
+     file carries no background of its own, which is why it can sit on
+     this dark page and would sit on a light one unchanged. -->
+<section class="mtitle" id="mtitle" aria-label="Shop">
+  <img class="mtitle-gif" src="/shop/assets/shop-hero.gif" alt="Shop" decoding="async">
+</section>
 
 <!-- ══════════════════════════════════════════════════════════
      INDEX — tag filter, search, three-across grid

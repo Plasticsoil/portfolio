@@ -993,67 +993,38 @@ html[data-theme="dark"] .nav-logo:hover .nav-title {
 
 .mtitle {
   position: relative;
-  overflow: hidden;
-  /* The navbar is fixed and 60px tall, and this band starts at the very
-     top of the document — so its height has to be cleared before any
-     breathing room is measured, or the type sits under the nav. */
-  padding-top: calc(var(--navbar-h) + clamp(72px, 9vw, 124px));
-  padding-bottom: clamp(64px, 8vw, 108px);
+  /* The navbar is fixed and 60px tall and this sits at the very top of
+     the document, so its height is cleared before any breathing room is
+     measured — otherwise the artwork sits under the nav. */
+  padding-top: calc(var(--navbar-h) + clamp(24px, 3vw, 48px));
+  padding-bottom: clamp(16px, 2vw, 32px);
+  padding-inline: var(--gutter, clamp(20px, 5vw, 60px));
   user-select: none;
-
-  /* Fade both ends, so the strip runs out of the page rather than
-     stopping at a hard edge. */
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-          mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
 }
 
-.mtitle-track {
-  display: flex;
-  width: max-content;
-  align-items: center;
-  animation: mtitle-drift 46s linear infinite;
+/* Big, but never touching the edges — the products below are held in a
+   column and a hero running to the bleed would not belong to them.
+
+   The height is reserved by aspect-ratio rather than left to the file,
+   so nothing under it jumps when 240KB of animation finishes arriving. */
+.mtitle-gif {
+  display: block;
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  aspect-ratio: 2137 / 1206;
+  height: auto;
+  /* The artwork is drawn small inside a wide frame; letting it fill the
+     box would blow it up past the headline sizes the rest of the page
+     uses. Contained, it keeps the proportion it was drawn at. */
+  object-fit: contain;
 }
 
-/* One repeat: word + rings. */
-.mtitle-unit {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.0833em;                 /* 8 / 96   */
-  padding-right: 0.1667em;       /* 16 / 96  */
-  font-size: clamp(52px, 9vw, 96px);
-}
-
-.mtitle-word {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-size: 1em;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  text-transform: capitalize;
-  color: var(--color-muted);
-  white-space: nowrap;
-}
-
-/* Exported artwork, not CSS shapes: the rings are slanted ovals and
-   their overlap is drawn into the path data. 115 × 79 in its own
-   viewBox, sized in em so it scales with the word beside it. */
-.mtitle-rings {
-  flex: none;
-  width: 1.1979em;               /* 115 / 96 */
-  height: 0.8229em;              /*  79 / 96 */
-  color: var(--color-muted);     /* the paths stroke currentColor */
-  overflow: visible;
-}
-
-@keyframes mtitle-drift {
-  from { transform: translate3d(0, 0, 0); }
-  to   { transform: translate3d(-50%, 0, 0); }
-}
-
-/* Holding still is better than a strip that jumps a frame at a time. */
+/* A GIF plays whatever anyone's settings say, so the still frame is the
+   only way to honour the preference. The first frame is the word
+   resolved, which is the one worth holding. */
 @media (prefers-reduced-motion: reduce) {
-  .mtitle-track { animation: none; }
+  .mtitle-gif { content: url("/shop/assets/shop-hero-still.png"); }
 }
 
 /* ══════════════════════════════════════════════════════════════
