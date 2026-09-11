@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>404</title>
+<meta name="description" content="That page isn't here.">
+<meta name="theme-color" content="#1A1917">
+
+<!-- Not indexed, and not previewed either: nothing good comes of this
+     page being the thing that shows when a link is shared. -->
+<meta name="robots" content="noindex, follow">
+
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://api.fontshare.com">
+<link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@1,2&display=swap">
+
+<!-- The site's own stylesheets. data-theme="dark" on <html> above is
+     what turns the palette over — the same switch /shop runs on. -->
+<link rel="stylesheet" href="/shared/site.css">
+<link rel="stylesheet" href="/shared/pages.css">
+
+<style>
+  /* ══════════════════════════════════════════════════════════
+     404
+
+     One screen, centred, nothing to scroll to. The animation says
+     the number, so the line underneath does not have to repeat it.
+  ══════════════════════════════════════════════════════════ */
+
+  .nf {
+    /* Short of the full viewport, so the footer peeks above the fold
+       rather than hiding a scroll's worth below it. The hero on the
+       home page does the same thing for the same reason: a page that
+       scrolls should say so. */
+    min-height: 78vh;
+    min-height: 78svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(20px, 3vw, 36px);
+    padding: calc(var(--navbar-h) + 40px) var(--gutter, clamp(20px, 5vw, 60px)) 60px;
+    text-align: center;
+  }
+
+  /* Height reserved by ratio, so the line below does not jump when
+     200KB of animation finishes arriving. */
+  .nf-art {
+    display: block;
+    width: 100%;
+    max-width: 720px;
+    aspect-ratio: 2338 / 985;
+    height: auto;
+    object-fit: contain;
+  }
+
+  .nf-line {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-weight: 400;
+    font-size: clamp(22px, 3.2vw, 34px);
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+    max-width: 18em;
+  }
+
+  /* The ways out. Two, because there are two places worth going. */
+  .nf-ways {
+    display: flex;
+    align-items: center;
+    gap: clamp(14px, 2vw, 22px);
+    font-size: 15px;
+  }
+  .nf-ways a {
+    color: var(--color-muted);
+    text-decoration: none;
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--color-muted-15);
+    transition: color var(--dur-sm) ease, border-color var(--dur-sm) ease;
+  }
+  .nf-ways a:hover { color: var(--color-ink); border-color: var(--color-ink); }
+  .nf-ways span { color: var(--color-muted-50); }
+
+  /* A GIF plays whatever anyone's motion setting says, so swapping the
+     file is the only way to honour it. The first frame is the number
+     resolved, which is the one worth holding. */
+  @media (prefers-reduced-motion: reduce) {
+    .nf-art { content: url("/assets/404-still.png"); }
+  }
+</style>
+</head>
+<body id="top" class="page-404">
+
+<main class="nf">
+  <!-- White on transparent, so the page's ground shows through it. -->
+  <img class="nf-art" src="/assets/404.gif" alt="404" decoding="async">
+
+  <p class="nf-line">This is the one page I didn&rsquo;t make.</p>
+
+  <nav class="nf-ways" aria-label="Where to go instead">
+    <a href="/#work">Work</a>
+    <span aria-hidden="true">&middot;</span>
+    <a href="/shop/">Shop</a>
+  </nav>
+</main>
+
+<script src="/shared/nav.js"></script>
+<script defer src="/shared/cursor.js"></script>
+<script defer src="/shared/footer.js"></script>
+</body>
+</html>
