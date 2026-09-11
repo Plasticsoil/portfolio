@@ -54,150 +54,80 @@
     overflow-x: hidden;
   }
 
-  /* ── The stage: the hero's own box ───────────────────────────
-     Same height expression as .hero in index.html, so what you
-     compose against is the space the objects will actually live in. */
-  .hx-stage {
-    position: relative;
-    width: 100%;
-    height: calc(100vh - 160px);
-    min-height: 600px;
-    overflow: hidden;
-  }
+  /* The home page is long, so it always has a vertical scrollbar, and
+     that scrollbar takes ~15px off the width the hero centres within.
+     This page is one screen and would have none — which moved the
+     centre about 8px and put every object 8px off where it will sit.
+     Reserve the gutter so both pages centre in the same width. */
+  html { scrollbar-gutter: stable; overflow-y: scroll; }
 
-  /* The headline, as a reference to compose against — not editable
-     here. Same face and size as the real one so the gaps you judge
-     are the gaps that exist. */
-  .hx-head {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-    z-index: 1;
-  }
-  .hx-head h1 {
-    margin: 0;
-    font-family: var(--font-serif);
-    font-weight: 400;
-    font-size: clamp(40px, 6.2vw, 92px);
-    line-height: 1;
-    letter-spacing: -0.01em;
-    color: var(--color-muted);
-    opacity: .55;
-  }
-  .hx-head p {
-    margin: 14px 0 0;
-    font-size: 15px;
-    font-style: italic;
-    color: var(--color-muted-50);
-  }
+  /* ── The stage ───────────────────────────────────────────────
+     There is no look-alike here. The page loads site.css and builds
+     .hero > .hero-cards > .ring-card — the site's own markup, its own
+     classes — so the sizes and positions are not matched by hand,
+     they are the same rules doing the same thing. The only CSS below
+     is the two handles the editor adds on top.
 
-  /* Centre lines, so "centred" is a thing you can see rather than
-     a number you check afterwards. */
+     An earlier version drew its own boxes and filters and came out
+     close but not identical, which for a placement tool is the same
+     as wrong. */
+
+  .hero { cursor: default !important; }
+
+  /* The settled state, immediately.
+
+     site.css pre-hides the objects for the entrance — .hero-cards
+     .ring-card is opacity:0, scale(.7) — and index.html releases them
+     1.7s later by adding .is-entered. This page adds that class on
+     load and cancels the transitions, so the objects sit at full size
+     and full opacity from the first frame.
+
+     That is the state worth composing against: the hero as it is once
+     it has settled, not the 70% it passes through on the way. Without
+     this everything here was drawn at 0.7 and invisible with it. */
+  .hero-cards .ring-card,
+  .hero-labels,
+  .hero-headline { transition: none !important; animation: none !important; }
+
+  /* Centre lines, so "centred" is visible rather than checked after. */
   .hx-cross {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    z-index: 2;
+    z-index: 6;
     opacity: 0;
     transition: opacity .2s ease;
   }
-  .hx-stage.dragging .hx-cross { opacity: 1; }
-  .hx-cross::before, .hx-cross::after {
-    content: "";
-    position: absolute;
-    background: var(--color-muted-50);
-  }
+  .hero-cards.dragging .hx-cross { opacity: 1; }
+  .hx-cross::before, .hx-cross::after { content: ""; position: absolute; background: var(--color-muted-50); }
   .hx-cross::before { left: 50%; top: 0; bottom: 0; width: 1px; }
   .hx-cross::after  { top: 50%; left: 0; right: 0; height: 1px; }
 
-  /* ── An object ───────────────────────────────────────────────
-     The shell is the .ring-card box from index.html, 266.67×176.47,
-     because that is what the x/y expression positions. */
-  .hx-obj {
-    position: absolute;
-    width: 266.67px;
-    height: 176.47px;
-    z-index: 3;
-  }
-  .hx-obj-stage {
-    position: absolute;
-    left: 17px;
-    top: -36px;
-    width: 232px;
-    height: 248px;
-    transform: scale(1.6);
-    transform-origin: 50% 50%;
-    pointer-events: none;
-  }
-  .hx-obj-stage > * {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    /* The site draws these as flat grey silhouettes until hover. Same
-       here, so what you place looks like what lands. */
-    filter: grayscale(1) brightness(0) opacity(.34);
-  }
-  .hx-obj-stage model-viewer { filter: grayscale(1) brightness(.4) opacity(.34); }
-  .hx-obj-stage .hx-emoji {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 116px;
-    filter: grayscale(1) brightness(0) opacity(.34);
-  }
-
-  /* The grab handle sits over the object's real centre. */
+  /* The grab surface covers the card's real box, which is what the
+     x/y expression positions — so what you push is what moves. */
   .hx-grab {
     position: absolute;
     inset: 0;
-    z-index: 2;
+    z-index: 5;
     cursor: grab !important;
     border: 1px dashed transparent;
     transition: border-color .15s ease;
   }
-  .hx-obj:hover .hx-grab,
-  .hx-obj.sel .hx-grab { border-color: var(--color-muted-50); }
-  .hx-obj.sel .hx-grab { border-color: var(--color-ink); }
+  .ring-card:hover .hx-grab { border-color: var(--color-muted-50); }
+  .ring-card.sel .hx-grab   { border-color: var(--color-ink); }
   .hx-grab:active { cursor: grabbing !important; }
 
-  /* Resize: one corner, dragged out from the centre. */
   .hx-size {
     position: absolute;
-    right: -7px;
-    bottom: -7px;
-    width: 14px;
-    height: 14px;
+    right: -7px; bottom: -7px;
+    width: 14px; height: 14px;
     background: var(--color-bg);
     border: 1px solid var(--color-ink);
-    z-index: 4;
+    z-index: 6;
     cursor: nwse-resize !important;
     display: none;
   }
-  .hx-obj.sel .hx-size { display: block; }
-
-  .hx-name {
-    position: absolute;
-    left: 50%;
-    top: -22px;
-    transform: translateX(-50%);
-    font-size: 11px;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    color: var(--color-ink);
-    background: var(--color-bg);
-    padding: 2px 6px;
-    z-index: 5;
-    pointer-events: none;
-    opacity: 0;
-  }
-  .hx-obj:hover .hx-name, .hx-obj.sel .hx-name { opacity: 1; }
+  .ring-card.sel .hx-size { display: block; }
 
   /* ── The panel ───────────────────────────────────────────────*/
   .hx-panel {
@@ -220,6 +150,25 @@
     margin: 0 0 12px;
   }
   .hx-panel h2 i { color: var(--color-muted-50); font-style: normal; margin-inline-end: 6px; }
+
+  /* Radiant sits at x +499.67, which on a 1440 screen puts it under
+     this panel. An object you cannot see is an object you cannot
+     place, so the panel folds away to a tab and gives the composition
+     back the full width. */
+  .hx-fold {
+    float: right;
+    width: 22px; height: 22px;
+    border: 1px solid var(--color-muted-15);
+    background: transparent;
+    color: var(--color-muted);
+    font-size: 15px; line-height: 1;
+    padding: 0;
+  }
+  .hx-fold:hover { color: var(--color-ink); border-color: var(--color-ink); }
+  body.folded .hx-panel > *:not(h2) { display: none; }
+  body.folded .hx-panel { width: auto; padding: 10px 12px; }
+  body.folded .hx-panel h2 { margin: 0; }
+  body.folded .hx-fold { transform: scaleX(-1); margin-inline-start: 8px; }
 
   .hx-list { margin-bottom: 12px; }
   .hx-row {
@@ -311,16 +260,27 @@
 </head>
 <body>
 
-<div class="hx-stage" id="hx-stage">
-  <div class="hx-head">
-    <h1>Welcome to my exhibition</h1>
-    <p>the headline, for reference — it is not edited here</p>
+<!-- The hero's own markup, straight out of index.html. The headline
+     carries real text rather than the site's data-text trick, because
+     the entrance animation that reveals it is not loaded here and the
+     point of it being present is to compose against. -->
+<section class="hero">
+  <div class="hero-cards" id="hx-cards">
+    <div class="hx-cross"></div>
   </div>
-  <div class="hx-cross"></div>
-</div>
+  <div class="hero-text">
+    <!-- .ready is what site.css waits for; without it the headline is
+           opacity:0 and visibility:hidden, which is how it went missing. -->
+      <h1 class="hero-headline ready">Welcome to my exhibition</h1>
+    <div class="hero-labels">
+      <span>Selected works</span>
+      <span>creative explorations</span>
+    </div>
+  </div>
+</section>
 
 <div class="hx-panel">
-  <h2><i>/</i>Hero</h2>
+  <h2><i>/</i>Hero<button class="hx-fold" type="button" id="hx-fold" title="Hide the panel">&rsaquo;</button></h2>
 
   <div class="hx-drop" id="hx-drop">Drop a file, or click<br><small>png · svg · glb · gltf</small></div>
   <input type="file" id="hx-file" accept="image/*,.glb,.gltf" hidden>
@@ -372,6 +332,9 @@
   </div>
 </div>
 
+<!-- The site's own sphere, so the centred wireframe here is the one
+     that ships rather than a circle standing in for it. -->
+<script src="/hero/hero-sphere.js"></script>
 <script src="/hero/hero-config.js"></script>
 <script>
 (function () {
@@ -383,7 +346,8 @@
      pixel back into the x the site reads. */
   var HALF_W = 133.335, HALF_H = 88.235;
 
-  var stage = $('hx-stage');
+  var cards = $('hx-cards');
+  var stage = cards;
   var items = [];        // { entry, el, blob }
   var sel   = -1;
   var dirHandle = null;
@@ -394,42 +358,74 @@
     $('hx-mode').textContent = 'Open this over localhost to write the file directly.';
   }
 
-  /* ── Build one object ─────────────────────────────────────── */
+  /* ── Build one object ───────────────────────────────────────
+     The site's own markup, node for node. Every attribute on the
+     model-viewer is copied from index.html — min/max-field-of-view
+     42deg and camera-orbit "0deg 78deg 105%" in particular, because
+     those are what decide how large a model reads inside its box.
+     Guessing them was why an earlier version came out the wrong size. */
+
+  function rootPath(v) {
+    var t = String(v || '');
+    if (!t) return '';
+    return /^(https?:|data:|blob:|\/)/i.test(t) ? t : '/' + t.replace(/^\.\//, '');
+  }
+
   function visual(entry, blobUrl) {
     if (entry.emoji) {
-      var e = document.createElement('div');
-      e.className = 'hx-emoji';
-      e.textContent = entry.emoji;
-      if (entry.scale) e.style.fontSize = Math.round(116 * entry.scale) + 'px';
-      return e;
+      var wrap = document.createElement('div');
+      wrap.className = 'ring-card-emoji';
+      if (entry.scale) wrap.style.fontSize = Math.round(116 * entry.scale) + 'px';
+      var glyph = document.createElement('span');
+      glyph.className = 'glyph';
+      glyph.textContent = entry.emoji;
+      if (entry.sway === false) glyph.style.animation = 'none';
+      wrap.appendChild(glyph);
+      return wrap;
     }
+
     if (entry.sphere) {
-      /* The live sphere is drawn by hero-sphere.js against a canvas and
-         its own options. Standing in for it with a plain ring keeps this
-         page from depending on that script — what is being placed here
-         is where it sits, not how it spins. */
-      var s = document.createElement('div');
-      s.style.cssText = 'border:1.5px solid ' + getComputedStyle(document.body).getPropertyValue('--color-muted') +
-                        ';border-radius:50%;opacity:.34;inset:10%;width:80%;height:80%;left:10%;top:10%';
-      return s;
+      var cv = document.createElement('canvas');
+      cv.className = 'ring-card-sphere';
+      /* Drawn by the site's own script, with the entry's own options.
+         A stand-in ring was close enough to place against and wrong
+         enough to mislead about how much room it takes. */
+      requestAnimationFrame(function () {
+        if (typeof window.initHeroSphere === 'function') {
+          window.initHeroSphere(cv, entry.sphereOpts || {});
+        }
+      });
+      return cv;
     }
-    /* A project.js writes its asset paths relative to the site root
-       ('projects/shltr/…') because index.html, which loads them, sits
-       there. This page is at /studio/, so the same string would
-       resolve to /studio/projects/… and 404. Root it explicitly —
-       and leave a blob: or http: URL alone. */
-    var src = blobUrl || entry.model || entry.image || '';
-    if (src && !/^(https?:|data:|blob:|\/)/i.test(src)) src = '/' + src.replace(/^\.\//, '');
-    if (entry.model || /\.(glb|gltf)$/i.test(src || '')) {
+
+    var src = rootPath(blobUrl || entry.model || entry.image);
+
+    if (entry.model) {
       var m = document.createElement('model-viewer');
+      m.className = 'ring-card-model';
       m.setAttribute('src', src);
-      m.setAttribute('camera-orbit', '0deg 78deg 75%');
       m.setAttribute('interaction-prompt', 'none');
       m.setAttribute('shadow-intensity', '0');
+      m.setAttribute('shadow-softness', '0');
+      m.setAttribute('exposure', '1');
       m.setAttribute('environment-image', 'neutral');
+      m.setAttribute('min-field-of-view', '42deg');
+      m.setAttribute('max-field-of-view', '42deg');
+      m.setAttribute('camera-orbit', '0deg 78deg 105%');
+      /* index.html turns every .ring-card-model on a shared clock —
+         auto-rotate at 16deg/s, no delay. Without it a model stands
+         at its rest angle here and at some other angle on the site,
+         which is the sort of difference that makes a placement look
+         right in the tool and wrong once it ships. */
+      m.setAttribute('auto-rotate', '');
+      m.setAttribute('auto-rotate-delay', '0');
+      m.setAttribute('rotation-per-second', '16deg');
+      m.style.backgroundColor = 'transparent';
       return m;
     }
+
     var img = document.createElement('img');
+    img.className = 'ring-card-model';
     img.src = src;
     img.alt = '';
     img.draggable = false;
@@ -437,31 +433,55 @@
   }
 
   function build(entry, blobUrl) {
-    var el = document.createElement('div');
-    el.className = 'hx-obj';
+    var card = document.createElement('div');
+    card.className = 'ring-card';
 
+    var hit = document.createElement('div');
+    hit.className = 'ring-card-hit';
+    hit.setAttribute('aria-hidden', 'true');
+    if (entry.hit) {
+      hit.style.width  = entry.hit.w + 'px';
+      hit.style.height = entry.hit.h + 'px';
+      hit.style.left = 'calc(50% - ' + (entry.hit.w / 2) + 'px)';
+      hit.style.top  = 'calc(50% - ' + (entry.hit.h / 2) + 'px)';
+    }
+
+    var mask = document.createElement('div');
+    mask.className = 'ring-card-mask';
     var st = document.createElement('div');
-    st.className = 'hx-obj-stage';
+    st.className = 'ring-card-stage';
     if (entry.scale && !entry.emoji) st.style.transform = 'scale(' + (1.6 * entry.scale) + ')';
     st.appendChild(visual(entry, blobUrl));
+    mask.appendChild(st);
 
-    var name = document.createElement('div');
-    name.className = 'hx-name';
-    name.textContent = entry.label || entry.projectId || 'untitled';
+    var tag = document.createElement('div');
+    tag.className = 'ring-tag';
+    if (entry.tag) {
+      if (entry.tag.left != null) tag.style.left = entry.tag.left;
+      if (entry.tag.top  != null) tag.style.top  = entry.tag.top;
+    }
+    var slash = document.createElement('span');
+    slash.className = 'ring-tag-slash';
+    slash.textContent = '/';
+    var nm = document.createElement('span');
+    nm.className = 'ring-tag-name';
+    nm.textContent = entry.label || entry.projectId || 'untitled';
+    tag.appendChild(slash); tag.appendChild(nm);
 
+    /* The editor's own two, on top of the site's structure. */
     var grab = document.createElement('div');
     grab.className = 'hx-grab';
-
     var size = document.createElement('div');
     size.className = 'hx-size';
 
-    el.appendChild(st);
-    el.appendChild(name);
-    el.appendChild(grab);
-    el.appendChild(size);
-    stage.appendChild(el);
+    card.appendChild(hit);
+    card.appendChild(mask);
+    card.appendChild(tag);
+    card.appendChild(grab);
+    card.appendChild(size);
+    cards.appendChild(card);
 
-    var rec = { entry: entry, el: el, stage: st, name: name, blob: blobUrl || null };
+    var rec = { entry: entry, el: card, stage: st, name: nm, blob: blobUrl || null };
     items.push(rec);
     place(rec);
     wire(rec);
@@ -540,7 +560,7 @@
   function applyScale(rec) {
     var s = rec.entry.scale || 1;
     if (rec.entry.emoji) {
-      var g = rec.stage.querySelector('.hx-emoji');
+      var g = rec.stage.querySelector('.ring-card-emoji');
       if (g) g.style.fontSize = Math.round(116 * s) + 'px';
     } else {
       rec.stage.style.transform = 'scale(' + (1.6 * s) + ')';
@@ -739,6 +759,10 @@
     $('hx-out').hidden = false;
   });
 
+  $('hx-fold').addEventListener('click', function () {
+    document.body.classList.toggle('folded');
+  });
+
   $('hx-copy').addEventListener('click', function () {
     navigator.clipboard.writeText($('hx-out-body').textContent).then(function () {
       $('hx-copy').textContent = 'Copied';
@@ -748,6 +772,11 @@
   $('hx-close').addEventListener('click', function () { $('hx-out').hidden = true; });
 
   /* ── Start from what is live ──────────────────────────────── */
+  /* Settle the hero before anything is drawn into it. */
+  cards.classList.add('is-entered');
+  var lab = document.querySelector('.hero-labels');
+  if (lab) lab.classList.add('is-entered');
+
   var live = (window.HERO_CONFIG && window.HERO_CONFIG.cards) || [];
   live.forEach(function (e) { build(normalise(Object.assign({}, e))); });
   renderList();
