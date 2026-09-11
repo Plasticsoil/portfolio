@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Studio — build a case study</title>
+
+<!-- ══════════════════════════════════════════════════════════════
+     STUDIO
+
+     A local page for building a case study out of the same blocks
+     the site renders. It is not part of the published site: it is
+     noindex, nothing links to it, and it is only useful when the
+     site is being served locally.
+
+     What it does:
+       · you fill in a project and stack blocks
+       · the right-hand frame renders them through the real
+         blocks.css — not an impression of it
+       · media you drop in is written into projects/<slug>/assets/
+       · Save writes projects/<slug>/project.json beside it
+
+     Writing to disk uses the File System Access API, which exists
+     in Chrome and Edge and only over http://localhost or https.
+     Opened straight off the disk (file://) you still get the
+     editor and the preview, but not the saving — there is a
+     download fallback, and the bar says which of the two you are
+     in rather than failing quietly.
+   ══════════════════════════════════════════════════════════════ -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/site.css">
+
+<style>
+  /* The studio's own chrome borrows the site's palette and faces so
+     that working in it feels like working on the site — but it is a
+     tool: denser, plainer, and it never competes with the preview. */
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    background: var(--color-bg);
+    color: var(--color-muted);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    overflow: hidden;
+  }
+
+  /* ── Top bar ─────────────────────────────────────────────── */
+  .st-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--color-muted-15);
+    background: var(--color-surface);
+  }
+  .st-brand {
+    font-family: var(--font-serif);
+    font-size: 19px;
+    color: var(--color-ink);
+    white-space: nowrap;
+  }
+  .st-brand i { color: var(--color-muted-50); font-style: normal; margin-inline-end: 6px; }
+  .st-spacer { flex: 1 1 auto; }
+
+  /* Which mode the page is in: writing to disk, or handing you a file. */
+  .st-mode {
+    font-size: 12px;
+    font-style: italic;
+    padding: 5px 10px;
+    border: 1px solid var(--color-muted-15);
+    white-space: nowrap;
+    color: var(--color-muted);
+  }
+  .st-mode[data-ok="yes"] { color: var(--color-ink); }
+
+  .st-btn {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    padding: 7px 14px;
+    border: 1px solid var(--color-muted-15);
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .st-btn:hover { color: var(--color-ink); border-color: var(--color-ink); }
+  .st-btn--go { background: var(--color-ink); border-color: var(--color-ink); color: var(--color-bg); }
+  .st-btn--go:hover { background: #000; border-color: #000; color: #fff; }
+  .st-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ── The two panes ───────────────────────────────────────── */
+  .st-main { display: grid; grid-template-columns: 430px 1fr; min-height: 0; }
+  .st-edit {
+    overflow-y: auto;
+    padding: 20px;
+    border-inline-end: 1px solid var(--color-muted-15);
+  }
+  .st-view {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: #EDEAE5;
+  }
+
+  /* ── Editor furniture ────────────────────────────────────── */
+  .st-sec {
+    font-family: var(--font-serif);
+    font-size: 17px;
+    color: var(--color-ink);
+    margin: 0 0 12px;
+  }
+  .st-sec i { color: var(--color-muted-50); font-style: normal; margin-inline-end: 6px; }
+
+  .st-field { margin-bottom: 12px; }
+  .st-label {
+    display: block;
+    font-size: 11.5px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--color-muted-50);
+    margin-bottom: 5px;
+  }
+  .st-input, .st-area, .st-select {
+    width: 100%;
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    color: var(--color-ink);
+    background: var(--color-surface);
+    border: 1px solid var(--color-muted-15);
+    padding: 8px 10px;
+    outline: none;
+  }
+  .st-input:focus, .st-area:focus, .st-select:focus { border-color: var(--color-muted); }
+  .st-area { resize: vertical; min-height: 74px; line-height: 1.5; }
+  .st-row { display: flex; gap: 10px; }
+  .st-row > * { flex: 1 1 0; min-width: 0; }
+
+  .st-hint {
+    font-size: 11.5px;
+    font-style: italic;
+    color: var(--color-muted-50);
+    margin: 4px 0 0;
+    line-height: 1.45;
+  }
+  .st-rule { height: 1px; background: var(--color-muted-15); margin: 22px 0; }
+
+  /* ── A block card ────────────────────────────────────────── */
+  .st-blk {
+    border: 1px solid var(--color-muted-15);
+    background: var(--color-surface);
+    margin-bottom: 12px;
+  }
+  .st-blk-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 11px;
+    border-bottom: 1px solid var(--color-muted-15);
+  }
+  .st-blk-kind {
+    flex: 1 1 auto;
+    font-size: 11.5px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--color-ink);
+  }
+  .st-blk-kind i { color: var(--color-muted-50); font-style: normal; margin-inline-end: 5px; }
+  .st-blk-body { padding: 11px; }
+  .st-mini {
+    border: 1px solid var(--color-muted-15);
+    background: transparent;
+    color: var(--color-muted-50);
+    width: 24px; height: 24px;
+    font-size: 12px; line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    flex: none;
+  }
+  .st-mini:hover:not(:disabled) { color: var(--color-ink); border-color: var(--color-ink); }
+  .st-mini:disabled { opacity: .3; cursor: not-allowed; }
+
+  /* ── Media slot ──────────────────────────────────────────── */
+  .st-drop {
+    border: 1px dashed var(--color-muted-50);
+    padding: 13px;
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--color-muted-50);
+    cursor: pointer;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .st-drop:hover, .st-drop.over { border-color: var(--color-ink); color: var(--color-ink); }
+  .st-file {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 9px;
+    border: 1px solid var(--color-muted-15);
+    margin-bottom: 7px;
+  }
+  .st-file code {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-ink);
+    font-size: 11.5px;
+  }
+  .st-file-kind {
+    font-size: 10px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--color-muted-50);
+    flex: none;
+  }
+
+  /* ── Preview frame ───────────────────────────────────────── */
+  .st-view-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--color-muted-15);
+    background: var(--color-surface);
+  }
+  .st-w {
+    font-size: 12px;
+    padding: 5px 11px;
+    border: 1px solid var(--color-muted-15);
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+  }
+  .st-w[aria-pressed="true"] {
+    color: var(--color-bg);
+    background: var(--color-ink);
+    border-color: var(--color-ink);
+  }
+  .st-w-size { font-size: 11.5px; font-style: italic; color: var(--color-muted-50); }
+
+  .st-frame-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+    overflow: auto;
+  }
+  /* No transition on the width. Animating it re-lays-out the page
+     inside the frame on every frame of the animation, and leaves the
+     width mid-flight for as long as it runs — so a breakpoint read
+     straight after a switch is read against a size that is still
+     moving. The switch is meant to answer "what happens at 390px",
+     and that answer should be true the instant you ask. */
+  #st-frame {
+    border: 1px solid var(--color-muted-15);
+    background: var(--color-bg);
+    width: 100%;
+    height: 100%;
+    flex: none;
+  }
+
+  /* ── Output dialog ───────────────────────────────────────── */
+  .st-out {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(38, 37, 30, .38);
+    backdrop-filter: blur(6px);
+  }
+  .st-out[hidden] { display: none; }
+  .st-out-panel {
+    width: 780px;
+    max-width: calc(100vw - 40px);
+    max-height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface);
+    border: 1px solid var(--color-muted-15);
+  }
+  .st-out-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--color-muted-15);
+  }
+  .st-out-title { font-family: var(--font-serif); font-size: 20px; color: var(--color-ink); margin: 0; flex: 1 1 auto; }
+  .st-out-body { overflow: auto; padding: 18px; }
+  .st-out-body h4 {
+    font-size: 11.5px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--color-muted-50);
+    margin: 0 0 7px;
+  }
+  .st-out-body pre {
+    margin: 0 0 18px;
+    padding: 13px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-muted-15);
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--color-ink);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+</style>
+</head>
+<body>
+
+<div class="st-bar">
+  <span class="st-brand"><i>/</i>Studio</span>
+  <span class="st-mode" id="st-mode" data-ok="no">checking…</span>
+  <span class="st-spacer"></span>
+  <button class="st-btn" type="button" id="st-connect">Choose site folder</button>
+  <button class="st-btn" type="button" id="st-load">Open a project</button>
+  <button class="st-btn st-btn--go" type="button" id="st-save">Save</button>
+</div>
+
+<div class="st-main">
+
+  <!-- ── Left: the editor ─────────────────────────────────── -->
+  <div class="st-edit">
+    <h2 class="st-sec"><i>/</i>Project</h2>
+
+    <div class="st-row">
+      <div class="st-field">
+        <label class="st-label" for="p-title">Title</label>
+        <input class="st-input" id="p-title" type="text" placeholder="Radiant">
+      </div>
+      <div class="st-field">
+        <label class="st-label" for="p-slug">Folder name</label>
+        <input class="st-input" id="p-slug" type="text" placeholder="radiant">
+      </div>
+    </div>
+    <p class="st-hint">The folder name is the address and the folder on disk, so it stays
+      lowercase with hyphens. Typing a title fills it in; overwrite it if you want something else.</p>
+
+    <div class="st-row">
+      <div class="st-field">
+        <label class="st-label" for="p-year">Year</label>
+        <input class="st-input" id="p-year" type="text" placeholder="2024">
+      </div>
+      <div class="st-field">
+        <label class="st-label" for="p-role">Role</label>
+        <input class="st-input" id="p-role" type="text" placeholder="Design &amp; Direction">
+      </div>
+    </div>
+
+    <div class="st-field">
+      <label class="st-label" for="p-sub">One line about it</label>
+      <input class="st-input" id="p-sub" type="text" placeholder="A brand system for a lighting studio">
+    </div>
+
+    <div class="st-rule"></div>
+
+    <h2 class="st-sec"><i>/</i>Blocks</h2>
+    <div id="st-blocks"></div>
+
+    <div class="st-field">
+      <label class="st-label" for="st-add">Add a block</label>
+      <select class="st-select" id="st-add">
+        <option value="">Choose…</option>
+        <option value="title">Title — the project name, big</option>
+        <option value="text">Text — one, two or three columns</option>
+        <option value="media">Media — one thing, 16:9</option>
+        <option value="grid">Grid — several across</option>
+        <option value="rows">Rows — media and words, alternating</option>
+        <option value="quote">Quote</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ── Right: the real thing ────────────────────────────── -->
+  <div class="st-view">
+    <div class="st-view-bar">
+      <button class="st-w" type="button" data-w="0"    aria-pressed="true">Desktop</button>
+      <button class="st-w" type="button" data-w="834"  aria-pressed="false">Tablet</button>
+      <button class="st-w" type="button" data-w="390"  aria-pressed="false">Phone</button>
+      <span class="st-w-size" id="st-w-size">full width</span>
+      <span class="st-spacer"></span>
+      <span class="st-w-size">the real blocks.css — what you see is the page</span>
+    </div>
+    <div class="st-frame-wrap">
+      <iframe id="st-frame" src="/studio/preview.html" title="Live preview"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- ── The output, to hand over ───────────────────────────── -->
+<div class="st-out" id="st-out" hidden>
+  <div class="st-out-panel">
+    <div class="st-out-head">
+      <h3 class="st-out-title">Saved</h3>
+      <button class="st-btn" type="button" id="st-copy">Copy the handover</button>
+      <button class="st-btn" type="button" id="st-out-close">Close</button>
+    </div>
+    <div class="st-out-body">
+      <h4>What happened on disk</h4>
+      <pre id="st-out-report"></pre>
+      <h4>Send this over — it says exactly what to wire up</h4>
+      <pre id="st-out-json"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   One project object is the whole state. Every edit mutates it and
+   calls draw(); the preview frame is redrawn from it wholesale, so
+   what is on screen and what gets written can never disagree.
+════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  var project = {
+    id: '', title: '', year: '', role: '', sub: '',
+    blocks: []
+  };
+
+  /* Media lives outside `project` while it is still a File in
+     memory. The block holds a key; this map holds the file and the
+     blob URL the preview draws from. On save the files are written
+     and the keys become real paths. */
+  var assets = Object.create(null);   //  key -> { file, url, name, kind }
+  var assetSeq = 0;
+
+  var dirHandle = null;               //  the site folder, once chosen
+  var frameReady = false;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ── Can this page write to disk at all? ─────────────────── */
+  var CAN_WRITE = typeof window.showDirectoryPicker === 'function' &&
+                  window.isSecureContext;
+
+  function setMode() {
+    var el = $('st-mode');
+    if (!CAN_WRITE) {
+      el.dataset.ok = 'no';
+      el.textContent = 'download mode — open over localhost to write files directly';
+      $('st-connect').disabled = true;
+      $('st-load').disabled = true;
+    } else if (dirHandle) {
+      el.dataset.ok = 'yes';
+      el.textContent = 'writing into ' + dirHandle.name + '/projects/';
+    } else {
+      el.dataset.ok = 'no';
+      el.textContent = 'choose the site folder to write files straight into it';
+    }
+  }
+
+  /* ── Slug ────────────────────────────────────────────────── */
+  function slugify(s) {
+    return String(s || '').toLowerCase().trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  /* ── Assets ──────────────────────────────────────────────── */
+  var KIND_BY_EXT = {
+    jpg: 'img', jpeg: 'img', png: 'img', gif: 'img', webp: 'img', avif: 'img', svg: 'img',
+    mp4: 'video', webm: 'video', mov: 'video', ogg: 'video',
+    json: 'lottie', lottie: 'lottie',
+    glb: 'glb', gltf: 'glb'
+  };
+  function kindOf(name) {
+    var ext = String(name).split('.').pop().toLowerCase();
+    return KIND_BY_EXT[ext] || 'img';
+  }
+  /* Filenames become URLs, so they are cleaned the same way slugs are
+     — spaces and parentheses out of a Behance export would otherwise
+     need escaping at every use. The extension is kept as it is. */
+  function cleanName(name) {
+    var dot = String(name).lastIndexOf('.');
+    var stem = dot > 0 ? name.slice(0, dot) : name;
+    var ext  = dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
+    return slugify(stem) + (ext ? '.' + ext : '');
+  }
+
+  function addAsset(file) {
+    var key = 'a' + (++assetSeq);
+    assets[key] = {
+      file: file,
+      url:  URL.createObjectURL(file),
+      name: cleanName(file.name),
+      kind: kindOf(file.name)
+    };
+    return key;
+  }
+
+  /* The path a block will carry once the file is on disk. */
+  function assetPath(key) {
+    var a = assets[key];
+    if (!a) return '';
+    return 'projects/' + (project.id || 'untitled') + '/assets/' + a.name;
+  }
+
+  /* ── Blocks ──────────────────────────────────────────────── */
+  function blankBlock(type) {
+    switch (type) {
+      case 'title':  return { type: 'title', text: '' };
+      case 'text':   return { type: 'text', heading: '', cols: [''] };
+      case 'media':  return { type: 'media', heading: '', asset: null, ratio: '', fit: 'cover', caption: '' };
+      case 'grid':   return { type: 'grid', heading: '', cols: 2, items: [] };
+      case 'rows':   return { type: 'rows', items: [{ asset: null, title: '', desc: '' }] };
+      case 'quote':  return { type: 'quote', text: '', cite: '' };
+      default:       return null;
+    }
+  }
+
+  /* What the renderer is handed. Two versions of the same block:
+     `preview` points at blob URLs so the frame can draw before
+     anything is written, `export` points at the paths the files
+     will have. Keeping them in one function is what stops the two
+     from drifting apart. */
+  function toBlock(b, forExport) {
+    function src(key) {
+      if (!key || !assets[key]) return null;
+      return forExport ? assetPath(key) : assets[key].url;
+    }
+    function mediaOf(key, extra) {
+      var a = assets[key];
+      if (!a) return Object.assign({}, extra || {});
+      var m = Object.assign({}, extra || {});
+      m[a.kind] = src(key);
+      return m;
+    }
+
+    switch (b.type) {
+      case 'title':
+        return { type: 'title', text: b.text };
+
+      case 'text': {
+        var cols = (b.cols || []).filter(function (c) { return String(c).trim(); });
+        return { type: 'text', heading: b.heading || undefined, cols: cols };
+      }
+
+      case 'media': {
+        var m = mediaOf(b.asset, {
+          ratio: b.ratio || undefined,
+          fit: b.fit || undefined,
+          caption: b.caption || undefined
+        });
+        m.type = 'media';
+        if (b.heading) m.heading = b.heading;
+        return m;
+      }
+
+      case 'grid':
+        return {
+          type: 'grid',
+          heading: b.heading || undefined,
+          cols: Number(b.cols) || 2,
+          items: (b.items || []).map(function (it) {
+            return mediaOf(it.asset, { caption: it.caption || undefined });
+          })
+        };
+
+      case 'rows':
+        return {
+          type: 'rows',
+          items: (b.items || []).map(function (it) {
+            return mediaOf(it.asset, { title: it.title || undefined, desc: it.desc || undefined });
+          })
+        };
+
+      case 'quote':
+        return { type: 'quote', text: b.text, cite: b.cite || undefined };
+
+      default:
+        return null;
+    }
+  }
+
+  function blocksFor(forExport) {
+    return project.blocks.map(function (b) { return toBlock(b, forExport); })
+                         .filter(Boolean);
+  }
+
+  /* ── Draw ────────────────────────────────────────────────── */
+  function draw() {
+    renderEditor();
+    pushPreview();
+  }
+
+  function pushPreview() {
+    if (!frameReady) return;
+    $('st-frame').contentWindow.postMessage({
+      kind: 'studio:render',
+      blocks: blocksFor(false),
+      ctx: { title: project.title }
+    }, location.origin);
+  }
+
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin) return;
+    if (e.data && e.data.kind === 'studio:ready') { frameReady = true; pushPreview(); }
+  });
+
+  /* ── Editor rendering ────────────────────────────────────── */
+  var LABEL = {
+    title: 'Title', text: 'Text', media: 'Media',
+    grid: 'Grid', rows: 'Rows', quote: 'Quote'
+  };
+
+  function el(tag, cls, html) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (html != null) n.innerHTML = html;
+    return n;
+  }
+
+  function field(label, node) {
+    var f = el('div', 'st-field');
+    var l = el('label', 'st-label', label);
+    f.appendChild(l);
+    f.appendChild(node);
+    return f;
+  }
+
+  function input(value, placeholder, oninput) {
+    var i = el('input', 'st-input');
+    i.type = 'text';
+    i.value = value || '';
+    i.placeholder = placeholder || '';
+    i.addEventListener('input', function () { oninput(i.value); });
+    return i;
+  }
+
+  function area(value, placeholder, oninput) {
+    var t = el('textarea', 'st-area');
+    t.value = value || '';
+    t.placeholder = placeholder || '';
+    t.addEventListener('input', function () { oninput(t.value); });
+    return t;
+  }
+
+  function select(options, value, onchange) {
+    var s = el('select', 'st-select');
+    options.forEach(function (o) {
+      var op = el('option', null, o.label);
+      op.value = o.value;
+      if (String(o.value) === String(value)) op.selected = true;
+      s.appendChild(op);
+    });
+    s.addEventListener('change', function () { onchange(s.value); });
+    return s;
+  }
+
+  /* A drop target that accepts one file, or replaces the one it has. */
+  function mediaSlot(currentKey, onpick) {
+    var wrap = el('div');
+
+    if (currentKey && assets[currentKey]) {
+      var a = assets[currentKey];
+      var row = el('div', 'st-file');
+      row.appendChild(el('span', 'st-file-kind', a.kind));
+      row.appendChild(el('code', null, a.name));
+      var x = el('button', 'st-mini', '&times;');
+      x.type = 'button';
+      x.title = 'Remove';
+      x.addEventListener('click', function () { onpick(null); });
+      row.appendChild(x);
+      wrap.appendChild(row);
+    }
+
+    var drop = el('div', 'st-drop', currentKey ? 'Replace — drop a file or click' : 'Drop a file here, or click');
+    var picker = el('input');
+    picker.type = 'file';
+    picker.style.display = 'none';
+    picker.accept = 'image/*,video/*,.glb,.gltf,.json';
+
+    picker.addEventListener('change', function () {
+      if (picker.files && picker.files[0]) onpick(addAsset(picker.files[0]));
+    });
+    drop.addEventListener('click', function () { picker.click(); });
+    drop.addEventListener('dragover', function (ev) { ev.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', function () { drop.classList.remove('over'); });
+    drop.addEventListener('drop', function (ev) {
+      ev.preventDefault();
+      drop.classList.remove('over');
+      var f = ev.dataTransfer.files && ev.dataTransfer.files[0];
+      if (f) onpick(addAsset(f));
+    });
+
+    wrap.appendChild(drop);
+    wrap.appendChild(picker);
+    return wrap;
+  }
+
+  function renderEditor() {
+    var host = $('st-blocks');
+    host.innerHTML = '';
+
+    project.blocks.forEach(function (b, i) {
+      var card = el('div', 'st-blk');
+
+      var head = el('div', 'st-blk-head');
+      head.appendChild(el('span', 'st-blk-kind', '<i>/</i>' + (LABEL[b.type] || b.type)));
+
+      var up = el('button', 'st-mini', '&uarr;');
+      up.type = 'button'; up.title = 'Move up'; up.disabled = i === 0;
+      up.addEventListener('click', function () { move(i, -1); });
+
+      var dn = el('button', 'st-mini', '&darr;');
+      dn.type = 'button'; dn.title = 'Move down'; dn.disabled = i === project.blocks.length - 1;
+      dn.addEventListener('click', function () { move(i, 1); });
+
+      var rm = el('button', 'st-mini', '&times;');
+      rm.type = 'button'; rm.title = 'Remove';
+      rm.addEventListener('click', function () { project.blocks.splice(i, 1); draw(); });
+
+      head.appendChild(up); head.appendChild(dn); head.appendChild(rm);
+      card.appendChild(head);
+
+      var body = el('div', 'st-blk-body');
+      buildFields(b, body);
+      card.appendChild(body);
+      host.appendChild(card);
+    });
+  }
+
+  function move(i, d) {
+    var j = i + d;
+    if (j < 0 || j >= project.blocks.length) return;
+    var t = project.blocks[i];
+    project.blocks[i] = project.blocks[j];
+    project.blocks[j] = t;
+    draw();
+  }
+
+  function buildFields(b, body) {
+    if (b.type === 'title') {
+      body.appendChild(field('Text', input(b.text, project.title || 'Project name',
+        function (v) { b.text = v; pushPreview(); })));
+      body.appendChild(el('p', 'st-hint', 'Left empty it falls back to the project title.'));
+    }
+
+    if (b.type === 'text') {
+      body.appendChild(field('Heading (optional)', input(b.heading, 'The brief',
+        function (v) { b.heading = v; pushPreview(); })));
+
+      b.cols.forEach(function (c, ci) {
+        body.appendChild(field('Column ' + (ci + 1), area(c, 'Write here…',
+          function (v) { b.cols[ci] = v; pushPreview(); })));
+      });
+
+      var row = el('div', 'st-row');
+      var add = el('button', 'st-btn', 'Add a column');
+      add.type = 'button';
+      add.disabled = b.cols.length >= 3;
+      add.addEventListener('click', function () { b.cols.push(''); draw(); });
+      var less = el('button', 'st-btn', 'One fewer');
+      less.type = 'button';
+      less.disabled = b.cols.length <= 1;
+      less.addEventListener('click', function () { b.cols.pop(); draw(); });
+      row.appendChild(add); row.appendChild(less);
+      body.appendChild(row);
+      body.appendChild(el('p', 'st-hint',
+        'Two columns on a desktop become one on a phone on their own — there is nothing to set for that.'));
+    }
+
+    if (b.type === 'media') {
+      body.appendChild(field('Heading (optional)', input(b.heading, 'The work',
+        function (v) { b.heading = v; pushPreview(); })));
+      body.appendChild(field('File', mediaSlot(b.asset, function (k) { b.asset = k; draw(); })));
+
+      var r = el('div', 'st-row');
+      r.appendChild(field('Shape', select([
+        { value: '',      label: '16:9 (default)' },
+        { value: '4/3',   label: '4:3' },
+        { value: '1/1',   label: 'Square' },
+        { value: '3/4',   label: 'Portrait 3:4' },
+        { value: '9/16',  label: 'Portrait 9:16' },
+        { value: '21/9',  label: 'Wide 21:9' }
+      ], b.ratio, function (v) { b.ratio = v; pushPreview(); })));
+      r.appendChild(field('Fit', select([
+        { value: 'cover',   label: 'Fill the box (crop)' },
+        { value: 'contain', label: 'Sit inside it (letterbox)' }
+      ], b.fit, function (v) { b.fit = v; pushPreview(); })));
+      body.appendChild(r);
+      body.appendChild(el('p', 'st-hint',
+        'A file that is not 16:9 can either fill the box and lose its edges, or sit inside it whole. ' +
+        '"Sit inside it" is the one to pick when the framing matters.'));
+
+      body.appendChild(field('Caption (optional)', input(b.caption, '',
+        function (v) { b.caption = v; pushPreview(); })));
+    }
+
+    if (b.type === 'grid') {
+      body.appendChild(field('Heading (optional)', input(b.heading, 'Screens',
+        function (v) { b.heading = v; pushPreview(); })));
+      body.appendChild(field('Across, on a desktop', select([
+        { value: 2, label: '2' }, { value: 3, label: '3' }, { value: 4, label: '4' }
+      ], b.cols, function (v) { b.cols = Number(v); pushPreview(); })));
+
+      b.items.forEach(function (it, ii) {
+        var wrap = el('div', 'st-field');
+        wrap.appendChild(el('label', 'st-label', 'Item ' + (ii + 1)));
+        wrap.appendChild(mediaSlot(it.asset, function (k) { it.asset = k; draw(); }));
+        var x = el('button', 'st-btn', 'Remove item ' + (ii + 1));
+        x.type = 'button';
+        x.addEventListener('click', function () { b.items.splice(ii, 1); draw(); });
+        wrap.appendChild(x);
+        body.appendChild(wrap);
+      });
+
+      var addI = el('button', 'st-btn', 'Add an item');
+      addI.type = 'button';
+      addI.addEventListener('click', function () { b.items.push({ asset: null, caption: '' }); draw(); });
+      body.appendChild(addI);
+      body.appendChild(el('p', 'st-hint',
+        'Four across becomes two on a tablet and one on a phone. Every item takes the same 16:9 box, ' +
+        'so a row stays a row whatever you put in it.'));
+    }
+
+    if (b.type === 'rows') {
+      b.items.forEach(function (it, ii) {
+        var wrap = el('div', 'st-field');
+        wrap.appendChild(el('label', 'st-label', 'Row ' + (ii + 1) + (ii % 2 ? ' — media on the right' : ' — media on the left')));
+        wrap.appendChild(mediaSlot(it.asset, function (k) { it.asset = k; draw(); }));
+        wrap.appendChild(input(it.title, 'Row heading', function (v) { it.title = v; pushPreview(); }));
+        wrap.appendChild(area(it.desc, 'What this row says…', function (v) { it.desc = v; pushPreview(); }));
+        var x = el('button', 'st-btn', 'Remove row ' + (ii + 1));
+        x.type = 'button';
+        x.addEventListener('click', function () { b.items.splice(ii, 1); draw(); });
+        wrap.appendChild(x);
+        body.appendChild(wrap);
+      });
+      var addR = el('button', 'st-btn', 'Add a row');
+      addR.type = 'button';
+      addR.addEventListener('click', function () { b.items.push({ asset: null, title: '', desc: '' }); draw(); });
+      body.appendChild(addR);
+      body.appendChild(el('p', 'st-hint', 'Rows alternate sides on their own, and stack on a phone.'));
+    }
+
+    if (b.type === 'quote') {
+      body.appendChild(field('Quote', area(b.text, 'Something someone said…',
+        function (v) { b.text = v; pushPreview(); })));
+      body.appendChild(field('Who said it (optional)', input(b.cite, '',
+        function (v) { b.cite = v; pushPreview(); })));
+    }
+  }
+
+  /* ── Project fields ──────────────────────────────────────── */
+  var slugTouched = false;
+
+  $('p-title').addEventListener('input', function () {
+    project.title = this.value;
+    if (!slugTouched) {
+      project.id = slugify(this.value);
+      $('p-slug').value = project.id;
+    }
+    pushPreview();
+  });
+  $('p-slug').addEventListener('input', function () {
+    slugTouched = true;
+    project.id = slugify(this.value);
+    this.value = project.id;
+  });
+  ['year', 'role', 'sub'].forEach(function (k) {
+    $('p-' + k).addEventListener('input', function () { project[k] = this.value; });
+  });
+
+  $('st-add').addEventListener('change', function () {
+    var b = blankBlock(this.value);
+    this.value = '';
+    if (!b) return;
+    project.blocks.push(b);
+    draw();
+  });
+
+  /* ── Preview width ───────────────────────────────────────── */
+  document.querySelectorAll('.st-w').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.st-w').forEach(function (o) { o.setAttribute('aria-pressed', 'false'); });
+      btn.setAttribute('aria-pressed', 'true');
+      var w = Number(btn.dataset.w);
+      $('st-frame').style.width = w ? w + 'px' : '100%';
+      $('st-w-size').textContent = w ? w + 'px' : 'full width';
+    });
+  });
+
+  /* ══════════════════════════════════════════════════════════
+     SAVING
+
+     With a folder chosen, the files go where they belong and the
+     JSON goes beside them. Without one — file:// , or a browser
+     without the API — the same JSON comes down as a download and
+     the report says which media to copy where, so nothing is
+     lost either way.
+  ══════════════════════════════════════════════════════════ */
+
+  $('st-connect').addEventListener('click', async function () {
+    try {
+      dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      setMode();
+    } catch (e) { /* dismissed */ }
+  });
+
+  function projectJson() {
+    return {
+      id:     project.id || 'untitled',
+      title:  project.title || '',
+      year:   project.year || '',
+      role:   project.role || '',
+      sub:    project.sub || '',
+      blocks: blocksFor(true)
+    };
+  }
+
+  async function writeInto(dir, name, blob) {
+    var fh = await dir.getFileHandle(name, { create: true });
+    var w  = await fh.createWritable();
+    await w.write(blob);
+    await w.close();
+  }
+
+  $('st-save').addEventListener('click', async function () {
+    if (!project.id) { alert('Give the project a title first.'); return; }
+
+    var data = projectJson();
+    var json = JSON.stringify(data, null, 2);
+    var used = [];
+    project.blocks.forEach(function (b) {
+      [b.asset].concat((b.items || []).map(function (i) { return i.asset; }))
+        .forEach(function (k) { if (k && assets[k] && used.indexOf(k) < 0) used.push(k); });
+    });
+
+    var report;
+
+    if (dirHandle) {
+      try {
+        var projects = await dirHandle.getDirectoryHandle('projects', { create: true });
+        var mine     = await projects.getDirectoryHandle(project.id, { create: true });
+        await writeInto(mine, 'project.json', new Blob([json], { type: 'application/json' }));
+
+        if (used.length) {
+          var assetsDir = await mine.getDirectoryHandle('assets', { create: true });
+          for (var i = 0; i < used.length; i++) {
+            var a = assets[used[i]];
+            await writeInto(assetsDir, a.name, a.file);
+          }
+        }
+        report = 'projects/' + project.id + '/project.json    written\n' +
+          used.map(function (k) {
+            return 'projects/' + project.id + '/assets/' + assets[k].name + '    written';
+          }).join('\n');
+      } catch (err) {
+        report = 'Could not write: ' + err.message;
+      }
+    } else {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+      a.download = project.id + '.project.json';
+      a.click();
+      report = 'No folder chosen, so only the JSON came down as a download.\n\n' +
+        'Put it at  projects/' + project.id + '/project.json\n' +
+        (used.length
+          ? 'and copy these into  projects/' + project.id + '/assets/ :\n' +
+            used.map(function (k) { return '  ' + assets[k].name; }).join('\n')
+          : 'There is no media to copy.');
+    }
+
+    $('st-out-report').textContent = report;
+    $('st-out-json').textContent = json;
+    $('st-out').hidden = false;
+  });
+
+  $('st-copy').addEventListener('click', function () {
+    var text = 'Project: ' + (project.title || project.id) + '\n' +
+               'Folder:  projects/' + project.id + '/\n\n' +
+               $('st-out-report').textContent + '\n\n' +
+               'project.json:\n' + $('st-out-json').textContent;
+    navigator.clipboard.writeText(text).then(function () {
+      $('st-copy').textContent = 'Copied';
+      setTimeout(function () { $('st-copy').textContent = 'Copy the handover'; }, 1600);
+    });
+  });
+
+  $('st-out-close').addEventListener('click', function () { $('st-out').hidden = true; });
+
+  /* ── Opening one back up ─────────────────────────────────── */
+  $('st-load').addEventListener('click', async function () {
+    if (!dirHandle) { alert('Choose the site folder first.'); return; }
+    var name = prompt('Which project folder? (e.g. radiant)');
+    if (!name) return;
+    try {
+      var projects = await dirHandle.getDirectoryHandle('projects');
+      var mine     = await projects.getDirectoryHandle(slugify(name));
+      var fh       = await mine.getFileHandle('project.json');
+      var text     = await (await fh.getFile()).text();
+      var data     = JSON.parse(text);
+      alert('Loaded ' + (data.title || name) + '. Media already on disk stays where it is; ' +
+            'blocks come back as they were saved.');
+      hydrate(data);
+    } catch (err) {
+      alert('Could not open that one: ' + err.message);
+    }
+  });
+
+  /* Rebuild the editor state from a saved project. Media that is
+     already on disk is kept as a path rather than re-uploaded —
+     the slot shows the filename and leaves the file alone. */
+  function hydrate(data) {
+    project.id = data.id || '';
+    project.title = data.title || '';
+    project.year = data.year || '';
+    project.role = data.role || '';
+    project.sub = data.sub || '';
+    $('p-title').value = project.title;
+    $('p-slug').value  = project.id;
+    $('p-year').value  = project.year;
+    $('p-role').value  = project.role;
+    $('p-sub').value   = project.sub;
+    slugTouched = true;
+
+    function keyForPath(p) {
+      if (!p) return null;
+      var key = 'a' + (++assetSeq);
+      assets[key] = { file: null, url: '/' + String(p).replace(/^\//, ''),
+                      name: String(p).split('/').pop(), kind: kindOf(p) };
+      return key;
+    }
+    function pathIn(m) {
+      return m.img || m.video || m.lottie || m.glb || m.embed || null;
+    }
+
+    project.blocks = (data.blocks || []).map(function (b) {
+      if (b.type === 'title') return { type: 'title', text: b.text || '' };
+      if (b.type === 'text')  return { type: 'text', heading: b.heading || '', cols: b.cols || [b.text || ''] };
+      if (b.type === 'media') return { type: 'media', heading: b.heading || '', asset: keyForPath(pathIn(b)),
+                                       ratio: b.ratio || '', fit: b.fit || 'cover', caption: b.caption || '' };
+      if (b.type === 'grid')  return { type: 'grid', heading: b.heading || '', cols: b.cols || 2,
+                                       items: (b.items || []).map(function (m) {
+                                         return { asset: keyForPath(pathIn(m)), caption: m.caption || '' }; }) };
+      if (b.type === 'rows')  return { type: 'rows', items: (b.items || []).map(function (m) {
+                                         return { asset: keyForPath(pathIn(m)), title: m.title || '', desc: m.desc || '' }; }) };
+      if (b.type === 'quote') return { type: 'quote', text: b.text || '', cite: b.cite || '' };
+      return null;
+    }).filter(Boolean);
+
+    draw();
+  }
+
+  setMode();
+  draw();
+})();
+</script>
+</body>
+</html>
