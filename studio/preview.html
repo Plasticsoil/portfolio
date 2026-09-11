@@ -77,6 +77,17 @@
     window.Blocks.enhance(root);
   });
 
+  /* A file dragged over the preview is meant for the project, but the
+     frame is a separate document and the drop would land here and do
+     nothing — or worse, the browser would navigate this frame to the
+     file. Hand both events up to the studio instead. */
+  ['dragover', 'drop'].forEach(function (type) {
+    window.addEventListener(type, function (e) {
+      e.preventDefault();
+      if (type === 'drop') parent.postMessage({ kind: 'studio:dropped-on-preview' }, location.origin);
+    });
+  });
+
   // Tell the studio the frame is ready to be drawn into.
   parent.postMessage({ kind: 'studio:ready' }, location.origin);
 })();

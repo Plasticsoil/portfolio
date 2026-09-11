@@ -302,6 +302,35 @@
     flex: none;
   }
 
+  /* ── Drop anywhere ───────────────────────────────────────── */
+  .st-zone {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(38, 37, 30, .55);
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+  }
+  .st-zone.on { display: flex; }
+  .st-zone-say {
+    font-family: var(--font-serif);
+    font-size: 30px;
+    color: var(--color-bg);
+    text-align: center;
+    line-height: 1.35;
+  }
+  .st-zone-say small {
+    display: block;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-style: italic;
+    opacity: .7;
+    margin-top: 8px;
+  }
+
   /* ── Output dialog ───────────────────────────────────────── */
   .st-out {
     position: fixed;
@@ -379,8 +408,7 @@
         <input class="st-input" id="p-slug" type="text" placeholder="radiant">
       </div>
     </div>
-    <p class="st-hint">The folder name is the address and the folder on disk, so it stays
-      lowercase with hyphens. Typing a title fills it in; overwrite it if you want something else.</p>
+    <p class="st-hint">Lowercase, hyphens. The address and the folder on disk. Filled from the title.</p>
 
     <div class="st-row">
       <div class="st-field">
@@ -401,25 +429,16 @@
     <div class="st-field">
       <label class="st-label" for="p-tags">Tags</label>
       <input class="st-input" id="p-tags" type="text" placeholder="Web, Motion, Brand Design">
-      <p class="st-hint">Separated by commas. These are the tags on the card and on the
-        overlay — the existing projects use the same list for both.</p>
+      <p class="st-hint">Comma separated. Written to tags and overlayTags both.</p>
     </div>
 
     <div class="st-rule"></div>
 
-    <h2 class="st-sec"><i>/</i>The two images</h2>
-    <p class="st-hint" style="margin-bottom:12px">Neither of these is a block. The thumbnail is
-      the card in the work grid; the share image is what appears when someone sends the link on.
-      Drop one in and the actual pixel size is read off the file and checked here.</p>
+    <h2 class="st-sec"><i>/</i>Thumbnail</h2>
 
     <div class="st-field">
-      <label class="st-label">Thumbnail — the card</label>
       <div id="p-thumb-slot"></div>
-    </div>
-
-    <div class="st-field">
-      <label class="st-label">Share image — the link preview</label>
-      <div id="p-share-slot"></div>
+      <p class="st-hint">Also the share image. 144:173 &mdash; a link preview crops it to landscape.</p>
     </div>
 
     <div class="st-rule"></div>
@@ -432,14 +451,10 @@
     <details>
       <summary class="st-sec" style="cursor:pointer"><i>/</i>The rest, if you need it</summary>
 
-      <p class="st-hint" style="margin:10px 0 14px">Every one of these is optional and most
-        projects leave them all empty.</p>
-
       <div class="st-field">
         <label class="st-label">Spinning logo — instead of the flat card</label>
         <div id="p-tlogo-slot"></div>
-        <p class="st-hint">An SVG or a .glb. Given one, the card turns this rather than
-          showing the thumbnail. Only SHLTR does this today.</p>
+        <p class="st-hint">SVG &rarr; turntableLogo. .glb &rarr; turntableModel. Replaces the thumbnail.</p>
       </div>
 
       <div class="st-row">
@@ -452,9 +467,8 @@
           <input class="st-input" id="p-linkbg" type="text" placeholder="#F8F6F3">
         </div>
       </div>
-      <p class="st-hint">For a card that goes somewhere live rather than opening a case study.
-        The colour is what the card grows into on the way there, so it should match the page
-        you land on.</p>
+      <p class="st-hint">Card opens a page instead of a case study. The colour is what it grows
+        into on the way &mdash; match the destination.</p>
 
       <div class="st-row">
         <div class="st-field">
@@ -473,8 +487,7 @@
       <div class="st-field">
         <label class="st-label">Cursor becomes this image</label>
         <div id="p-cimg-slot"></div>
-        <p class="st-hint">A small logo that follows the mouse over the card, instead of the
-          usual worded tooltip.</p>
+        <p class="st-hint">Replaces the worded tooltip on hover.</p>
       </div>
     </details>
 
@@ -513,6 +526,13 @@
   </div>
 </div>
 
+<!-- Shown only while something is being dragged over the window. -->
+<div class="st-zone" id="st-zone">
+  <p class="st-zone-say">Drop to add
+    <small>one file becomes a media block &middot; several become a grid</small>
+  </p>
+</div>
+
 <!-- ── The output, to hand over ───────────────────────────── -->
 <div class="st-out" id="st-out" hidden>
   <div class="st-out-panel">
@@ -542,27 +562,21 @@
   var project = {
     id: '', title: '', year: '', role: '', sub: '',
     tags: [],
-    thumbAsset: null,   // the card in the work grid
-    shareAsset: null,   // the link preview
+    thumbAsset: null,   // the card, and the share image with it
     tlogoAsset: null,   // spun instead of the flat card
     cimgAsset:  null,   // follows the mouse over the card
     link: '', linkBg: '', cursorTooltip: '', cursorLight: false,
     blocks: []
   };
 
-  /* What the two fixed images are supposed to be.
-
-     The card's shape is not a preference — .card-b-body is
-     aspect-ratio 144/173 in site.css, so anything else gets cropped
-     to it. 800×960 is the same shape at 2x, which is what the two
-     thumbnails already in the repo are.
-
-     1200×630 is the Open Graph size every platform scales from, and
-     what /shop/assets/share.png already is. */
-  var IMAGE_SPEC = {
-    thumb: { label: 'the card',          ratio: 144 / 173, ideal: '800 × 960',  minW: 600,  tol: 0.04 },
-    share: { label: 'the link preview',  ratio: 1200 / 630, ideal: '1200 × 630', minW: 1000, tol: 0.04 }
-  };
+  /* One image does both jobs — thumbnail and shareImage — which is
+     what Radiant already does. So the shape is the card's, because
+     the card is the one that crops to a fixed box: .card-b-body is
+     aspect-ratio 144/173 in site.css. A link preview crops it again
+     at the far end, and nothing here can control that anyway.
+     800×960 is that shape at 2x, and what the thumbnails in the repo
+     already are. */
+  var THUMB_SPEC = { ratio: 144 / 173, ideal: '800 × 960', minW: 600, tol: 0.04 };
 
   /* Media lives outside `project` while it is still a File in
      memory. The block holds a key; this map holds the file and the
@@ -654,28 +668,22 @@
     img.src = a.url;
   }
 
-  /* Does this file suit the slot it was dropped into? Says what it
-     is either way — a verdict without the numbers is not much use. */
+  /* The numbers, and what is wrong with them. Nothing else. */
   function verdict(a, spec) {
     if (!a) return null;
-    if (/\.svg$/i.test(a.name)) return { ok: true, text: 'Vector — it scales to anything.' };
-    if (a.w == null) return { ok: true, text: 'Reading the size…' };
+    if (/\.svg$/i.test(a.name)) return { ok: true, text: 'vector' };
+    if (a.w == null) return { ok: true, text: 'reading…' };
 
     var r = a.w / a.h;
-    var offShape = Math.abs(r - spec.ratio) / spec.ratio > spec.tol;
-    var tooSmall = a.w < spec.minW;
-
-    if (!offShape && !tooSmall) return { ok: true, text: 'Right shape, big enough.' };
-
     var says = [];
-    if (offShape) {
-      says.push('This is ' + r.toFixed(2) + ':1 and ' + spec.label + ' is ' +
-                spec.ratio.toFixed(2) + ':1, so it will be cropped to fit.');
+    if (Math.abs(r - spec.ratio) / spec.ratio > spec.tol) {
+      says.push('crops to ' + spec.ratio.toFixed(2) + ':1');
     }
-    if (tooSmall) {
-      says.push('At ' + a.w + 'px wide it will look soft — ' + spec.ideal + ' is the size to aim for.');
-    }
-    return { ok: false, text: says.join(' ') };
+    if (a.w < spec.minW) says.push('under ' + spec.minW + 'px — soft');
+
+    return says.length
+      ? { ok: false, text: r.toFixed(2) + ':1 — ' + says.join(', ') }
+      : { ok: true,  text: r.toFixed(2) + ':1' };
   }
 
   /* The path a block will carry once the file is on disk. */
@@ -767,30 +775,24 @@
                          .filter(Boolean);
   }
 
-  /* ── The two fixed images ────────────────────────────────── */
+  /* ── The thumbnail ───────────────────────────────────────── */
   function renderFixedSlots() {
-    [['p-thumb-slot', 'thumbAsset', IMAGE_SPEC.thumb],
-     ['p-share-slot', 'shareAsset', IMAGE_SPEC.share]].forEach(function (row) {
-      var host = $(row[0]);
-      if (!host) return;
-      var key  = project[row[1]];
-      var spec = row[2];
+    var host = $('p-thumb-slot');
+    if (host) {
       host.innerHTML = '';
+      host.appendChild(mediaSlot(project.thumbAsset, function (k) { project.thumbAsset = k; draw(); }));
 
-      var a = key && assets[key];
+      var a = project.thumbAsset && assets[project.thumbAsset];
       if (a) {
-        var v = verdict(a, spec);
+        var v = verdict(a, THUMB_SPEC);
         var line = el('p', 'st-dims');
         line.dataset.verdict = v.ok ? 'ok' : 'warn';
-        line.innerHTML = (a.w ? '<b>' + a.w + ' &times; ' + a.h + '</b> &nbsp;·&nbsp; ' : '') +
-                         v.text + ' <em>Wanted: ' + spec.ideal + '.</em>';
-        host.appendChild(mediaSlot(key, function (k) { project[row[1]] = k; draw(); }));
+        line.innerHTML = (a.w ? '<b>' + a.w + ' &times; ' + a.h + '</b> &nbsp;·&nbsp; ' : '') + v.text;
         host.appendChild(line);
       } else {
-        host.appendChild(mediaSlot(null, function (k) { project[row[1]] = k; draw(); }));
-        host.appendChild(el('p', 'st-hint', 'Nothing yet. Wanted: ' + spec.ideal + '.'));
+        host.appendChild(el('p', 'st-dims', THUMB_SPEC.ideal));
       }
-    });
+    }
 
     /* The two optional ones. No shape to meet — a spun logo and a
        cursor image are whatever they are — so they get a plain slot
@@ -905,7 +907,12 @@
     drop.addEventListener('dragleave', function () { drop.classList.remove('over'); });
     drop.addEventListener('drop', function (ev) {
       ev.preventDefault();
+      /* Stop it reaching the window handler, which would take the
+         same file a second time and add a block for it. A drop on a
+         slot means that slot and nothing else. */
+      ev.stopPropagation();
       drop.classList.remove('over');
+      dragDepth = 0; zone(false);
       var f = ev.dataTransfer.files && ev.dataTransfer.files[0];
       if (f) onpick(addAsset(f));
     });
@@ -960,7 +967,7 @@
     if (b.type === 'title') {
       body.appendChild(field('Text', input(b.text, project.title || 'Project name',
         function (v) { b.text = v; pushPreview(); })));
-      body.appendChild(el('p', 'st-hint', 'Left empty it falls back to the project title.'));
+      body.appendChild(el('p', 'st-hint', 'Empty → the project title.'));
     }
 
     if (b.type === 'text') {
@@ -983,8 +990,7 @@
       less.addEventListener('click', function () { b.cols.pop(); draw(); });
       row.appendChild(add); row.appendChild(less);
       body.appendChild(row);
-      body.appendChild(el('p', 'st-hint',
-        'Two columns on a desktop become one on a phone on their own — there is nothing to set for that.'));
+      body.appendChild(el('p', 'st-hint', '2 cols → 1 below 600px.'));
     }
 
     if (b.type === 'media') {
@@ -1006,9 +1012,7 @@
         { value: 'contain', label: 'Sit inside it (letterbox)' }
       ], b.fit, function (v) { b.fit = v; pushPreview(); })));
       body.appendChild(r);
-      body.appendChild(el('p', 'st-hint',
-        'A file that is not 16:9 can either fill the box and lose its edges, or sit inside it whole. ' +
-        '"Sit inside it" is the one to pick when the framing matters.'));
+      body.appendChild(el('p', 'st-hint', 'Fill = crop. Inside = letterbox.'));
 
       body.appendChild(field('Caption (optional)', input(b.caption, '',
         function (v) { b.caption = v; pushPreview(); })));
@@ -1036,9 +1040,7 @@
       addI.type = 'button';
       addI.addEventListener('click', function () { b.items.push({ asset: null, caption: '' }); draw(); });
       body.appendChild(addI);
-      body.appendChild(el('p', 'st-hint',
-        'Four across becomes two on a tablet and one on a phone. Every item takes the same 16:9 box, ' +
-        'so a row stays a row whatever you put in it.'));
+      body.appendChild(el('p', 'st-hint', '4 → 2 → 1 at 900px and 600px. Every item the same box.'));
     }
 
     if (b.type === 'rows') {
@@ -1058,7 +1060,7 @@
       addR.type = 'button';
       addR.addEventListener('click', function () { b.items.push({ asset: null, title: '', desc: '' }); draw(); });
       body.appendChild(addR);
-      body.appendChild(el('p', 'st-hint', 'Rows alternate sides on their own, and stack on a phone.'));
+      body.appendChild(el('p', 'st-hint', 'Sides alternate. Stacks below 600px.'));
     }
 
     if (b.type === 'quote') {
@@ -1108,6 +1110,106 @@
     draw();
   });
 
+  /* ══════════════════════════════════════════════════════════
+     TAKING FILES IN
+
+     Three ways in, all landing in the same place: onto a slot, onto
+     the window from anywhere (Explorer, the desktop, the preview
+     side), or pasted.
+
+     Dropping several at once is the point — a folder of stills off
+     a Behance export is the normal case, and adding them one block
+     at a time would be the slow thing this tool exists to avoid.
+     So: one file becomes a media block, several become a grid.
+  ══════════════════════════════════════════════════════════ */
+
+  var MEDIA_RE = /\.(jpe?g|png|gif|webp|avif|svg|mp4|webm|mov|ogg|json|glb|gltf)$/i;
+
+  function intake(list) {
+    var files = Array.prototype.slice.call(list || [])
+      .filter(function (f) { return f && (MEDIA_RE.test(f.name) || /^(image|video)\//.test(f.type)); });
+    if (!files.length) return false;
+
+    if (files.length === 1) {
+      var b = blankBlock('media');
+      b.asset = addAsset(files[0]);
+      project.blocks.push(b);
+    } else {
+      var g = blankBlock('grid');
+      g.cols = Math.min(files.length, 4);
+      g.items = files.map(function (f) { return { asset: addAsset(f), caption: '' }; });
+      project.blocks.push(g);
+    }
+    draw();
+    // Walk to the newest card so it is obvious where it went.
+    var host = $('st-blocks');
+    if (host.lastElementChild) host.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return true;
+  }
+
+  /* dragenter/dragleave fire for every element crossed, so the
+     overlay is driven by a depth count rather than by the last event
+     seen — otherwise it flickers off the moment the pointer moves
+     between two children. */
+  var dragDepth = 0;
+  function zone(on) { $('st-zone').classList.toggle('on', on); }
+
+  function carriesFiles(e) {
+    var dt = e.dataTransfer;
+    if (!dt) return false;
+    if (dt.types && Array.prototype.indexOf.call(dt.types, 'Files') >= 0) return true;
+    return !!(dt.files && dt.files.length);
+  }
+
+  window.addEventListener('dragenter', function (e) {
+    if (!carriesFiles(e)) return;
+    dragDepth++; zone(true);
+  });
+  window.addEventListener('dragover', function (e) {
+    if (carriesFiles(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
+  });
+  window.addEventListener('dragleave', function () {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) zone(false);
+  });
+  window.addEventListener('drop', function (e) {
+    dragDepth = 0; zone(false);
+    if (!carriesFiles(e)) return;
+    e.preventDefault();
+    intake(e.dataTransfer.files);
+  });
+
+  /* The preview is its own document; it forwards the fact of a drop
+     so the overlay does not stay up after one lands over there. The
+     files themselves cannot cross, which the message says plainly
+     rather than leaving you wondering why nothing appeared. */
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin) return;
+    if (e.data && e.data.kind === 'studio:dropped-on-preview') {
+      dragDepth = 0; zone(false);
+      alert('Drop it on the left-hand side — the preview is a separate frame and files cannot cross into it.');
+    }
+  });
+
+  /* Paste. An image on the clipboard arrives as a file with a
+     useless name like "image.png", so it is renamed after the
+     project to keep the assets folder readable. */
+  document.addEventListener('paste', function (e) {
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;  // let text paste be text
+    var files = (e.clipboardData && e.clipboardData.files) || [];
+    if (!files.length) return;
+    e.preventDefault();
+
+    var stamped = Array.prototype.map.call(files, function (f, i) {
+      if (!/^image\.(png|jpe?g)$/i.test(f.name)) return f;
+      var ext = f.name.split('.').pop();
+      var n = (project.id || 'pasted') + '-' + Date.now() + (i ? '-' + i : '') + '.' + ext;
+      return new File([f], n, { type: f.type });
+    });
+    intake(stamped);
+  });
+
   /* ── Preview width ───────────────────────────────────────── */
   document.querySelectorAll('.st-w').forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -1151,7 +1253,9 @@
       tags:         project.tags.slice(),
       overlayTags:  project.tags.slice(),
       thumbnail:    project.thumbAsset ? assetPath(project.thumbAsset) : null,
-      shareImage:   project.shareAsset ? assetPath(project.shareAsset) : null,
+      /* Same file. One image is the card and the link preview both,
+         which is what Radiant already does. */
+      shareImage:   project.thumbAsset ? assetPath(project.thumbAsset) : null,
       turntableLogo:  project.tlogoAsset ? assetPath(project.tlogoAsset) : null,
       turntableModel: null,
       caseStudy:    { blocks: blocksFor(true) }
@@ -1199,7 +1303,6 @@
       if (k && assets[k] && assets[k].file && used.indexOf(k) < 0) used.push(k);
     }
     take(project.thumbAsset);
-    take(project.shareAsset);
     take(project.tlogoAsset);
     take(project.cimgAsset);
     project.blocks.forEach(function (b) {
@@ -1311,8 +1414,7 @@
       return key;
     }
 
-    project.thumbAsset = keyForPath(data.thumbnail);
-    project.shareAsset = keyForPath(data.shareImage);
+    project.thumbAsset = keyForPath(data.thumbnail || data.shareImage);
     project.tlogoAsset = keyForPath(data.turntableModel || data.turntableLogo);
     project.cimgAsset  = keyForPath(data.cursorImage);
     project.link          = data.link || '';
