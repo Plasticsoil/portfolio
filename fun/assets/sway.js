@@ -28,6 +28,21 @@
    letters themselves carry the colour, stepping through a gradient
    down the column, one step per letter.
 
+   Settled so far, from the lab (September 2026):
+     motion   cubic-bezier(0.51, 0, 0.33, 1.01) — a slow leave, a quick
+              middle, a hair of overshoot at the edge
+     timing   1300 ms a slide, 380 ms standing at each end, 112 ms
+              between one letter and the next (scaled down past 13 letters)
+     colour   blue · orange · pink · white, each taking a turn as the
+              background; letters all one colour, each rank of copies the
+              next, all solid
+     echo     four copies, 60 ms apart
+     type     Switzer 700, a letter 0.76 of its row, the column four
+              fifths of the frame's height, 95 px clear of the sides
+     grain    0.28 overlaid on a light ground, 0.10 screened on a dark one
+     open     12 fps for now — 8 and 10 are still on the table; the card is
+              called Sway for now (Slide, Drift, Comb, Lag were the others)
+
    Effect contract (studio / embed):  mount(stage, { word, palette, seed }) → { stop() }
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
 
