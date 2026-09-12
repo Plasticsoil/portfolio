@@ -39,7 +39,8 @@ const LANE_PAD = 40;            // a lane keeps this much clear of its edges at 
 const FPS = 12;                 // stop-motion: the picture only updates this often
 const JITTER = 2;               // px of hand-held wobble per frame — small, because the
                                 // letters line up on their edges and that should read
-const STAGGER = 110;            // ms between one letter's beat and the next letter's…
+const STAGGER = 110;            // ms between one letter's beat and the next letter's — negative
+                                // runs the wave up the column instead of down…
 const STAGGER_SPAN = 700;       // … squeezed so the whole wave never takes longer than this to pass through
 const STAGGER_MIN = 0;
 const BEAT = 200;               // the word stands still this long before the wave starts
@@ -116,13 +117,43 @@ function mix(a, b, t) {
      deep    — quintic: a long, slow leave and arrival, quick through the middle.
      snap    — leaves fast, arrives with one small rebound.
      spring  — arrives and wobbles itself to rest. */
+/* A slide that overshoots and settles: `rebounds` counts the passes it
+   makes over the mark, `amount` is how far the first one goes, as a
+   fraction of the whole travel. It lands on exactly 1 at u = 1, whatever
+   the numbers, so a slide still finishes flush. */
+export function bounce(rebounds = 1, amount = 0.05) {
+  const w = (Math.max(1, Math.round(rebounds)) + 0.5) * Math.PI;
+  const d = Math.max(0.5, (-Math.log(Math.min(0.9, Math.max(0.001, amount))) * w) / Math.PI);
+  return (u) => 1 - Math.exp(-d * u) * Math.cos(w * u);
+}
+/* The CSS cubic-bezier easing, so a curve dragged about on a graph can be
+   handed straight to the engine. Control points may sit outside 0…1, which
+   is how you get anticipation and overshoot. */
+export function bezier(x1, y1, x2, y2) {
+  const A = (a, b) => 1 - 3 * b + 3 * a, B = (a, b) => 3 * b - 6 * a, C = (a) => 3 * a;
+  const at = (t, a, b) => ((A(a, b) * t + B(a, b)) * t + C(a)) * t;
+  const slope = (t, a, b) => 3 * A(a, b) * t * t + 2 * B(a, b) * t + C(a);
+  return (u) => {
+    if (u <= 0) return 0;
+    if (u >= 1) return 1;
+    let t = u;
+    for (let i = 0; i < 8; i++) {
+      const d = slope(t, x1, x2);
+      if (Math.abs(d) < 1e-6) break;
+      t = Math.min(1, Math.max(0, t - (at(t, x1, x2) - u) / d));
+    }
+    return at(t, y1, y2);
+  };
+}
 export const CURVES = {
   sine: (u) => 0.5 - 0.5 * Math.cos(Math.PI * u),
   smooth: (u) => u * u * u * (u * (u * 6 - 15) + 10),
   deep: (u) => (u < 0.5 ? 16 * u ** 5 : 1 - Math.pow(-2 * u + 2, 5) / 2),
-  snap: (u) => 1 - Math.exp(-6.5 * u) * Math.cos(1.5 * Math.PI * u),
-  spring: (u) => 1 - Math.exp(-11 * u) * Math.cos(2.5 * Math.PI * u),
+  snap: bounce(1, 0.05),
+  spring: bounce(2, 0.05),
 };
+/* A curve can be given by name or handed in as a function of its own. */
+const shapeOf = (c) => (typeof c === "function" ? c : CURVES[c] || CURVES[CURVE]);
 
 /* How to typeset `n` letters: one column if they fit, otherwise as many
    columns as it takes to keep the letters big enough to read. Each
@@ -155,12 +186,21 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   const empty = !chars.filter((c) => c !== " ").length;
   const rtl = /[֐-׿؀-ۿ]/.test(chars.join(""));
   const L = layout(Math.max(1, chars.length));
-  const half = L.lane / 2 - LANE_PAD;   // how far a lane's flush edges sit from its middle
+  /* How far a lane's flush edges sit from its middle. A curve that
+     overshoots would carry the letters past those edges, so the travel is
+     pulled in by however far it overshoots — the letters still line up
+     with each other, and the overshoot lands inside the frame. */
+  const over = (() => {
+    let m = 0;
+    for (let i = 0; i <= 100; i++) { const v = shapeOf(curve)(i / 100); m = Math.max(m, v - 1, -v); }
+    return Math.max(0, m);
+  })();
+  const half = (L.lane / 2 - LANE_PAD) / (1 + 2 * over);
   const stagger = staggerOpt === undefined
     ? Math.max(STAGGER_MIN, Math.min(STAGGER, STAGGER_SPAN / Math.max(1, chars.length)))
     : staggerOpt;
   const passGap = move + hold;
-  const ease = CURVES[curve] || CURVES[CURVE];
+  const ease = shapeOf(curve);
 
   let rand = rng(seed);
   let now = 0;                  // virtual ms
@@ -180,7 +220,9 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       letters.push({
         id: i, ch, blank: ch === " ",
         fill: mix(pal.card, pal.ink, chars.length > 1 ? i / (chars.length - 1) : 0),
-        cx, cy, t0: i * stagger + BEAT,
+        /* A negative delay just turns the wave around: the bottom letter
+           leads and the top one follows. */
+        cx, cy, t0: BEAT + (stagger < 0 ? chars.length - 1 - i : i) * Math.abs(stagger),
       });
     });
   }
@@ -239,7 +281,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     get now() { return now; },
     /* One seamless loop of the steady state: from the moment the last
        letter starts sliding, two passes long (left and back). */
-    get loopStart() { return (chars.length - 1) * stagger + BEAT + passGap; },
+    get loopStart() { return (chars.length - 1) * Math.abs(stagger) + BEAT + passGap; },
     get loopPeriod() { return 2 * passGap; },
   };
 }
