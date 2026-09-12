@@ -90,29 +90,18 @@ const COL0 = (STAGE - COLS * SIZE) / 2 + SIZE / 2;
 /* Colour rule, the studio's way: a palette is { frame, card, ink,
    anchor } — frame is the background, the tiles draw at random from
    the other three (seeded, so a given seed always draws the same
-   sequence). Exactly like every other collection: whatever the pill
-   shows is what every card in the section uses, and the shuffle deals
-   each card a different entry from this list. The first four entries
-   are the four rotations of the collection's own colours (blue · pink
-   · yellow · white); Snake, Shrink and Towers default to the first
-   three. The rest are Collection 02's and Collection 01's palettes. */
+   sequence). Whatever the pill shows is what the section uses, and
+   this section's shuffle (see the studio bundle: `permute`) deals each
+   card a different rotation of the pill's current four colours — so
+   the colours stay yours until you change them, and every card keeps
+   its own arrangement. The four entries here are those rotations of
+   the collection's own colours (lilac · pink · yellow · white); Snake,
+   Shrink and Towers default to the first three. */
 export const p = [
-  { frame: "#49C7FD", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FFFFFF" },   // Snake:  blue ground
-  { frame: "#FA8EFA", card: "#FFFF66", ink: "#FFFFFF", anchor: "#49C7FD" },   // Shrink: pink ground
-  { frame: "#FFFF66", card: "#FFFFFF", ink: "#49C7FD", anchor: "#FA8EFA" },   // Towers: yellow ground
-  { frame: "#FFFFFF", card: "#49C7FD", ink: "#FA8EFA", anchor: "#FFFF66" },   //         white ground
-  { frame: "#A9FF67", card: "#FFFFFF", ink: "#5BE03A", anchor: "#49C7FD" },   // Collection 02, from here down
-  { frame: "#49C7FD", card: "#FFFFFF", ink: "#5BE03A", anchor: "#A9FF67" },
-  { frame: "#FFFFFF", card: "#49C7FD", ink: "#5BE03A", anchor: "#D9FF93" },
-  { frame: "#5BE03A", card: "#49C7FD", ink: "#B9F1FA", anchor: "#A9FF67" },
-  { frame: "#B9F1FA", card: "#A9FF67", ink: "#D9FF93", anchor: "#49C7FD" },
-  { frame: "#D9FF93", card: "#5BE03A", ink: "#FFFFFF", anchor: "#49C7FD" },
-  { frame: "#FA8EFA", card: "#FFFFFF", ink: "#FF7300", anchor: "#FFDD00" },   // Collection 01, from here down
-  { frame: "#FFFFFF", card: "#FFFF66", ink: "#FF42FF", anchor: "#FF7300" },
-  { frame: "#FFFF66", card: "#FF42FF", ink: "#FFFFFF", anchor: "#FA8EFA" },
-  { frame: "#FFDD00", card: "#FFFFFF", ink: "#FF7300", anchor: "#FF42FF" },
-  { frame: "#FF42FF", card: "#FFDD00", ink: "#FFFFFF", anchor: "#FFFF66" },
-  { frame: "#FF7300", card: "#FA8EFA", ink: "#FFFFFF", anchor: "#FFFF66" },
+  { frame: "#D5B6FF", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FFFFFF" },   // Snake:  lilac ground
+  { frame: "#FA8EFA", card: "#FFFF66", ink: "#FFFFFF", anchor: "#D5B6FF" },   // Shrink: pink ground
+  { frame: "#FFFF66", card: "#FFFFFF", ink: "#D5B6FF", anchor: "#FA8EFA" },   // Towers: yellow ground
+  { frame: "#FFFFFF", card: "#D5B6FF", ink: "#FA8EFA", anchor: "#FFFF66" },   //         white ground
 ];
 /* The palette is used as given — no per-card rotation, so the studio's
    pill, shuffle and overrides behave exactly as in the other sections. */
