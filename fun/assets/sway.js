@@ -1,7 +1,9 @@
 /* FunType — Collection 04: Sway.
 
    Behind every letter trail a few copies of it, each showing where the
-   letter was a moment ago and fainter the further back it is. They cost
+   letter was a moment ago: the letters take the first colour, the copies
+   one rank back the second, two ranks back the third, and round again —
+   all of them solid. They cost
    nothing to place: a copy is just the same letter sampled at an earlier
    time, so the faster the letter travels the further apart they spread,
    and the instant it stops they all fall exactly behind it and vanish.
@@ -40,8 +42,8 @@ const MAX_COLS = 8;             // … up to this many columns; past that the le
 const FONT = 0.76;              // letter size / row height: a capital is ~0.72 em, so this
                                 // leaves nearly a whole cap height of air between the rows
 const GLYPH_W = 0.72;           // roughly how wide a capital sits, as a fraction of its size
-const LANE_PAD = 40;            // a lane keeps this much clear of its edges at the end of a slide —
-                                // enough that the curves which overshoot still stay in the frame
+const LANE_PAD = 95;            // a lane keeps this much clear of its edges at the end of a slide,
+                                // so the text never hugs the sides of the frame
 const FPS = 12;                 // stop-motion: the picture only updates this often
 const JITTER = 2;               // px of hand-held wobble per frame — small, because the
                                 // letters line up on their edges and that should read
@@ -57,8 +59,10 @@ const CURVE = "sway";           // … and how it gets there (see CURVES)
 const WEIGHT = 700;             // Switzer bold (Rubik bold for Hebrew)
 const ECHOES = 4;               // how many copies trail behind each letter…
 const ECHO_MS = 60;             // … each one showing where the letter was this long ago…
-const ECHO_ALPHA = 0.5;         // … the nearest at this opacity, fading to nothing behind it
-const COLOUR = "ramp";          // letters walk the palette ("ramp") or take one colour each ("cycle")
+const ECHO_ALPHA = 0.5;         // … at this opacity, when the copies are set by opacity at all
+const COLOUR = "trail";         // how the palette is spent: "trail" gives every letter one colour
+                                // and every rank of copies the next, all of them solid; "ramp" and
+                                // "cycle" colour by letter instead and fade the copies out
 
 /* Colour rule: four colours — frame, card, ink, anchor. The first is the
    background; the letters step through the other three, one step per
@@ -116,7 +120,7 @@ function wobble(i, frame, axis) {
   d = (d ^ (d >>> 16)) >>> 0;
   return (d / 4294967296) * 2 - 1;
 }
-const GRAIN_TILES = 6, GRAIN_TILE = 192, GRAIN_OPACITY = 0.5, GRAIN_DARK = 0.12;
+const GRAIN_TILES = 6, GRAIN_TILE = 192, GRAIN_OPACITY = 0.28, GRAIN_DARK = 0.1;
 
 /* How light a colour is, 0…1 — the grain is laid on differently over a
    dark field than over a bright one. */
@@ -259,10 +263,12 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   let letters = [];
   let loops = 0;
 
+  /* Everything but the background, in order. */
+  const stops = [pal.card, pal.ink, pal.anchor];
+
   function build() {
     letters = [];
     if (empty) return;
-    const stops = [pal.card, pal.ink, pal.anchor];
     chars.forEach((ch, i) => {
       const col = Math.floor(i / L.rows);
       const row = i % L.rows;
@@ -272,6 +278,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       const cy = (STAGE - inCol * L.h) / 2 + L.h / 2 + row * L.h;
       letters.push({
         id: i, ch, blank: ch === " ",
+        /* Only used when the copies are faded rather than coloured. */
         fill: colour === "cycle" ? stops[i % stops.length]
           : ramp(stops, chars.length > 1 ? i / (chars.length - 1) : 0),
         /* A negative delay just turns the wave around: the bottom letter
@@ -317,16 +324,20 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
          letter's own, shared by its copies, so at rest they stack exactly. */
       const jx = wobble(Lt.id, frame, 0) * JITTER;
       const jy = wobble(Lt.id, frame, 1) * JITTER;
-      /* Furthest copy first, so the trail paints behind the letter. */
+      /* Furthest copy first, so the trail paints behind the letter — and
+         since every copy is the same glyph at the same size, the leading
+         letter covers them exactly once they have caught up with it. */
       for (let k = echoes; k >= 0; k--) {
         /* `p` is where the letter's own box hangs off `x`: 0 pins its left
            edge there, 1 its right edge, 0.5 centres it. The renderers know
            the letter's real width, so none of them has to guess. */
         const p = align(Lt, now - k * echoDelay);
+        const solid = colour === "trail";
         tiles.push({
-          id: Lt.id * 16 + k, ch: Lt.ch, fill: Lt.fill, w: L.w, h: L.h, size: L.h * font, p,
+          id: Lt.id * 16 + k, ch: Lt.ch, w: L.w, h: L.h, size: L.h * font, p,
+          fill: solid ? stops[k % stops.length] : Lt.fill,
           x: Lt.cx + (p * 2 - 1) * half + jx, y: Lt.cy + jy,
-          alpha: k === 0 ? 1 : (echoAlpha * (echoes - k + 1)) / echoes,
+          alpha: solid || k === 0 ? 1 : (echoAlpha * (echoes - k + 1)) / echoes,
         });
       }
     }
