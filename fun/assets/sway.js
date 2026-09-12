@@ -56,15 +56,21 @@ const HOLD_MS = 380;            // … and the pause at the end of it
 const CURVE = "sway";           // … and how it gets there (see CURVES)
 const WEIGHT = 700;             // Switzer bold (Rubik bold for Hebrew)
 const ECHOES = 4;               // how many copies trail behind each letter…
-const ECHO_MS = 28;             // … each one showing where the letter was this long ago…
+const ECHO_MS = 60;             // … each one showing where the letter was this long ago…
 const ECHO_ALPHA = 0.5;         // … the nearest at this opacity, fading to nothing behind it
+const COLOUR = "ramp";          // letters walk the palette ("ramp") or take one colour each ("cycle")
 
-/* Colour rule: four colours — frame, card, ink, anchor — and each card
-   rotates them by one slot, taking the first as the background and the
-   next two as a gradient the letters step through, one step per letter.
-   The first set is the collection's own; the rest are Collection 01's,
+/* Colour rule: four colours — frame, card, ink, anchor. The first is the
+   background; the letters step through the other three, one step per
+   letter, so a column runs the whole palette top to bottom. The first
+   four sets are this collection's own four colours, each one taking its
+   turn as the background; then white on black; then Collection 01's,
    02's and 03's palettes, read the same way. */
 export const p = [
+  { frame: "#7E9CFC", card: "#FF8F5E", ink: "#FFBEF8", anchor: "#FFFFFF" },   // blue ground
+  { frame: "#FF8F5E", card: "#FFBEF8", ink: "#FFFFFF", anchor: "#7E9CFC" },   // orange ground
+  { frame: "#FFBEF8", card: "#FFFFFF", ink: "#7E9CFC", anchor: "#FF8F5E" },   // pink ground
+  { frame: "#FFFFFF", card: "#7E9CFC", ink: "#FF8F5E", anchor: "#FFBEF8" },   // white ground
   { frame: "#0D0D0F", card: "#FFFFFF", ink: "#FFFFFF", anchor: "#FFFFFF" },   // white on black — not quite
                                                                              // pure, so the grain still lives
   { frame: "#49C7FD", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FFFFFF" },   // blue · pink · yellow
@@ -130,6 +136,15 @@ export function grainFor(bg, { opacity, blend, override = false } = {}) {
     ? (override && opacity !== undefined ? opacity : GRAIN_DARK)
     : (opacity === undefined ? GRAIN_OPACITY : opacity);
   return { opacity: o, blend: blend || (dark ? "screen" : "overlay") };
+}
+
+/* Walk a list of colours: t = 0 is the first, t = 1 the last. */
+function ramp(stops, t) {
+  const list = stops.filter(Boolean);
+  if (list.length < 2) return list[0] || "#FFFFFF";
+  const x = Math.max(0, Math.min(1, t)) * (list.length - 1);
+  const i = Math.min(list.length - 2, Math.floor(x));
+  return mix(list[i], list[i + 1], x - i);
 }
 
 /* Mix two hex colours: t = 0 → a, t = 1 → b. */
@@ -217,7 +232,7 @@ function layout(n, font = FONT) {
    period (loopPeriod), a stagger apart. */
 function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS,
                         curve = CURVE, font = FONT, echoes = ECHOES,
-                        echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA } = {}) {
+                        echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
@@ -247,6 +262,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   function build() {
     letters = [];
     if (empty) return;
+    const stops = [pal.card, pal.ink, pal.anchor];
     chars.forEach((ch, i) => {
       const col = Math.floor(i / L.rows);
       const row = i % L.rows;
@@ -256,7 +272,8 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       const cy = (STAGE - inCol * L.h) / 2 + L.h / 2 + row * L.h;
       letters.push({
         id: i, ch, blank: ch === " ",
-        fill: mix(pal.card, pal.ink, chars.length > 1 ? i / (chars.length - 1) : 0),
+        fill: colour === "cycle" ? stops[i % stops.length]
+          : ramp(stops, chars.length > 1 ? i / (chars.length - 1) : 0),
         /* A negative delay just turns the wave around: the bottom letter
            leads and the top one follows. */
         cx, cy, t0: BEAT + (stagger < 0 ? chars.length - 1 - i : i) * Math.abs(stagger),
