@@ -79,18 +79,21 @@ const QUAKE_MAX = 26;           // the ground's shake grows from nothing to this
 const COLS = Math.floor(STAGE / SIZE);            // random-column Tower: grid columns
 const COL0 = (STAGE - COLS * SIZE) / 2 + SIZE / 2;
 
-/* Colour rule: four colours — frame, card, ink, anchor — and each
-   card rotates them by one slot, taking the first as background and
-   the other three as a pool the tiles draw from at random (seeded,
-   so a given seed always draws the same sequence) — no gradient:
-     Snake   background frame,  tiles from card · ink · anchor
-     Shrink  background card,   tiles from ink · anchor · frame
-     Towers  background ink,    tiles from anchor · frame · card
-   The first set is the collection's own; the rest are Collection
-   01's and Collection 02's palettes, read the same way. */
+/* Colour rule, the studio's way: a palette is { frame, card, ink,
+   anchor } — frame is the background, the tiles draw at random from
+   the other three (seeded, so a given seed always draws the same
+   sequence). Exactly like every other collection: whatever the pill
+   shows is what every card in the section uses, and the shuffle deals
+   each card a different entry from this list. The first four entries
+   are the four rotations of the collection's own colours (blue · pink
+   · yellow · white); Snake, Shrink and Towers default to the first
+   three. The rest are Collection 02's and Collection 01's palettes. */
 export const p = [
-  { frame: "#49C7FD", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FFFFFF" },   // blue · pink · yellow
-  { frame: "#A9FF67", card: "#FFFFFF", ink: "#5BE03A", anchor: "#49C7FD" },
+  { frame: "#49C7FD", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FFFFFF" },   // Snake:  blue ground
+  { frame: "#FA8EFA", card: "#FFFF66", ink: "#FFFFFF", anchor: "#49C7FD" },   // Shrink: pink ground
+  { frame: "#FFFF66", card: "#FFFFFF", ink: "#49C7FD", anchor: "#FA8EFA" },   // Towers: yellow ground
+  { frame: "#FFFFFF", card: "#49C7FD", ink: "#FA8EFA", anchor: "#FFFF66" },   //         white ground
+  { frame: "#A9FF67", card: "#FFFFFF", ink: "#5BE03A", anchor: "#49C7FD" },   // Collection 02, from here down
   { frame: "#49C7FD", card: "#FFFFFF", ink: "#5BE03A", anchor: "#A9FF67" },
   { frame: "#FFFFFF", card: "#49C7FD", ink: "#5BE03A", anchor: "#D9FF93" },
   { frame: "#5BE03A", card: "#49C7FD", ink: "#B9F1FA", anchor: "#A9FF67" },
@@ -101,13 +104,11 @@ export const p = [
   { frame: "#FFFF66", card: "#FF42FF", ink: "#FFFFFF", anchor: "#FA8EFA" },
   { frame: "#FFDD00", card: "#FFFFFF", ink: "#FF7300", anchor: "#FF42FF" },
   { frame: "#FF42FF", card: "#FFDD00", ink: "#FFFFFF", anchor: "#FFFF66" },
-  { frame: "#FF7300", card: "#FA8EFA", ink: "#FFFFFF", anchor: "#FFFF66" },   // orange · pink · white · yellow
+  { frame: "#FF7300", card: "#FA8EFA", ink: "#FFFFFF", anchor: "#FFFF66" },
 ];
-function dealPalette(mode, given) {
-  const quad = [given.frame, given.card, given.ink, given.anchor];
-  const rot = mode === "snake" ? 0 : mode === "chaos" ? 1 : 2;
-  return { frame: quad[rot], card: quad[(rot + 1) % 4], ink: quad[(rot + 2) % 4], anchor: quad[(rot + 3) % 4] };
-}
+/* The palette is used as given — no per-card rotation, so the studio's
+   pill, shuffle and overrides behave exactly as in the other sections. */
+function dealPalette(mode, given) { return given; }
 
 /* ---------- small helpers ---------- */
 
