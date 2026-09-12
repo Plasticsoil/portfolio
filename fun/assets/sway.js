@@ -1,5 +1,11 @@
 /* FunType — Collection 04: Sway.
 
+   Behind every letter trail a few copies of it, each showing where the
+   letter was a moment ago and fainter the further back it is. They cost
+   nothing to place: a copy is just the same letter sampled at an earlier
+   time, so the faster the letter travels the further apart they spread,
+   and the instant it stops they all fall exactly behind it and vanish.
+
    The text stands in a column down the middle of the frame, one big
    bold letter per row: a short word sits in the middle, a longer one
    fills four fifths of the frame's height, and past that the letters
@@ -49,6 +55,9 @@ const MOVE_MS = 1300;           // one slide, edge to edge
 const HOLD_MS = 380;            // … and the pause at the end of it
 const CURVE = "sway";           // … and how it gets there (see CURVES)
 const WEIGHT = 700;             // Switzer bold (Rubik bold for Hebrew)
+const ECHOES = 4;               // how many copies trail behind each letter…
+const ECHO_MS = 28;             // … each one showing where the letter was this long ago…
+const ECHO_ALPHA = 0.5;         // … the nearest at this opacity, fading to nothing behind it
 
 /* Colour rule: four colours — frame, card, ink, anchor — and each card
    rotates them by one slot, taking the first as the background and the
@@ -207,7 +216,8 @@ function layout(n, font = FONT) {
    reached the last letter, every letter is oscillating with the same
    period (loopPeriod), a stagger apart. */
 function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS,
-                        curve = CURVE, font = FONT } = {}) {
+                        curve = CURVE, font = FONT, echoes = ECHOES,
+                        echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
@@ -264,8 +274,8 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      I end up flush with each other at both ends — the column is
      left-aligned on the left and right-aligned on the right, and the
      letters' own widths never come into it. */
-  function align(Lt) {
-    const local = now - Lt.t0;
+  function align(Lt, t = now) {
+    const local = t - Lt.t0;
     if (local < 0) return 0.5;
     const k = Math.floor(local / passGap);
     const u = Math.min(1, (local - k * passGap) / move);
@@ -286,17 +296,22 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     for (const Lt of letters) {
       if (Lt.blank) continue;
       /* No entrance: the word is simply there, at full size, from the
-         first frame — only the wave moves. */
+         first frame — only the wave moves. The hand-held wobble is the
+         letter's own, shared by its copies, so at rest they stack exactly. */
       const jx = wobble(Lt.id, frame, 0) * JITTER;
       const jy = wobble(Lt.id, frame, 1) * JITTER;
-      /* `p` is where the letter's own box hangs off `x`: 0 pins its left
-         edge there, 1 its right edge, 0.5 centres it. The renderers know
-         the letter's real width, so none of them has to guess. */
-      const p = align(Lt);
-      tiles.push({
-        id: Lt.id, ch: Lt.ch, fill: Lt.fill, w: L.w, h: L.h, size: L.h * font, p,
-        x: Lt.cx + (p * 2 - 1) * half + jx, y: Lt.cy + jy, alpha: 1,
-      });
+      /* Furthest copy first, so the trail paints behind the letter. */
+      for (let k = echoes; k >= 0; k--) {
+        /* `p` is where the letter's own box hangs off `x`: 0 pins its left
+           edge there, 1 its right edge, 0.5 centres it. The renderers know
+           the letter's real width, so none of them has to guess. */
+        const p = align(Lt, now - k * echoDelay);
+        tiles.push({
+          id: Lt.id * 16 + k, ch: Lt.ch, fill: Lt.fill, w: L.w, h: L.h, size: L.h * font, p,
+          x: Lt.cx + (p * 2 - 1) * half + jx, y: Lt.cy + jy,
+          alpha: k === 0 ? 1 : (echoAlpha * (echoes - k + 1)) / echoes,
+        });
+      }
     }
     return { bg: pal.frame, tiles };
   }
@@ -376,6 +391,7 @@ function mount(stage, mode, opts = {}) {
       /* A percentage translate is a share of the element's own width, which
          is exactly the letter's width — so the edges land where they should. */
       el.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(${(-t.p * 100).toFixed(2)}%, -50%)`;
+      if (t.alpha < 1) el.style.opacity = t.alpha.toFixed(3);
     }
     for (const [id, el] of els) if (!seen.has(id)) { el.remove(); els.delete(id); }
   }
@@ -436,6 +452,7 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, gra
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     for (const t of s.tiles) {
+      ctx.globalAlpha = t.alpha;
       ctx.fillStyle = t.fill;
       ctx.font = `${WEIGHT} ${t.size * k}px "Switzer","Rubik",system-ui,sans-serif`;
       ctx.fillText(t.ch, t.x * k - t.p * ctx.measureText(t.ch).width, t.y * k);
