@@ -36,8 +36,8 @@ const FONT = 1.07;              // letter size / row height: a capital is ~0.72 
 const GLYPH_W = 0.72;           // roughly how wide a capital sits, as a fraction of its size
 const LANE_PAD = 34;            // a lane keeps this much clear of its edges at the end of a slide
 const FPS = 12;                 // stop-motion: the picture only updates this often
-const JITTER = 3;               // px of hand-held wobble per frame
-const OFFSET = 8;               // px: each letter sits a little off its true spot, fixed for its life
+const JITTER = 2;               // px of hand-held wobble per frame — small, because the
+                                // letters line up on their edges and that should read
 const STAGGER = 110;            // ms between one letter's beat and the next letter's…
 const STAGGER_SPAN = 900;       // … squeezed so the whole wave never takes longer than this to pass through
 const STAGGER_MIN = 18;
@@ -138,9 +138,9 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt } = {}
   const empty = !chars.filter((c) => c !== " ").length;
   const rtl = /[֐-׿؀-ۿ]/.test(chars.join(""));
   const L = layout(Math.max(1, chars.length));
+  const half = L.lane / 2 - LANE_PAD;   // how far a lane's flush edges sit from its middle
   const stagger = staggerOpt || Math.max(STAGGER_MIN, Math.min(STAGGER, STAGGER_SPAN / Math.max(1, chars.length)));
   const passGap = MOVE_MS + HOLD_MS;
-  const amp = Math.max(10, (L.lane - L.w) / 2 - LANE_PAD);
 
   let rand = rng(seed);
   let now = 0;                  // virtual ms
@@ -161,22 +161,27 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt } = {}
         id: i, ch, blank: ch === " ",
         fill: mix(pal.card, pal.ink, chars.length > 1 ? i / (chars.length - 1) : 0),
         cx, cy, t0: i * stagger + BEAT,
-        ox: (rand() * 2 - 1) * OFFSET, oy: (rand() * 2 - 1) * OFFSET,
       });
     });
   }
 
-  /* How far a letter is from the middle of its lane right now. Pass k runs
-     from `from` to `to` over MOVE_MS and then waits out HOLD_MS; pass 0
-     leaves the middle, and from there it is left, right, left, right, for
-     as long as the page is open. */
-  function offset(Lt) {
+  /* Where a letter sits in its lane right now, as one number: 0 is flush
+     against the lane's left edge, 1 is flush against its right edge, and
+     0.5 is centred. Pass k runs from `from` to `to` over MOVE_MS and then
+     waits out HOLD_MS; pass 0 leaves the middle, and from there it is
+     left, right, left, right, for as long as the page is open.
+
+     Because it is the same number for every letter, a wide W and a narrow
+     I end up flush with each other at both ends — the column is
+     left-aligned on the left and right-aligned on the right, and the
+     letters' own widths never come into it. */
+  function align(Lt) {
     const local = now - Lt.t0;
-    if (local < 0) return 0;
+    if (local < 0) return 0.5;
     const k = Math.floor(local / passGap);
     const u = Math.min(1, (local - k * passGap) / MOVE_MS);
-    const to = k % 2 === 0 ? -amp : amp;
-    const from = k === 0 ? 0 : k % 2 === 1 ? -amp : amp;
+    const to = k % 2 === 0 ? 0 : 1;
+    const from = k === 0 ? 0.5 : k % 2 === 1 ? 0 : 1;
     return from + (to - from) * ease(u);
   }
 
@@ -193,11 +198,15 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt } = {}
       if (Lt.blank) continue;
       /* No entrance: the word is simply there, at full size, from the
          first frame — only the wave moves. */
-      const jx = Lt.ox + wobble(Lt.id, frame, 0) * JITTER;
-      const jy = Lt.oy + wobble(Lt.id, frame, 1) * JITTER;
+      const jx = wobble(Lt.id, frame, 0) * JITTER;
+      const jy = wobble(Lt.id, frame, 1) * JITTER;
+      /* `p` is where the letter's own box hangs off `x`: 0 pins its left
+         edge there, 1 its right edge, 0.5 centres it. The renderers know
+         the letter's real width, so none of them has to guess. */
+      const p = align(Lt);
       tiles.push({
-        id: Lt.id, ch: Lt.ch, fill: Lt.fill, w: L.w, h: L.h, size: L.h * FONT,
-        x: Lt.cx + offset(Lt) + jx, y: Lt.cy + jy, alpha: 1,
+        id: Lt.id, ch: Lt.ch, fill: Lt.fill, w: L.w, h: L.h, size: L.h * FONT, p,
+        x: Lt.cx + (p * 2 - 1) * half + jx, y: Lt.cy + jy, alpha: 1,
       });
     }
     return { bg: pal.frame, tiles };
@@ -271,7 +280,9 @@ function mount(stage, mode, opts = {}) {
         els.set(t.id, el);
       }
       /* translate(-50%, -50%) centres the letter on its spot, whatever it is. */
-      el.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(-50%, -50%)`;
+      /* A percentage translate is a share of the element's own width, which
+         is exactly the letter's width — so the edges land where they should. */
+      el.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(${(-t.p * 100).toFixed(2)}%, -50%)`;
     }
     for (const [id, el] of els) if (!seen.has(id)) { el.remove(); els.delete(id); }
   }
@@ -329,12 +340,12 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity = 0.
     ctx.save();
     ctx.fillStyle = s.bg;
     ctx.fillRect(0, 0, size, size);
-    ctx.textAlign = "center";
+    ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     for (const t of s.tiles) {
       ctx.fillStyle = t.fill;
       ctx.font = `${WEIGHT} ${t.size * k}px "Switzer","Rubik",system-ui,sans-serif`;
-      ctx.fillText(t.ch, t.x * k, t.y * k);
+      ctx.fillText(t.ch, t.x * k - t.p * ctx.measureText(t.ch).width, t.y * k);
     }
     ctx.restore();
   }
