@@ -34,16 +34,18 @@ const MAX_COLS = 8;             // … up to this many columns; past that the le
 const FONT = 1.07;              // letter size / row height: a capital is ~0.72 em, so this
                                 // leaves about a third of a cap height of air between rows
 const GLYPH_W = 0.72;           // roughly how wide a capital sits, as a fraction of its size
-const LANE_PAD = 34;            // a lane keeps this much clear of its edges at the end of a slide
+const LANE_PAD = 40;            // a lane keeps this much clear of its edges at the end of a slide —
+                                // enough that the curves which overshoot still stay in the frame
 const FPS = 12;                 // stop-motion: the picture only updates this often
 const JITTER = 2;               // px of hand-held wobble per frame — small, because the
                                 // letters line up on their edges and that should read
 const STAGGER = 110;            // ms between one letter's beat and the next letter's…
-const STAGGER_SPAN = 900;       // … squeezed so the whole wave never takes longer than this to pass through
-const STAGGER_MIN = 18;
+const STAGGER_SPAN = 700;       // … squeezed so the whole wave never takes longer than this to pass through
+const STAGGER_MIN = 0;
 const BEAT = 200;               // the word stands still this long before the wave starts
-const MOVE_MS = 900;            // one slide, wall to wall
-const HOLD_MS = 260;            // … and the pause at the end of it
+const MOVE_MS = 1100;           // one slide, edge to edge
+const HOLD_MS = 0;              // … and the pause at the end of it
+const CURVE = "sine";           // … and how it gets there (see CURVES)
 const WEIGHT = 700;             // Switzer bold (Rubik bold for Hebrew)
 
 /* Colour rule: four colours — frame, card, ink, anchor — and each card
@@ -103,9 +105,24 @@ function mix(a, b, t) {
   const ch = (sh) => Math.round(((A >> sh) & 255) * (1 - t) + ((B >> sh) & 255) * t);
   return "#" + [16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, "0")).join("");
 }
-/* Smootherstep: dead still at both ends, so every stop is a real stop.
-   The letters are never squashed or stretched — the easing does the work. */
-const ease = (u) => u * u * u * (u * (u * 6 - 15) + 10);
+/* The shape of one slide: u = 0…1 of the way through it, out = 0…1 of the
+   way across. All five start and end exactly where they should, so a
+   slide always lands flush; the last two overshoot a little on the way,
+   which is what LANE_PAD leaves room for.
+     sine    — a plain cosine. Its speed is zero at each end and picks up
+               again immediately, so with no pause the passes join into
+               one continuous wave and nothing ever stops.
+     smooth  — smootherstep: dead still at both ends, a real stop.
+     deep    — quintic: a long, slow leave and arrival, quick through the middle.
+     snap    — leaves fast, arrives with one small rebound.
+     spring  — arrives and wobbles itself to rest. */
+export const CURVES = {
+  sine: (u) => 0.5 - 0.5 * Math.cos(Math.PI * u),
+  smooth: (u) => u * u * u * (u * (u * 6 - 15) + 10),
+  deep: (u) => (u < 0.5 ? 16 * u ** 5 : 1 - Math.pow(-2 * u + 2, 5) / 2),
+  snap: (u) => 1 - Math.exp(-6.5 * u) * Math.cos(1.5 * Math.PI * u),
+  spring: (u) => 1 - Math.exp(-11 * u) * Math.cos(2.5 * Math.PI * u),
+};
 
 /* How to typeset `n` letters: one column if they fit, otherwise as many
    columns as it takes to keep the letters big enough to read. Each
@@ -132,15 +149,18 @@ function layout(n) {
    screen from the first frame and nothing ever ends: once the wave has
    reached the last letter, every letter is oscillating with the same
    period (loopPeriod), a stagger apart. */
-function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt } = {}) {
+function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS, curve = CURVE } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
   const rtl = /[֐-׿؀-ۿ]/.test(chars.join(""));
   const L = layout(Math.max(1, chars.length));
   const half = L.lane / 2 - LANE_PAD;   // how far a lane's flush edges sit from its middle
-  const stagger = staggerOpt || Math.max(STAGGER_MIN, Math.min(STAGGER, STAGGER_SPAN / Math.max(1, chars.length)));
-  const passGap = MOVE_MS + HOLD_MS;
+  const stagger = staggerOpt === undefined
+    ? Math.max(STAGGER_MIN, Math.min(STAGGER, STAGGER_SPAN / Math.max(1, chars.length)))
+    : staggerOpt;
+  const passGap = move + hold;
+  const ease = CURVES[curve] || CURVES[CURVE];
 
   let rand = rng(seed);
   let now = 0;                  // virtual ms
@@ -179,7 +199,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt } = {}
     const local = now - Lt.t0;
     if (local < 0) return 0.5;
     const k = Math.floor(local / passGap);
-    const u = Math.min(1, (local - k * passGap) / MOVE_MS);
+    const u = Math.min(1, (local - k * passGap) / move);
     const to = k % 2 === 0 ? 0 : 1;
     const from = k === 0 ? 0.5 : k % 2 === 1 ? 0 : 1;
     return from + (to - from) * ease(u);
@@ -249,6 +269,7 @@ function makeGrainTiles() {
 
 function mount(stage, mode, opts = {}) {
   const eng = engine(mode, opts);
+  const fps = opts.fps || FPS;
   const pal = eng.pal;
   stage.innerHTML = "";
   stage.style.cssText = `position:relative;width:${STAGE}px;height:${STAGE}px;overflow:hidden;isolation:isolate;background:${pal.frame};`;
@@ -294,7 +315,7 @@ function mount(stage, mode, opts = {}) {
     last = t;
     eng.step(dt);
     acc += dt;
-    if (acc >= 1 / FPS) { acc = 0; frame++; paint(frame); }
+    if (acc >= 1 / fps) { acc = 0; frame++; paint(frame); }
     raf = requestAnimationFrame(tick);
   }
   const onClick = () => eng.restart();
