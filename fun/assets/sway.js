@@ -31,8 +31,8 @@ const MAX_H = STAGE * FILL / 4; // a row is never taller than a quarter of a ful
 const MIN_H = 40;               // … and past this the text takes a second column
                                 // rather than setting too small to read
 const MAX_COLS = 8;             // … up to this many columns; past that the letters just get small
-const FONT = 0.88;              // letter size / row height: a capital is ~0.72 em, so this
-                                // leaves a good half a cap height of air between the rows
+const FONT = 0.76;              // letter size / row height: a capital is ~0.72 em, so this
+                                // leaves nearly a whole cap height of air between the rows
 const GLYPH_W = 0.72;           // roughly how wide a capital sits, as a fraction of its size
 const LANE_PAD = 40;            // a lane keeps this much clear of its edges at the end of a slide —
                                 // enough that the curves which overshoot still stay in the frame
@@ -101,6 +101,28 @@ function wobble(i, frame, axis) {
   d = (d ^ (d >>> 16)) >>> 0;
   return (d / 4294967296) * 2 - 1;
 }
+const GRAIN_TILES = 6, GRAIN_TILE = 192, GRAIN_OPACITY = 0.5, GRAIN_DARK = 0.12;
+
+/* How light a colour is, 0…1 — the grain is laid on differently over a
+   dark field than over a bright one. */
+function lightness(hex) {
+  const n = parseInt(String(hex).slice(1), 16) || 0;
+  return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+}
+/* Film grain: overlay does nothing to a near-black field (it multiplies
+   what is already there), so over a dark background the noise is screened
+   on instead, gently. */
+export function grainFor(bg, { opacity, blend, override = false } = {}) {
+  const dark = lightness(bg) < 0.3;
+  /* Over a dark field the house 0.5 would wash the black out to grey, so a
+     figure asked for from outside only counts when it is deliberate — the
+     export page hands every effect the same 0.5 without knowing the card. */
+  const o = dark
+    ? (override && opacity !== undefined ? opacity : GRAIN_DARK)
+    : (opacity === undefined ? GRAIN_OPACITY : opacity);
+  return { opacity: o, blend: blend || (dark ? "screen" : "overlay") };
+}
+
 /* Mix two hex colours: t = 0 → a, t = 1 → b. */
 function mix(a, b, t) {
   const A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16);
@@ -293,7 +315,6 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
 
 /* ---------- DOM renderer (studio, embed) ---------- */
 
-const GRAIN_TILES = 6, GRAIN_TILE = 192, GRAIN_OPACITY = 0.5;
 let grainTiles;
 function makeGrainTiles() {
   if (grainTiles) return grainTiles;
@@ -327,15 +348,19 @@ function mount(stage, mode, opts = {}) {
   stage.appendChild(layer);
   /* Film grain: a few noise tiles cycled per frame (iOS Safari often
      skips the SVG turbulence filter inside a scaled stage). */
-  const tiles = makeGrainTiles();
-  const noise = document.createElement("div");
-  noise.style.cssText = `position:absolute;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:${GRAIN_OPACITY};z-index:9;background-size:${GRAIN_TILE}px ${GRAIN_TILE}px;background-image:${tiles[0]};`;
-  stage.appendChild(noise);
+  const g = grainFor(pal.frame, { opacity: opts.grainOpacity, blend: opts.grainBlend, override: true });
+  const tiles = opts.grain === false ? null : makeGrainTiles();
+  let noise = null;
+  if (tiles) {
+    noise = document.createElement("div");
+    noise.style.cssText = `position:absolute;inset:0;pointer-events:none;mix-blend-mode:${g.blend};opacity:${g.opacity};z-index:9;background-size:${GRAIN_TILE}px ${GRAIN_TILE}px;background-image:${tiles[0]};`;
+    stage.appendChild(noise);
+  }
 
   const els = new Map();
   function paint(frame) {
     const s = eng.snapshot(frame);
-    noise.style.backgroundImage = tiles[frame % tiles.length];
+    if (noise) noise.style.backgroundImage = tiles[frame % tiles.length];
     const seen = new Set();
     for (const t of s.tiles) {
       seen.add(t.id);
@@ -381,7 +406,7 @@ export const s = (stage, opts) => mount(stage, "sway", opts);
    period of the steady state — from the moment every letter is sliding,
    two passes long — which joins back onto itself exactly. */
 const EXPORT_SEED = 20260912, SIM_DT = 1 / 120;
-function scene(mode, { word = "", palette, seed, grain = true, grainOpacity = 0.5, grainScale = 1.2 } = {}) {
+function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, grainScale = 1.2 } = {}) {
   const opts = { word, palette, seed: (seed | 0) || EXPORT_SEED };
   const pal = dealPalette(mode, palette || p[0]);
   let frames = null, cachedTotal = 0;
@@ -417,7 +442,8 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity = 0.
     }
     ctx.restore();
   }
-  return { draw, n: 90, pal, grain: grain ? { opacity: grainOpacity, scale: grainScale, animated: true } : null };
+  const g = grainFor(pal.frame, { opacity: grainOpacity });
+  return { draw, n: 90, pal, grain: grain ? { opacity: g.opacity, blend: g.blend, scale: grainScale, animated: true } : null };
 }
 export const x = { sway: (o) => scene("sway", o) };
 
