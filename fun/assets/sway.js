@@ -1,10 +1,13 @@
 /* FunType — Collection 04: Sway.
 
    The text stands in a column down the middle of the frame, one big
-   bold letter per row. A wave runs through it: every letter slides to
-   the left, then to the right, a beat behind the letter above it,
-   easing in and out of every stop. It never finishes — the wave just
-   keeps going, so the piece can sit on a wall and stay.
+   bold letter per row: a short word sits in the middle, a longer one
+   fills four fifths of the frame's height, and past that the letters
+   scale down to keep it so. A wave runs through the column: every
+   letter slides to the left, then to the right, a beat behind the
+   letter above it, easing in and out of every stop. Nothing enters and
+   nothing leaves — the word is there from the first frame and the wave
+   just keeps going, so the piece can sit on a wall and stay.
 
    Same architecture as Collection 03: one engine on a virtual clock
    (step(dt) advances it, snapshot(frame) says what to paint for
@@ -21,9 +24,12 @@
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
 
 const STAGE = 1080;
-const PAD = 32;                 // the column keeps this clear of the top and bottom
-const MAX_H = 210;              // a row is never taller than this…
-const MIN_H = 44;               // … and we add a column rather than go below this
+const FILL = 0.8;               // a full column stands this tall in the frame
+const MAX_H = STAGE * FILL / 4; // a row is never taller than a quarter of a full
+                                // column, so one to three letters sit in the middle
+                                // instead of being blown up; four already fill it…
+const MIN_H = 40;               // … and past this the text takes a second column
+                                // rather than setting too small to read
 const MAX_COLS = 8;             // … up to this many columns; past that the letters just get small
 const FONT = 1.07;              // letter size / row height: a capital is ~0.72 em, so this
                                 // leaves about a third of a cap height of air between rows
@@ -35,8 +41,7 @@ const OFFSET = 8;               // px: each letter sits a little off its true sp
 const STAGGER = 110;            // ms between one letter's beat and the next letter's…
 const STAGGER_SPAN = 900;       // … squeezed so the whole wave never takes longer than this to pass through
 const STAGGER_MIN = 18;
-const POP_MS = 300;             // a letter pops in from small to full size
-const BEAT = 200;               // … and stands still this long before it starts sliding
+const BEAT = 200;               // the word stands still this long before the wave starts
 const MOVE_MS = 900;            // one slide, wall to wall
 const HOLD_MS = 260;            // … and the pause at the end of it
 const WEIGHT = 700;             // Switzer bold (Rubik bold for Hebrew)
@@ -107,7 +112,7 @@ const ease = (u) => u * u * u * (u * (u * 6 - 15) + 10);
    column gets its own lane of the stage to slide inside, so columns
    never cross. */
 function layout(n) {
-  const usable = STAGE - 2 * PAD;
+  const usable = STAGE * FILL;
   for (let c = 1; c <= MAX_COLS; c++) {
     const rows = Math.ceil(n / c);
     const h = Math.min(MAX_H, usable / rows);
@@ -123,9 +128,10 @@ function layout(n) {
 /* ---------- the engine ---------- */
 
 /* Runs the piece on a virtual clock. step(dt) advances it; snapshot(frame)
-   describes what to paint for stop-motion frame `frame`. Nothing ever ends:
-   after the letters have popped in, every one of them is oscillating with
-   the same period (loopPeriod), a stagger apart. */
+   describes what to paint for stop-motion frame `frame`. The word is on
+   screen from the first frame and nothing ever ends: once the wave has
+   reached the last letter, every letter is oscillating with the same
+   period (loopPeriod), a stagger apart. */
 function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
@@ -154,7 +160,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt } = {}
       letters.push({
         id: i, ch, blank: ch === " ",
         fill: mix(pal.card, pal.ink, chars.length > 1 ? i / (chars.length - 1) : 0),
-        cx, cy, born: i * stagger, t0: i * stagger + POP_MS + BEAT,
+        cx, cy, t0: i * stagger + BEAT,
         ox: (rand() * 2 - 1) * OFFSET, oy: (rand() * 2 - 1) * OFFSET,
       });
     });
@@ -184,17 +190,14 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt } = {}
   function snapshot(frame) {
     const tiles = [];
     for (const Lt of letters) {
-      if (now < Lt.born || Lt.blank) continue;
+      if (Lt.blank) continue;
+      /* No entrance: the word is simply there, at full size, from the
+         first frame — only the wave moves. */
       const jx = Lt.ox + wobble(Lt.id, frame, 0) * JITTER;
       const jy = Lt.oy + wobble(Lt.id, frame, 1) * JITTER;
-      /* Pop-in on birth — the only scaling there is, and it is even on
-         both axes, so a letter is never drawn out of proportion. */
-      let scale = 1;
-      const tb = (now - Lt.born) / POP_MS;
-      if (tb < 1) scale = 0.4 + 0.6 * (1 + 1.8 * Math.pow(tb - 1, 3) + 0.8 * Math.pow(tb - 1, 2));
       tiles.push({
         id: Lt.id, ch: Lt.ch, fill: Lt.fill, w: L.w, h: L.h, size: L.h * FONT,
-        x: Lt.cx + offset(Lt) + jx, y: Lt.cy + jy, scale, alpha: 1,
+        x: Lt.cx + offset(Lt) + jx, y: Lt.cy + jy, alpha: 1,
       });
     }
     return { bg: pal.frame, tiles };
@@ -207,7 +210,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt } = {}
     get now() { return now; },
     /* One seamless loop of the steady state: from the moment the last
        letter starts sliding, two passes long (left and back). */
-    get loopStart() { return (chars.length - 1) * stagger + POP_MS + BEAT + passGap; },
+    get loopStart() { return (chars.length - 1) * stagger + BEAT + passGap; },
     get loopPeriod() { return 2 * passGap; },
   };
 }
@@ -268,7 +271,7 @@ function mount(stage, mode, opts = {}) {
         els.set(t.id, el);
       }
       /* translate(-50%, -50%) centres the letter on its spot, whatever it is. */
-      el.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(-50%, -50%) scale(${t.scale.toFixed(3)})`;
+      el.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(-50%, -50%)`;
     }
     for (const [id, el] of els) if (!seen.has(id)) { el.remove(); els.delete(id); }
   }
@@ -329,13 +332,9 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity = 0.
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     for (const t of s.tiles) {
-      ctx.save();
-      ctx.translate(t.x * k, t.y * k);
-      ctx.scale(t.scale, t.scale);
       ctx.fillStyle = t.fill;
       ctx.font = `${WEIGHT} ${t.size * k}px "Switzer","Rubik",system-ui,sans-serif`;
-      ctx.fillText(t.ch, 0, 0);
-      ctx.restore();
+      ctx.fillText(t.ch, t.x * k, t.y * k);
     }
     ctx.restore();
   }
