@@ -21,11 +21,12 @@
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
 
 const STAGE = 1080;
-const PAD = 40;                 // the column keeps this clear of the top and bottom
-const MAX_H = 190;              // a row is never taller than this…
+const PAD = 32;                 // the column keeps this clear of the top and bottom
+const MAX_H = 210;              // a row is never taller than this…
 const MIN_H = 44;               // … and we add a column rather than go below this
 const MAX_COLS = 8;             // … up to this many columns; past that the letters just get small
-const FONT = 1.3;               // letter size / row height — the caps nearly fill the row
+const FONT = 1.07;              // letter size / row height: a capital is ~0.72 em, so this
+                                // leaves about a third of a cap height of air between rows
 const GLYPH_W = 0.72;           // roughly how wide a capital sits, as a fraction of its size
 const LANE_PAD = 34;            // a lane keeps this much clear of its edges at the end of a slide
 const FPS = 12;                 // stop-motion: the picture only updates this often
@@ -38,9 +39,6 @@ const POP_MS = 300;             // a letter pops in from small to full size
 const BEAT = 200;               // … and stands still this long before it starts sliding
 const MOVE_MS = 900;            // one slide, wall to wall
 const HOLD_MS = 260;            // … and the pause at the end of it
-const SQUASH = 0.1;             // how much a letter presses into its leading edge when it stops
-const SQUASH_MS = 300;
-const STRETCH = 0.07;           // … and how much it draws out at full speed
 const WEIGHT = 700;             // Switzer bold (Rubik bold for Hebrew)
 
 /* Colour rule: four colours — frame, card, ink, anchor — and each card
@@ -49,6 +47,8 @@ const WEIGHT = 700;             // Switzer bold (Rubik bold for Hebrew)
    The first set is the collection's own; the rest are Collection 01's,
    02's and 03's palettes, read the same way. */
 export const p = [
+  { frame: "#0D0D0F", card: "#FFFFFF", ink: "#FFFFFF", anchor: "#FFFFFF" },   // white on black — not quite
+                                                                             // pure, so the grain still lives
   { frame: "#49C7FD", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FFFFFF" },   // blue · pink · yellow
   { frame: "#A9FF67", card: "#FFFFFF", ink: "#5BE03A", anchor: "#49C7FD" },
   { frame: "#49C7FD", card: "#FFFFFF", ink: "#5BE03A", anchor: "#A9FF67" },
@@ -99,11 +99,8 @@ function mix(a, b, t) {
   return "#" + [16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, "0")).join("");
 }
 /* Smootherstep: dead still at both ends, so every stop is a real stop.
-   ease() is the position, dEase() its slope (for the motion stretch);
-   the slope peaks at 1.875× the average. */
+   The letters are never squashed or stretched — the easing does the work. */
 const ease = (u) => u * u * u * (u * (u * 6 - 15) + 10);
-const dEase = (u) => 30 * u * u * (1 - u) * (1 - u);
-const EASE_PEAK = 1.875;
 
 /* How to typeset `n` letters: one column if they fit, otherwise as many
    columns as it takes to keep the letters big enough to read. Each
@@ -163,24 +160,18 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt } = {}
     });
   }
 
-  /* Where a letter is right now. Pass k runs from `from` to `to` over
-     MOVE_MS and then waits out HOLD_MS; pass 0 leaves the middle, and
-     from there it is left, right, left, right, for as long as the page
-     is open. */
-  function state(Lt) {
+  /* How far a letter is from the middle of its lane right now. Pass k runs
+     from `from` to `to` over MOVE_MS and then waits out HOLD_MS; pass 0
+     leaves the middle, and from there it is left, right, left, right, for
+     as long as the page is open. */
+  function offset(Lt) {
     const local = now - Lt.t0;
-    if (local < 0) return { x: 0, v: 0, arriveAt: -1e9, arriveDir: 1 };
+    if (local < 0) return 0;
     const k = Math.floor(local / passGap);
     const u = Math.min(1, (local - k * passGap) / MOVE_MS);
     const to = k % 2 === 0 ? -amp : amp;
     const from = k === 0 ? 0 : k % 2 === 1 ? -amp : amp;
-    const dist = to - from;
-    /* The last time this letter came to a stop, for the press into its
-       leading edge — this pass if it is already holding, else the one before. */
-    const holding = u >= 1;
-    const arriveAt = holding ? Lt.t0 + k * passGap + MOVE_MS : Lt.t0 + (k - 1) * passGap + MOVE_MS;
-    const arriveDir = holding ? Math.sign(dist) : -Math.sign(dist);
-    return { x: from + dist * ease(u), v: holding ? 0 : (dist * dEase(u)) / (MOVE_MS / 1000), arriveAt, arriveDir };
+    return from + (to - from) * ease(u);
   }
 
   /* Every restart (loop or click) reshuffles the hand-made offsets from a
@@ -192,30 +183,18 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt } = {}
 
   function snapshot(frame) {
     const tiles = [];
-    const vmax = (EASE_PEAK * amp) / (MOVE_MS / 1000);
     for (const Lt of letters) {
       if (now < Lt.born || Lt.blank) continue;
-      const s = state(Lt);
-      let jx = Lt.ox + wobble(Lt.id, frame, 0) * JITTER;
-      let jy = Lt.oy + wobble(Lt.id, frame, 1) * JITTER;
-      /* Drawn out at speed, pressed into the leading edge at every stop. */
-      const k = Math.min(1, Math.abs(s.v) / vmax);
-      let sx = 1 + STRETCH * k, sy = 1 - 0.6 * STRETCH * k;
-      const th = (now - s.arriveAt) / SQUASH_MS;
-      if (th >= 0 && th < 1) {
-        const q = Math.sin(th * Math.PI) * SQUASH;
-        sx -= q; sy += q;
-        jx += q * (L.w / 2) * s.arriveDir;
-      }
-      /* Pop-in on birth. */
+      const jx = Lt.ox + wobble(Lt.id, frame, 0) * JITTER;
+      const jy = Lt.oy + wobble(Lt.id, frame, 1) * JITTER;
+      /* Pop-in on birth — the only scaling there is, and it is even on
+         both axes, so a letter is never drawn out of proportion. */
+      let scale = 1;
       const tb = (now - Lt.born) / POP_MS;
-      if (tb < 1) {
-        const pop = 0.4 + 0.6 * (1 + 1.8 * Math.pow(tb - 1, 3) + 0.8 * Math.pow(tb - 1, 2));
-        sx *= pop; sy *= pop;
-      }
+      if (tb < 1) scale = 0.4 + 0.6 * (1 + 1.8 * Math.pow(tb - 1, 3) + 0.8 * Math.pow(tb - 1, 2));
       tiles.push({
         id: Lt.id, ch: Lt.ch, fill: Lt.fill, w: L.w, h: L.h, size: L.h * FONT,
-        x: Lt.cx + s.x + jx, y: Lt.cy + jy, sx, sy, alpha: 1,
+        x: Lt.cx + offset(Lt) + jx, y: Lt.cy + jy, scale, alpha: 1,
       });
     }
     return { bg: pal.frame, tiles };
@@ -289,7 +268,7 @@ function mount(stage, mode, opts = {}) {
         els.set(t.id, el);
       }
       /* translate(-50%, -50%) centres the letter on its spot, whatever it is. */
-      el.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(-50%, -50%) scale(${t.sx.toFixed(3)}, ${t.sy.toFixed(3)})`;
+      el.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(-50%, -50%) scale(${t.scale.toFixed(3)})`;
     }
     for (const [id, el] of els) if (!seen.has(id)) { el.remove(); els.delete(id); }
   }
@@ -352,7 +331,7 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity = 0.
     for (const t of s.tiles) {
       ctx.save();
       ctx.translate(t.x * k, t.y * k);
-      ctx.scale(t.sx, t.sy);
+      ctx.scale(t.scale, t.scale);
       ctx.fillStyle = t.fill;
       ctx.font = `${WEIGHT} ${t.size * k}px "Switzer","Rubik",system-ui,sans-serif`;
       ctx.fillText(t.ch, 0, 0);
