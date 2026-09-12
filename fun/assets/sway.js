@@ -31,22 +31,23 @@ const MAX_H = STAGE * FILL / 4; // a row is never taller than a quarter of a ful
 const MIN_H = 40;               // … and past this the text takes a second column
                                 // rather than setting too small to read
 const MAX_COLS = 8;             // … up to this many columns; past that the letters just get small
-const FONT = 1.07;              // letter size / row height: a capital is ~0.72 em, so this
-                                // leaves about a third of a cap height of air between rows
+const FONT = 0.88;              // letter size / row height: a capital is ~0.72 em, so this
+                                // leaves a good half a cap height of air between the rows
 const GLYPH_W = 0.72;           // roughly how wide a capital sits, as a fraction of its size
 const LANE_PAD = 40;            // a lane keeps this much clear of its edges at the end of a slide —
                                 // enough that the curves which overshoot still stay in the frame
 const FPS = 12;                 // stop-motion: the picture only updates this often
 const JITTER = 2;               // px of hand-held wobble per frame — small, because the
                                 // letters line up on their edges and that should read
-const STAGGER = 110;            // ms between one letter's beat and the next letter's — negative
+const STAGGER = 112;            // ms between one letter's beat and the next letter's — negative
                                 // runs the wave up the column instead of down…
-const STAGGER_SPAN = 700;       // … squeezed so the whole wave never takes longer than this to pass through
+const STAGGER_SPAN = 1456;      // … squeezed so the whole wave never takes much longer than about
+                                // a second and a half to pass through (112 ms holds up to 13 letters)
 const STAGGER_MIN = 0;
 const BEAT = 200;               // the word stands still this long before the wave starts
-const MOVE_MS = 1100;           // one slide, edge to edge
-const HOLD_MS = 0;              // … and the pause at the end of it
-const CURVE = "sine";           // … and how it gets there (see CURVES)
+const MOVE_MS = 1300;           // one slide, edge to edge
+const HOLD_MS = 380;            // … and the pause at the end of it
+const CURVE = "sway";           // … and how it gets there (see CURVES)
 const WEIGHT = 700;             // Switzer bold (Rubik bold for Hebrew)
 
 /* Colour rule: four colours — frame, card, ink, anchor — and each card
@@ -146,6 +147,9 @@ export function bezier(x1, y1, x2, y2) {
   };
 }
 export const CURVES = {
+  /* The one this card runs: it leaves slowly, crosses quickly, and arrives
+     with a hair of overshoot at the far edge. */
+  sway: bezier(0.51, 0, 0.33, 1.01),
   sine: (u) => 0.5 - 0.5 * Math.cos(Math.PI * u),
   smooth: (u) => u * u * u * (u * (u * 6 - 15) + 10),
   deep: (u) => (u < 0.5 ? 16 * u ** 5 : 1 - Math.pow(-2 * u + 2, 5) / 2),
@@ -159,18 +163,18 @@ const shapeOf = (c) => (typeof c === "function" ? c : CURVES[c] || CURVES[CURVE]
    columns as it takes to keep the letters big enough to read. Each
    column gets its own lane of the stage to slide inside, so columns
    never cross. */
-function layout(n) {
+function layout(n, font = FONT) {
   const usable = STAGE * FILL;
   for (let c = 1; c <= MAX_COLS; c++) {
     const rows = Math.ceil(n / c);
     const h = Math.min(MAX_H, usable / rows);
-    const w = h * FONT * GLYPH_W;
+    const w = h * font * GLYPH_W;
     const lane = STAGE / c;
     if (h >= MIN_H && w * 1.9 <= lane) return { cols: c, rows, h, w, lane };
   }
   const rows = Math.ceil(n / MAX_COLS);
   const h = Math.min(MAX_H, usable / rows);
-  return { cols: MAX_COLS, rows, h, w: h * FONT * GLYPH_W, lane: STAGE / MAX_COLS };
+  return { cols: MAX_COLS, rows, h, w: h * font * GLYPH_W, lane: STAGE / MAX_COLS };
 }
 
 /* ---------- the engine ---------- */
@@ -180,12 +184,13 @@ function layout(n) {
    screen from the first frame and nothing ever ends: once the wave has
    reached the last letter, every letter is oscillating with the same
    period (loopPeriod), a stagger apart. */
-function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS, curve = CURVE } = {}) {
+function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS,
+                        curve = CURVE, font = FONT } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
   const rtl = /[֐-׿؀-ۿ]/.test(chars.join(""));
-  const L = layout(Math.max(1, chars.length));
+  const L = layout(Math.max(1, chars.length), font);
   /* How far a lane's flush edges sit from its middle. A curve that
      overshoots would carry the letters past those edges, so the travel is
      pulled in by however far it overshoots — the letters still line up
@@ -267,7 +272,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
          the letter's real width, so none of them has to guess. */
       const p = align(Lt);
       tiles.push({
-        id: Lt.id, ch: Lt.ch, fill: Lt.fill, w: L.w, h: L.h, size: L.h * FONT, p,
+        id: Lt.id, ch: Lt.ch, fill: Lt.fill, w: L.w, h: L.h, size: L.h * font, p,
         x: Lt.cx + (p * 2 - 1) * half + jx, y: Lt.cy + jy, alpha: 1,
       });
     }
