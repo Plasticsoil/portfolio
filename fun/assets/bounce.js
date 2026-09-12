@@ -81,9 +81,9 @@ const PULSE_MS = 450;           // Snake click: the tiles' hand-placed offsets p
 const PULSE_K = 4;              // … up to this many times their usual size
 const HOP = 260;                // Towers click: every cube gets this much upward speed (px/s)
 const TURN_RATE = 6;            // Snake hover: the head turns toward the pointer at up to this many rad/s
-const GLIDE = 6;                // Towers hover: a cube entering at the pointer's x eases to its column at this rate (1/s)
 const ARENA_MOVE = 7;           // Shrink click: the arena eases to its new spot at this rate (1/s)
-const TRAIL_KEEP = 1400;        // Snake: how many head states to remember for the body to replay while hovering           // the ground's shake grows from nothing to this many px (sideways; less up and down)
+const TRAIL_KEEP = 9000;        // Snake: how many head states to remember for the body to replay
+const HOVER_SPAWN_MS = 800;     // Snake hover: if the newest tile has met no wall this long, the next letter comes anyway           // the ground's shake grows from nothing to this many px (sideways; less up and down)
 const COLS = Math.floor(STAGE / SIZE);            // random-column Tower: grid columns
 const COL0 = (STAGE - COLS * SIZE) / 2 + SIZE / 2;
 
@@ -237,8 +237,7 @@ function engine(mode, { word = "", palette, seed = 0, shrink = SHRINK } = {}) {
   /* Interaction state */
   let pointer = null;        // { x, y } in stage units while hovering, else null
   let pulseAt = -1e9;        // Snake click
-  let trailing = false;      // Snake hover: the body replays the head's trail
-  const trail = [];          // Snake: the head's recent states, oldest first
+  const trail = [];          // Snake: the head's states since the round began, oldest first
 
   const after = (ms, fn) => timers.push({ at: now + ms, fn });
   const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
@@ -270,8 +269,8 @@ function engine(mode, { word = "", palette, seed = 0, shrink = SHRINK } = {}) {
       cx, cy, vx, vy, spawned: false, asleep: false, gone: false,
       ox: (rand() * 2 - 1) * OFFSET, oy: rows ? 0 : (rand() * 2 - 1) * OFFSET,
       born: now, hitAt: -1e9, hitAxis: "x", hitSide: -1, hits: 0, lastHits: 0, free: false, freedAt: 0, landCy: 0,
-      tx: cx,                                       // Towers: the column it glides to while falling
-      delay: trailing && prev ? prev.delay + SPAWN_DELAY : 0,   // Snake trail: how far behind the head it rides
+      tx: cx,
+      delay: snake && prev ? prev.delay + SPAWN_DELAY : 0,      // Snake: how far behind the head it rides the trail
       lastReplayHit: -1e9,
     };
     count++;
@@ -311,17 +310,13 @@ function engine(mode, { word = "", palette, seed = 0, shrink = SHRINK } = {}) {
     const open = heights.map((h, i) => (h < COLS ? i : -1)).filter((i) => i >= 0);
     if (!open.length) { cursor = seq.length; finish(); return; }
     const col = open[Math.floor(rand() * open.length)];
-    const x = COL0 + col * SIZE;
-    const L = makeLetter(ch, pointer ? clamp(pointer.x, SIZE / 2, STAGE - SIZE / 2) : x, -SIZE / 2, 0, FALL0);
-    L.tx = x;
+    const L = makeLetter(ch, COL0 + col * SIZE, -SIZE / 2, 0, FALL0);
     L.landCy = STAGE - SIZE / 2 - heights[col] * SIZE;
     heights[col]++;
   }
   function slideIn(i) {
     const q = plan[i];
-    /* Hover: the cube enters at the pointer's x and glides to its column. */
-    const L = makeLetter(q.ch, pointer ? clamp(pointer.x, tileSize / 2, STAGE - tileSize / 2) : q.cx, -tileSize / 2, 0, FALL0);
-    L.tx = q.cx;
+    const L = makeLetter(q.ch, q.cx, -tileSize / 2, 0, FALL0);
     L.landCy = q.landCy;
   }
   function scheduleDrop() {
@@ -356,7 +351,7 @@ function engine(mode, { word = "", palette, seed = 0, shrink = SHRINK } = {}) {
   }
 
   function start() {
-    timers = []; letters = []; trail.length = 0; trailing = false;
+    timers = []; letters = []; trail.length = 0;
     cursor = 0; count = 0; freeAt = null; lastFill = null; lastFillRun = 0;
     phase = "fill"; ax = STAGE / 2; ay = STAGE / 2; half = HALF0; arenaTo = null; gap = GAP0; speed = SPEED;
     heights.fill(0);
@@ -374,31 +369,8 @@ function engine(mode, { word = "", palette, seed = 0, shrink = SHRINK } = {}) {
 
   /* ----- interaction ----- */
 
-  /* Pointer in stage units, or null when it leaves. */
-  function setPointer(pt) {
-    const was = pointer;
-    pointer = pt ? { x: pt.x, y: pt.y } : null;
-    if (!snake) return;
-    if (pointer && !was) beginTrail();
-    if (!pointer && was) trailing = false;         // the body carries on from where it is, on its own physics
-  }
-  /* Snake hover starts: work out how far behind the head each tile is
-     (the trail entry nearest to it), so it can ride the head's path. */
-  function beginTrail() {
-    if (!trail.length || letters.length < 2) { trailing = !!trail.length; return; }
-    for (let i = 1; i < letters.length; i++) {
-      const L = letters[i];
-      let best = 0, bd = Infinity;
-      for (let j = trail.length - 1; j >= 0; j--) {
-        const h = trail[j];
-        const d = (h.x - L.cx) ** 2 + (h.y - L.cy) ** 2;
-        if (d < bd) { bd = d; best = j; }
-      }
-      L.delay = Math.max(1, now - trail[best].t);
-      L.lastReplayHit = trail[best].hitAt;
-    }
-    trailing = true;
-  }
+  /* Pointer in stage units, or null when it leaves. (Towers ignores it.) */
+  function setPointer(pt) { pointer = pt && !rows && !tower ? { x: pt.x, y: pt.y } : null; }
   /* Click, in stage units. */
   function click(pt) {
     if (snake) { pulseAt = now; return; }
@@ -445,9 +417,14 @@ function engine(mode, { word = "", palette, seed = 0, shrink = SHRINK } = {}) {
     }
     const wh = chaos ? Math.max(half, HALF_MIN) : STAGE / 2;
     const cxA = chaos ? ax : STAGE / 2, cyA = chaos ? ay : STAGE / 2;
+    /* Snake hover: steering the head may keep it off the walls, so the
+       next letter must not wait for a hit forever. */
+    if (snake && pointer && phase === "fill" && spawner && !spawner.spawned && now - spawner.born > HOVER_SPAWN_MS) onSpawnerHit(spawner);
     for (const L of letters) {
-      /* Snake hover: everyone but the head rides the head's trail. */
-      if (snake && trailing && L !== head && !L.free && trail.length > 1) {
+      /* Snake: everyone but the head rides the head's trail — always,
+         so the body follows whatever path the head takes (straight
+         lines, or a hover's curves) and it never stops being a snake. */
+      if (snake && L !== head && !L.free && trail.length > 1) {
         const h = trailAt(L.delay);
         L.cx = h.x; L.cy = h.y; L.vx = h.vx; L.vy = h.vy;
         if (h.hitAt !== L.lastReplayHit) {          // the head hit a wall here: so do we, now
@@ -486,8 +463,10 @@ function engine(mode, { word = "", palette, seed = 0, shrink = SHRINK } = {}) {
         if (phase === "fill" && L === spawner && !L.spawned) onSpawnerHit(L);
       }
     }
-    /* Snake: remember the head's state for the body to replay. */
-    if (snake && head) {
+    /* Snake: remember the head's state for the body to replay. Only the
+       original head writes the trail; once it has left, the entries it
+       left behind still serve the tiles still following. */
+    if (snake && head && head.idx === 0) {
       trail.push({ t: now, x: head.cx, y: head.cy, vx: head.vx, vy: head.vy, hitAt: head.hitAt, hitAxis: head.hitAxis, hitSide: head.hitSide });
       if (trail.length > TRAIL_KEEP) trail.splice(0, trail.length - TRAIL_KEEP);
     }
@@ -506,12 +485,10 @@ function engine(mode, { word = "", palette, seed = 0, shrink = SHRINK } = {}) {
       if (L.asleep) continue;
       L.vy += GRAVITY * dt;
       L.cy += L.vy * dt;
-      /* Glide sideways to the column while falling. */
-      if (L.cx !== L.tx) { L.cx += (L.tx - L.cx) * Math.min(1, GLIDE * dt); if (Math.abs(L.tx - L.cx) < 0.5) L.cx = L.tx; }
       if (phase === "drain") { if (L.cy - L.half > STAGE) L.gone = true; continue; }
       if (L.cy >= L.landCy) {
         const v = L.vy;
-        L.cy = L.landCy; L.cx = L.tx;
+        L.cy = L.landCy;
         if (v > 160) L.vy = -v * REST; else { L.vy = 0; L.asleep = true; }
         if (v > 90) { L.hitAt = now; L.hitAxis = "y"; }
       }
