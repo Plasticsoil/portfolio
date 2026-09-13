@@ -109,8 +109,7 @@ const ECHO_ALPHA = 0.5;         // … at this opacity, when the copies are set 
 const RING_TURN = 9000;         // ms for the whole set of rings to come back round
 const RING_GAP = 1.8;           // the step from one ring to the next, in sticker heights
 const RING_RANK = 1.3;          // … and from one rank of copies to the next, when they take rings of their own
-const RING_ENTRY = 900;         // the letters push out of the middle over this long…
-const RING_STEP = 70;           // … one behind another
+const RING_LEAD = 600;          // the ring turns this long before the first letter runs onto it
 /* Eights */
 const EIGHT_TURN = 7000;        // ms to travel the whole eight once
 const EIGHT_FLIP = 2;           // … and the figure turns over once every this many rounds
@@ -275,11 +274,23 @@ function threadPath(pts, closed) {
   return closed ? d + "Z" : d;
 }
 
-/* A ring's thread is the ring: an exact circle, not a curve fitted through
-   the beads. Five beads are too few for a spline to stay on the circle they
-   are sitting on — it bulges out past them, and past the frame. */
-function circlePath(cx, cy, r) {
-  return `M${(cx - r).toFixed(1)},${cy.toFixed(1)}A${r.toFixed(1)},${r.toFixed(1)} 0 1,0 ${(cx + r).toFixed(1)},${cy.toFixed(1)}A${r.toFixed(1)},${r.toFixed(1)} 0 1,0 ${(cx - r).toFixed(1)},${cy.toFixed(1)}Z`;
+/* A ring's thread, as the arcs from one bead to the next rather than a
+   circle drawn round all of them: each point carries the angle it sits at,
+   and each arc takes the short way from one to the next along the circle
+   they share. A ring that is still filling then shows only the arcs it has
+   letters for. */
+function arcPath(pts, cx, cy) {
+  if (pts.length < 2) return "";
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) {
+    const [x, y, a] = pts[i];
+    const r = Math.hypot(x - cx, y - cy);
+    let da = a - pts[i - 1][2];
+    while (da > Math.PI) da -= 2 * Math.PI;
+    while (da < -Math.PI) da += 2 * Math.PI;
+    d += `A${r.toFixed(1)},${r.toFixed(1)} 0 0,${da > 0 ? 1 : 0} ${x.toFixed(1)},${y.toFixed(1)}`;
+  }
+  return d;
 }
 
 /* Walk a list of colours: t = 0 is the first, t = 1 the last. */
@@ -475,11 +486,15 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   }
 
   /* Rings — a word to a ring, the first word outermost, every letter evenly
-     round its own circumference, all of them strung on one thread: the ring
-     itself. They push out of the middle once, one behind another, and from
-     then on the rings turn — the inner ones quicker and against the one
-     outside them, a whole number of turns each so the round joins back onto
-     itself. A letter's copies trail behind it along the ring.
+     round its own circumference, all of it strung on one thread. The letters
+     run onto the ring one behind another from the same point, a letter-gap
+     apart in time, so by the time the last one is on they are evenly spaced
+     and stay that way; from then on the ring simply turns — the inner ones
+     quicker and against the one outside them, a whole number of turns each
+     so the round joins back onto itself. A letter's copies follow it along
+     the ring, and the thread is the arcs from one letter to the next, so it
+     draws itself as they come out rather than standing there as a finished
+     circle waiting to be filled.
 
      ringEven spreads those copies so the last of them lands where the letter
      behind it sits, which beads the whole circumference at one spacing but
@@ -507,26 +522,26 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     }
     tileSize = h;
     const r0 = STAGE / 2 - LANE_PAD / 2 - boxW(h) / 2;
-    ringStart = ws.reduce((n, wd) => n + wd.length, 0) * RING_STEP + RING_ENTRY;
+    ringStart = RING_LEAD + RING_TURN;
     ws.forEach((wd, ri) => {
       const r = r0 - ri * h * RING_GAP;
-      /* A letter's copies are spread so that the last of them lands where
-         the letter behind it sits: the ring then reads as one even string
-         of beads, every (copies + 1)th of them a letter. */
       const turn = RING_TURN / (ringSpeed === "same" ? 1 : ri + 1);
       /* The same spacing serves both readings: strung round one ring it puts
-         the copies evenly between the letters, and spread over rings of
-         their own it turns each rank a notch against the one outside it. */
+         the copies evenly between the letters, and spread over rings of their
+         own it turns each rank a notch against the one outside it. */
       const ed = ringEven ? turn / (wd.length * (echoes + 1)) : echoDelay;
+      const dir = ringDir === "same" ? 1 : ri % 2 ? -1 : 1;
+      /* One letter behind the next by exactly the time it takes to travel a
+         letter-gap: they run on from the same point and end up evenly spaced
+         without ever having to be put into place. */
+      const gap = turn / wd.length;
       wd.forEach((i, j) => {
         letters.push({
-          id: i, ch: chars[i], blank: false, group: ri, closed: wd.length > 2, fill: tone(i), ed,
-          cx: STAGE / 2, cy: STAGE / 2, r, rank: h * RING_RANK,
-          a0: -Math.PI / 2 + (2 * Math.PI * j) / wd.length,
-          ring: ri,
-          spin: ((ringDir === "same" ? 1 : ri % 2 ? -1 : 1) *
-                 (ringSpeed === "same" ? 1 : ri + 1) * 2 * Math.PI) / RING_TURN,
-          t0: (letters.length + 1) * RING_STEP,
+          id: i, ch: chars[i], blank: false, group: ri, fill: tone(i), ed,
+          cx: STAGE / 2, cy: STAGE / 2, r, rank: h * RING_RANK, ring: ri,
+          a0: -Math.PI / 2,
+          spin: (dir * (ringSpeed === "same" ? 1 : ri + 1) * 2 * Math.PI) / RING_TURN,
+          born: RING_LEAD + j * gap,
         });
       });
     });
@@ -637,15 +652,14 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      which is why a new card is only ever a new line here. */
   function posAt(Lt, t, w, k) {
     if (card === "rings") {
-      const out = Math.min(1, Math.max(0, (t - Lt.t0) / RING_ENTRY));
       const breath = ringBreath ? 1 + ringBreath * Math.sin((2 * Math.PI * (Lt.ring + 1) * t) / RING_TURN) : 1;
-      const r = (Lt.r - (ringMandala ? k * Lt.rank : 0)) * ease(out) * breath;
-      /* One clock for the turn, not each letter's own: they come out of the
-         middle one behind another, but once they are out they hold the even
-         spacing they were laid out with. */
-      const a = Lt.a0 + Lt.spin * Math.max(0, t - ringStart);
+      const r = (Lt.r - (ringMandala ? k * Lt.rank : 0)) * breath;
+      const a = Lt.a0 + Lt.spin * (t - Lt.born);
       /* Facing letters lean with the ring, like beads threaded on it. */
-      return { x: Lt.cx + Math.cos(a) * r, y: Lt.cy + Math.sin(a) * r, rot: ringFace ? a + Math.PI / 2 : 0 };
+      return {
+        x: Lt.cx + Math.cos(a) * r, y: Lt.cy + Math.sin(a) * r,
+        a, out: t >= Lt.born, rot: ringFace ? a + Math.PI / 2 : 0,
+      };
     }
     if (card === "eight") {
       const th = Lt.a0 + (2 * Math.PI * t) / EIGHT_TURN;
@@ -674,6 +688,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     const at = posAt(Lt, t, w, k);
     return {
       p: card === "sway" ? align(Lt, t) : 0.5, spec, w, rot: at.rot || 0,
+      a: at.a, out: at.out !== false,
       x: at.x + wobble(Lt.id, frame, 0) * JITTER,
       y: at.y + wobble(Lt.id, frame, 1) * JITTER,
     };
@@ -687,31 +702,25 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
        (ringSeparate is what the thread is either way here; what it changes
        is nothing else, so the rings simply always get their own.) */
     if (thread && card === "rings") {
-      /* Every ring that carries beads gets the thread they are strung on,
-         laid down before them: one ring when the copies share the letters'
-         circumference, and one per rank when each rank has its own. */
+      /* The thread is the arcs from one letter to the next, never a whole
+         circle, so it draws itself behind them as they run on, and a ring
+         that is still filling shows only as much of itself as it has. */
       for (let k = ringMandala ? echoes : 0; k >= 0; k--) {
         let run = [], g = -1, tone = null;
         const flush = () => {
-          if (run.length > 1) {
-            const r = run.reduce((n, [x, y]) => n + Math.hypot(x - STAGE / 2, y - STAGE / 2), 0) / run.length;
-            tiles.push({ kind: "thread", id: `ring${k}-${g}`, d: circlePath(STAGE / 2, STAGE / 2, r), colour: tone, width: tileSize * THREAD, alpha: 1 });
-          }
+          if (run.length > 1) tiles.push({ kind: "thread", id: `ring${k}-${g}`, d: arcPath(run, STAGE / 2, STAGE / 2), colour: tone, width: tileSize * THREAD, alpha: 1 });
           run = [];
         };
         for (const Lt of letters) {
           if (Lt.group !== g) { flush(); g = Lt.group; }
           const q = place(Lt, k, frame);
+          if (!q.out) continue;
           tone = toneOf(Lt, k);
-          run.push([q.x, q.y]);
+          run.push([q.x, q.y, q.a]);
         }
         flush();
       }
     }
-    /* Rank by rank, the furthest copy first: the whole trail paints behind
-       the whole word rather than letter by letter, and since every copy is
-       the same glyph at the same size, one that has caught up with its
-       letter disappears under it. */
     for (let k = echoes; k >= 0; k--) {
       const alpha = solid || k === 0 ? 1 : (echoAlpha * (echoes - k + 1)) / echoes;
       /* The thread this rank is strung on — one run per column, laid down
@@ -746,6 +755,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       for (const Lt of letters) {
         if (Lt.blank) continue;
         const q = place(Lt, k, frame);
+        if (!q.out) continue;              // not on the ring yet
         const tone = toneOf(Lt, k);
         tiles.push({
           kind: "tile", id: Lt.id * 16 + k, ch: Lt.ch, p: shaped ? 0.5 : q.p,
@@ -834,7 +844,7 @@ function mount(stage, mode, opts = {}) {
   /* A rank's thread: one SVG polyline, created in the order the snapshot
      lists it so it sits under its own beads and over the rank behind. */
   const SVG_NS = "http://www.w3.org/2000/svg";
-  function paintThread(t) {
+  function paintThread(t, depth) {
     let el = els.get(t.id);
     if (!el) {
       el = document.createElementNS(SVG_NS, "svg");
@@ -848,6 +858,7 @@ function mount(stage, mode, opts = {}) {
       layer.appendChild(el);
       els.set(t.id, el);
     }
+    el.style.zIndex = depth;
     const line = el.firstChild;
     line.setAttribute("d", t.d);
     line.setAttribute("stroke", t.colour);
@@ -861,9 +872,14 @@ function mount(stage, mode, opts = {}) {
     /* Volume's bars sink out of sight under the floor. */
     layer.style.clipPath = s.clipBelow ? `inset(0 0 ${(STAGE - s.clipBelow).toFixed(1)}px 0)` : "";
     const seen = new Set();
+    /* Elements are made as they are first needed, so on a card where the
+       letters arrive over time the order they sit in the layer is the order
+       they turned up, not the order they should be painted in. The snapshot
+       lists them back to front, so that index is the stacking order. */
+    let depth = 0;
     for (const t of s.tiles) {
       seen.add(t.id);
-      if (t.kind === "thread") { paintThread(t); continue; }
+      if (t.kind === "thread") { paintThread(t, depth++); continue; }
       let el = els.get(t.id);
       if (!el) {
         el = document.createElement("div");
@@ -886,6 +902,7 @@ function mount(stage, mode, opts = {}) {
       /* translate(-50%, -50%) centres the letter on its spot, whatever it is. */
       /* A percentage translate is a share of the element's own width, which
          is exactly the letter's width — so the edges land where they should. */
+      el.style.zIndex = depth++;
       el.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(${(-t.p * 100).toFixed(2)}%, -50%)` +
         (t.rot ? ` rotate(${t.rot.toFixed(4)}rad)` : "");
       if (t.alpha < 1) el.style.opacity = t.alpha.toFixed(3);
