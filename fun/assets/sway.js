@@ -41,7 +41,7 @@
      colour   blue · orange · pink · white, each taking a turn as the
               background; the sticker one colour, the copies solid steps
               along a gradient between the other two, letters always slate
-     echo     four copies, 60 ms apart
+     echo     six copies, 120 ms apart
      type     Switzer 500 slate on a sticker cut to the letter (Collection
               01's), the sticker 0.84 of its row, the column four fifths of
               the frame's height, 95 px clear of the sides
@@ -96,8 +96,8 @@ const TILE = 0.84;              // a sticker's height as a share of its row, so 
 const TILE_W = 1.42;            // … and its width as a share of its own height
 const TILE_FONT = 0.52;         // … and the letter's size inside it
 const CHAMFER = 0.26;           // "chamfer": how much of the height each cut corner takes
-const ECHOES = 4;               // how many copies trail behind each letter…
-const ECHO_MS = 60;             // … each one showing where the letter was this long ago…
+const ECHOES = 6;               // how many copies trail behind each letter…
+const ECHO_MS = 120;            // … each one showing where the letter was this long ago…
 const ECHO_ALPHA = 0.5;         // … at this opacity, when the copies are set by opacity at all
 const COLOUR = "spectrum";      // how the palette is spent. "spectrum": the letters take one
                                 // colour, the background the second, and the copies are solid steps
