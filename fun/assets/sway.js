@@ -118,8 +118,10 @@ const RING_LAG = 90;            // each letter sets off this long after the one 
 const RING_BAR_TURN = 4600;     // "bar": ms for the word to travel once round the ring
 const RING_BAR_BEATS = 1;       // … how many times in that round it packs and spreads again…
 const RING_BAR_TIGHT = 1.2;     // … how close the letters pack, in letter-widths…
-const RING_BAR_SQUEEZE = 0.5;   // … and how much of the ring the packed bar is allowed to take,
-                                //   which is what sets the letter size on a bar ring
+const RING_BAR_SQUEEZE = 0.5;   // … how much of the ring the packed bar takes, which is also
+                                //   what sets the letter size on a bar ring…
+const RING_BAR_SPREAD = 1;      // … and how much of it the spread bar takes
+const RING_BAR_EASE = "sine";   // … and the curve it packs and spreads on
 /* Eights */
 const EIGHT_TURN = 7000;        // ms to travel the whole eight once
 const EIGHT_FLIP = 2;           // … and the figure turns over once every this many rounds
@@ -409,7 +411,8 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
                         ringFace = false, ringOne = false, ringMotion = RING_MOTION,
                         ringSteps = RING_STEPS, ringLag = RING_LAG,
                         barTurn = RING_BAR_TURN, barBeats = RING_BAR_BEATS, barTight = RING_BAR_TIGHT,
-                        barSqueeze = RING_BAR_SQUEEZE,
+                        barSqueeze = RING_BAR_SQUEEZE, barSpread = RING_BAR_SPREAD, barEase = RING_BAR_EASE,
+                        ringThread = "ring",
                         /* … and what the copies do with the ring, which is where the mandala comes from */
                         echoIn = 0, echoTurn = 0, echoShrink = 0, ringBloom = 0,
                         /* Eights */
@@ -453,6 +456,15 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     : staggerOpt;
   const passGap = move + hold;
   const ease = shapeOf(curve);
+  /* The bar packs and spreads on a curve of its own — a plain cosine unless
+     told otherwise — and how steep that curve is decides how far the word
+     may close up before an end would have to swing backwards. */
+  const swellEase = shapeOf(barEase);
+  const swellSlope = (() => {
+    let m = 0, prev = swellEase(0);
+    for (let i = 1; i <= 200; i++) { const v = swellEase(i / 200); m = Math.max(m, Math.abs(v - prev) * 200); prev = v; }
+    return m || Math.PI / 2;
+  })();
 
   let rand = rng(seed);
   let now = 0;                  // virtual ms
@@ -541,14 +553,15 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       const gap = (dir * 2 * Math.PI) / wd.length; // one letter-gap, in radians
       /* The bar's two ends: at its widest the letters are spread round the
          whole ring, at its tightest they are shoulder to shoulder. */
-      const wide = (2 * Math.PI) / wd.length;
+      const wide = ((2 * Math.PI) / wd.length) * barSpread;
       let tight = Math.min(wide, (boxW(h) * barTight) / r);
       /* However tightly the letters would pack, the word may only close up
          by as much as the ends can make up by running faster: past that the
          head would have to swing backwards to let the word shrink, and the
          whole thing stops reading as one bar travelling. */
       if (wd.length > 1) {
-        tight = Math.max(tight, wide - 3.6 / ((wd.length - 1) * Math.max(1, barBeats)));
+        const most = (0.92 * 2 * Math.PI) / ((wd.length - 1) * Math.max(1, barBeats) * swellSlope);
+        tight = Math.max(tight, wide - most);
       }
       wd.forEach((i, j) => {
         letters.push({
@@ -684,7 +697,8 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
            the other way about. Whole turns and whole swells, so the round
            closes on itself. */
         const u = (Math.max(0, local) % barTurn) / barTurn;
-        const swell = (1 - Math.cos(2 * Math.PI * barBeats * u)) / 2;
+        const phase = (barBeats * u) % 1;
+        const swell = Math.min(1, Math.max(0, swellEase(phase < 0.5 ? phase * 2 : 2 - phase * 2)));
         const gap = Lt.tight + (Lt.wide - Lt.tight) * swell;
         a = -Math.PI / 2 + Lt.dir * (2 * Math.PI * u + ((Lt.n - 1) / 2 - Lt.slot) * gap);
         /* The ring itself can breathe with the swell: wider as the word
@@ -761,7 +775,23 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
        before the beads: it stretches while the word is striding and gathers
        back up as it rests, and it never draws a circle the word has not
        walked. */
-    if (thread && card === "rings") {
+    if (thread && card === "rings" && ringThread !== "ring" && echoes) {
+      /* The other way to string a mandala: not round each ring but across
+         them — one thread down the radius from a letter through its own
+         copies, so the word reads as spokes rather than as circles. */
+      for (const Lt of letters) {
+        if (Lt.blank) continue;
+        const spoke = [];
+        for (let k = 0; k <= echoes; k++) {
+          const q = place(Lt, k, frame);
+          if (q.out) spoke.push([q.x, q.y]);
+        }
+        if (spoke.length > 1) {
+          tiles.push({ kind: "thread", id: `spoke${Lt.id}`, d: threadPath(spoke, false), colour: toneOf(Lt, 0), width: tileSize * THREAD, alpha: 1 });
+        }
+      }
+    }
+    if (thread && card === "rings" && ringThread !== "spoke") {
       /* Only the letters' own ring is strung, unless the copies have rings
          of their own to be strung on — which is the mandala. */
       for (let k = echoIn || echoTurn ? echoes : 0; k >= 0; k--) {
