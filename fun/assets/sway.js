@@ -371,7 +371,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
                         shape = SHAPE, thread = true, weight = WEIGHT,
                         /* Rings */
                         ringDir = "alternate", ringSpeed = "stack", ringBreath = 0, ringOne = false,
-                        ringSeparate = false, ringFace = false,
+                        ringSeparate = false, ringFace = false, ringEven = true,
                         /* Eights */
                         eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
                         /* Volume */
@@ -389,7 +389,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   /* A row's height: the column's own on Sway, whatever the card worked out
      for itself on the others. */
   let tileSize = L.h, tileH = L.h * TILE, tileW = tileH * TILE_W;
-  let rings = 1;                            // how many rings the text made
+  let rings = 1, ringStart = 0;             // how many rings the text made, and when they start turning
   const syncTile = () => { tileH = tileSize * TILE; tileW = tileH * TILE_W; };
 
   /* How far a lane's flush edges sit from its middle. A curve that
@@ -477,15 +477,25 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       const r0 = STAGE / 2 - LANE_PAD / 2 - w / 2;
       const rn = r0 - (ws.length - 1) * h * RING_GAP;
       if (rn < h * 0.8) continue;
-      if (ws.every((wd, i) => (2 * Math.PI * (r0 - i * h * RING_GAP)) / wd.length >= w * 1.08)) break;
+      /* Every bead has to fit, not just every letter: with the copies spread
+         evenly the ring carries (copies + 1) beads per letter, and they
+         should sit apart with the thread showing between them. */
+      const beads = (wd) => wd.length * (ringEven ? echoes + 1 : 1);
+      if (ws.every((wd, i) => (2 * Math.PI * (r0 - i * h * RING_GAP)) / beads(wd) >= w * 1.06)) break;
     }
     tileSize = h;
     const r0 = STAGE / 2 - LANE_PAD / 2 - boxW(h) / 2;
+    ringStart = ws.reduce((n, wd) => n + wd.length, 0) * RING_STEP + RING_ENTRY;
     ws.forEach((wd, ri) => {
       const r = r0 - ri * h * RING_GAP;
+      /* A letter's copies are spread so that the last of them lands where
+         the letter behind it sits: the ring then reads as one even string
+         of beads, every (copies + 1)th of them a letter. */
+      const turn = RING_TURN / (ringSpeed === "same" ? 1 : ri + 1);
+      const ed = ringEven ? turn / (wd.length * (echoes + 1)) : echoDelay;
       wd.forEach((i, j) => {
         letters.push({
-          id: i, ch: chars[i], blank: false, group: ri, closed: wd.length > 2, fill: tone(i),
+          id: i, ch: chars[i], blank: false, group: ri, closed: wd.length > 2, fill: tone(i), ed,
           cx: STAGE / 2, cy: STAGE / 2, r,
           a0: -Math.PI / 2 + (2 * Math.PI * j) / wd.length,
           ring: ri,
@@ -605,7 +615,10 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       const out = Math.min(1, Math.max(0, (t - Lt.t0) / RING_ENTRY));
       const breath = ringBreath ? 1 + ringBreath * Math.sin((2 * Math.PI * (Lt.ring + 1) * t) / RING_TURN) : 1;
       const r = Lt.r * ease(out) * breath;
-      const a = Lt.a0 + Lt.spin * Math.max(0, t - Lt.t0 - RING_ENTRY);
+      /* One clock for the turn, not each letter's own: they come out of the
+         middle one behind another, but once they are out they hold the even
+         spacing they were laid out with. */
+      const a = Lt.a0 + Lt.spin * Math.max(0, t - ringStart);
       /* Facing letters lean with the ring, like beads threaded on it. */
       return { x: Lt.cx + Math.cos(a) * r, y: Lt.cy + Math.sin(a) * r, rot: ringFace ? a + Math.PI / 2 : 0 };
     }
@@ -630,7 +643,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      hand-held wobble is the letter's own, shared by its copies, so at rest
      they stack exactly. */
   function place(Lt, k, frame) {
-    const t = now - k * echoDelay;
+    const t = now - k * (Lt.ed || echoDelay);
     const spec = cut ? stickerFor(Lt.ch, tileH, weight) : null;
     const w = cut ? spec.W : shaped ? tileW : L.w;
     const at = posAt(Lt, t, w);
@@ -644,6 +657,23 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   function snapshot(frame) {
     const tiles = [];
     const solid = colour === "spectrum" || colour === "trail";
+    /* The rings are strung on one thread each — the ring itself — laid down
+       before any of the beads, so every letter and every copy sits on it.
+       (ringSeparate is what the thread is either way here; what it changes
+       is nothing else, so the rings simply always get their own.) */
+    if (thread && card === "rings") {
+      let run = [], g = -1;
+      const flush = () => {
+        if (run.length > 1) tiles.push({ kind: "thread", id: `ring${g}`, d: threadPath(run, true), colour: stops[0], width: tileSize * THREAD, alpha: 1 });
+        run = [];
+      };
+      for (const Lt of letters) {
+        if (Lt.group !== g) { flush(); g = Lt.group; }
+        const q = place(Lt, 0, frame);
+        run.push([q.x, q.y]);
+      }
+      flush();
+    }
     /* Rank by rank, the furthest copy first: the whole trail paints behind
        the whole word rather than letter by letter, and since every copy is
        the same glyph at the same size, one that has caught up with its
@@ -653,12 +683,9 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       /* The thread this rank is strung on — one run per column, laid down
          before its own beads. A space breaks nothing: the thread simply
          carries on to the next letter. */
-      if (thread) {
-        /* The rings are strung on one thread the whole way round and then
-           on inwards, like a chain — unless the card asks for a bracelet
-           per ring instead. Everywhere else a run is one group: a column,
-           an eight, a bar. */
-        const oneRun = card === "rings" && !ringSeparate;
+      /* A run is one group — a column, an eight, a bar. The rings are the
+         exception: their thread is the ring itself and is already down. */
+      if (thread && card !== "rings") {
         let run = [], g = -1, tone = null, closed = false;
         const flush = () => {
           if (run.length > 1) {
@@ -669,12 +696,11 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
         for (const Lt of letters) {
           if (Lt.blank) continue;
           if (card === "volume" && volThread === "horizon") break;
-          if (!oneRun && Lt.group !== g) { flush(); g = Lt.group; closed = !!Lt.closed; }
+          if (Lt.group !== g) { flush(); g = Lt.group; closed = !!Lt.closed; }
           const q = place(Lt, k, frame);
           tone = toneOf(Lt, k);
           run.push([q.x, q.y]);
         }
-        if (oneRun) { g = 0; closed = rings === 1; }
         flush();
         /* Volume also strings the tops of the bars together: that line is
            the horizon the card is named for. */
@@ -713,7 +739,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
        turns; the eights and the bars are in their stride from the first
        frame. */
     get loopStart() {
-      if (card === "rings") return letters.length * RING_STEP + RING_ENTRY;
+      if (card === "rings") return ringStart;
       if (card === "eight" || card === "volume") return 0;
       return (chars.length - 1) * Math.abs(stagger) + BEAT + passGap;
     },
