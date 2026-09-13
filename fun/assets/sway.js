@@ -116,7 +116,7 @@ const RING_HOLD = 800;          // … and the rest after it
 const RING_SWING = 0.9;         // "swing": how far it rocks, as a share of a letter-gap
 const RING_LAG = 90;            // each letter sets off this long after the one in front
 const RING_BAR_TURN = 4600;     // "bar": ms for the word to travel once round the ring
-const RING_BAR_LAG = 0.38;      // … how late in the round the tail sets off after the head…
+const RING_BAR_BEATS = 1;       // … how many times in that round it packs and spreads again…
 const RING_BAR_TIGHT = 1.2;     // … how close the letters pack, in letter-widths…
 const RING_BAR_SQUEEZE = 0.5;   // … and how much of the ring the packed bar is allowed to take,
                                 //   which is what sets the letter size on a bar ring
@@ -408,7 +408,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
                         /* Rings */
                         ringFace = false, ringOne = false, ringMotion = RING_MOTION,
                         ringSteps = RING_STEPS, ringLag = RING_LAG,
-                        barTurn = RING_BAR_TURN, barLag = RING_BAR_LAG, barTight = RING_BAR_TIGHT,
+                        barTurn = RING_BAR_TURN, barBeats = RING_BAR_BEATS, barTight = RING_BAR_TIGHT,
                         barSqueeze = RING_BAR_SQUEEZE,
                         /* Eights */
                         eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
@@ -451,20 +451,6 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     : staggerOpt;
   const passGap = move + hold;
   const ease = shapeOf(curve);
-  /* Each edge makes its whole turn in what is left of the round after the
-     tail's late start, so both end the round exactly one turn on and the
-     loop closes. The widest the bar ever opens, given the curve in force,
-     is measured once here so the opening can be read as a share of it. */
-  const barRun = Math.max(0.2, 1 - barLag);
-  const barPeak = (() => {
-    let m = 0;
-    for (let i = 0; i <= 120; i++) {
-      const u = i / 120;
-      m = Math.max(m, ease(Math.min(1, u / barRun))
-                   - ease(Math.min(1, Math.max(0, (u - barLag) / barRun))));
-    }
-    return m;
-  })();
 
   let rand = rng(seed);
   let now = 0;                  // virtual ms
@@ -554,14 +540,21 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       /* The bar's two ends: at its widest the letters are spread round the
          whole ring, at its tightest they are shoulder to shoulder. */
       const wide = (2 * Math.PI) / wd.length;
-      const tight = Math.min(wide, (boxW(h) * barTight) / r);
+      let tight = Math.min(wide, (boxW(h) * barTight) / r);
+      /* However tightly the letters would pack, the word may only close up
+         by as much as the ends can make up by running faster: past that the
+         head would have to swing backwards to let the word shrink, and the
+         whole thing stops reading as one bar travelling. */
+      if (wd.length > 1) {
+        tight = Math.max(tight, wide - 3.6 / ((wd.length - 1) * Math.max(1, barBeats)));
+      }
       wd.forEach((i, j) => {
         letters.push({
           id: i, ch: chars[i], blank: false, group: ri, fill: tone(i), ed: echoDelay,
           cx: STAGE / 2, cy: STAGE / 2, r, ring: ri, dir, gap,
           step: (dir * 2 * Math.PI) / ringSteps,
           a0: -Math.PI / 2 + j * gap,
-          slot: j, wide, tight,
+          slot: j, n: wd.length, wide, tight,
           off: RING_LEAD + (ringMotion === "bar" ? 0 : j * ringLag),
         });
       });
@@ -678,17 +671,17 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       const local = t - Lt.off;
       let a = Lt.a0;
       if (ringMotion === "bar") {
-        /* A loading bar bent round the ring. Two edges travel the same
-           whole turn every round, but the head sets off first and the tail
-           only follows once the head is well away — so the word between
-           them stretches out round the ring and then packs back together,
-           over and over, while the whole thing keeps travelling. */
+        /* A loading bar bent round the ring. Nothing ever stops: the middle
+           of the word goes round at its own steady rate while the word
+           stretches out along the ring and packs back together, so the head
+           runs ahead of the middle while the tail falls behind it and then
+           the other way about. Whole turns and whole swells, so the round
+           closes on itself. */
         const u = (Math.max(0, local) % barTurn) / barTurn;
-        const head = ease(Math.min(1, u / barRun));
-        const tail = ease(Math.min(1, Math.max(0, (u - barLag) / barRun)));
-        const open = barPeak ? (head - tail) / barPeak : 0;
-        const gap = Lt.tight + (Lt.wide - Lt.tight) * open;
-        const ang = -Math.PI / 2 + Lt.dir * (2 * Math.PI * head - Lt.slot * gap);
+        const swell = (1 - Math.cos(2 * Math.PI * barBeats * u)) / 2;
+        const gap = Lt.tight + (Lt.wide - Lt.tight) * swell;
+        const ang = -Math.PI / 2
+          + Lt.dir * (2 * Math.PI * u + ((Lt.n - 1) / 2 - Lt.slot) * gap);
         return {
           x: Lt.cx + Math.cos(ang) * Lt.r, y: Lt.cy + Math.sin(ang) * Lt.r,
           a: ang, out: true, rot: ringFace ? ang + Math.PI / 2 : 0,
