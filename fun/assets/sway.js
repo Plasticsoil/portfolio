@@ -414,7 +414,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
                         barSqueeze = RING_BAR_SQUEEZE, barSpread = RING_BAR_SPREAD, barEase = RING_BAR_EASE,
                         ringThread = "ring",
                         /* … and what the copies do with the ring, which is where the mandala comes from */
-                        echoIn = 0, echoTurn = 0, echoShrink = 0, ringBloom = 0,
+                        echoIn = 0, echoTurn = 0, echoShrink = 0,
                         /* Eights */
                         eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
                         /* Volume */
@@ -701,9 +701,6 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
         const swell = Math.min(1, Math.max(0, swellEase(phase < 0.5 ? phase * 2 : 2 - phase * 2)));
         const gap = Lt.tight + (Lt.wide - Lt.tight) * swell;
         a = -Math.PI / 2 + Lt.dir * (2 * Math.PI * u + ((Lt.n - 1) / 2 - Lt.slot) * gap);
-        /* The ring itself can breathe with the swell: wider as the word
-           spreads, tighter as it packs. */
-        rad *= 1 + ringBloom * (swell - 0.5);
       } else if (local > 0) {
         if (ringMotion === "steady") {
           a += ((Lt.dir * 2 * Math.PI) / RING_TURN) * local;
@@ -1005,6 +1002,13 @@ function mount(stage, mode, opts = {}) {
   }
 
   let raf = 0, last = 0, acc = 0, frame = 0;
+  /* A page that rebuilds the piece while it is running — the lab, changing a
+     number under it — hands back the clock it was on, so the new one picks
+     the motion up where the old one left it instead of starting again. */
+  if (opts.startAt > 0) {
+    eng.step(opts.startAt / 1000);
+    frame = Math.round((opts.startAt / 1000) * fps);
+  }
   function tick(t) {
     if (!last) last = t;
     const dt = Math.min(0.05, (t - last) / 1000);
@@ -1016,9 +1020,12 @@ function mount(stage, mode, opts = {}) {
   }
   const onClick = () => eng.restart();
   stage.addEventListener("click", onClick);
-  paint(0);
+  paint(frame);
   raf = requestAnimationFrame(tick);
-  return { stop() { cancelAnimationFrame(raf); stage.removeEventListener("click", onClick); } };
+  return {
+    stop() { cancelAnimationFrame(raf); stage.removeEventListener("click", onClick); },
+    get now() { return eng.now; },
+  };
 }
 
 export const s = (stage, opts) => mount(stage, "sway", opts);
