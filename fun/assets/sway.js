@@ -46,6 +46,7 @@
               01's), the sticker 0.84 of its row, the column four fifths of
               the frame's height, 95 px clear of the sides
      grain    0.28 overlaid on a light ground, 0.10 screened on a dark one
+     weight   Switzer 500, settled
      open     12 fps for now — 8 and 10 are still on the table; the card is
               called Sway for now (Slide, Drift, Comb, Lag were the others)
 
