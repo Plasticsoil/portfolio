@@ -105,6 +105,7 @@ const ECHO_ALPHA = 0.5;         // … at this opacity, when the copies are set 
 /* Rings */
 const RING_TURN = 9000;         // ms for the whole set of rings to come back round
 const RING_GAP = 1.8;           // the step from one ring to the next, in sticker heights
+const RING_RANK = 1.3;          // … and from one rank of copies to the next, when they take rings of their own
 const RING_ENTRY = 900;         // the letters push out of the middle over this long…
 const RING_STEP = 70;           // … one behind another
 /* Eights */
@@ -271,6 +272,13 @@ function threadPath(pts, closed) {
   return closed ? d + "Z" : d;
 }
 
+/* A ring's thread is the ring: an exact circle, not a curve fitted through
+   the beads. Five beads are too few for a spline to stay on the circle they
+   are sitting on — it bulges out past them, and past the frame. */
+function circlePath(cx, cy, r) {
+  return `M${(cx - r).toFixed(1)},${cy.toFixed(1)}A${r.toFixed(1)},${r.toFixed(1)} 0 1,0 ${(cx + r).toFixed(1)},${cy.toFixed(1)}A${r.toFixed(1)},${r.toFixed(1)} 0 1,0 ${(cx - r).toFixed(1)},${cy.toFixed(1)}Z`;
+}
+
 /* Walk a list of colours: t = 0 is the first, t = 1 the last. */
 function ramp(stops, t) {
   const list = stops.filter(Boolean);
@@ -371,7 +379,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
                         shape = SHAPE, thread = true, weight = WEIGHT,
                         /* Rings */
                         ringDir = "alternate", ringSpeed = "stack", ringBreath = 0, ringOne = false,
-                        ringSeparate = false, ringFace = false, ringEven = true,
+                        ringSeparate = false, ringFace = false, ringEven = true, ringMandala = false,
                         /* Eights */
                         eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
                         /* Volume */
@@ -480,8 +488,12 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       /* Every bead has to fit, not just every letter: with the copies spread
          evenly the ring carries (copies + 1) beads per letter, and they
          should sit apart with the thread showing between them. */
-      const beads = (wd) => wd.length * (ringEven ? echoes + 1 : 1);
-      if (ws.every((wd, i) => (2 * Math.PI * (r0 - i * h * RING_GAP)) / beads(wd) >= w * 1.06)) break;
+      const beads = (wd) => wd.length * (ringEven && !ringMandala ? echoes + 1 : 1);
+      /* A mandala puts every rank of copies on a ring of its own inside the
+         letters', so the innermost of those is what has to fit. */
+      const inner = (i) => r0 - i * h * RING_GAP - (ringMandala ? echoes * h * RING_RANK : 0);
+      if (inner(ws.length - 1) < h * 0.9) continue;
+      if (ws.every((wd, i) => (2 * Math.PI * inner(i)) / beads(wd) >= w * 1.06)) break;
     }
     tileSize = h;
     const r0 = STAGE / 2 - LANE_PAD / 2 - boxW(h) / 2;
@@ -492,11 +504,14 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
          the letter behind it sits: the ring then reads as one even string
          of beads, every (copies + 1)th of them a letter. */
       const turn = RING_TURN / (ringSpeed === "same" ? 1 : ri + 1);
+      /* The same spacing serves both readings: strung round one ring it puts
+         the copies evenly between the letters, and spread over rings of
+         their own it turns each rank a notch against the one outside it. */
       const ed = ringEven ? turn / (wd.length * (echoes + 1)) : echoDelay;
       wd.forEach((i, j) => {
         letters.push({
           id: i, ch: chars[i], blank: false, group: ri, closed: wd.length > 2, fill: tone(i), ed,
-          cx: STAGE / 2, cy: STAGE / 2, r,
+          cx: STAGE / 2, cy: STAGE / 2, r, rank: h * RING_RANK,
           a0: -Math.PI / 2 + (2 * Math.PI * j) / wd.length,
           ring: ri,
           spin: ((ringDir === "same" ? 1 : ri % 2 ? -1 : 1) *
@@ -610,11 +625,11 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   /* Where a letter is at time t, whichever card this is. Everything else —
      the copies, the threads, the stickers — is drawn from this one answer,
      which is why a new card is only ever a new line here. */
-  function posAt(Lt, t, w) {
+  function posAt(Lt, t, w, k) {
     if (card === "rings") {
       const out = Math.min(1, Math.max(0, (t - Lt.t0) / RING_ENTRY));
       const breath = ringBreath ? 1 + ringBreath * Math.sin((2 * Math.PI * (Lt.ring + 1) * t) / RING_TURN) : 1;
-      const r = Lt.r * ease(out) * breath;
+      const r = (Lt.r - (ringMandala ? k * Lt.rank : 0)) * ease(out) * breath;
       /* One clock for the turn, not each letter's own: they come out of the
          middle one behind another, but once they are out they hold the even
          spacing they were laid out with. */
@@ -646,7 +661,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     const t = now - k * (Lt.ed || echoDelay);
     const spec = cut ? stickerFor(Lt.ch, tileH, weight) : null;
     const w = cut ? spec.W : shaped ? tileW : L.w;
-    const at = posAt(Lt, t, w);
+    const at = posAt(Lt, t, w, k);
     return {
       p: card === "sway" ? align(Lt, t) : 0.5, spec, w, rot: at.rot || 0,
       x: at.x + wobble(Lt.id, frame, 0) * JITTER,
@@ -662,17 +677,26 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
        (ringSeparate is what the thread is either way here; what it changes
        is nothing else, so the rings simply always get their own.) */
     if (thread && card === "rings") {
-      let run = [], g = -1;
-      const flush = () => {
-        if (run.length > 1) tiles.push({ kind: "thread", id: `ring${g}`, d: threadPath(run, true), colour: stops[0], width: tileSize * THREAD, alpha: 1 });
-        run = [];
-      };
-      for (const Lt of letters) {
-        if (Lt.group !== g) { flush(); g = Lt.group; }
-        const q = place(Lt, 0, frame);
-        run.push([q.x, q.y]);
+      /* Every ring that carries beads gets the thread they are strung on,
+         laid down before them: one ring when the copies share the letters'
+         circumference, and one per rank when each rank has its own. */
+      for (let k = ringMandala ? echoes : 0; k >= 0; k--) {
+        let run = [], g = -1, tone = null;
+        const flush = () => {
+          if (run.length > 1) {
+            const r = run.reduce((n, [x, y]) => n + Math.hypot(x - STAGE / 2, y - STAGE / 2), 0) / run.length;
+            tiles.push({ kind: "thread", id: `ring${k}-${g}`, d: circlePath(STAGE / 2, STAGE / 2, r), colour: tone, width: tileSize * THREAD, alpha: 1 });
+          }
+          run = [];
+        };
+        for (const Lt of letters) {
+          if (Lt.group !== g) { flush(); g = Lt.group; }
+          const q = place(Lt, k, frame);
+          tone = toneOf(Lt, k);
+          run.push([q.x, q.y]);
+        }
+        flush();
       }
-      flush();
     }
     /* Rank by rank, the furthest copy first: the whole trail paints behind
        the whole word rather than letter by letter, and since every copy is
