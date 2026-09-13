@@ -410,6 +410,8 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
                         ringSteps = RING_STEPS, ringLag = RING_LAG,
                         barTurn = RING_BAR_TURN, barBeats = RING_BAR_BEATS, barTight = RING_BAR_TIGHT,
                         barSqueeze = RING_BAR_SQUEEZE,
+                        /* … and what the copies do with the ring, which is where the mandala comes from */
+                        echoIn = 0, echoTurn = 0, echoShrink = 0, ringBloom = 0,
                         /* Eights */
                         eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
                         /* Volume */
@@ -661,6 +663,10 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     return Lt.fill;
   }
 
+  /* How big rank k is drawn: the copies can step down in size as they step
+     inside the ring, which is the other half of the mandala. */
+  function rankScale(k) { return k ? Math.max(0.15, 1 - k * echoShrink) : 1; }
+
   /* Where a letter is at time t, whichever card this is. Everything else —
      the copies, the threads, the stickers — is drawn from this one answer,
      which is why a new card is only ever a new line here. */
@@ -669,7 +675,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       /* Whichever way the ring travels, a letter waits out its own delay
          first — so the first letter leads and the rest follow it. */
       const local = t - Lt.off;
-      let a = Lt.a0;
+      let a = Lt.a0, rad = Lt.r;
       if (ringMotion === "bar") {
         /* A loading bar bent round the ring. Nothing ever stops: the middle
            of the word goes round at its own steady rate while the word
@@ -680,14 +686,11 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
         const u = (Math.max(0, local) % barTurn) / barTurn;
         const swell = (1 - Math.cos(2 * Math.PI * barBeats * u)) / 2;
         const gap = Lt.tight + (Lt.wide - Lt.tight) * swell;
-        const ang = -Math.PI / 2
-          + Lt.dir * (2 * Math.PI * u + ((Lt.n - 1) / 2 - Lt.slot) * gap);
-        return {
-          x: Lt.cx + Math.cos(ang) * Lt.r, y: Lt.cy + Math.sin(ang) * Lt.r,
-          a: ang, out: true, rot: ringFace ? ang + Math.PI / 2 : 0,
-        };
-      }
-      if (local > 0) {
+        a = -Math.PI / 2 + Lt.dir * (2 * Math.PI * u + ((Lt.n - 1) / 2 - Lt.slot) * gap);
+        /* The ring itself can breathe with the swell: wider as the word
+           spreads, tighter as it packs. */
+        rad *= 1 + ringBloom * (swell - 0.5);
+      } else if (local > 0) {
         if (ringMotion === "steady") {
           a += ((Lt.dir * 2 * Math.PI) / RING_TURN) * local;
         } else if (ringMotion === "swing") {
@@ -704,8 +707,14 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
           a += Lt.step * (k + ease(Math.min(1, (local - k * pulse) / RING_MOVE)));
         }
       }
+      /* Where the mandala comes from: a copy can step inside the ring and
+         be turned a little further round it than the letter it follows. */
+      if (k) {
+        rad *= Math.max(0.1, 1 - k * echoIn);
+        a += (Lt.dir * k * echoTurn * Math.PI) / 180;
+      }
       return {
-        x: Lt.cx + Math.cos(a) * Lt.r, y: Lt.cy + Math.sin(a) * Lt.r,
+        x: Lt.cx + Math.cos(a) * rad, y: Lt.cy + Math.sin(a) * rad,
         a, out: true, rot: ringFace ? a + Math.PI / 2 : 0,
       };
     }
@@ -731,11 +740,14 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      they stack exactly. */
   function place(Lt, k, frame) {
     const t = now - k * (Lt.ed || echoDelay);
-    const spec = cut ? stickerFor(Lt.ch, tileH, weight) : null;
-    const w = cut ? spec.W : shaped ? tileW : L.w;
+    /* A copy may be drawn smaller than the letter it follows, so its
+       sticker is cut at its own size rather than shrunk afterwards. */
+    const sc = rankScale(k);
+    const spec = cut ? stickerFor(Lt.ch, tileH * sc, weight) : null;
+    const w = cut ? spec.W : (shaped ? tileW : L.w) * sc;
     const at = posAt(Lt, t, w, k);
     return {
-      p: card === "sway" ? align(Lt, t) : 0.5, spec, w, rot: at.rot || 0,
+      p: card === "sway" ? align(Lt, t) : 0.5, spec, w, sc, rot: at.rot || 0,
       a: at.a, out: at.out !== false,
       x: at.x + wobble(Lt.id, frame, 0) * JITTER,
       y: at.y + wobble(Lt.id, frame, 1) * JITTER,
@@ -750,10 +762,12 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
        back up as it rests, and it never draws a circle the word has not
        walked. */
     if (thread && card === "rings") {
-      for (let k = 0; k >= 0; k--) {
+      /* Only the letters' own ring is strung, unless the copies have rings
+         of their own to be strung on — which is the mandala. */
+      for (let k = echoIn || echoTurn ? echoes : 0; k >= 0; k--) {
         let run = [], g = -1, tone = null;
         const flush = () => {
-          if (run.length > 1) tiles.push({ kind: "thread", id: `ring${k}-${g}`, d: arcPath(run, STAGE / 2, STAGE / 2), colour: tone, width: tileSize * THREAD, alpha: 1 });
+          if (run.length > 1) tiles.push({ kind: "thread", id: `ring${k}-${g}`, d: arcPath(run, STAGE / 2, STAGE / 2), colour: tone, width: tileSize * THREAD * rankScale(k), alpha: 1 });
           run = [];
         };
         for (const Lt of letters) {
@@ -805,8 +819,8 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
         tiles.push({
           kind: "tile", id: Lt.id * 16 + k, ch: Lt.ch, p: shaped ? 0.5 : q.p,
           shape: shaped ? shape : null, spec: q.spec,
-          w: q.w, h: shaped ? tileH : tileSize,
-          size: cut ? q.spec.size : shaped ? tileH * TILE_FONT : tileSize * font,
+          w: q.w, h: (shaped ? tileH : tileSize) * q.sc,
+          size: cut ? q.spec.size : (shaped ? tileH * TILE_FONT : tileSize * font) * q.sc,
           weight,
           fill: shaped ? tone : null,      // the sticker
           ink: shaped ? LETTER : tone,     // the letter on it
