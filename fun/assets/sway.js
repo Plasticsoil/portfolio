@@ -38,9 +38,10 @@
               middle, a hair of overshoot at the edge
      timing   1300 ms a slide, 380 ms standing at each end, 112 ms
               between one letter and the next (scaled down past 13 letters)
-     rings    the letters round one ring, strung on it, each with a tight
-              trail of copies behind it — ringEven and ringMandala are the
-              two other readings the card can take
+     rings    the word walks its ring in strides, the tail chasing the head
+              and coming to rest with it; the letters sit a bead apart on it,
+              each with a tight
+              trail of copies behind it
      colour   blue · orange · pink · white, each taking a turn as the
               background; the sticker one colour, the copies solid steps
               along a gradient between the other two, letters always slate
@@ -106,11 +107,15 @@ const ECHOES = 6;               // how many copies trail behind each letter…
 const ECHO_MS = 120;            // … each one showing where the letter was this long ago…
 const ECHO_ALPHA = 0.5;         // … at this opacity, when the copies are set by opacity at all
 /* Rings */
-const RING_TURN = 9000;         // ms for the whole set of rings to come back round
 const RING_GAP = 1.8;           // the step from one ring to the next, in sticker heights
-const RING_RANK = 1.3;          // … and from one rank of copies to the next, when they take rings of their own
-const RING_LEAD = 600;          // the ring turns this long before the first letter runs onto it
-const RING_PACE = 2;            // the first letter takes this many more turns than the last
+const RING_LEAD = 600;          // the word stands still this long before it sets off
+const RING_STEPS = 6;           // … then walks the ring round in this many strides
+const RING_MOVE = 700;          // one stride…
+const RING_HOLD = 800;          // … and the rest after it, long enough that the whole
+                                // word is standing still together for a good part of it
+const RING_LAG = 90;            // each letter sets off this long after the one in front
+const RING_SPACE = 1.32;        // how far apart the letters sit on the ring, in sticker widths —
+                                // wide enough that the thread shows between them
 /* Eights */
 const EIGHT_TURN = 7000;        // ms to travel the whole eight once
 const EIGHT_FLIP = 2;           // … and the figure turns over once every this many rounds
@@ -397,9 +402,8 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
                         echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR,
                         shape = SHAPE, thread = true, weight = WEIGHT,
                         /* Rings */
-                        ringDir = "alternate", ringSpeed = "stack", ringBreath = 0, ringOne = false,
-                        ringSeparate = false, ringFace = false, ringEven = false, ringMandala = false,
-                        ringPace = 2,
+                        ringFace = false, ringOne = false,
+                        ringSteps = RING_STEPS, ringLag = RING_LAG,
                         /* Eights */
                         eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
                         /* Volume */
@@ -491,69 +495,45 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     syncTile();
   }
 
-  /* Rings — a word to a ring, the first word outermost, every letter evenly
-     round its own circumference, all of it strung on one thread. The letters
-     run onto the ring one behind another from the same point, a letter-gap
-     apart in time, so by the time the last one is on they are evenly spaced
-     and stay that way; from then on the ring simply turns — the inner ones
-     quicker and against the one outside them, a whole number of turns each
-     so the round joins back onto itself. A letter's copies follow it along
-     the ring, and the thread is the arcs from one letter to the next, so it
-     draws itself as they come out rather than standing there as a finished
-     circle waiting to be filled.
+  /* Rings — the word sits on a ring as one piece, its letters a bead apart,
+     and walks it round in strides: the first letter sets off, the rest follow
+     a beat behind one another, and they all come to rest together before the
+     next stride. The tail chases the head, catches it, and waits. A letter's
+     copies follow it along the ring, so a stride smears them out behind it
+     and the rest gathers them back under the letter. The thread is the arcs
+     from one letter to the next, so it stretches with them.
 
-     ringEven spreads those copies so the last of them lands where the letter
-     behind it sits, which beads the whole circumference at one spacing but
-     costs letter size; off, they stay a tight trail and the letters are as
-     big as the ring will carry. ringMandala gives every rank a ring of its
-     own inside the letters' instead. */
+     Whole strides make up the round — the word is back where it started when
+     the last one lands — so the piece loops on itself exactly. */
   function buildRings() {
     const ws = ringOne ? [words().flat()] : words();
     rings = ws.length;
+    /* The word has to sit on its ring without meeting its own tail, so the
+       letters come down in size until the longest of them takes up no more
+       than four fifths of the circumference it is on. */
     let h = MAX_H;
     for (; h > 14; h -= 2) {
       const w = boxW(h);
       const r0 = STAGE / 2 - LANE_PAD / 2 - w / 2;
-      const rn = r0 - (ws.length - 1) * h * RING_GAP;
-      if (rn < h * 0.8) continue;
-      /* Every bead has to fit, not just every letter: with the copies spread
-         evenly the ring carries (copies + 1) beads per letter, and they
-         should sit apart with the thread showing between them. */
-      const beads = (wd) => wd.length * (ringEven && !ringMandala ? echoes + 1 : 1);
-      /* A mandala puts every rank of copies on a ring of its own inside the
-         letters', so the innermost of those is what has to fit. */
-      const inner = (i) => r0 - i * h * RING_GAP - (ringMandala ? echoes * h * RING_RANK : 0);
+      const inner = (i) => r0 - i * h * RING_GAP;
       if (inner(ws.length - 1) < h * 0.9) continue;
-      if (ws.every((wd, i) => (2 * Math.PI * inner(i)) / beads(wd) >= w * 1.06)) break;
+      if (ws.every((wd, i) => wd.length * w * RING_SPACE <= 2 * Math.PI * inner(i) * 0.8)) break;
     }
     tileSize = h;
     const r0 = STAGE / 2 - LANE_PAD / 2 - boxW(h) / 2;
-    ringStart = RING_LEAD + RING_TURN;
+    ringStart = RING_LEAD;
     ws.forEach((wd, ri) => {
       const r = r0 - ri * h * RING_GAP;
-      const turn = RING_TURN / (ringSpeed === "same" ? 1 : ri + 1);
-      /* The same spacing serves both readings: strung round one ring it puts
-         the copies evenly between the letters, and spread over rings of their
-         own it turns each rank a notch against the one outside it. */
-      const ed = ringEven ? turn / (wd.length * (echoes + 1)) : echoDelay;
-      const dir = ringDir === "same" ? 1 : ri % 2 ? -1 : 1;
-      /* Each letter keeps its own pace: the first takes ringPace more turns
-         of the ring than the last, in whole turns so that every one of them
-         is back where it started at the end of the round. The gaps between
-         the letters then open and close all the way through it, and a
-         quicker letter draws its copies out further behind it. */
-      const turns = (j) => 1 + Math.round((ringPace * (wd.length - 1 - j)) / Math.max(1, wd.length - 1));
-      /* One letter behind the next by exactly the time it takes to travel a
-         letter-gap: they run on from the same point and end up evenly spaced
-         without ever having to be put into place. */
-      const gap = turn / wd.length;
+      const dir = ri % 2 ? -1 : 1;                     // every ring inside turns against the one outside it
+      const step = (dir * 2 * Math.PI) / ringSteps;    // one stride, in radians
+      const apart = (boxW(h) * RING_SPACE) / r;        // the gap between two letters, in radians
       wd.forEach((i, j) => {
         letters.push({
-          id: i, ch: chars[i], blank: false, group: ri, fill: tone(i), ed,
-          cx: STAGE / 2, cy: STAGE / 2, r, rank: h * RING_RANK, ring: ri,
-          a0: -Math.PI / 2,
-          spin: (dir * (ringSpeed === "same" ? 1 : ri + 1) * turns(j) * 2 * Math.PI) / RING_TURN,
-          dir, born: RING_LEAD + j * gap,
+          id: i, ch: chars[i], blank: false, group: ri, fill: tone(i), ed: echoDelay,
+          cx: STAGE / 2, cy: STAGE / 2, r, ring: ri, dir, step,
+          /* The head starts at the top, the rest trail behind it. */
+          a0: -Math.PI / 2 - dir * j * apart,
+          off: RING_LEAD + j * ringLag,
         });
       });
     });
@@ -664,13 +644,21 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      which is why a new card is only ever a new line here. */
   function posAt(Lt, t, w, k) {
     if (card === "rings") {
-      const breath = ringBreath ? 1 + ringBreath * Math.sin((2 * Math.PI * (Lt.ring + 1) * t) / RING_TURN) : 1;
-      const r = (Lt.r - (ringMandala ? k * Lt.rank : 0)) * breath;
-      const a = Lt.a0 + Lt.spin * (t - Lt.born);
-      /* Facing letters lean with the ring, like beads threaded on it. */
+      /* Strides, not a turn: a letter waits out its own delay, takes one
+         stride of the ring, rests, and goes again. Because every letter
+         takes the same stride, the word is the same shape at every rest —
+         it only stretches while it is on the move. */
+      const local = t - Lt.off;
+      let walked = 0;
+      if (local > 0) {
+        const pulse = RING_MOVE + RING_HOLD;
+        const k = Math.floor(local / pulse);
+        walked = k + ease(Math.min(1, (local - k * pulse) / RING_MOVE));
+      }
+      const a = Lt.a0 + Lt.step * walked;
       return {
-        x: Lt.cx + Math.cos(a) * r, y: Lt.cy + Math.sin(a) * r,
-        a, out: t >= Lt.born, rot: ringFace ? a + Math.PI / 2 : 0,
+        x: Lt.cx + Math.cos(a) * Lt.r, y: Lt.cy + Math.sin(a) * Lt.r,
+        a, out: true, rot: ringFace ? a + Math.PI / 2 : 0,
       };
     }
     if (card === "eight") {
@@ -709,15 +697,12 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   function snapshot(frame) {
     const tiles = [];
     const solid = colour === "spectrum" || colour === "trail";
-    /* The rings are strung on one thread each — the ring itself — laid down
-       before any of the beads, so every letter and every copy sits on it.
-       (ringSeparate is what the thread is either way here; what it changes
-       is nothing else, so the rings simply always get their own.) */
+    /* A ring's thread is the arcs from one letter to the next, laid down
+       before the beads: it stretches while the word is striding and gathers
+       back up as it rests, and it never draws a circle the word has not
+       walked. */
     if (thread && card === "rings") {
-      /* The thread is the arcs from one letter to the next, never a whole
-         circle, so it draws itself behind them as they run on, and a ring
-         that is still filling shows only as much of itself as it has. */
-      for (let k = ringMandala ? echoes : 0; k >= 0; k--) {
+      for (let k = 0; k >= 0; k--) {
         let run = [], g = -1, tone = null;
         const flush = () => {
           if (run.length > 1) tiles.push({ kind: "thread", id: `ring${k}-${g}`, d: arcPath(run, STAGE / 2, STAGE / 2), colour: tone, width: tileSize * THREAD, alpha: 1 });
@@ -800,7 +785,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       return (chars.length - 1) * Math.abs(stagger) + BEAT + passGap;
     },
     get loopPeriod() {
-      if (card === "rings") return RING_TURN;
+      if (card === "rings") return ringSteps * (RING_MOVE + RING_HOLD);
       if (card === "eight") return EIGHT_TURN * Math.max(1, eightFlip);
       if (card === "volume") return VOL_BEAT;
       return 2 * passGap;
