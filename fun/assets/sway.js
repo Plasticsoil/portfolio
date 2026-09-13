@@ -108,13 +108,18 @@ const ECHO_ALPHA = 0.5;         // … at this opacity, when the copies are set 
 /* Rings */
 const RING_GAP = 1.8;           // the step from one ring to the next, in sticker heights
 const RING_LEAD = 600;          // the word stands still this long before it sets off
-const RING_MOTION = "stride";   // how it travels: "steady", "stride" or "swing"
+const RING_MOTION = "bar";      // how it travels: "bar", "steady", "stride" or "swing"
 const RING_TURN = 9000;         // "steady": ms for one turn of the ring
 const RING_STEPS = 6;           // "stride": strides to the turn…
 const RING_MOVE = 700;          // … one stride…
 const RING_HOLD = 800;          // … and the rest after it
 const RING_SWING = 0.9;         // "swing": how far it rocks, as a share of a letter-gap
 const RING_LAG = 90;            // each letter sets off this long after the one in front
+const RING_BAR_TURN = 4600;     // "bar": ms for the word to travel once round the ring
+const RING_BAR_LAG = 0.38;      // … how late in the round the tail sets off after the head…
+const RING_BAR_TIGHT = 1.2;     // … how close the letters pack, in letter-widths…
+const RING_BAR_SQUEEZE = 0.5;   // … and how much of the ring the packed bar is allowed to take,
+                                //   which is what sets the letter size on a bar ring
 /* Eights */
 const EIGHT_TURN = 7000;        // ms to travel the whole eight once
 const EIGHT_FLIP = 2;           // … and the figure turns over once every this many rounds
@@ -403,6 +408,8 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
                         /* Rings */
                         ringFace = false, ringOne = false, ringMotion = RING_MOTION,
                         ringSteps = RING_STEPS, ringLag = RING_LAG,
+                        barTurn = RING_BAR_TURN, barLag = RING_BAR_LAG, barTight = RING_BAR_TIGHT,
+                        barSqueeze = RING_BAR_SQUEEZE,
                         /* Eights */
                         eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
                         /* Volume */
@@ -444,6 +451,20 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     : staggerOpt;
   const passGap = move + hold;
   const ease = shapeOf(curve);
+  /* Each edge makes its whole turn in what is left of the round after the
+     tail's late start, so both end the round exactly one turn on and the
+     loop closes. The widest the bar ever opens, given the curve in force,
+     is measured once here so the opening can be read as a share of it. */
+  const barRun = Math.max(0.2, 1 - barLag);
+  const barPeak = (() => {
+    let m = 0;
+    for (let i = 0; i <= 120; i++) {
+      const u = i / 120;
+      m = Math.max(m, ease(Math.min(1, u / barRun))
+                   - ease(Math.min(1, Math.max(0, (u - barLag) / barRun))));
+    }
+    return m;
+  })();
 
   let rand = rng(seed);
   let now = 0;                  // virtual ms
@@ -507,28 +528,41 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     rings = ws.length;
     /* The letters are spread round the whole circumference, so what has to
        fit is the gap between two of them. */
+    /* What one letter needs of the circumference: room to stand beside the
+       next when the word is spread round the whole ring — and, when it is a
+       bar, twice that and more, since the packed bar may only take its own
+       share of the ring and the letters have to come down to fit. */
+    const claim = ringMotion === "bar" ? barTight / barSqueeze : 1.15;
     let h = MAX_H;
     for (; h > 14; h -= 2) {
       const w = boxW(h);
       const r0 = STAGE / 2 - LANE_PAD / 2 - w / 2;
       const inner = (i) => r0 - i * h * RING_GAP;
       if (inner(ws.length - 1) < h * 0.9) continue;
-      if (ws.every((wd, i) => (2 * Math.PI * inner(i)) / wd.length >= w * 1.15)) break;
+      if (ws.every((wd, i) => (2 * Math.PI * inner(i)) / wd.length >= w * claim)) break;
     }
     tileSize = h;
     const r0 = STAGE / 2 - LANE_PAD / 2 - boxW(h) / 2;
     ringStart = RING_LEAD;
     ws.forEach((wd, ri) => {
       const r = r0 - ri * h * RING_GAP;
-      const dir = ri % 2 ? -1 : 1;                 // every ring inside turns against the one outside it
+      /* Every ring inside turns against the one outside it. The bar runs
+         the other way about, so that the word still reads round the ring
+         the way a word on a ring reads — with its first letter in front. */
+      const dir = (ri % 2 ? -1 : 1) * (ringMotion === "bar" ? -1 : 1);
       const gap = (dir * 2 * Math.PI) / wd.length; // one letter-gap, in radians
+      /* The bar's two ends: at its widest the letters are spread round the
+         whole ring, at its tightest they are shoulder to shoulder. */
+      const wide = (2 * Math.PI) / wd.length;
+      const tight = Math.min(wide, (boxW(h) * barTight) / r);
       wd.forEach((i, j) => {
         letters.push({
           id: i, ch: chars[i], blank: false, group: ri, fill: tone(i), ed: echoDelay,
           cx: STAGE / 2, cy: STAGE / 2, r, ring: ri, dir, gap,
           step: (dir * 2 * Math.PI) / ringSteps,
           a0: -Math.PI / 2 + j * gap,
-          off: RING_LEAD + j * ringLag,
+          slot: j, wide, tight,
+          off: RING_LEAD + (ringMotion === "bar" ? 0 : j * ringLag),
         });
       });
     });
@@ -643,6 +677,23 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
          first — so the first letter leads and the rest follow it. */
       const local = t - Lt.off;
       let a = Lt.a0;
+      if (ringMotion === "bar") {
+        /* A loading bar bent round the ring. Two edges travel the same
+           whole turn every round, but the head sets off first and the tail
+           only follows once the head is well away — so the word between
+           them stretches out round the ring and then packs back together,
+           over and over, while the whole thing keeps travelling. */
+        const u = (Math.max(0, local) % barTurn) / barTurn;
+        const head = ease(Math.min(1, u / barRun));
+        const tail = ease(Math.min(1, Math.max(0, (u - barLag) / barRun)));
+        const open = barPeak ? (head - tail) / barPeak : 0;
+        const gap = Lt.tight + (Lt.wide - Lt.tight) * open;
+        const ang = -Math.PI / 2 + Lt.dir * (2 * Math.PI * head - Lt.slot * gap);
+        return {
+          x: Lt.cx + Math.cos(ang) * Lt.r, y: Lt.cy + Math.sin(ang) * Lt.r,
+          a: ang, out: true, rot: ringFace ? ang + Math.PI / 2 : 0,
+        };
+      }
       if (local > 0) {
         if (ringMotion === "steady") {
           a += ((Lt.dir * 2 * Math.PI) / RING_TURN) * local;
@@ -790,6 +841,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     },
     get loopPeriod() {
       if (card === "rings") {
+        if (ringMotion === "bar") return barTurn;
         if (ringMotion === "steady") return RING_TURN;
         if (ringMotion === "swing") return 2 * (RING_MOVE + RING_HOLD);
         return ringSteps * (RING_MOVE + RING_HOLD);
