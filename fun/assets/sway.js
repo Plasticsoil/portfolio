@@ -42,8 +42,9 @@
               background; the sticker one colour, the copies solid steps
               along a gradient between the other two, letters always slate
      echo     four copies, 60 ms apart
-     type     Switzer 700 slate on a capsule sticker 0.84 of its row, the
-              column four fifths of the frame's height, 95 px clear of the sides
+     type     Switzer 500 slate on a sticker cut to the letter (Collection
+              01's), the sticker 0.84 of its row, the column four fifths of
+              the frame's height, 95 px clear of the sides
      grain    0.28 overlaid on a light ground, 0.10 screened on a dark one
      open     12 fps for now — 8 and 10 are still on the table; the card is
               called Sway for now (Slide, Drift, Comb, Lag were the others)
@@ -57,7 +58,7 @@
    it is imported rather than copied: letterSpec(ch, textWidth, height) describes one, and the three
    readers turn it into a CSS radius, a CSS clip-path or a canvas path. */
 import {
-  f as letterSpec, g as letterWidth, d as specRadius, h as specClip, a as specPath,
+  f as letterSpec, d as specRadius, h as specClip, a as specPath,
 } from "./palette-D5fFc6np.js";
 
 const STAGE = 1080;
@@ -85,7 +86,7 @@ const BEAT = 200;               // the word stands still this long before the wa
 const MOVE_MS = 1300;           // one slide, edge to edge
 const HOLD_MS = 380;            // … and the pause at the end of it
 const CURVE = "sway";           // … and how it gets there (see CURVES)
-const WEIGHT = 700;             // Switzer bold (Rubik bold for Hebrew)
+const WEIGHT = 500;             // Switzer, the family's own letter weight (Rubik for Hebrew)
 const LETTER = "#4E4B5D";       // Stickers' slate letter colour, on every sticker in the family
 const SHAPE = "letter";         // the sticker under the letter: "letter" (Collection 01's, cut to
                                 // the letter's own shape), "capsule", "chamfer" or "none"
@@ -204,17 +205,29 @@ export function grainFor(bg, { opacity, blend, override = false } = {}) {
   return { opacity: o, blend: blend || (dark ? "screen" : "overlay") };
 }
 
-/* One letter's sticker, worked out once per character and height. Off a
-   browser there is no canvas to measure with, so the glyph's width is
-   estimated — only the node checks ever land there. */
+/* How wide a letter really sits at this size and weight. Collection 01
+   measures at its own weight; this one asks for the weight the card is
+   set in, so the sticker keeps hugging the letter however light it goes.
+   Off a browser there is no canvas to measure with, so it is estimated —
+   only the node checks ever land there. */
+let gauge;
+function glyphWidth(ch, size, weight) {
+  if (typeof document === "undefined") return size * 0.6;
+  gauge = gauge || document.createElement("canvas").getContext("2d");
+  gauge.font = `${weight} ${size}px "Switzer","Rubik",system-ui,sans-serif`;
+  const m = gauge.measureText(ch);
+  const w = (m.actualBoundingBoxLeft || 0) + (m.actualBoundingBoxRight || m.width || size * 0.5);
+  return Math.max(w, size * 0.12);
+}
+
+/* One letter's sticker, worked out once per character, height and weight. */
 const specs = new Map();
-function stickerFor(ch, h) {
-  const key = ch + "@" + h.toFixed(1);
+function stickerFor(ch, h, weight) {
+  const key = `${ch}@${h.toFixed(1)}/${weight}`;
   let spec = specs.get(key);
   if (!spec) {
     const size = h * LETTER_W;
-    const w = typeof document === "undefined" ? size * 0.62 : letterWidth(ch, size);
-    spec = letterSpec(ch, w, h);
+    spec = letterSpec(ch, glyphWidth(ch, size, weight), h);
     spec.size = size;
     specs.set(key, spec);
   }
@@ -316,7 +329,7 @@ function layout(n, font = FONT) {
 function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS,
                         curve = CURVE, font = FONT, echoes = ECHOES,
                         echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR,
-                        shape = SHAPE, thread = true } = {}) {
+                        shape = SHAPE, thread = true, weight = WEIGHT } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
@@ -418,7 +431,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      they stack exactly. */
   function place(Lt, k, frame) {
     const p = align(Lt, now - k * echoDelay);
-    const spec = cut ? stickerFor(Lt.ch, tileH) : null;
+    const spec = cut ? stickerFor(Lt.ch, tileH, weight) : null;
     const w = cut ? spec.W : shaped ? tileW : L.w;
     return {
       p, spec, w,
@@ -463,7 +476,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
           shape: shaped ? shape : null, spec: q.spec,
           w: q.w, h: shaped ? tileH : L.h,
           size: cut ? q.spec.size : shaped ? tileH * TILE_FONT : L.h * font,
-          weight: cut ? 900 : WEIGHT,
+          weight,
           fill: shaped ? tone : null,      // the sticker
           ink: shaped ? LETTER : tone,     // the letter on it
           x: q.x, y: q.y, alpha,
