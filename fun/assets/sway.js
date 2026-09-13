@@ -358,7 +358,9 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
-  const rtl = /[֐-׿؀-ۿ]/.test(chars.join(""));
+  /* Hebrew and Arabic, written out in escapes so the module survives being
+     read as anything but UTF-8. */
+  const rtl = /[\u0590-\u05FF\u0600-\u06FF]/.test(chars.join(""));
   const L = layout(Math.max(1, chars.length), font);
   const card = mode;
   const shaped = shape !== "none";
@@ -820,7 +822,57 @@ export const r = (stage, opts) => mount(stage, "rings", opts);
 export const e = (stage, opts) => mount(stage, "eight", opts);
 export const v = (stage, opts) => mount(stage, "volume", opts);
 
-/* ---------- canvas renderer (export page) ---------- */
+/* ---------- canvas renderer (export page, and anything else) ---------- */
+
+/* Paint one snapshot into a canvas `size` px square. The export page draws
+   through this, and so can any page that wants the cards on a canvas
+   rather than in the DOM. */
+export function paint(ctx, s, size) {
+  const k = size / STAGE;
+  ctx.save();
+  ctx.fillStyle = s.bg;
+  ctx.fillRect(0, 0, size, size);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  if (s.clipBelow) {
+    ctx.beginPath();
+    ctx.rect(0, 0, size, s.clipBelow * k);
+    ctx.clip();
+  }
+  for (const t of s.tiles) {
+    ctx.globalAlpha = t.alpha;
+    if (t.kind === "thread") {
+      ctx.strokeStyle = t.colour;
+      ctx.lineWidth = t.width * k;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      t.points.forEach(([x, y], i) => (i ? ctx.lineTo(x * k, y * k) : ctx.moveTo(x * k, y * k)));
+      if (t.closed) ctx.closePath();
+      ctx.stroke();
+      continue;
+    }
+    if (t.shape === "letter") {
+      ctx.save();
+      ctx.translate(t.x * k - (t.w * k) / 2, t.y * k - (t.h * k) / 2);
+      ctx.scale(k, k);
+      ctx.fillStyle = t.fill;
+      specPath(ctx, t.spec);
+      ctx.fill();
+      ctx.restore();
+    } else if (t.shape) {
+      ctx.fillStyle = t.fill;
+      stickerPath(ctx, t.x * k, t.y * k, t.w * k, t.h * k, t.shape);
+      ctx.fill();
+    }
+    ctx.fillStyle = t.ink;
+    ctx.font = `${t.weight} ${t.size * k}px "Switzer","Rubik",system-ui,sans-serif`;
+    ctx.fillText(t.ch, t.x * k - t.p * ctx.measureText(t.ch).width, t.y * k);
+  }
+  ctx.restore();
+}
+
+/* ---------- the export page's own scene ---------- */
 
 /* The export page plays a fixed loop (7.5 s at 12 fps); it asks for frame
    i of `total`. Sway never ends, so instead of one round we sample one
@@ -876,48 +928,7 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, gra
   }
   function draw(ctx, size, frame, total) {
     if (!frames || cachedTotal !== total) build(total);
-    const k = size / STAGE;
-    const s = frames[Math.max(0, Math.min(frames.length - 1, frame | 0))];
-    ctx.save();
-    ctx.fillStyle = s.bg;
-    ctx.fillRect(0, 0, size, size);
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    if (s.clipBelow) {
-      ctx.beginPath();
-      ctx.rect(0, 0, size, s.clipBelow * k);
-      ctx.clip();
-    }
-    for (const t of s.tiles) {
-      ctx.globalAlpha = t.alpha;
-      if (t.kind === "thread") {
-        ctx.strokeStyle = t.colour;
-        ctx.lineWidth = t.width * k;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.beginPath();
-        t.points.forEach(([x, y], i) => (i ? ctx.lineTo(x * k, y * k) : ctx.moveTo(x * k, y * k)));
-        ctx.stroke();
-        continue;
-      }
-      if (t.shape === "letter") {
-        ctx.save();
-        ctx.translate(t.x * k - (t.w * k) / 2, t.y * k - (t.h * k) / 2);
-        ctx.scale(k, k);
-        ctx.fillStyle = t.fill;
-        specPath(ctx, t.spec);
-        ctx.fill();
-        ctx.restore();
-      } else if (t.shape) {
-        ctx.fillStyle = t.fill;
-        stickerPath(ctx, t.x * k, t.y * k, t.w * k, t.h * k, t.shape);
-        ctx.fill();
-      }
-      ctx.fillStyle = t.ink;
-      ctx.font = `${t.weight} ${t.size * k}px "Switzer","Rubik",system-ui,sans-serif`;
-      ctx.fillText(t.ch, t.x * k - t.p * ctx.measureText(t.ch).width, t.y * k);
-    }
-    ctx.restore();
+    paint(ctx, frames[Math.max(0, Math.min(frames.length - 1, frame | 0))], size);
   }
   const g = grainFor(pal.frame, { opacity: grainOpacity });
   return { draw, n: 90, pal, grain: grain ? { opacity: g.opacity, blend: g.blend, scale: grainScale, animated: true } : null };
