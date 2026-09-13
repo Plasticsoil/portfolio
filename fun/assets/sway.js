@@ -1,9 +1,9 @@
 /* FunType — Collection 04: Sway.
 
    Behind every letter trail a few copies of it, each showing where the
-   letter was a moment ago: the letters take the first colour, the copies
-   one rank back the second, two ranks back the third, and round again —
-   all of them solid. They cost
+   letter was a moment ago. The letters are one colour and the ground
+   another; the copies are solid steps down a gradient between the last
+   two colours, the spectrum cut into as many steps as there are copies. They cost
    nothing to place: a copy is just the same letter sampled at an earlier
    time, so the faster the letter travels the further apart they spread,
    and the instant it stops they all fall exactly behind it and vanish.
@@ -34,8 +34,8 @@
      timing   1300 ms a slide, 380 ms standing at each end, 112 ms
               between one letter and the next (scaled down past 13 letters)
      colour   blue · orange · pink · white, each taking a turn as the
-              background; letters all one colour, each rank of copies the
-              next, all solid
+              background; the letters one colour, the copies solid steps
+              along a gradient between the other two
      echo     four copies, 60 ms apart
      type     Switzer 700, a letter 0.76 of its row, the column four
               fifths of the frame's height, 95 px clear of the sides
@@ -75,9 +75,11 @@ const WEIGHT = 700;             // Switzer bold (Rubik bold for Hebrew)
 const ECHOES = 4;               // how many copies trail behind each letter…
 const ECHO_MS = 60;             // … each one showing where the letter was this long ago…
 const ECHO_ALPHA = 0.5;         // … at this opacity, when the copies are set by opacity at all
-const COLOUR = "trail";         // how the palette is spent: "trail" gives every letter one colour
-                                // and every rank of copies the next, all of them solid; "ramp" and
-                                // "cycle" colour by letter instead and fade the copies out
+const COLOUR = "spectrum";      // how the palette is spent. "spectrum": the letters take one
+                                // colour, the background the second, and the copies are solid steps
+                                // along a gradient between the last two — one step per copy.
+                                // "trail": every rank of copies takes the next palette colour.
+                                // "ramp" / "cycle": colour by letter, with the copies faded out
 
 /* Colour rule: four colours — frame, card, ink, anchor. The first is the
    background; the letters step through the other three, one step per
@@ -347,10 +349,18 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
            edge there, 1 its right edge, 0.5 centres it. The renderers know
            the letter's real width, so none of them has to guess. */
         const p = align(Lt, now - k * echoDelay);
-        const solid = colour === "trail";
+        const solid = colour === "spectrum" || colour === "trail";
+        let fill = Lt.fill;
+        if (colour === "spectrum") {
+          /* The letter itself, then the copies stepping down a gradient
+             between the last two colours — the spectrum is cut into as
+             many solid steps as there are copies. */
+          fill = k === 0 ? stops[0] : ramp([stops[1], stops[2]], echoes > 1 ? (k - 1) / (echoes - 1) : 0);
+        } else if (colour === "trail") {
+          fill = stops[k % stops.length];
+        }
         tiles.push({
-          id: Lt.id * 16 + k, ch: Lt.ch, w: L.w, h: L.h, size: L.h * font, p,
-          fill: solid ? stops[k % stops.length] : Lt.fill,
+          id: Lt.id * 16 + k, ch: Lt.ch, w: L.w, h: L.h, size: L.h * font, p, fill,
           x: Lt.cx + (p * 2 - 1) * half + jx, y: Lt.cy + jy,
           alpha: solid || k === 0 ? 1 : (echoAlpha * (echoes - k + 1)) / echoes,
         });
