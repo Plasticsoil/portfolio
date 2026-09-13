@@ -251,6 +251,26 @@ function stickerFor(ch, h, weight) {
   return spec;
 }
 
+/* The thread through a run of beads, as an SVG path. Straight lines between
+   the letters would read as a polygon; a Catmull-Rom spline through the same
+   points reads as the curve they are sitting on — a real ring, a real eight —
+   and closes into a bracelet when the run comes back to where it started. */
+function threadPath(pts, closed) {
+  const n = pts.length;
+  if (n < 2) return "";
+  if (n === 2) return `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}L${pts[1][0].toFixed(1)},${pts[1][1].toFixed(1)}`;
+  const at = (i) => pts[closed ? (i + n) % n : Math.min(n - 1, Math.max(0, i))];
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  const last = closed ? n : n - 1;
+  for (let i = 0; i < last; i++) {
+    const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += `C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+  }
+  return closed ? d + "Z" : d;
+}
+
 /* Walk a list of colours: t = 0 is the first, t = 1 the last. */
 function ramp(stops, t) {
   const list = stops.filter(Boolean);
@@ -351,6 +371,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
                         shape = SHAPE, thread = true, weight = WEIGHT,
                         /* Rings */
                         ringDir = "alternate", ringSpeed = "stack", ringBreath = 0, ringOne = false,
+                        ringSeparate = false, ringFace = false,
                         /* Eights */
                         eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
                         /* Volume */
@@ -368,6 +389,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   /* A row's height: the column's own on Sway, whatever the card worked out
      for itself on the others. */
   let tileSize = L.h, tileH = L.h * TILE, tileW = tileH * TILE_W;
+  let rings = 1;                            // how many rings the text made
   const syncTile = () => { tileH = tileSize * TILE; tileW = tileH * TILE_W; };
 
   /* How far a lane's flush edges sit from its middle. A curve that
@@ -448,6 +470,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      each so the round joins back onto itself. */
   function buildRings() {
     const ws = ringOne ? [words().flat()] : words();
+    rings = ws.length;
     let h = MAX_H;
     for (; h > 14; h -= 2) {
       const w = boxW(h);
@@ -583,7 +606,8 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       const breath = ringBreath ? 1 + ringBreath * Math.sin((2 * Math.PI * (Lt.ring + 1) * t) / RING_TURN) : 1;
       const r = Lt.r * ease(out) * breath;
       const a = Lt.a0 + Lt.spin * Math.max(0, t - Lt.t0 - RING_ENTRY);
-      return { x: Lt.cx + Math.cos(a) * r, y: Lt.cy + Math.sin(a) * r };
+      /* Facing letters lean with the ring, like beads threaded on it. */
+      return { x: Lt.cx + Math.cos(a) * r, y: Lt.cy + Math.sin(a) * r, rot: ringFace ? a + Math.PI / 2 : 0 };
     }
     if (card === "eight") {
       const th = Lt.a0 + (2 * Math.PI * t) / EIGHT_TURN;
@@ -611,7 +635,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     const w = cut ? spec.W : shaped ? tileW : L.w;
     const at = posAt(Lt, t, w);
     return {
-      p: card === "sway" ? align(Lt, t) : 0.5, spec, w,
+      p: card === "sway" ? align(Lt, t) : 0.5, spec, w, rot: at.rot || 0,
       x: at.x + wobble(Lt.id, frame, 0) * JITTER,
       y: at.y + wobble(Lt.id, frame, 1) * JITTER,
     };
@@ -630,25 +654,33 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
          before its own beads. A space breaks nothing: the thread simply
          carries on to the next letter. */
       if (thread) {
+        /* The rings are strung on one thread the whole way round and then
+           on inwards, like a chain — unless the card asks for a bracelet
+           per ring instead. Everywhere else a run is one group: a column,
+           an eight, a bar. */
+        const oneRun = card === "rings" && !ringSeparate;
         let run = [], g = -1, tone = null, closed = false;
         const flush = () => {
-          if (run.length > 1) tiles.push({ kind: "thread", id: `t${k}-${g}`, points: run, colour: tone, width: tileSize * THREAD, alpha, closed });
+          if (run.length > 1) {
+            tiles.push({ kind: "thread", id: `t${k}-${g}`, d: threadPath(run, closed), colour: tone, width: tileSize * THREAD, alpha });
+          }
           run = [];
         };
         for (const Lt of letters) {
           if (Lt.blank) continue;
           if (card === "volume" && volThread === "horizon") break;
-          if (Lt.group !== g) { flush(); g = Lt.group; closed = !!Lt.closed; }
+          if (!oneRun && Lt.group !== g) { flush(); g = Lt.group; closed = !!Lt.closed; }
           const q = place(Lt, k, frame);
           tone = toneOf(Lt, k);
           run.push([q.x, q.y]);
         }
+        if (oneRun) { g = 0; closed = rings === 1; }
         flush();
         /* Volume also strings the tops of the bars together: that line is
            the horizon the card is named for. */
         if (card === "volume" && volThread !== "bars") {
           const ridge = letters.filter((Lt) => Lt.top).map((Lt) => { const q = place(Lt, k, frame); return [q.x, q.y]; });
-          if (ridge.length > 1) tiles.push({ kind: "thread", id: `h${k}`, points: ridge, colour: toneOf(letters[0], k), width: tileSize * THREAD, alpha, closed: false });
+          if (ridge.length > 1) tiles.push({ kind: "thread", id: `h${k}`, d: threadPath(ridge, false), colour: toneOf(letters[0], k), width: tileSize * THREAD, alpha });
         }
       }
       for (const Lt of letters) {
@@ -663,7 +695,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
           weight,
           fill: shaped ? tone : null,      // the sticker
           ink: shaped ? LETTER : tone,     // the letter on it
-          x: q.x, y: q.y, alpha,
+          x: q.x, y: q.y, rot: q.rot, alpha,
         });
       }
     }
@@ -748,7 +780,7 @@ function mount(stage, mode, opts = {}) {
       el = document.createElementNS(SVG_NS, "svg");
       el.setAttribute("viewBox", `0 0 ${STAGE} ${STAGE}`);
       el.style.cssText = "position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;";
-      const line = document.createElementNS(SVG_NS, "polyline");
+      const line = document.createElementNS(SVG_NS, "path");
       line.setAttribute("fill", "none");
       line.setAttribute("stroke-linecap", "round");
       line.setAttribute("stroke-linejoin", "round");
@@ -757,7 +789,7 @@ function mount(stage, mode, opts = {}) {
       els.set(t.id, el);
     }
     const line = el.firstChild;
-    line.setAttribute("points", t.points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" "));
+    line.setAttribute("d", t.d);
     line.setAttribute("stroke", t.colour);
     line.setAttribute("stroke-width", t.width.toFixed(1));
     line.setAttribute("opacity", t.alpha.toFixed(3));
@@ -794,7 +826,8 @@ function mount(stage, mode, opts = {}) {
       /* translate(-50%, -50%) centres the letter on its spot, whatever it is. */
       /* A percentage translate is a share of the element's own width, which
          is exactly the letter's width — so the edges land where they should. */
-      el.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(${(-t.p * 100).toFixed(2)}%, -50%)`;
+      el.style.transform = `translate(${t.x.toFixed(1)}px, ${t.y.toFixed(1)}px) translate(${(-t.p * 100).toFixed(2)}%, -50%)` +
+        (t.rot ? ` rotate(${t.rot.toFixed(4)}rad)` : "");
       if (t.alpha < 1) el.style.opacity = t.alpha.toFixed(3);
     }
     for (const [id, el] of els) if (!seen.has(id)) { el.remove(); els.delete(id); }
@@ -842,32 +875,36 @@ export function paint(ctx, s, size) {
   for (const t of s.tiles) {
     ctx.globalAlpha = t.alpha;
     if (t.kind === "thread") {
+      ctx.save();
+      ctx.scale(k, k);
       ctx.strokeStyle = t.colour;
-      ctx.lineWidth = t.width * k;
+      ctx.lineWidth = t.width;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      ctx.beginPath();
-      t.points.forEach(([x, y], i) => (i ? ctx.lineTo(x * k, y * k) : ctx.moveTo(x * k, y * k)));
-      if (t.closed) ctx.closePath();
-      ctx.stroke();
+      ctx.stroke(new Path2D(t.d));
+      ctx.restore();
       continue;
     }
+    ctx.save();
+    ctx.translate(t.x * k, t.y * k);
+    if (t.rot) ctx.rotate(t.rot);
     if (t.shape === "letter") {
       ctx.save();
-      ctx.translate(t.x * k - (t.w * k) / 2, t.y * k - (t.h * k) / 2);
       ctx.scale(k, k);
+      ctx.translate(-t.w / 2, -t.h / 2);
       ctx.fillStyle = t.fill;
       specPath(ctx, t.spec);
       ctx.fill();
       ctx.restore();
     } else if (t.shape) {
       ctx.fillStyle = t.fill;
-      stickerPath(ctx, t.x * k, t.y * k, t.w * k, t.h * k, t.shape);
+      stickerPath(ctx, 0, 0, t.w * k, t.h * k, t.shape);
       ctx.fill();
     }
     ctx.fillStyle = t.ink;
     ctx.font = `${t.weight} ${t.size * k}px "Switzer","Rubik",system-ui,sans-serif`;
-    ctx.fillText(t.ch, t.x * k - t.p * ctx.measureText(t.ch).width, t.y * k);
+    ctx.fillText(t.ch, -t.p * ctx.measureText(t.ch).width, 0);
+    ctx.restore();
   }
   ctx.restore();
 }
