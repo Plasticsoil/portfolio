@@ -348,7 +348,13 @@ function layout(n, font = FONT) {
 function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS,
                         curve = CURVE, font = FONT, echoes = ECHOES,
                         echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR,
-                        shape = SHAPE, thread = true, weight = WEIGHT } = {}) {
+                        shape = SHAPE, thread = true, weight = WEIGHT,
+                        /* Rings */
+                        ringDir = "alternate", ringSpeed = "stack", ringBreath = 0, ringOne = false,
+                        /* Eights */
+                        eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
+                        /* Volume */
+                        volTight = false, volOrder = "free", volThread = "both", volBounce = false } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
@@ -439,7 +445,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      quicker and against the one outside them, a whole number of turns
      each so the round joins back onto itself. */
   function buildRings() {
-    const ws = words();
+    const ws = ringOne ? [words().flat()] : words();
     let h = MAX_H;
     for (; h > 14; h -= 2) {
       const w = boxW(h);
@@ -457,7 +463,9 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
           id: i, ch: chars[i], blank: false, group: ri, closed: wd.length > 2, fill: tone(i),
           cx: STAGE / 2, cy: STAGE / 2, r,
           a0: -Math.PI / 2 + (2 * Math.PI * j) / wd.length,
-          spin: ((ri % 2 ? -1 : 1) * (ri + 1) * 2 * Math.PI) / RING_TURN,
+          ring: ri,
+          spin: ((ringDir === "same" ? 1 : ri % 2 ? -1 : 1) *
+                 (ringSpeed === "same" ? 1 : ri + 1) * 2 * Math.PI) / RING_TURN,
           t0: (letters.length + 1) * RING_STEP,
         });
       });
@@ -467,7 +475,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   /* Eights — a word to a figure of eight, side by side, the letters strung
      evenly along it. The whole figure turns over as it goes. */
   function buildEights() {
-    const ws = words();
+    const ws = eightOne ? [words().flat()] : words();
     const span = (STAGE - 2 * LANE_PAD) / ws.length;
     const longest = Math.max(...ws.map((w) => w.length));
     /* The figure turns over, so what has to fit in the frame is the circle
@@ -483,7 +491,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       if ((4.4 * R) / longest >= boxW(h) * 1.25) break;
     }
     tileSize = h;
-    const R = reach(h), A = R * 1.15, B = R * 2;
+    const R = reach(h), A = eightLie ? R * 2 : R * 1.15, B = eightLie ? R * 1.15 : R * 2;
     ws.forEach((wd, wi) => {
       const col = rtl ? ws.length - 1 - wi : wi;
       const cx = LANE_PAD + span * (col + 0.5);
@@ -507,17 +515,21 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     const floor = STAGE - VOL_FLOOR;
     const h = Math.max(14, Math.min(MAX_H, (floor - VOL_FLOOR) / Math.max(2, longest), span / 1.15));
     tileSize = h;
+    /* Tight packs the bars against each other, so the tops read as one
+       skyline rather than separate towers. */
+    const pitch = volTight ? boxW(h) * 1.02 : span;
+    const x0 = volTight ? (STAGE - pitch * ws.length) / 2 : LANE_PAD;
     ws.forEach((wd, wi) => {
       const col = rtl ? ws.length - 1 - wi : wi;
-      const cx = LANE_PAD + span * (col + 0.5);
+      const cx = x0 + pitch * (col + 0.5);
       const rise = wd.length * h + h;
       wd.forEach((i, j) => {
         letters.push({
           id: i, ch: chars[i], blank: false, group: wi, top: j === 0, fill: tone(i),
           cx, cy: floor - h / 2 - (wd.length - 1 - j) * h,
           rise, floor,
-          beat: (1 + (wi % 3)) * ((2 * Math.PI) / VOL_BEAT),
-          phase: rand() * Math.PI * 2,
+          beat: (volOrder === "wave" ? 1 : 1 + (wi % 3)) * ((2 * Math.PI) / VOL_BEAT),
+          phase: volOrder === "wave" ? (-2 * Math.PI * col) / ws.length : rand() * Math.PI * 2,
           t0: 0,
         });
       });
@@ -566,18 +578,23 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   function posAt(Lt, t, w) {
     if (card === "rings") {
       const out = Math.min(1, Math.max(0, (t - Lt.t0) / RING_ENTRY));
-      const r = Lt.r * ease(out);
+      const breath = ringBreath ? 1 + ringBreath * Math.sin((2 * Math.PI * (Lt.ring + 1) * t) / RING_TURN) : 1;
+      const r = Lt.r * ease(out) * breath;
       const a = Lt.a0 + Lt.spin * Math.max(0, t - Lt.t0 - RING_ENTRY);
       return { x: Lt.cx + Math.cos(a) * r, y: Lt.cy + Math.sin(a) * r };
     }
     if (card === "eight") {
       const th = Lt.a0 + (2 * Math.PI * t) / EIGHT_TURN;
       const dx = (Lt.A / 2) * Math.sin(2 * th), dy = -(Lt.B / 2) * Math.cos(th);
-      const f = (2 * Math.PI * t) / (EIGHT_TURN * EIGHT_FLIP), c = Math.cos(f), s2 = Math.sin(f);
+      if (!eightFlip) return { x: Lt.cx + dx, y: Lt.cy + dy };
+      const f = (2 * Math.PI * t) / (EIGHT_TURN * eightFlip), c = Math.cos(f), s2 = Math.sin(f);
       return { x: Lt.cx + dx * c - dy * s2, y: Lt.cy + dx * s2 + dy * c };
     }
     if (card === "volume") {
-      const v = 0.5 - 0.5 * Math.cos(Lt.beat * t + Lt.phase);
+      const th = Lt.beat * t + Lt.phase;
+      let v = 0.5 - 0.5 * Math.cos(th);
+      /* A kick at the top of the rise, without breaking the round. */
+      if (volBounce) v += 0.07 * Math.sin(2 * th) * Math.max(0, Math.sin(th));
       return { x: Lt.cx, y: Lt.cy + (1 - v) * Lt.rise };
     }
     return { x: Lt.cx + (align(Lt, t) * 2 - 1) * halfFor(w), y: Lt.cy };
@@ -618,6 +635,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
         };
         for (const Lt of letters) {
           if (Lt.blank) continue;
+          if (card === "volume" && volThread === "horizon") break;
           if (Lt.group !== g) { flush(); g = Lt.group; closed = !!Lt.closed; }
           const q = place(Lt, k, frame);
           tone = toneOf(Lt, k);
@@ -626,7 +644,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
         flush();
         /* Volume also strings the tops of the bars together: that line is
            the horizon the card is named for. */
-        if (card === "volume") {
+        if (card === "volume" && volThread !== "bars") {
           const ridge = letters.filter((Lt) => Lt.top).map((Lt) => { const q = place(Lt, k, frame); return [q.x, q.y]; });
           if (ridge.length > 1) tiles.push({ kind: "thread", id: `h${k}`, points: ridge, colour: toneOf(letters[0], k), width: tileSize * THREAD, alpha, closed: false });
         }
@@ -667,7 +685,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     },
     get loopPeriod() {
       if (card === "rings") return RING_TURN;
-      if (card === "eight") return EIGHT_TURN * EIGHT_FLIP;
+      if (card === "eight") return EIGHT_TURN * Math.max(1, eightFlip);
       if (card === "volume") return VOL_BEAT;
       return 2 * passGap;
     },
