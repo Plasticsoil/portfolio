@@ -38,6 +38,9 @@
               middle, a hair of overshoot at the edge
      timing   1300 ms a slide, 380 ms standing at each end, 112 ms
               between one letter and the next (scaled down past 13 letters)
+     rings    the letters round one ring, strung on it, each with a tight
+              trail of copies behind it — ringEven and ringMandala are the
+              two other readings the card can take
      colour   blue · orange · pink · white, each taking a turn as the
               background; the sticker one colour, the copies solid steps
               along a gradient between the other two, letters always slate
@@ -379,7 +382,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
                         shape = SHAPE, thread = true, weight = WEIGHT,
                         /* Rings */
                         ringDir = "alternate", ringSpeed = "stack", ringBreath = 0, ringOne = false,
-                        ringSeparate = false, ringFace = false, ringEven = true, ringMandala = false,
+                        ringSeparate = false, ringFace = false, ringEven = false, ringMandala = false,
                         /* Eights */
                         eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
                         /* Volume */
@@ -471,11 +474,18 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     syncTile();
   }
 
-  /* Rings — a word to a ring, the first word outermost, every letter
-     evenly round its own circumference. They push out of the middle once,
-     one behind another, and from then on the rings turn: the inner ones
-     quicker and against the one outside them, a whole number of turns
-     each so the round joins back onto itself. */
+  /* Rings — a word to a ring, the first word outermost, every letter evenly
+     round its own circumference, all of them strung on one thread: the ring
+     itself. They push out of the middle once, one behind another, and from
+     then on the rings turn — the inner ones quicker and against the one
+     outside them, a whole number of turns each so the round joins back onto
+     itself. A letter's copies trail behind it along the ring.
+
+     ringEven spreads those copies so the last of them lands where the letter
+     behind it sits, which beads the whole circumference at one spacing but
+     costs letter size; off, they stay a tight trail and the letters are as
+     big as the ring will carry. ringMandala gives every rank a ring of its
+     own inside the letters' instead. */
   function buildRings() {
     const ws = ringOne ? [words().flat()] : words();
     rings = ws.length;
