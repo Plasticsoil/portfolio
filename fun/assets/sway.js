@@ -33,7 +33,7 @@
    sticker, and so do the copies. A cut-corner sticker and a no-sticker
    reading are there as options.
 
-   Settled so far, from the lab (September 2026):
+   Settled, from the lab (September 2026) — everything below is decided:
      motion   cubic-bezier(0.51, 0, 0.33, 1.01) — a slow leave, a quick
               middle, a hair of overshoot at the edge
      timing   1300 ms a slide, 380 ms standing at each end, 112 ms
@@ -48,8 +48,8 @@
      grain    0.28 overlaid on a light ground, 0.10 screened on a dark one
      weight   Switzer 500, settled
      rate     12 fps, the house stop-motion — settled against 8 and 10
-     open     the card is called Sway for now (Slide, Drift, Comb and Lag
-              were the other names on the table)
+     name     Sway (Slide, Drift, Comb and Lag were the other names on
+              the table)
 
    Effect contract (studio / embed):  mount(stage, { word, palette, seed }) → { stop() }
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
@@ -75,7 +75,8 @@ const FONT = 0.76;              // letter size / row height: a capital is ~0.72 
                                 // leaves nearly a whole cap height of air between the rows
 const GLYPH_W = 0.72;           // roughly how wide a capital sits, as a fraction of its size
 const LANE_PAD = 95;            // a lane keeps this much clear of its edges at the end of a slide,
-                                // so the text never hugs the sides of the frame
+                                // so the text never hugs the sides of the frame — a narrow lane
+                                // (several columns) gets a share of it rather than all of it
 const FPS = 12;                 // stop-motion: the picture only updates this often
 const JITTER = 2;               // px of hand-held wobble per frame — small, because the
                                 // letters line up on their edges and that should read
@@ -309,12 +310,14 @@ const shapeOf = (c) => (typeof c === "function" ? c : CURVES[c] || CURVES[CURVE]
    never cross. */
 function layout(n, font = FONT) {
   const usable = STAGE * FILL;
+  /* Whichever reading is on, a row is this wide at most: a capsule is the
+     widest of the stickers, and a bare letter is narrower than all of them. */
+  const widest = (h) => Math.max(h * TILE * TILE_W, h * font * GLYPH_W);
   for (let c = 1; c <= MAX_COLS; c++) {
     const rows = Math.ceil(n / c);
     const h = Math.min(MAX_H, usable / rows);
-    const w = h * font * GLYPH_W;
     const lane = STAGE / c;
-    if (h >= MIN_H && w * 1.9 <= lane) return { cols: c, rows, h, w, lane };
+    if (h >= MIN_H && widest(h) * 1.6 <= lane) return { cols: c, rows, h, w: h * font * GLYPH_W, lane };
   }
   const rows = Math.ceil(n / MAX_COLS);
   const h = Math.min(MAX_H, usable / rows);
@@ -355,7 +358,8 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      can measure, so it places the middle itself — and a letter-cut
      sticker is a different width per letter, which is exactly what makes
      a wide W and a narrow I still end flush. */
-  const halfFor = (w) => (L.lane / 2 - LANE_PAD - (shaped ? w / 2 : 0)) / (1 + 2 * over);
+  const pad = Math.min(LANE_PAD, L.lane * 0.18);
+  const halfFor = (w) => Math.max(0, (L.lane / 2 - pad - (shaped ? w / 2 : 0)) / (1 + 2 * over));
   const stagger = staggerOpt === undefined
     ? Math.max(STAGGER_MIN, Math.min(STAGGER, STAGGER_SPAN / Math.max(1, chars.length)))
     : staggerOpt;
