@@ -121,7 +121,9 @@ const RING_BAR_TIGHT = 1.2;     // … how close the letters pack, in letter-wid
 const RING_BAR_SQUEEZE = 0.5;   // … how much of the ring the packed bar takes, which is also
                                 //   what sets the letter size on a bar ring…
 const RING_BAR_SPREAD = 1;      // … and how much of it the spread bar takes
-const RING_BAR_EASE = "sine";   // … and the curve it packs and spreads on
+const RING_BAR_EASE = "sine";   // … the curve it surges on…
+const RING_BAR_CHASE = 1;       // … and how far behind the head the tail runs it, as a share
+                                //   of the longest lag the round can carry
 /* Eights */
 const EIGHT_TURN = 7000;        // ms to travel the whole eight once
 const EIGHT_FLIP = 2;           // … and the figure turns over once every this many rounds
@@ -412,6 +414,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
                         ringSteps = RING_STEPS, ringLag = RING_LAG,
                         barTurn = RING_BAR_TURN, barBeats = RING_BAR_BEATS, barTight = RING_BAR_TIGHT,
                         barSqueeze = RING_BAR_SQUEEZE, barSpread = RING_BAR_SPREAD, barEase = RING_BAR_EASE,
+                        barChase = RING_BAR_CHASE,
                         ringThread = "ring",
                         /* … and what the copies do with the ring, which is where the mandala comes from */
                         echoIn = 0, echoTurn = 0, echoShrink = 0,
@@ -433,6 +436,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      for itself on the others. */
   let tileSize = L.h, tileH = L.h * TILE, tileW = tileH * TILE_W;
   let rings = 1, ringStart = 0;             // how many rings the text made, and when they start turning
+  let barInfo = null;                       // what the bar actually managed, for a page that wants to say so
   const syncTile = () => { tileH = tileSize * TILE; tileW = tileH * TILE_W; };
 
   /* How far a lane's flush edges sit from its middle. A curve that
@@ -460,10 +464,30 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      told otherwise — and how steep that curve is decides how far the word
      may close up before an end would have to swing backwards. */
   const swellEase = shapeOf(barEase);
+  /* The head's pace, as a wiggle either side of its steady rate: one
+     surge per swell, shaped by the curve, and never a stop — the whole
+     word is strung out behind it on a time lag, so every letter repeats
+     what the head did a moment ago and the tail is always chasing it. */
+  const chase = Math.min(1, Math.max(0.05, barChase));
+  const wiggle = (x) => {
+    const f = ((x % 1) + 1) % 1;
+    return 2 * swellEase(f < 0.5 ? f * 2 : 2 - f * 2) - 1;
+  };
   const swellSlope = (() => {
     let m = 0, prev = swellEase(0);
     for (let i = 1; i <= 200; i++) { const v = swellEase(i / 200); m = Math.max(m, Math.abs(v - prev) * 200); prev = v; }
     return m || Math.PI / 2;
+  })();
+  /* How far the word opens for one unit of wiggle, given how far behind
+     the tail is running: the difference between what the head is doing now
+     and what the tail is still doing. */
+  const chaseReach = (() => {
+    let m = 0;
+    for (let i = 0; i < 400; i++) {
+      const x = i / 400;
+      m = Math.max(m, Math.abs(wiggle(x) - wiggle(x - chase / 2)));
+    }
+    return m || 1;
   })();
 
   let rand = rng(seed);
@@ -559,17 +583,32 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
          by as much as the ends can make up by running faster: past that the
          head would have to swing backwards to let the word shrink, and the
          whole thing stops reading as one bar travelling. */
-      if (wd.length > 1) {
-        const most = (0.92 * 2 * Math.PI) / ((wd.length - 1) * Math.max(1, barBeats) * swellSlope);
+      const n = wd.length, beats = Math.max(1, barBeats);
+      if (n > 1) {
+        const most = (Math.PI * chaseReach * 0.9) / ((n - 1) * beats * swellSlope);
         tight = Math.max(tight, wide - most);
       }
+      /* The tail runs the head's own path, this long after it. Half a surge
+         behind is as far as it is worth being — any further and the tail is
+         doing what the head did a whole surge ago, which reads as a second
+         word rather than as this one's tail. */
+      const lag = n > 1 ? chase / (2 * beats * (n - 1)) : 0;
+      /* What is left of the standing gap once the lag itself has spaced the
+         letters out, and how hard the head has to surge to open the word
+         from its packed width to its spread one. */
+      const gap0 = Math.max(0, (wide + tight) / 2 - 2 * Math.PI * lag);
+      const amp = n > 1 ? ((n - 1) * (wide - tight)) / (2 * chaseReach) : 0;
+      /* What the word ends up taking of the ring at each end, and how far
+         behind the head the tail is running — the outermost ring speaks for
+         the card. */
+      if (!ri) barInfo = { packed: (tight * (n - 1)) / (2 * Math.PI), spread: (wide * (n - 1)) / (2 * Math.PI), tail: lag * (n - 1) * barTurn };
       wd.forEach((i, j) => {
         letters.push({
           id: i, ch: chars[i], blank: false, group: ri, fill: tone(i), ed: echoDelay,
           cx: STAGE / 2, cy: STAGE / 2, r, ring: ri, dir, gap,
           step: (dir * 2 * Math.PI) / ringSteps,
           a0: -Math.PI / 2 + j * gap,
-          slot: j, n: wd.length, wide, tight,
+          slot: j, n, lag, gap0, amp,
           off: RING_LEAD + (ringMotion === "bar" ? 0 : j * ringLag),
         });
       });
@@ -690,17 +729,15 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       const local = t - Lt.off;
       let a = Lt.a0, rad = Lt.r;
       if (ringMotion === "bar") {
-        /* A loading bar bent round the ring. Nothing ever stops: the middle
-           of the word goes round at its own steady rate while the word
-           stretches out along the ring and packs back together, so the head
-           runs ahead of the middle while the tail falls behind it and then
-           the other way about. Whole turns and whole swells, so the round
-           closes on itself. */
-        const u = (Math.max(0, local) % barTurn) / barTurn;
-        const phase = (barBeats * u) % 1;
-        const swell = Math.min(1, Math.max(0, swellEase(phase < 0.5 ? phase * 2 : 2 - phase * 2)));
-        const gap = Lt.tight + (Lt.wide - Lt.tight) * swell;
-        a = -Math.PI / 2 + Lt.dir * (2 * Math.PI * u + ((Lt.n - 1) / 2 - Lt.slot) * gap);
+        /* A loading bar bent round the ring, and the tail chasing the head.
+           The head goes round for ever, surging and easing off but never
+           stopping; every letter behind it is the same head a moment
+           earlier, so when it pulls away the word strings out and when it
+           eases the word gathers back up. A whole turn and whole surges to
+           the round, so it closes on itself. */
+        const u = Math.max(0, local) / barTurn - Lt.slot * Lt.lag;
+        const head = 2 * Math.PI * u + Lt.amp * wiggle(barBeats * u);
+        a = -Math.PI / 2 + Lt.dir * (head - Lt.slot * Lt.gap0);
       } else if (local > 0) {
         if (ringMotion === "steady") {
           a += ((Lt.dir * 2 * Math.PI) / RING_TURN) * local;
@@ -868,6 +905,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
        to push out of the middle first and then come round a whole number of
        turns; the eights and the bars are in their stride from the first
        frame. */
+    get bar() { return barInfo; },
     get loopStart() {
       if (card === "rings") return ringStart;
       if (card === "eight" || card === "volume") return 0;
@@ -1025,6 +1063,7 @@ function mount(stage, mode, opts = {}) {
   return {
     stop() { cancelAnimationFrame(raf); stage.removeEventListener("click", onClick); },
     get now() { return eng.now; },
+    get bar() { return eng.bar; },
   };
 }
 
