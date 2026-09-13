@@ -47,8 +47,9 @@
               the frame's height, 95 px clear of the sides
      grain    0.28 overlaid on a light ground, 0.10 screened on a dark one
      weight   Switzer 500, settled
-     open     12 fps for now — 8 and 10 are still on the table; the card is
-              called Sway for now (Slide, Drift, Comb, Lag were the others)
+     rate     12 fps, the house stop-motion — settled against 8 and 10
+     open     the card is called Sway for now (Slide, Drift, Comb and Lag
+              were the other names on the table)
 
    Effect contract (studio / embed):  mount(stage, { word, palette, seed }) → { stop() }
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
