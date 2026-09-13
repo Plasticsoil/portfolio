@@ -108,6 +108,16 @@ export const p = [
   { frame: "#FF42FF", card: "#FFDD00", ink: "#FFFFFF", anchor: "#FFFF66" },
   { frame: "#FF7300", card: "#FA8EFA", ink: "#FFFFFF", anchor: "#FFFF66" },   // orange · pink · white · yellow
 ];
+/* Every colour FunType has used, collection by collection — the lab
+   shuffles a card out of this, so a new set can still come from the
+   family rather than from nowhere. */
+export const POOL = [
+  "#7E9CFC", "#FF8F5E", "#FFBEF8", "#FFFFFF", "#0D0D0F",                  // Collection 04
+  "#49C7FD", "#FA8EFA", "#FFFF66",                                        // 03
+  "#A9FF67", "#5BE03A", "#D9FF93", "#B9F1FA",                             // 02
+  "#FF42FF", "#FFDD00", "#FF7300", "#FF721E",                             // 01
+];
+
 const ROT = { sway: 0 };
 function dealPalette(mode, given) {
   const quad = [given.frame, given.card, given.ink, given.anchor];
@@ -140,8 +150,9 @@ function wobble(i, frame, axis) {
 const GRAIN_TILES = 6, GRAIN_TILE = 192, GRAIN_OPACITY = 0.28, GRAIN_DARK = 0.1;
 
 /* How light a colour is, 0…1 — the grain is laid on differently over a
-   dark field than over a bright one. */
-function lightness(hex) {
+   dark field than over a bright one, and the lab keeps a shuffled set
+   from landing a letter on a ground of the same weight. */
+export function lightness(hex) {
   const n = parseInt(String(hex).slice(1), 16) || 0;
   return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
 }
