@@ -49,6 +49,16 @@
    Effect contract (studio / embed):  mount(stage, { word, palette, seed }) → { stop() }
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
 
+/* Collection 01's sticker: a tile cut to the letter's own shape — a circle
+   for a round letter, a trapezoid for an A, an X for an X, otherwise a box
+   with a radius per corner — plus the little anchor dots at its corners.
+   The geometry already lives in the bundle, so it is imported rather than
+   copied: letterSpec(ch, textWidth, height) describes one, and the three
+   readers turn it into a CSS radius, a CSS clip-path or a canvas path. */
+import {
+  f as letterSpec, g as letterWidth, d as specRadius, h as specClip, a as specPath,
+} from "./palette-D5fFc6np.js";
+
 const STAGE = 1080;
 const FILL = 0.8;               // a full column stands this tall in the frame
 const MAX_H = STAGE * FILL / 4; // a row is never taller than a quarter of a full
@@ -76,7 +86,10 @@ const HOLD_MS = 380;            // … and the pause at the end of it
 const CURVE = "sway";           // … and how it gets there (see CURVES)
 const WEIGHT = 700;             // Switzer bold (Rubik bold for Hebrew)
 const LETTER = "#4E4B5D";       // Stickers' slate letter colour, on every sticker in the family
-const SHAPE = "capsule";        // the sticker under the letter: "capsule", "chamfer" or "none"
+const SHAPE = "letter";         // the sticker under the letter: "letter" (Collection 01's, cut to
+                                // the letter's own shape), "capsule", "chamfer" or "none"
+const LETTER_W = 0.8;           // "letter": the glyph's size inside its sticker
+const ANCHOR = 0.1;             // … and the anchor dots at the sticker's corners, as a share of its height
 const TILE = 0.84;              // a sticker's height as a share of its row, so the rows keep air
 const TILE_W = 1.42;            // … and its width as a share of its own height
 const TILE_FONT = 0.52;         // … and the letter's size inside it
@@ -160,6 +173,7 @@ const GRAIN_TILES = 6, GRAIN_TILE = 192, GRAIN_OPACITY = 0.28, GRAIN_DARK = 0.1;
 
 /* The sticker's outline, in CSS. */
 function shapeCss(t) {
+  if (t.shape === "letter") return `border-radius:${specRadius(t.spec)};clip-path:${specClip(t.spec)};`;
   if (t.shape === "capsule") return `border-radius:${t.h / 2}px;`;
   if (t.shape === "chamfer") {
     const c = (CHAMFER * t.h * 100) / t.w, d = CHAMFER * 100;
@@ -187,6 +201,23 @@ export function grainFor(bg, { opacity, blend, override = false } = {}) {
     ? (override && opacity !== undefined ? opacity : GRAIN_DARK)
     : (opacity === undefined ? GRAIN_OPACITY : opacity);
   return { opacity: o, blend: blend || (dark ? "screen" : "overlay") };
+}
+
+/* One letter's sticker, worked out once per character and height. Off a
+   browser there is no canvas to measure with, so the glyph's width is
+   estimated — only the node checks ever land there. */
+const specs = new Map();
+function stickerFor(ch, h) {
+  const key = ch + "@" + h.toFixed(1);
+  let spec = specs.get(key);
+  if (!spec) {
+    const size = h * LETTER_W;
+    const w = typeof document === "undefined" ? size * 0.62 : letterWidth(ch, size);
+    spec = letterSpec(ch, w, h);
+    spec.size = size;
+    specs.set(key, spec);
+  }
+  return spec;
 }
 
 /* Walk a list of colours: t = 0 is the first, t = 1 the last. */
@@ -291,6 +322,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   const rtl = /[֐-׿؀-ۿ]/.test(chars.join(""));
   const L = layout(Math.max(1, chars.length), font);
   const shaped = shape !== "none";
+  const cut = shape === "letter";           // … and cut to the letter, rather than one box
   const tileH = L.h * TILE, tileW = tileH * TILE_W;
 
   /* How far a lane's flush edges sit from its middle. A curve that
@@ -303,9 +335,11 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     return Math.max(0, m);
   })();
   /* Without a sticker each letter hangs off the flush edge by its own
-     width, which only the renderers know; a sticker is one fixed box, so
-     the engine can place its middle itself. */
-  const half = (L.lane / 2 - LANE_PAD - (shaped ? tileW / 2 : 0)) / (1 + 2 * over);
+     width, which only the renderers know; a sticker is a box the engine
+     can measure, so it places the middle itself — and a letter-cut
+     sticker is a different width per letter, which is exactly what makes
+     a wide W and a narrow I still end flush. */
+  const halfFor = (w) => (L.lane / 2 - LANE_PAD - (shaped ? w / 2 : 0)) / (1 + 2 * over);
   const stagger = staggerOpt === undefined
     ? Math.max(STAGGER_MIN, Math.min(STAGGER, STAGGER_SPAN / Math.max(1, chars.length)))
     : staggerOpt;
@@ -396,14 +430,21 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
         } else if (colour === "trail") {
           tone = stops[k % stops.length];
         }
+        const spec = cut ? stickerFor(Lt.ch, tileH) : null;
+        const w = cut ? spec.W : shaped ? tileW : L.w;
         tiles.push({
           id: Lt.id * 16 + k, ch: Lt.ch, p: shaped ? 0.5 : p,
-          shape: shaped ? shape : null,
-          w: shaped ? tileW : L.w, h: shaped ? tileH : L.h,
-          size: shaped ? tileH * TILE_FONT : L.h * font,
+          shape: shaped ? shape : null, spec,
+          w, h: shaped ? tileH : L.h,
+          size: cut ? spec.size : shaped ? tileH * TILE_FONT : L.h * font,
+          weight: cut ? 900 : WEIGHT,
           fill: shaped ? tone : null,      // the sticker
           ink: shaped ? LETTER : tone,     // the letter on it
-          x: Lt.cx + (p * 2 - 1) * half + jx, y: Lt.cy + jy,
+          /* The anchor dots belong to the leading sticker only — on every
+             copy they would read as noise. */
+          anchors: cut && k === 0 ? spec.anchors : null,
+          anchorFill: pal.frame,
+          x: Lt.cx + (p * 2 - 1) * halfFor(w) + jx, y: Lt.cy + jy,
           alpha: solid || k === 0 ? 1 : (echoAlpha * (echoes - k + 1)) / echoes,
         });
       }
@@ -477,13 +518,24 @@ function mount(stage, mode, opts = {}) {
       let el = els.get(t.id);
       if (!el) {
         el = document.createElement("div");
-        const type = `font-family:"Switzer","Rubik",system-ui,sans-serif;font-weight:${WEIGHT};font-size:${t.size}px;line-height:1;text-transform:uppercase;letter-spacing:-0.02em;white-space:pre;`;
+        const type = `font-family:"Switzer","Rubik",system-ui,sans-serif;font-weight:${t.weight};font-size:${t.size}px;line-height:1;text-transform:uppercase;letter-spacing:-0.02em;white-space:pre;`;
         if (t.shape) {
-          el.style.cssText = `position:absolute;left:0;top:0;width:${t.w}px;height:${t.h}px;background:${t.fill};color:${t.ink};${type}display:flex;align-items:center;justify-content:center;will-change:transform;${shapeCss(t)}`;
-          const glyph = document.createElement("span");
-          glyph.style.cssText = "position:relative;";
+          el.style.cssText = `position:absolute;left:0;top:0;width:${t.w}px;height:${t.h}px;${type}will-change:transform;`;
+          const skin = document.createElement("div");
+          skin.style.cssText = `position:absolute;inset:0;background:${t.fill};${shapeCss(t)}`;
+          const glyph = document.createElement("div");
+          glyph.style.cssText = `position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${t.ink};`;
           glyph.textContent = t.ch;
-          el.appendChild(glyph);
+          el.append(skin, glyph);
+          /* Collection 01's anchor dots, punched in the background's colour. */
+          if (t.anchors) {
+            const d = t.h * ANCHOR;
+            for (const [ax, ay] of t.anchors) {
+              const dot = document.createElement("div");
+              dot.style.cssText = `position:absolute;left:${(ax - d / 2).toFixed(1)}px;top:${(ay - d / 2).toFixed(1)}px;width:${d.toFixed(1)}px;height:${d.toFixed(1)}px;border-radius:${(d * 0.25).toFixed(1)}px;background:${t.anchorFill};`;
+              el.appendChild(dot);
+            }
+          }
         } else {
           el.style.cssText = `position:absolute;left:0;top:0;color:${t.ink};${type}will-change:transform;`;
           el.textContent = t.ch;
@@ -584,13 +636,31 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, gra
     ctx.textBaseline = "middle";
     for (const t of s.tiles) {
       ctx.globalAlpha = t.alpha;
-      if (t.shape) {
+      if (t.shape === "letter") {
+        ctx.save();
+        ctx.translate(t.x * k - (t.w * k) / 2, t.y * k - (t.h * k) / 2);
+        ctx.scale(k, k);
+        ctx.fillStyle = t.fill;
+        specPath(ctx, t.spec);
+        ctx.fill();
+        if (t.anchors) {
+          const d = t.h * ANCHOR;
+          ctx.fillStyle = t.anchorFill;
+          for (const [ax, ay] of t.anchors) {
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(ax - d / 2, ay - d / 2, d, d, d * 0.25);
+            else ctx.rect(ax - d / 2, ay - d / 2, d, d);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      } else if (t.shape) {
         ctx.fillStyle = t.fill;
         stickerPath(ctx, t.x * k, t.y * k, t.w * k, t.h * k, t.shape);
         ctx.fill();
       }
       ctx.fillStyle = t.ink;
-      ctx.font = `${WEIGHT} ${t.size * k}px "Switzer","Rubik",system-ui,sans-serif`;
+      ctx.font = `${t.weight} ${t.size * k}px "Switzer","Rubik",system-ui,sans-serif`;
       ctx.fillText(t.ch, t.x * k - t.p * ctx.measureText(t.ch).width, t.y * k);
     }
     ctx.restore();
