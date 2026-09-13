@@ -102,6 +102,18 @@ const CHAMFER = 0.26;           // "chamfer": how much of the height each cut co
 const ECHOES = 6;               // how many copies trail behind each letter…
 const ECHO_MS = 120;            // … each one showing where the letter was this long ago…
 const ECHO_ALPHA = 0.5;         // … at this opacity, when the copies are set by opacity at all
+/* Rings */
+const RING_TURN = 9000;         // ms for the whole set of rings to come back round
+const RING_GAP = 1.8;           // the step from one ring to the next, in sticker heights
+const RING_ENTRY = 900;         // the letters push out of the middle over this long…
+const RING_STEP = 70;           // … one behind another
+/* Eights */
+const EIGHT_TURN = 7000;        // ms to travel the whole eight once
+const EIGHT_FLIP = 2;           // … and the figure turns over once every this many rounds
+/* Volume */
+const VOL_BEAT = 5400;          // ms for the slowest bar to rise and fall once
+const VOL_FLOOR = 70;           // the floor sits this far off the bottom of the frame
+
 const COLOUR = "spectrum";      // how the palette is spent. "spectrum": the letters take one
                                 // colour, the background the second, and the copies are solid steps
                                 // along a gradient between the last two — one step per copy.
@@ -145,11 +157,13 @@ export const POOL = [
   "#FF42FF", "#FFDD00", "#FF7300", "#FF721E",                             // 01
 ];
 
-const ROT = { sway: 0 };
-function dealPalette(mode, given) {
-  const quad = [given.frame, given.card, given.ink, given.anchor];
-  const rot = ROT[mode] || 0;
-  return { frame: quad[rot], card: quad[(rot + 1) % 4], ink: quad[(rot + 2) % 4], anchor: quad[(rot + 3) % 4] };
+/* The four colours are read in the order they are given: the first is the
+   ground, the second the sticker, and the copies run between the last two.
+   A card gets its own ground by being handed a different one of the sets
+   above, not by rotating the set it is given — so what you pick is what
+   you see. */
+function dealPalette(_mode, given) {
+  return { frame: given.frame, card: given.card, ink: given.ink, anchor: given.anchor };
 }
 
 /* ---------- small helpers ---------- */
@@ -340,9 +354,13 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   const empty = !chars.filter((c) => c !== " ").length;
   const rtl = /[֐-׿؀-ۿ]/.test(chars.join(""));
   const L = layout(Math.max(1, chars.length), font);
+  const card = mode;
   const shaped = shape !== "none";
   const cut = shape === "letter";           // … and cut to the letter, rather than one box
-  const tileH = L.h * TILE, tileW = tileH * TILE_W;
+  /* A row's height: the column's own on Sway, whatever the card worked out
+     for itself on the others. */
+  let tileSize = L.h, tileH = L.h * TILE, tileW = tileH * TILE_W;
+  const syncTile = () => { tileH = tileSize * TILE; tileW = tileH * TILE_W; };
 
   /* How far a lane's flush edges sit from its middle. A curve that
      overshoots would carry the letters past those edges, so the travel is
@@ -374,9 +392,30 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
   /* Everything but the background, in order. */
   const stops = [pal.card, pal.ink, pal.anchor];
 
+  /* The text as words, each one a list of positions in `chars` — a word is
+     what every card past Sway groups by: a ring, an eight, a bar. */
+  function words() {
+    const out = [];
+    let run = [];
+    chars.forEach((ch, i) => {
+      if (ch === " ") { if (run.length) out.push(run); run = []; return; }
+      run.push(i);
+    });
+    if (run.length) out.push(run);
+    return out;
+  }
+  const tone = (i) => (colour === "cycle" ? stops[i % stops.length]
+    : ramp(stops, chars.length > 1 ? i / (chars.length - 1) : 0));
+  /* How wide a sticker is on this card, before any letter is known. */
+  const boxW = (h) => (cut ? h * TILE_W * 0.8 : shaped ? h * TILE_W : h * GLYPH_W);
+
   function build() {
     letters = [];
+    tileSize = L.h;
     if (empty) return;
+    if (card === "rings") { buildRings(); return syncTile(); }
+    if (card === "eight") { buildEights(); return syncTile(); }
+    if (card === "volume") { buildVolume(); return syncTile(); }
     chars.forEach((ch, i) => {
       const col = Math.floor(i / L.rows);
       const row = i % L.rows;
@@ -385,13 +424,102 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       const cx = L.lane * (lane + 0.5);
       const cy = (STAGE - inCol * L.h) / 2 + L.h / 2 + row * L.h;
       letters.push({
-        id: i, ch, blank: ch === " ", col,
-        /* Only used when the copies are faded rather than coloured. */
-        fill: colour === "cycle" ? stops[i % stops.length]
-          : ramp(stops, chars.length > 1 ? i / (chars.length - 1) : 0),
+        id: i, ch, blank: ch === " ", group: col, fill: tone(i),
         /* A negative delay just turns the wave around: the bottom letter
            leads and the top one follows. */
         cx, cy, t0: BEAT + (stagger < 0 ? chars.length - 1 - i : i) * Math.abs(stagger),
+      });
+    });
+    syncTile();
+  }
+
+  /* Rings — a word to a ring, the first word outermost, every letter
+     evenly round its own circumference. They push out of the middle once,
+     one behind another, and from then on the rings turn: the inner ones
+     quicker and against the one outside them, a whole number of turns
+     each so the round joins back onto itself. */
+  function buildRings() {
+    const ws = words();
+    let h = MAX_H;
+    for (; h > 14; h -= 2) {
+      const w = boxW(h);
+      const r0 = STAGE / 2 - LANE_PAD / 2 - w / 2;
+      const rn = r0 - (ws.length - 1) * h * RING_GAP;
+      if (rn < h * 0.8) continue;
+      if (ws.every((wd, i) => (2 * Math.PI * (r0 - i * h * RING_GAP)) / wd.length >= w * 1.08)) break;
+    }
+    tileSize = h;
+    const r0 = STAGE / 2 - LANE_PAD / 2 - boxW(h) / 2;
+    ws.forEach((wd, ri) => {
+      const r = r0 - ri * h * RING_GAP;
+      wd.forEach((i, j) => {
+        letters.push({
+          id: i, ch: chars[i], blank: false, group: ri, closed: wd.length > 2, fill: tone(i),
+          cx: STAGE / 2, cy: STAGE / 2, r,
+          a0: -Math.PI / 2 + (2 * Math.PI * j) / wd.length,
+          spin: ((ri % 2 ? -1 : 1) * (ri + 1) * 2 * Math.PI) / RING_TURN,
+          t0: (letters.length + 1) * RING_STEP,
+        });
+      });
+    });
+  }
+
+  /* Eights — a word to a figure of eight, side by side, the letters strung
+     evenly along it. The whole figure turns over as it goes. */
+  function buildEights() {
+    const ws = words();
+    const span = (STAGE - 2 * LANE_PAD) / ws.length;
+    const longest = Math.max(...ws.map((w) => w.length));
+    /* The figure turns over, so what has to fit in the frame is the circle
+       it sweeps, not the eight itself: with these proportions the furthest
+       a letter ever gets from the middle is exactly that circle. The
+       letters then have to fit along the path with room between them, so
+       the size comes down until they do. */
+    const reach = (h) => Math.min(span / 2, STAGE * 0.42) - boxW(h) / 2 - 10;
+    let h = MAX_H;
+    for (; h > 12; h -= 2) {
+      const R = reach(h);
+      if (R < h * 0.9) continue;
+      if ((4.4 * R) / longest >= boxW(h) * 1.25) break;
+    }
+    tileSize = h;
+    const R = reach(h), A = R * 1.15, B = R * 2;
+    ws.forEach((wd, wi) => {
+      const col = rtl ? ws.length - 1 - wi : wi;
+      const cx = LANE_PAD + span * (col + 0.5);
+      wd.forEach((i, j) => {
+        letters.push({
+          id: i, ch: chars[i], blank: false, group: wi, closed: wd.length > 2, fill: tone(i),
+          cx, cy: STAGE / 2, A, B,
+          a0: (2 * Math.PI * j) / wd.length,
+          t0: 0,
+        });
+      });
+    });
+  }
+
+  /* Volume — a word to a bar standing on the floor, the bars rising and
+     sinking at their own rates, so their tops draw a moving horizon. */
+  function buildVolume() {
+    const ws = words();
+    const span = (STAGE - 2 * LANE_PAD) / ws.length;
+    const longest = Math.max(...ws.map((w) => w.length));
+    const floor = STAGE - VOL_FLOOR;
+    const h = Math.max(14, Math.min(MAX_H, (floor - VOL_FLOOR) / Math.max(2, longest), span / 1.15));
+    tileSize = h;
+    ws.forEach((wd, wi) => {
+      const col = rtl ? ws.length - 1 - wi : wi;
+      const cx = LANE_PAD + span * (col + 0.5);
+      const rise = wd.length * h + h;
+      wd.forEach((i, j) => {
+        letters.push({
+          id: i, ch: chars[i], blank: false, group: wi, top: j === 0, fill: tone(i),
+          cx, cy: floor - h / 2 - (wd.length - 1 - j) * h,
+          rise, floor,
+          beat: (1 + (wi % 3)) * ((2 * Math.PI) / VOL_BEAT),
+          phase: rand() * Math.PI * 2,
+          t0: 0,
+        });
       });
     });
   }
@@ -432,17 +560,41 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     return Lt.fill;
   }
 
+  /* Where a letter is at time t, whichever card this is. Everything else —
+     the copies, the threads, the stickers — is drawn from this one answer,
+     which is why a new card is only ever a new line here. */
+  function posAt(Lt, t, w) {
+    if (card === "rings") {
+      const out = Math.min(1, Math.max(0, (t - Lt.t0) / RING_ENTRY));
+      const r = Lt.r * ease(out);
+      const a = Lt.a0 + Lt.spin * Math.max(0, t - Lt.t0 - RING_ENTRY);
+      return { x: Lt.cx + Math.cos(a) * r, y: Lt.cy + Math.sin(a) * r };
+    }
+    if (card === "eight") {
+      const th = Lt.a0 + (2 * Math.PI * t) / EIGHT_TURN;
+      const dx = (Lt.A / 2) * Math.sin(2 * th), dy = -(Lt.B / 2) * Math.cos(th);
+      const f = (2 * Math.PI * t) / (EIGHT_TURN * EIGHT_FLIP), c = Math.cos(f), s2 = Math.sin(f);
+      return { x: Lt.cx + dx * c - dy * s2, y: Lt.cy + dx * s2 + dy * c };
+    }
+    if (card === "volume") {
+      const v = 0.5 - 0.5 * Math.cos(Lt.beat * t + Lt.phase);
+      return { x: Lt.cx, y: Lt.cy + (1 - v) * Lt.rise };
+    }
+    return { x: Lt.cx + (align(Lt, t) * 2 - 1) * halfFor(w), y: Lt.cy };
+  }
+
   /* Where one letter's rank-k sticker sits, and how wide it is. The
      hand-held wobble is the letter's own, shared by its copies, so at rest
      they stack exactly. */
   function place(Lt, k, frame) {
-    const p = align(Lt, now - k * echoDelay);
+    const t = now - k * echoDelay;
     const spec = cut ? stickerFor(Lt.ch, tileH, weight) : null;
     const w = cut ? spec.W : shaped ? tileW : L.w;
+    const at = posAt(Lt, t, w);
     return {
-      p, spec, w,
-      x: Lt.cx + (p * 2 - 1) * halfFor(w) + wobble(Lt.id, frame, 0) * JITTER,
-      y: Lt.cy + wobble(Lt.id, frame, 1) * JITTER,
+      p: card === "sway" ? align(Lt, t) : 0.5, spec, w,
+      x: at.x + wobble(Lt.id, frame, 0) * JITTER,
+      y: at.y + wobble(Lt.id, frame, 1) * JITTER,
     };
   }
 
@@ -459,19 +611,25 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
          before its own beads. A space breaks nothing: the thread simply
          carries on to the next letter. */
       if (thread) {
-        let run = [], col = -1, tone = null;
+        let run = [], g = -1, tone = null, closed = false;
         const flush = () => {
-          if (run.length > 1) tiles.push({ kind: "thread", id: `t${k}-${col}`, points: run, colour: tone, width: L.h * THREAD, alpha });
+          if (run.length > 1) tiles.push({ kind: "thread", id: `t${k}-${g}`, points: run, colour: tone, width: tileSize * THREAD, alpha, closed });
           run = [];
         };
         for (const Lt of letters) {
           if (Lt.blank) continue;
-          if (Lt.col !== col) { flush(); col = Lt.col; }
+          if (Lt.group !== g) { flush(); g = Lt.group; closed = !!Lt.closed; }
           const q = place(Lt, k, frame);
           tone = toneOf(Lt, k);
           run.push([q.x, q.y]);
         }
         flush();
+        /* Volume also strings the tops of the bars together: that line is
+           the horizon the card is named for. */
+        if (card === "volume") {
+          const ridge = letters.filter((Lt) => Lt.top).map((Lt) => { const q = place(Lt, k, frame); return [q.x, q.y]; });
+          if (ridge.length > 1) tiles.push({ kind: "thread", id: `h${k}`, points: ridge, colour: toneOf(letters[0], k), width: tileSize * THREAD, alpha, closed: false });
+        }
       }
       for (const Lt of letters) {
         if (Lt.blank) continue;
@@ -480,8 +638,8 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
         tiles.push({
           kind: "tile", id: Lt.id * 16 + k, ch: Lt.ch, p: shaped ? 0.5 : q.p,
           shape: shaped ? shape : null, spec: q.spec,
-          w: q.w, h: shaped ? tileH : L.h,
-          size: cut ? q.spec.size : shaped ? tileH * TILE_FONT : L.h * font,
+          w: q.w, h: shaped ? tileH : tileSize,
+          size: cut ? q.spec.size : shaped ? tileH * TILE_FONT : tileSize * font,
           weight,
           fill: shaped ? tone : null,      // the sticker
           ink: shaped ? LETTER : tone,     // the letter on it
@@ -489,7 +647,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
         });
       }
     }
-    return { bg: pal.frame, tiles };
+    return { bg: pal.frame, tiles, clipBelow: card === "volume" ? STAGE - VOL_FLOOR : null };
   }
 
   build();
@@ -497,10 +655,22 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     step, snapshot, restart, pal, empty,
     get loops() { return loops; },
     get now() { return now; },
-    /* One seamless loop of the steady state: from the moment the last
-       letter starts sliding, two passes long (left and back). */
-    get loopStart() { return (chars.length - 1) * Math.abs(stagger) + BEAT + passGap; },
-    get loopPeriod() { return 2 * passGap; },
+    /* One seamless loop of the steady state. Sway settles once the wave has
+       reached the last letter and repeats every two passes; the rings have
+       to push out of the middle first and then come round a whole number of
+       turns; the eights and the bars are in their stride from the first
+       frame. */
+    get loopStart() {
+      if (card === "rings") return letters.length * RING_STEP + RING_ENTRY;
+      if (card === "eight" || card === "volume") return 0;
+      return (chars.length - 1) * Math.abs(stagger) + BEAT + passGap;
+    },
+    get loopPeriod() {
+      if (card === "rings") return RING_TURN;
+      if (card === "eight") return EIGHT_TURN * EIGHT_FLIP;
+      if (card === "volume") return VOL_BEAT;
+      return 2 * passGap;
+    },
   };
 }
 
@@ -576,6 +746,8 @@ function mount(stage, mode, opts = {}) {
   function paint(frame) {
     const s = eng.snapshot(frame);
     if (noise) noise.style.backgroundImage = tiles[frame % tiles.length];
+    /* Volume's bars sink out of sight under the floor. */
+    layer.style.clipPath = s.clipBelow ? `inset(0 0 ${(STAGE - s.clipBelow).toFixed(1)}px 0)` : "";
     const seen = new Set();
     for (const t of s.tiles) {
       seen.add(t.id);
@@ -626,6 +798,9 @@ function mount(stage, mode, opts = {}) {
 }
 
 export const s = (stage, opts) => mount(stage, "sway", opts);
+export const r = (stage, opts) => mount(stage, "rings", opts);
+export const e = (stage, opts) => mount(stage, "eight", opts);
+export const v = (stage, opts) => mount(stage, "volume", opts);
 
 /* ---------- canvas renderer (export page) ---------- */
 
@@ -690,6 +865,11 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, gra
     ctx.fillRect(0, 0, size, size);
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
+    if (s.clipBelow) {
+      ctx.beginPath();
+      ctx.rect(0, 0, size, s.clipBelow * k);
+      ctx.clip();
+    }
     for (const t of s.tiles) {
       ctx.globalAlpha = t.alpha;
       if (t.kind === "thread") {
@@ -724,7 +904,12 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, gra
   const g = grainFor(pal.frame, { opacity: grainOpacity });
   return { draw, n: 90, pal, grain: grain ? { opacity: g.opacity, blend: g.blend, scale: grainScale, animated: true } : null };
 }
-export const x = { sway: (o) => scene("sway", o) };
+export const x = {
+  sway: (o) => scene("sway", o),
+  "sway-rings": (o) => scene("rings", o),
+  "sway-eight": (o) => scene("eight", o),
+  "sway-volume": (o) => scene("volume", o),
+};
 
 /* Exposed so the export page can sample a single still frame (SVG) straight
    off the real simulation instead of re-implementing it. */
