@@ -38,10 +38,9 @@
               middle, a hair of overshoot at the edge
      timing   1300 ms a slide, 380 ms standing at each end, 112 ms
               between one letter and the next (scaled down past 13 letters)
-     rings    the word walks its ring in strides, the tail chasing the head
-              and coming to rest with it; the letters sit a bead apart on it,
-              each with a tight
-              trail of copies behind it
+     rings    the letters spread round the ring and strung on the arcs
+              between them — how it travels is still open, and the copies
+              are off until it is settled
      colour   blue · orange · pink · white, each taking a turn as the
               background; the sticker one colour, the copies solid steps
               along a gradient between the other two, letters always slate
@@ -109,13 +108,13 @@ const ECHO_ALPHA = 0.5;         // … at this opacity, when the copies are set 
 /* Rings */
 const RING_GAP = 1.8;           // the step from one ring to the next, in sticker heights
 const RING_LEAD = 600;          // the word stands still this long before it sets off
-const RING_STEPS = 6;           // … then walks the ring round in this many strides
-const RING_MOVE = 700;          // one stride…
-const RING_HOLD = 800;          // … and the rest after it, long enough that the whole
-                                // word is standing still together for a good part of it
+const RING_MOTION = "stride";   // how it travels: "steady", "stride" or "swing"
+const RING_TURN = 9000;         // "steady": ms for one turn of the ring
+const RING_STEPS = 6;           // "stride": strides to the turn…
+const RING_MOVE = 700;          // … one stride…
+const RING_HOLD = 800;          // … and the rest after it
+const RING_SWING = 0.9;         // "swing": how far it rocks, as a share of a letter-gap
 const RING_LAG = 90;            // each letter sets off this long after the one in front
-const RING_SPACE = 1.32;        // how far apart the letters sit on the ring, in sticker widths —
-                                // wide enough that the thread shows between them
 /* Eights */
 const EIGHT_TURN = 7000;        // ms to travel the whole eight once
 const EIGHT_FLIP = 2;           // … and the figure turns over once every this many rounds
@@ -402,7 +401,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
                         echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR,
                         shape = SHAPE, thread = true, weight = WEIGHT,
                         /* Rings */
-                        ringFace = false, ringOne = false,
+                        ringFace = false, ringOne = false, ringMotion = RING_MOTION,
                         ringSteps = RING_STEPS, ringLag = RING_LAG,
                         /* Eights */
                         eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
@@ -495,44 +494,40 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     syncTile();
   }
 
-  /* Rings — the word sits on a ring as one piece, its letters a bead apart,
-     and walks it round in strides: the first letter sets off, the rest follow
-     a beat behind one another, and they all come to rest together before the
-     next stride. The tail chases the head, catches it, and waits. A letter's
-     copies follow it along the ring, so a stride smears them out behind it
-     and the rest gathers them back under the letter. The thread is the arcs
-     from one letter to the next, so it stretches with them.
-
-     Whole strides make up the round — the word is back where it started when
-     the last one lands — so the piece loops on itself exactly. */
+  /* Rings — a word to a ring, the first word outermost, its letters spread
+     evenly round the circumference and strung on the arcs between them.
+     How it travels is the card's own question, and there are three answers
+     in here: "steady" simply turns; "stride" walks it round a stride at a
+     time, the first letter setting off and the rest following a beat behind
+     one another before they all come to rest together; "swing" rocks it one
+     way and back instead of going round. Every one of them is built out of
+     whole turns or whole strides, so the round always closes on itself. */
   function buildRings() {
     const ws = ringOne ? [words().flat()] : words();
     rings = ws.length;
-    /* The word has to sit on its ring without meeting its own tail, so the
-       letters come down in size until the longest of them takes up no more
-       than four fifths of the circumference it is on. */
+    /* The letters are spread round the whole circumference, so what has to
+       fit is the gap between two of them. */
     let h = MAX_H;
     for (; h > 14; h -= 2) {
       const w = boxW(h);
       const r0 = STAGE / 2 - LANE_PAD / 2 - w / 2;
       const inner = (i) => r0 - i * h * RING_GAP;
       if (inner(ws.length - 1) < h * 0.9) continue;
-      if (ws.every((wd, i) => wd.length * w * RING_SPACE <= 2 * Math.PI * inner(i) * 0.8)) break;
+      if (ws.every((wd, i) => (2 * Math.PI * inner(i)) / wd.length >= w * 1.15)) break;
     }
     tileSize = h;
     const r0 = STAGE / 2 - LANE_PAD / 2 - boxW(h) / 2;
     ringStart = RING_LEAD;
     ws.forEach((wd, ri) => {
       const r = r0 - ri * h * RING_GAP;
-      const dir = ri % 2 ? -1 : 1;                     // every ring inside turns against the one outside it
-      const step = (dir * 2 * Math.PI) / ringSteps;    // one stride, in radians
-      const apart = (boxW(h) * RING_SPACE) / r;        // the gap between two letters, in radians
+      const dir = ri % 2 ? -1 : 1;                 // every ring inside turns against the one outside it
+      const gap = (dir * 2 * Math.PI) / wd.length; // one letter-gap, in radians
       wd.forEach((i, j) => {
         letters.push({
           id: i, ch: chars[i], blank: false, group: ri, fill: tone(i), ed: echoDelay,
-          cx: STAGE / 2, cy: STAGE / 2, r, ring: ri, dir, step,
-          /* The head starts at the top, the rest trail behind it. */
-          a0: -Math.PI / 2 - dir * j * apart,
+          cx: STAGE / 2, cy: STAGE / 2, r, ring: ri, dir, gap,
+          step: (dir * 2 * Math.PI) / ringSteps,
+          a0: -Math.PI / 2 + j * gap,
           off: RING_LEAD + j * ringLag,
         });
       });
@@ -644,18 +639,27 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      which is why a new card is only ever a new line here. */
   function posAt(Lt, t, w, k) {
     if (card === "rings") {
-      /* Strides, not a turn: a letter waits out its own delay, takes one
-         stride of the ring, rests, and goes again. Because every letter
-         takes the same stride, the word is the same shape at every rest —
-         it only stretches while it is on the move. */
+      /* Whichever way the ring travels, a letter waits out its own delay
+         first — so the first letter leads and the rest follow it. */
       const local = t - Lt.off;
-      let walked = 0;
+      let a = Lt.a0;
       if (local > 0) {
-        const pulse = RING_MOVE + RING_HOLD;
-        const k = Math.floor(local / pulse);
-        walked = k + ease(Math.min(1, (local - k * pulse) / RING_MOVE));
+        if (ringMotion === "steady") {
+          a += ((Lt.dir * 2 * Math.PI) / RING_TURN) * local;
+        } else if (ringMotion === "swing") {
+          /* Out and back, one letter-gap's worth, resting at both ends. */
+          const pulse = RING_MOVE + RING_HOLD;
+          const k = Math.floor(local / pulse);
+          const u = ease(Math.min(1, (local - k * pulse) / RING_MOVE));
+          const from = k % 2 === 0 ? 0 : 1, to = k % 2 === 0 ? 1 : 0;
+          a += Lt.gap * RING_SWING * (from + (to - from) * u);
+        } else {
+          /* A stride at a time: move, rest, move again. */
+          const pulse = RING_MOVE + RING_HOLD;
+          const k = Math.floor(local / pulse);
+          a += Lt.step * (k + ease(Math.min(1, (local - k * pulse) / RING_MOVE)));
+        }
       }
-      const a = Lt.a0 + Lt.step * walked;
       return {
         x: Lt.cx + Math.cos(a) * Lt.r, y: Lt.cy + Math.sin(a) * Lt.r,
         a, out: true, rot: ringFace ? a + Math.PI / 2 : 0,
@@ -785,7 +789,11 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       return (chars.length - 1) * Math.abs(stagger) + BEAT + passGap;
     },
     get loopPeriod() {
-      if (card === "rings") return ringSteps * (RING_MOVE + RING_HOLD);
+      if (card === "rings") {
+        if (ringMotion === "steady") return RING_TURN;
+        if (ringMotion === "swing") return 2 * (RING_MOVE + RING_HOLD);
+        return ringSteps * (RING_MOVE + RING_HOLD);
+      }
       if (card === "eight") return EIGHT_TURN * Math.max(1, eightFlip);
       if (card === "volume") return VOL_BEAT;
       return 2 * passGap;
