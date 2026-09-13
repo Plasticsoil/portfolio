@@ -3,7 +3,9 @@
    Behind every letter trail a few copies of it, each showing where the
    letter was a moment ago. The letters are one colour and the ground
    another; the copies are solid steps down a gradient between the last
-   two colours, the spectrum cut into as many steps as there are copies. They cost
+   two colours, the spectrum cut into as many steps as there are copies,
+   and every rank is strung on a thread of its own colour running down the
+   column, so each one reads as a string of beads. They cost
    nothing to place: a copy is just the same letter sampled at an earlier
    time, so the faster the letter travels the further apart they spread,
    and the instant it stops they all fall exactly behind it and vanish.
@@ -51,9 +53,8 @@
 
 /* Collection 01's sticker: a tile cut to the letter's own shape — a circle
    for a round letter, a trapezoid for an A, an X for an X, otherwise a box
-   with a radius per corner — plus the little anchor dots at its corners.
-   The geometry already lives in the bundle, so it is imported rather than
-   copied: letterSpec(ch, textWidth, height) describes one, and the three
+   with a radius per corner. The geometry already lives in the bundle, so
+   it is imported rather than copied: letterSpec(ch, textWidth, height) describes one, and the three
    readers turn it into a CSS radius, a CSS clip-path or a canvas path. */
 import {
   f as letterSpec, g as letterWidth, d as specRadius, h as specClip, a as specPath,
@@ -89,7 +90,7 @@ const LETTER = "#4E4B5D";       // Stickers' slate letter colour, on every stick
 const SHAPE = "letter";         // the sticker under the letter: "letter" (Collection 01's, cut to
                                 // the letter's own shape), "capsule", "chamfer" or "none"
 const LETTER_W = 0.8;           // "letter": the glyph's size inside its sticker
-const ANCHOR = 0.1;             // … and the anchor dots at the sticker's corners, as a share of its height
+const THREAD = 0.09;            // the thread a rank is strung on, as a share of a row
 const TILE = 0.84;              // a sticker's height as a share of its row, so the rows keep air
 const TILE_W = 1.42;            // … and its width as a share of its own height
 const TILE_FONT = 0.52;         // … and the letter's size inside it
@@ -315,7 +316,7 @@ function layout(n, font = FONT) {
 function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS,
                         curve = CURVE, font = FONT, echoes = ECHOES,
                         echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR,
-                        shape = SHAPE } = {}) {
+                        shape = SHAPE, thread = true } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
@@ -365,7 +366,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       const cx = L.lane * (lane + 0.5);
       const cy = (STAGE - inCol * L.h) / 2 + L.h / 2 + row * L.h;
       letters.push({
-        id: i, ch, blank: ch === " ",
+        id: i, ch, blank: ch === " ", col,
         /* Only used when the copies are faded rather than coloured. */
         fill: colour === "cycle" ? stops[i % stops.length]
           : ramp(stops, chars.length > 1 ? i / (chars.length - 1) : 0),
@@ -403,49 +404,69 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
 
   function step(dt) { now += dt * 1000; }
 
+  /* The colour a rank is drawn in: 0 is the letter itself. */
+  function toneOf(Lt, k) {
+    if (colour === "spectrum") {
+      return k === 0 ? stops[0] : ramp([stops[1], stops[2]], echoes > 1 ? (k - 1) / (echoes - 1) : 0);
+    }
+    if (colour === "trail") return stops[k % stops.length];
+    return Lt.fill;
+  }
+
+  /* Where one letter's rank-k sticker sits, and how wide it is. The
+     hand-held wobble is the letter's own, shared by its copies, so at rest
+     they stack exactly. */
+  function place(Lt, k, frame) {
+    const p = align(Lt, now - k * echoDelay);
+    const spec = cut ? stickerFor(Lt.ch, tileH) : null;
+    const w = cut ? spec.W : shaped ? tileW : L.w;
+    return {
+      p, spec, w,
+      x: Lt.cx + (p * 2 - 1) * halfFor(w) + wobble(Lt.id, frame, 0) * JITTER,
+      y: Lt.cy + wobble(Lt.id, frame, 1) * JITTER,
+    };
+  }
+
   function snapshot(frame) {
     const tiles = [];
-    for (const Lt of letters) {
-      if (Lt.blank) continue;
-      /* No entrance: the word is simply there, at full size, from the
-         first frame — only the wave moves. The hand-held wobble is the
-         letter's own, shared by its copies, so at rest they stack exactly. */
-      const jx = wobble(Lt.id, frame, 0) * JITTER;
-      const jy = wobble(Lt.id, frame, 1) * JITTER;
-      /* Furthest copy first, so the trail paints behind the letter — and
-         since every copy is the same glyph at the same size, the leading
-         letter covers them exactly once they have caught up with it. */
-      for (let k = echoes; k >= 0; k--) {
-        /* `p` is where the letter's own box hangs off `x`: 0 pins its left
-           edge there, 1 its right edge, 0.5 centres it. The renderers know
-           the letter's real width, so none of them has to guess. */
-        const p = align(Lt, now - k * echoDelay);
-        const solid = colour === "spectrum" || colour === "trail";
-        let tone = Lt.fill;
-        if (colour === "spectrum") {
-          /* The sticker itself, then the copies stepping down a gradient
-             between the last two colours — the spectrum is cut into as
-             many solid steps as there are copies. */
-          tone = k === 0 ? stops[0] : ramp([stops[1], stops[2]], echoes > 1 ? (k - 1) / (echoes - 1) : 0);
-        } else if (colour === "trail") {
-          tone = stops[k % stops.length];
+    const solid = colour === "spectrum" || colour === "trail";
+    /* Rank by rank, the furthest copy first: the whole trail paints behind
+       the whole word rather than letter by letter, and since every copy is
+       the same glyph at the same size, one that has caught up with its
+       letter disappears under it. */
+    for (let k = echoes; k >= 0; k--) {
+      const alpha = solid || k === 0 ? 1 : (echoAlpha * (echoes - k + 1)) / echoes;
+      /* The thread this rank is strung on — one run per column, laid down
+         before its own beads. A space breaks nothing: the thread simply
+         carries on to the next letter. */
+      if (thread) {
+        let run = [], col = -1, tone = null;
+        const flush = () => {
+          if (run.length > 1) tiles.push({ kind: "thread", id: `t${k}-${col}`, points: run, colour: tone, width: L.h * THREAD, alpha });
+          run = [];
+        };
+        for (const Lt of letters) {
+          if (Lt.blank) continue;
+          if (Lt.col !== col) { flush(); col = Lt.col; }
+          const q = place(Lt, k, frame);
+          tone = toneOf(Lt, k);
+          run.push([q.x, q.y]);
         }
-        const spec = cut ? stickerFor(Lt.ch, tileH) : null;
-        const w = cut ? spec.W : shaped ? tileW : L.w;
+        flush();
+      }
+      for (const Lt of letters) {
+        if (Lt.blank) continue;
+        const q = place(Lt, k, frame);
+        const tone = toneOf(Lt, k);
         tiles.push({
-          id: Lt.id * 16 + k, ch: Lt.ch, p: shaped ? 0.5 : p,
-          shape: shaped ? shape : null, spec,
-          w, h: shaped ? tileH : L.h,
-          size: cut ? spec.size : shaped ? tileH * TILE_FONT : L.h * font,
+          kind: "tile", id: Lt.id * 16 + k, ch: Lt.ch, p: shaped ? 0.5 : q.p,
+          shape: shaped ? shape : null, spec: q.spec,
+          w: q.w, h: shaped ? tileH : L.h,
+          size: cut ? q.spec.size : shaped ? tileH * TILE_FONT : L.h * font,
           weight: cut ? 900 : WEIGHT,
           fill: shaped ? tone : null,      // the sticker
           ink: shaped ? LETTER : tone,     // the letter on it
-          /* The anchor dots belong to the leading sticker only — on every
-             copy they would read as noise. */
-          anchors: cut && k === 0 ? spec.anchors : null,
-          anchorFill: pal.frame,
-          x: Lt.cx + (p * 2 - 1) * halfFor(w) + jx, y: Lt.cy + jy,
-          alpha: solid || k === 0 ? 1 : (echoAlpha * (echoes - k + 1)) / echoes,
+          x: q.x, y: q.y, alpha,
         });
       }
     }
@@ -509,12 +530,37 @@ function mount(stage, mode, opts = {}) {
   }
 
   const els = new Map();
+  /* A rank's thread: one SVG polyline, created in the order the snapshot
+     lists it so it sits under its own beads and over the rank behind. */
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  function paintThread(t) {
+    let el = els.get(t.id);
+    if (!el) {
+      el = document.createElementNS(SVG_NS, "svg");
+      el.setAttribute("viewBox", `0 0 ${STAGE} ${STAGE}`);
+      el.style.cssText = "position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;";
+      const line = document.createElementNS(SVG_NS, "polyline");
+      line.setAttribute("fill", "none");
+      line.setAttribute("stroke-linecap", "round");
+      line.setAttribute("stroke-linejoin", "round");
+      el.appendChild(line);
+      layer.appendChild(el);
+      els.set(t.id, el);
+    }
+    const line = el.firstChild;
+    line.setAttribute("points", t.points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" "));
+    line.setAttribute("stroke", t.colour);
+    line.setAttribute("stroke-width", t.width.toFixed(1));
+    line.setAttribute("opacity", t.alpha.toFixed(3));
+  }
+
   function paint(frame) {
     const s = eng.snapshot(frame);
     if (noise) noise.style.backgroundImage = tiles[frame % tiles.length];
     const seen = new Set();
     for (const t of s.tiles) {
       seen.add(t.id);
+      if (t.kind === "thread") { paintThread(t); continue; }
       let el = els.get(t.id);
       if (!el) {
         el = document.createElement("div");
@@ -527,15 +573,6 @@ function mount(stage, mode, opts = {}) {
           glyph.style.cssText = `position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${t.ink};`;
           glyph.textContent = t.ch;
           el.append(skin, glyph);
-          /* Collection 01's anchor dots, punched in the background's colour. */
-          if (t.anchors) {
-            const d = t.h * ANCHOR;
-            for (const [ax, ay] of t.anchors) {
-              const dot = document.createElement("div");
-              dot.style.cssText = `position:absolute;left:${(ax - d / 2).toFixed(1)}px;top:${(ay - d / 2).toFixed(1)}px;width:${d.toFixed(1)}px;height:${d.toFixed(1)}px;border-radius:${(d * 0.25).toFixed(1)}px;background:${t.anchorFill};`;
-              el.appendChild(dot);
-            }
-          }
         } else {
           el.style.cssText = `position:absolute;left:0;top:0;color:${t.ink};${type}will-change:transform;`;
           el.textContent = t.ch;
@@ -636,6 +673,16 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, gra
     ctx.textBaseline = "middle";
     for (const t of s.tiles) {
       ctx.globalAlpha = t.alpha;
+      if (t.kind === "thread") {
+        ctx.strokeStyle = t.colour;
+        ctx.lineWidth = t.width * k;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        t.points.forEach(([x, y], i) => (i ? ctx.lineTo(x * k, y * k) : ctx.moveTo(x * k, y * k)));
+        ctx.stroke();
+        continue;
+      }
       if (t.shape === "letter") {
         ctx.save();
         ctx.translate(t.x * k - (t.w * k) / 2, t.y * k - (t.h * k) / 2);
@@ -643,16 +690,6 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, gra
         ctx.fillStyle = t.fill;
         specPath(ctx, t.spec);
         ctx.fill();
-        if (t.anchors) {
-          const d = t.h * ANCHOR;
-          ctx.fillStyle = t.anchorFill;
-          for (const [ax, ay] of t.anchors) {
-            ctx.beginPath();
-            if (ctx.roundRect) ctx.roundRect(ax - d / 2, ay - d / 2, d, d, d * 0.25);
-            else ctx.rect(ax - d / 2, ay - d / 2, d, d);
-            ctx.fill();
-          }
-        }
         ctx.restore();
       } else if (t.shape) {
         ctx.fillStyle = t.fill;
