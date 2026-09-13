@@ -110,6 +110,7 @@ const RING_TURN = 9000;         // ms for the whole set of rings to come back ro
 const RING_GAP = 1.8;           // the step from one ring to the next, in sticker heights
 const RING_RANK = 1.3;          // … and from one rank of copies to the next, when they take rings of their own
 const RING_LEAD = 600;          // the ring turns this long before the first letter runs onto it
+const RING_PACE = 2;            // the first letter takes this many more turns than the last
 /* Eights */
 const EIGHT_TURN = 7000;        // ms to travel the whole eight once
 const EIGHT_FLIP = 2;           // … and the figure turns over once every this many rounds
@@ -283,12 +284,16 @@ function arcPath(pts, cx, cy) {
   if (pts.length < 2) return "";
   let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
   for (let i = 1; i < pts.length; i++) {
-    const [x, y, a] = pts[i];
+    const [x, y, a, dir] = pts[i];
     const r = Math.hypot(x - cx, y - cy);
-    let da = a - pts[i - 1][2];
-    while (da > Math.PI) da -= 2 * Math.PI;
-    while (da < -Math.PI) da += 2 * Math.PI;
-    d += `A${r.toFixed(1)},${r.toFixed(1)} 0 0,${da > 0 ? 1 : 0} ${x.toFixed(1)},${y.toFixed(1)}`;
+    /* Always back along the way the ring travels, from a letter to the one
+       behind it — never the short way across, which would cut the chord as
+       soon as two letters drifted more than half a turn apart. */
+    let da = (a - pts[i - 1][2]) * (dir || 1);
+    while (da > 0) da -= 2 * Math.PI;
+    while (da < -2 * Math.PI) da += 2 * Math.PI;
+    const sweep = (dir || 1) > 0 ? 0 : 1;
+    d += `A${r.toFixed(1)},${r.toFixed(1)} 0 ${Math.abs(da) > Math.PI ? 1 : 0},${sweep} ${x.toFixed(1)},${y.toFixed(1)}`;
   }
   return d;
 }
@@ -394,6 +399,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
                         /* Rings */
                         ringDir = "alternate", ringSpeed = "stack", ringBreath = 0, ringOne = false,
                         ringSeparate = false, ringFace = false, ringEven = false, ringMandala = false,
+                        ringPace = 2,
                         /* Eights */
                         eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
                         /* Volume */
@@ -531,6 +537,12 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
          own it turns each rank a notch against the one outside it. */
       const ed = ringEven ? turn / (wd.length * (echoes + 1)) : echoDelay;
       const dir = ringDir === "same" ? 1 : ri % 2 ? -1 : 1;
+      /* Each letter keeps its own pace: the first takes ringPace more turns
+         of the ring than the last, in whole turns so that every one of them
+         is back where it started at the end of the round. The gaps between
+         the letters then open and close all the way through it, and a
+         quicker letter draws its copies out further behind it. */
+      const turns = (j) => 1 + Math.round((ringPace * (wd.length - 1 - j)) / Math.max(1, wd.length - 1));
       /* One letter behind the next by exactly the time it takes to travel a
          letter-gap: they run on from the same point and end up evenly spaced
          without ever having to be put into place. */
@@ -540,8 +552,8 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
           id: i, ch: chars[i], blank: false, group: ri, fill: tone(i), ed,
           cx: STAGE / 2, cy: STAGE / 2, r, rank: h * RING_RANK, ring: ri,
           a0: -Math.PI / 2,
-          spin: (dir * (ringSpeed === "same" ? 1 : ri + 1) * 2 * Math.PI) / RING_TURN,
-          born: RING_LEAD + j * gap,
+          spin: (dir * (ringSpeed === "same" ? 1 : ri + 1) * turns(j) * 2 * Math.PI) / RING_TURN,
+          dir, born: RING_LEAD + j * gap,
         });
       });
     });
@@ -716,7 +728,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
           const q = place(Lt, k, frame);
           if (!q.out) continue;
           tone = toneOf(Lt, k);
-          run.push([q.x, q.y, q.a]);
+          run.push([q.x, q.y, q.a, Lt.dir]);
         }
         flush();
       }
