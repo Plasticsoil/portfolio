@@ -24,9 +24,12 @@
    repeats every two passes, so the export samples exactly one of those
    periods and the exported loop is seamless.
 
-   Collection 04's colour idea: no sticker behind the letter — the
-   letters themselves carry the colour, stepping through a gradient
-   down the column, one step per letter.
+   Collection 04's sticker is a capsule — rounded right through at both
+   ends, a little wider than tall, so a column of them reads as a stack of
+   sliders (02 used circles, 03 sharp squares). The letter inside is the
+   family's slate, as it is on every other card; the colour lives in the
+   sticker, and so do the copies. A cut-corner sticker and a no-sticker
+   reading are there as options.
 
    Settled so far, from the lab (September 2026):
      motion   cubic-bezier(0.51, 0, 0.33, 1.01) — a slow leave, a quick
@@ -34,11 +37,11 @@
      timing   1300 ms a slide, 380 ms standing at each end, 112 ms
               between one letter and the next (scaled down past 13 letters)
      colour   blue · orange · pink · white, each taking a turn as the
-              background; the letters one colour, the copies solid steps
-              along a gradient between the other two
+              background; the sticker one colour, the copies solid steps
+              along a gradient between the other two, letters always slate
      echo     four copies, 60 ms apart
-     type     Switzer 700, a letter 0.76 of its row, the column four
-              fifths of the frame's height, 95 px clear of the sides
+     type     Switzer 700 slate on a capsule sticker 0.84 of its row, the
+              column four fifths of the frame's height, 95 px clear of the sides
      grain    0.28 overlaid on a light ground, 0.10 screened on a dark one
      open     12 fps for now — 8 and 10 are still on the table; the card is
               called Sway for now (Slide, Drift, Comb, Lag were the others)
@@ -72,6 +75,12 @@ const MOVE_MS = 1300;           // one slide, edge to edge
 const HOLD_MS = 380;            // … and the pause at the end of it
 const CURVE = "sway";           // … and how it gets there (see CURVES)
 const WEIGHT = 700;             // Switzer bold (Rubik bold for Hebrew)
+const LETTER = "#4E4B5D";       // Stickers' slate letter colour, on every sticker in the family
+const SHAPE = "capsule";        // the sticker under the letter: "capsule", "chamfer" or "none"
+const TILE = 0.84;              // a sticker's height as a share of its row, so the rows keep air
+const TILE_W = 1.42;            // … and its width as a share of its own height
+const TILE_FONT = 0.52;         // … and the letter's size inside it
+const CHAMFER = 0.26;           // "chamfer": how much of the height each cut corner takes
 const ECHOES = 4;               // how many copies trail behind each letter…
 const ECHO_MS = 60;             // … each one showing where the letter was this long ago…
 const ECHO_ALPHA = 0.5;         // … at this opacity, when the copies are set by opacity at all
@@ -148,6 +157,16 @@ function wobble(i, frame, axis) {
   return (d / 4294967296) * 2 - 1;
 }
 const GRAIN_TILES = 6, GRAIN_TILE = 192, GRAIN_OPACITY = 0.28, GRAIN_DARK = 0.1;
+
+/* The sticker's outline, in CSS. */
+function shapeCss(t) {
+  if (t.shape === "capsule") return `border-radius:${t.h / 2}px;`;
+  if (t.shape === "chamfer") {
+    const c = (CHAMFER * t.h * 100) / t.w, d = CHAMFER * 100;
+    return `clip-path:polygon(${c.toFixed(2)}% 0, ${(100 - c).toFixed(2)}% 0, 100% ${d.toFixed(2)}%, 100% ${(100 - d).toFixed(2)}%, ${(100 - c).toFixed(2)}% 100%, ${c.toFixed(2)}% 100%, 0 ${(100 - d).toFixed(2)}%, 0 ${d.toFixed(2)}%);`;
+  }
+  return "";
+}
 
 /* How light a colour is, 0…1 — the grain is laid on differently over a
    dark field than over a bright one, and the lab keeps a shuffled set
@@ -264,12 +283,16 @@ function layout(n, font = FONT) {
    period (loopPeriod), a stagger apart. */
 function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS,
                         curve = CURVE, font = FONT, echoes = ECHOES,
-                        echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR } = {}) {
+                        echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR,
+                        shape = SHAPE } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
   const rtl = /[֐-׿؀-ۿ]/.test(chars.join(""));
   const L = layout(Math.max(1, chars.length), font);
+  const shaped = shape !== "none";
+  const tileH = L.h * TILE, tileW = tileH * TILE_W;
+
   /* How far a lane's flush edges sit from its middle. A curve that
      overshoots would carry the letters past those edges, so the travel is
      pulled in by however far it overshoots — the letters still line up
@@ -279,7 +302,10 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     for (let i = 0; i <= 100; i++) { const v = shapeOf(curve)(i / 100); m = Math.max(m, v - 1, -v); }
     return Math.max(0, m);
   })();
-  const half = (L.lane / 2 - LANE_PAD) / (1 + 2 * over);
+  /* Without a sticker each letter hangs off the flush edge by its own
+     width, which only the renderers know; a sticker is one fixed box, so
+     the engine can place its middle itself. */
+  const half = (L.lane / 2 - LANE_PAD - (shaped ? tileW / 2 : 0)) / (1 + 2 * over);
   const stagger = staggerOpt === undefined
     ? Math.max(STAGGER_MIN, Math.min(STAGGER, STAGGER_SPAN / Math.max(1, chars.length)))
     : staggerOpt;
@@ -361,17 +387,22 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
            the letter's real width, so none of them has to guess. */
         const p = align(Lt, now - k * echoDelay);
         const solid = colour === "spectrum" || colour === "trail";
-        let fill = Lt.fill;
+        let tone = Lt.fill;
         if (colour === "spectrum") {
-          /* The letter itself, then the copies stepping down a gradient
+          /* The sticker itself, then the copies stepping down a gradient
              between the last two colours — the spectrum is cut into as
              many solid steps as there are copies. */
-          fill = k === 0 ? stops[0] : ramp([stops[1], stops[2]], echoes > 1 ? (k - 1) / (echoes - 1) : 0);
+          tone = k === 0 ? stops[0] : ramp([stops[1], stops[2]], echoes > 1 ? (k - 1) / (echoes - 1) : 0);
         } else if (colour === "trail") {
-          fill = stops[k % stops.length];
+          tone = stops[k % stops.length];
         }
         tiles.push({
-          id: Lt.id * 16 + k, ch: Lt.ch, w: L.w, h: L.h, size: L.h * font, p, fill,
+          id: Lt.id * 16 + k, ch: Lt.ch, p: shaped ? 0.5 : p,
+          shape: shaped ? shape : null,
+          w: shaped ? tileW : L.w, h: shaped ? tileH : L.h,
+          size: shaped ? tileH * TILE_FONT : L.h * font,
+          fill: shaped ? tone : null,      // the sticker
+          ink: shaped ? LETTER : tone,     // the letter on it
           x: Lt.cx + (p * 2 - 1) * half + jx, y: Lt.cy + jy,
           alpha: solid || k === 0 ? 1 : (echoAlpha * (echoes - k + 1)) / echoes,
         });
@@ -446,8 +477,17 @@ function mount(stage, mode, opts = {}) {
       let el = els.get(t.id);
       if (!el) {
         el = document.createElement("div");
-        el.style.cssText = `position:absolute;left:0;top:0;font-family:"Switzer","Rubik",system-ui,sans-serif;font-weight:${WEIGHT};font-size:${t.size}px;line-height:1;color:${t.fill};text-transform:uppercase;letter-spacing:-0.02em;white-space:pre;will-change:transform;`;
-        el.textContent = t.ch;
+        const type = `font-family:"Switzer","Rubik",system-ui,sans-serif;font-weight:${WEIGHT};font-size:${t.size}px;line-height:1;text-transform:uppercase;letter-spacing:-0.02em;white-space:pre;`;
+        if (t.shape) {
+          el.style.cssText = `position:absolute;left:0;top:0;width:${t.w}px;height:${t.h}px;background:${t.fill};color:${t.ink};${type}display:flex;align-items:center;justify-content:center;will-change:transform;${shapeCss(t)}`;
+          const glyph = document.createElement("span");
+          glyph.style.cssText = "position:relative;";
+          glyph.textContent = t.ch;
+          el.appendChild(glyph);
+        } else {
+          el.style.cssText = `position:absolute;left:0;top:0;color:${t.ink};${type}will-change:transform;`;
+          el.textContent = t.ch;
+        }
         layer.appendChild(el);
         els.set(t.id, el);
       }
@@ -486,6 +526,33 @@ export const s = (stage, opts) => mount(stage, "sway", opts);
    period of the steady state — from the moment every letter is sliding,
    two passes long — which joins back onto itself exactly. */
 const EXPORT_SEED = 20260912, SIM_DT = 1 / 120;
+
+/* The same outline on a canvas, around (cx, cy). */
+function stickerPath(ctx, cx, cy, w, h, shape) {
+  const x = cx - w / 2, y = cy - h / 2;
+  ctx.beginPath();
+  if (shape === "chamfer") {
+    const c = CHAMFER * h;
+    ctx.moveTo(x + c, y);
+    ctx.lineTo(x + w - c, y);
+    ctx.lineTo(x + w, y + c);
+    ctx.lineTo(x + w, y + h - c);
+    ctx.lineTo(x + w - c, y + h);
+    ctx.lineTo(x + c, y + h);
+    ctx.lineTo(x, y + h - c);
+    ctx.lineTo(x, y + c);
+    ctx.closePath();
+    return;
+  }
+  const r = h / 2;
+  if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
 function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, grainScale = 1.2 } = {}) {
   const opts = { word, palette, seed: (seed | 0) || EXPORT_SEED };
   const pal = dealPalette(mode, palette || p[0]);
@@ -517,7 +584,12 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, gra
     ctx.textBaseline = "middle";
     for (const t of s.tiles) {
       ctx.globalAlpha = t.alpha;
-      ctx.fillStyle = t.fill;
+      if (t.shape) {
+        ctx.fillStyle = t.fill;
+        stickerPath(ctx, t.x * k, t.y * k, t.w * k, t.h * k, t.shape);
+        ctx.fill();
+      }
+      ctx.fillStyle = t.ink;
       ctx.font = `${WEIGHT} ${t.size * k}px "Switzer","Rubik",system-ui,sans-serif`;
       ctx.fillText(t.ch, t.x * k - t.p * ctx.measureText(t.ch).width, t.y * k);
     }
