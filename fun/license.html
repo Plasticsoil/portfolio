@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FunType · License</title>
+    <meta name="description" content="How you can use what you make with FunType." />
+    <meta name="copyright" content="FunType © 2026 yamliv.net. Outputs CC BY-NC 4.0. https://yamliv.net/fun/license" />
+    <link rel="icon" type="image/svg+xml" href="/fun/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" />
+    <style>
+      :root {
+        --bg:#f8f6f3; --ink:#a3a09b; --emph:#68645e;
+        --line:rgba(163,160,155,0.42); --card:#ffffff;
+        --serif:"Instrument Serif", Georgia, serif;
+        --sans:"Nimbus Sans","Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+      *, *::before, *::after { box-sizing:border-box; }
+      html, body { margin:0; }
+      body {
+        background:var(--bg); color:var(--ink);
+        font-family:var(--sans); font-size:16px; line-height:1.55;
+        -webkit-font-smoothing:antialiased;
+        padding: clamp(72px, 12vw, 140px) 24px 80px;
+      }
+      .ft-back {
+        position:fixed; top:clamp(20px,4vw,36px); left:clamp(20px,4vw,36px); z-index:1000;
+        display:inline-flex; align-items:baseline; gap:8px;
+        font-family:var(--sans); font-size:14px; letter-spacing:.01em;
+      }
+      .ft-back-link { display:inline-flex; align-items:baseline; gap:6px; color:var(--ink); text-decoration:none; transition:color .2s ease; }
+      .ft-back-slash, .ft-back-sep { color:rgba(163,160,155,.48); }
+      .ft-back-link:hover { color:var(--emph); }
+      .ft-back-link:hover .ft-back-slash { color:var(--ink); }
+      main { max-width:560px; margin:0 auto; display:grid; gap:28px; }
+      h1 { font-family:var(--serif); font-weight:400; font-size:44px; line-height:1; margin:0; color:var(--emph); text-wrap:balance; }
+      h2 { font-family:var(--serif); font-weight:400; font-size:24px; line-height:1.15; margin:0 0 6px; color:var(--emph); }
+      p { margin:0; color:var(--emph); max-width:60ch; }
+      p.muted { color:var(--ink); }
+      section { display:grid; gap:8px; padding-top:24px; border-top:1px solid var(--line); }
+      a { color:var(--emph); text-decoration:underline; text-underline-offset:3px; }
+      a:hover { color:#26251e; }
+      .credit-sample {
+        display:inline-block; margin-top:4px; padding:10px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card);
+        font-family:"Switzer","Helvetica Neue",Helvetica,Arial,sans-serif; font-weight:500; font-size:14px; color:#4E4B5D; opacity:.85;
+      }
+      footer { max-width:560px; margin:56px auto 0; font-size:12px; color:var(--ink); display:flex; flex-wrap:wrap; gap:6px 16px; }
+      footer a { color:var(--ink); }
+    </style>
+  </head>
+  <body>
+    <nav class="ft-back" aria-label="Breadcrumb">
+      <a class="ft-back-link" href="/">
+        <span class="ft-back-slash" aria-hidden="true">/</span>
+        <span class="ft-back-label">portfolio</span>
+      </a>
+      <span class="ft-back-sep" aria-hidden="true">/</span>
+      <a class="ft-back-link" href="/fun/">
+        <span class="ft-back-label">FunType</span>
+      </a>
+    </nav>
+
+    <main>
+      <div>
+        <h1>License</h1>
+        <p class="muted" style="margin-top:12px">FunType is made by yamliv.net. This page says what you can do with it.</p>
+      </div>
+
+      <section>
+        <h2>What you export</h2>
+        <p>GIF, MP4, WebM, PNG, SVG and frame sequences are licensed under <a href="https://creativecommons.org/licenses/by-nc/4.0/" rel="license noopener" target="_blank">Creative Commons BY-NC 4.0</a>. Use them for free in personal and non-commercial work, with credit to yamliv.net.</p>
+      </section>
+
+      <section>
+        <h2>Commercial use</h2>
+        <p>A brand identity, a logo, a product, an ad, client work, anything sold: that needs written permission. Write to <a href="mailto:plasticsoil404@gmail.com">plasticsoil404@gmail.com</a>. Most requests get a quick answer.</p>
+      </section>
+
+      <section>
+        <h2>The tool itself</h2>
+        <p>The code and the animations are © yamliv.net, all rights reserved. Please don't copy, re-host or redistribute them.</p>
+      </section>
+
+      <section>
+        <h2>Embeds</h2>
+        <p>Embedding a card on your site with the embed code is welcome. The small credit inside the embed stays.</p>
+      </section>
+
+      <section>
+        <h2>Credit</h2>
+        <p>Attribution is optional. A small credit line, in the corner or next to the piece.</p>
+        <span class="credit-sample">FunType by yamliv.net</span>
+      </section>
+    </main>
+
+    <footer>
+      <span>FunType © 2026 yamliv.net</span>
+      <span>Outputs: CC BY-NC 4.0</span>
+    </footer>
+  </body>
+</html>

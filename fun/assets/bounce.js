@@ -1,3 +1,4 @@
+/*! FunType (c) 2026 yamliv.net - all rights reserved. Outputs CC BY-NC 4.0 - https://yamliv.net/fun/license */
 /* FunType — Collection 03: Snake, Shrink, Towers.
 
    One simulation engine, two renderers. The engine runs on a virtual
