@@ -153,6 +153,7 @@ const VOL_JITTER = 22;          // … and how far each letter wanders off that,
 const VOL_SIZE = 100;           // the letters, as a share of the size the rows can carry
 const VOL_STEM = 100;           // the stems, as a share of the house thread
 const VOL_INSET = 12;           // every row behind draws in this much from the sides
+const VOL_EASE = "sine";        // the curve a letter rises and sinks on
 
 const COLOUR = "spectrum";      // how the palette is spent. "spectrum": the letters take one
                                 // colour, the background the second, and the copies are solid steps
@@ -455,7 +456,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
                         volTop = VOL_TOP, volFall = VOL_FALL, volLow = VOL_LOW,
                         volArch = VOL_ARCH, volJitter = VOL_JITTER, volSize = VOL_SIZE,
                         volStem = VOL_STEM, volStems = "one", volNest = true,
-                        volInset = VOL_INSET } = {}) {
+                        volInset = VOL_INSET, volEase = VOL_EASE } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
@@ -499,6 +500,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
      told otherwise — and how steep that curve is decides how far the word
      may close up before an end would have to swing backwards. */
   const swellEase = shapeOf(barEase);
+  const riseEase = shapeOf(volEase);
   /* The head's pace, as a wiggle either side of its steady rate: one
      surge per swell, shaped by the curve, and never a stop — the whole
      word is strung out behind it on a time lag, so every letter repeats
@@ -808,8 +810,11 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
     }
     if (card === "volume") {
       /* Up and back down for ever: nothing enters, nothing leaves, and a
-         letter never sinks quite into the base it grew out of. */
-      const v = 0.5 - 0.5 * Math.cos(Lt.beat * t + Lt.phase);
+         letter never sinks quite into the base it grew out of. The climb
+         and the fall are the same curve read forwards and backwards, so
+         whatever the curve the round still closes on itself. */
+      const turn = (((Lt.beat * t + Lt.phase) / (2 * Math.PI)) % 1 + 1) % 1;
+      const v = Math.min(1, Math.max(0, riseEase(turn < 0.5 ? turn * 2 : 2 - turn * 2)));
       const climb = Lt.low + (1 - Lt.low) * v;
       return { x: Lt.cx, y: Lt.floor - tileSize / 2 - climb * Lt.rise };
     }
