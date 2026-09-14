@@ -17,12 +17,12 @@ deploy; it goes live at yamliv.net within a minute or two.
 - `wrangler.toml` — Pages config and the `LEADERBOARD` KV binding.
 - `functions/api/` — Pages Functions (`/api/leaderboard`, `/api/glyph`).
 - `_redirects` — short links (`/cv`, `/resume`).
-- `moji/CLOUDFLARE-SETUP.md` — one-time dashboard setup.
+- `HOSTING.md` — what runs where, and the one-time dashboard setup.
 
-**Netlify is not the host.** The Netlify account is out of quota, so
-`netlify.toml` and `netlify/` are dormant leftovers: nothing reaches them,
-and changing them changes nothing on the live site. Don't add new Netlify
-functions or config; put server-side code under `functions/` instead.
+**Netlify is not the host.** That account is out of quota and nothing was
+reaching it, so its config (`netlify.toml`, `netlify/functions/`) has been
+removed. Don't add new Netlify functions or config; server-side code goes
+under `functions/` instead.
 
 ## Folder map
 
@@ -31,6 +31,8 @@ V3/
 ├── index.html                 ← Main page (shell, styles, cursor, overlay, all JS)
 ├── blocks.js                  ← renderBlock() — turns a block object into HTML
 ├── README.md                  ← (this file)
+├── HOSTING.md                 ← Cloudflare Pages: how the site is served
+├── functions/api/             ← Pages Functions — /api/leaderboard, /api/glyph
 │
 ├── hero/
 │   └── hero-config.js         ← Which project's 3D model appears in the hero ring-card
