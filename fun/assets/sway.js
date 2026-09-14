@@ -142,20 +142,22 @@ const EIGHT_FLIP = 2;           // … and the figure turns over once every this
    bottom of the frame, rising and sinking back. A word is a row: the same
    base, a lower reach than the row before it, so the whole thing stands
    like a shrub. */
-const VOL_BEAT = 5400;          // ms for a letter to rise and sink back once
-const VOL_OFFSET = 180;         // … and this long after the letter beside it
-const VOL_FLOOR = 8;            // the base line sits this far off the bottom, in hundredths
-const VOL_TOP = 78;             // the first row reaches this far up the frame, in hundredths
-const VOL_FALL = 72;            // … the row at the back reaches this share of it, the rows in
+const VOL_BEAT = 4100;          // ms for a letter to rise and sink back once
+const VOL_OFFSET = -105;        // … and this long after the letter beside it
+const VOL_FLOOR = 6;            // the stems start this far off the bottom, in hundredths…
+const VOL_TOP = 78;             // … the first row reaches this far up it…
+const VOL_CEIL = 90;            // … and nothing ever gets past this, however the wander falls
+const VOL_FALL = 5;             // … the row at the back reaches this share of it, the rows in
                                 //   between spread evenly down from one to the other
-const VOL_LOW = 10;             // a letter never sinks below this share of its own reach
-const VOL_ARCH = 55;            // how much higher the middle of a row stands than its ends
-const VOL_JITTER = 22;          // … and how far each letter wanders off that, as a share of the
+const VOL_LOW = 16;             // a letter never sinks below this share of its own reach
+const VOL_ARCH = 40;            // how much higher the middle of a row stands than its ends
+const VOL_JITTER = 10;          // … and how far each letter wanders off that, as a share of the
                                 //   front row's reach, so a low row is as uneven as a tall one
-const VOL_SIZE = 100;           // the letters, as a share of the size the rows can carry
-const VOL_STEM = 100;           // the stems, as a share of the house thread
-const VOL_INSET = 12;           // every row behind draws in this much from the sides
-const VOL_EASE = "sine";        // the curve a letter rises and sinks on
+const VOL_SIZE = 150;           // the letters, as a share of the size the rows can carry
+const VOL_STEM = 65;            // the stems, as a share of the house thread…
+const VOL_LEAN = 0;             // … and how far they lean in to meet in the middle on the way down
+const VOL_INSET = 36;           // every row behind draws in this much from the sides
+const VOL_EASE = "smooth";      // the curve a letter rises and sinks on
 
 const COLOUR = "spectrum";      // how the palette is spent. "spectrum": the letters take one
                                 // colour, the background the second, and the copies are solid steps
@@ -430,7 +432,7 @@ function layout(n, font = FONT) {
    bare defaults; Flower is the settled set from the lab. */
 const CARD = {
   flower: { echoes: 7, echoDelay: 435, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false },
-  volume: { echoes: 6, echoDelay: 300 },
+  volume: { echoes: 6, echoDelay: 95, seed: 67138 },
 };
 
 /* Runs the piece on a virtual clock. step(dt) advances it; snapshot(frame)
@@ -458,7 +460,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
                         volTop = VOL_TOP, volFall = VOL_FALL, volLow = VOL_LOW,
                         volArch = VOL_ARCH, volJitter = VOL_JITTER, volSize = VOL_SIZE,
                         volStem = VOL_STEM, volStems = "one", volNest = true,
-                        volInset = VOL_INSET, volEase = VOL_EASE } = {}) {
+                        volInset = VOL_INSET, volEase = VOL_EASE, volLean = VOL_LEAN } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
@@ -689,7 +691,10 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
   function buildVolume() {
     const ws = words();
     const floor = STAGE * (1 - volFloor / 100);
-    const reach = floor - LANE_PAD / 2;           // all the room there is to grow into
+    /* All the room there is to grow into, and the ceiling nothing may pass:
+       the tallest letter's own top stops at VOL_CEIL per cent of the frame,
+       whichever way the wander falls. */
+    const reach = floor - LANE_PAD / 2;
     const usable = STAGE - 2 * LANE_PAD;
     const longest = Math.max(...ws.map((w) => w.length));
     /* The letters come down until a row of them fits across the frame with
@@ -701,6 +706,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
     /* The rise is seeded, so the same seed always grows the same plant and
        a new one is a new shrub. */
     const r = rng(seed);
+    const ceiling = Math.max(tileSize, floor - tileSize - STAGE * (1 - VOL_CEIL / 100));
     ws.forEach((wd, wi) => {
       const n = wd.length;
       /* Every row behind draws in from the sides, so the rows read one
@@ -734,7 +740,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
           id: i, ch: chars[i], blank: false, group: wi, top: j === 0, fill: tone(i),
           cx: Math.min(STAGE - LANE_PAD, Math.max(LANE_PAD, left + step * (col + 0.5) + shift)),
           cy: floor, floor,
-          rise: Math.min(reach, Math.max(tileSize, top * arch + wander)),
+          rise: Math.min(ceiling, Math.max(tileSize, top * arch + wander)),
           low: volLow / 100,
           beat: (2 * Math.PI) / volRate,
           phase: (-2 * Math.PI * (col * volOffset + wi * volOffset * 2)) / volRate,
@@ -904,13 +910,19 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
          are. There is no base line: the bottom of the frame is the base. */
       const w = tileSize * THREAD * (volStem / 100);
       const foot = (STAGE * 2.5).toFixed(1);
+      const lean = Math.min(1, Math.max(0, volLean / 100));
       for (let k = volStems === "all" ? echoes : 0; k >= 0; k--) {
         for (const Lt of letters) {
           if (Lt.blank) continue;
           const q = place(Lt, k, frame);
+          /* A stem can drop straight down from its letter, or lean in to
+             meet the others at the middle of the bottom edge, or anywhere
+             between — and from wherever it lands it runs on straight down
+             and out of the frame. */
+          const root = (Lt.cx + (STAGE / 2 - Lt.cx) * lean).toFixed(1);
           tiles.push({
             kind: "thread", id: `stem${Lt.id}-${k}`,
-            d: `M${Lt.cx.toFixed(1)},${foot}L${q.x.toFixed(1)},${q.y.toFixed(1)}`,
+            d: `M${q.x.toFixed(1)},${q.y.toFixed(1)}L${root},${STAGE}L${root},${foot}`,
             colour: toneOf(Lt, k), width: w * rankScale(k), alpha: 1,
           });
         }
