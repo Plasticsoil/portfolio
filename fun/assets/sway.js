@@ -40,7 +40,10 @@
               between one letter and the next (scaled down past 13 letters)
      colour   lime · pink · orange · yellow, each taking a turn as the
               background; the sticker one colour, the copies solid steps
-              along a gradient between the other two, letters always slate
+              along a gradient between the other two, letters always slate.
+              The lime never pairs with the orange or with the pink as the
+              two ends of that gradient — both go grey in the middle — and
+              a set that asks for it has the sticker swapped in instead
      echo     six copies, 120 ms apart
      type     Switzer 500 slate on a sticker cut to the letter (Collection
               01's), the sticker 0.84 of its row, the column four fifths of
@@ -174,7 +177,7 @@ const COLOUR = "spectrum";      // how the palette is spent. "spectrum": the let
 export const p = [
   { frame: "#D9FF7E", card: "#FFBECA", ink: "#FF8F5E", anchor: "#FFFF85" },   // lime ground — Sway
   { frame: "#FFBECA", card: "#FF8F5E", ink: "#D9FF7E", anchor: "#FFFF85" },   // pink ground — Flower
-  { frame: "#FF8F5E", card: "#FFFF85", ink: "#FFBECA", anchor: "#D9FF7E" },   // orange ground
+  { frame: "#FF8F5E", card: "#D9FF7E", ink: "#FFBECA", anchor: "#FFFF85" },   // orange ground
   { frame: "#FFFF85", card: "#D9FF7E", ink: "#FF8F5E", anchor: "#FFBECA" },   // yellow ground
   { frame: "#0D0D0F", card: "#FFFFFF", ink: "#FFFFFF", anchor: "#FFFFFF" },   // white on black — not quite
                                                                              // pure, so the grain still lives
@@ -202,13 +205,30 @@ export const POOL = [
   "#FF42FF", "#FFDD00", "#FF7300", "#FF721E",                             // 01
 ];
 
+/* Two of the collection's colours must never be the two ends of the copies'
+   gradient: the lime with the orange, and the lime with the pink. Both of
+   those cross through grey in the middle, and a rank of grey copies is not
+   a colour anyone chose. Every other pairing is fine. */
+const FEUD = [["#D9FF7E", "#FF8F5E"], ["#D9FF7E", "#FFBECA"]];
+const atOdds = (a, b) => {
+  const x = String(a).toUpperCase(), y = String(b).toUpperCase();
+  return FEUD.some(([m, n]) => (x === m && y === n) || (x === n && y === m));
+};
+
 /* The four colours are read in the order they are given: the first is the
    ground, the second the sticker, and the copies run between the last two.
    A card gets its own ground by being handed a different one of the sets
    above, not by rotating the set it is given — so what you pick is what
-   you see. */
+   you see, with one exception: if the two ends of the gradient are a pair
+   that would go grey between them, the sticker takes one of their places.
+   With four colours there is always a way round. */
 function dealPalette(_mode, given) {
-  return { frame: given.frame, card: given.card, ink: given.ink, anchor: given.anchor };
+  let { frame, card, ink, anchor } = given;
+  if (atOdds(ink, anchor)) {
+    if (!atOdds(ink, card)) [card, anchor] = [anchor, card];
+    else if (!atOdds(card, anchor)) [card, ink] = [ink, card];
+  }
+  return { frame, card, ink, anchor };
 }
 
 /* ---------- small helpers ---------- */
