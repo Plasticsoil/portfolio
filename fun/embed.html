@@ -16,6 +16,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FunType embed</title>
+    <meta name="copyright" content="FunType © 2026 yamliv.net. Outputs CC BY-NC 4.0. https://yamliv.net/fun/license" />
     <link rel="preconnect" href="https://api.fontshare.com" />
     <link
       rel="stylesheet"
@@ -45,6 +46,14 @@
         justify-content: center;
         overflow: hidden;
       }
+      .ft-credit {
+        position: fixed; right: 10px; bottom: 8px; z-index: 50;
+        font-family: "Switzer", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-weight: 500; font-size: 11px; letter-spacing: .01em; line-height: 1;
+        color: #4E4B5D; opacity: .62; text-decoration: none;
+        transition: opacity .2s ease;
+      }
+      .ft-credit:hover { opacity: 1; }
       #embed-stage {
         width: 1080px;
         height: 1080px;
@@ -64,5 +73,6 @@
     <div id="embed-wrap">
       <div id="embed-stage"></div>
     </div>
+    <a class="ft-credit" href="https://yamliv.net/fun" target="_blank" rel="noopener">FunType by yamliv.net</a>
   </body>
 </html>
