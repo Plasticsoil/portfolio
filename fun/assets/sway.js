@@ -48,7 +48,9 @@
      type     Switzer 500 slate on a sticker cut to the letter (Collection
               01's), the sticker 0.84 of its row, the column four fifths of
               the frame's height, 95 px clear of the sides
-     grain    0.28 overlaid on a light ground, 0.10 screened on a dark one
+     grain    0.5 overlaid on a light ground — the house value, the same as
+              every other collection; 0.10 screened on a dark one, since
+              screened noise reads far stronger than overlaid
      weight   Switzer 500, settled
      rate     12 fps, the house stop-motion — settled against 8 and 10
      name     Sway (Slide, Drift, Comb and Lag were the other names on
@@ -266,7 +268,7 @@ function wobble(i, frame, axis) {
   d = (d ^ (d >>> 16)) >>> 0;
   return (d / 4294967296) * 2 - 1;
 }
-const GRAIN_TILES = 6, GRAIN_TILE = 192, GRAIN_OPACITY = 0.28, GRAIN_DARK = 0.1;
+const GRAIN_TILES = 6, GRAIN_TILE = 192, GRAIN_OPACITY = 0.5, GRAIN_DARK = 0.1;
 
 /* The sticker's outline, in CSS. */
 function shapeCss(t) {
