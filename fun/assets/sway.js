@@ -62,7 +62,7 @@
               and every letter behind it is that same head a moment
               earlier — so the tail is always chasing the head, and the
               word strings out and gathers up as the head pulls away and
-              eases. Six surges to a round of 20 s, on Sway's own curve
+              eases. Six surges to a round of 22.3 s, on Sway's own curve
      spread   the letters take the whole ring, packed and spread alike:
               the chase is in the pace, not in the width
      copies   six, 120 ms apart, each stepping 11% inside the ring the
@@ -85,7 +85,7 @@
      thread   1.4× the house weight — 0.0675 of a row — on every thread the
               collection draws, and Flower bare, its copies being the
               drawing. A stem is not a thread: it is measured against the
-              letter it holds up, 16% of the narrowest letter in the word,
+              letter it holds up, 21% of the narrowest letter in the word,
               and it is never allowed past the width of that letter
      copies   six, 120 ms apart, on all three
      margin   each card names the edge it keeps clear — Flower 15%, Sway 8%,
@@ -96,10 +96,15 @@
               are the sticker and the thread. What gives is the room
               between things — the ring's radius, the column's travel, how
               far the plant spreads
-     round    one whole loop: Flower 20 s, Sway 5 s (two passes), Volume
-              3.1 s
+     letter   the say each card gets over its own letter once it knows the
+              room it has — Flower 96%, Sway 108%, Volume 76%. It moves the
+              letter alone: the row, the ring and the climb are already
+              decided, so a smaller letter is more air between letters
+              rather than a smaller drawing
+     round    one whole loop: Flower 22.3 s, Sway 5 s (two passes), Volume
+              3.4 s
      export   whole rounds at the speed the site runs them, never under
-              four seconds: Sway 5 s, Flower 20 s, Volume 6.2 s
+              four seconds: Sway 5 s, Flower 22.3 s, Volume 6.8 s
 
    Effect contract (studio / embed):  mount(stage, { word, palette, seed }) → { stop() }
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
@@ -481,9 +486,9 @@ function layout(n, font = FONT) {
    apart) and a thread 1.6× the house weight, so they read as one family;
    what differs is the margin each one wants and the motion of its own. */
 const CARD = {
-  sway:   { echoes: 6, echoDelay: 120, threadScale: 1.4, margin: 8, move: 1935, hold: 565 },
-  flower: { echoes: 6, echoDelay: 120, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false, threadScale: 1.4, margin: 15, barTurn: 20000 },
-  volume: { echoes: 6, echoDelay: 120, seed: 67138, threadScale: 1.4, margin: 22, volRate: 3100 },
+  sway:   { echoes: 6, echoDelay: 120, threadScale: 1.4, margin: 8, letter: 108, move: 1935, hold: 565 },
+  flower: { echoes: 6, echoDelay: 120, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false, threadScale: 1.4, margin: 15, letter: 96, barTurn: 22300 },
+  volume: { echoes: 6, echoDelay: 120, seed: 67138, threadScale: 1.4, margin: 22, letter: 76, volRate: 3400, volTop: 100, volStem: 21 },
 };
 
 /* Runs the piece on a virtual clock. step(dt) advances it; snapshot(frame)
