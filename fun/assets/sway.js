@@ -144,20 +144,20 @@ const EIGHT_FLIP = 2;           // … and the figure turns over once every this
    like a shrub. */
 const VOL_BEAT = 4100;          // ms for a letter to rise and sink back once
 const VOL_OFFSET = -105;        // … and this long after the letter beside it
-const VOL_FLOOR = 6;            // the stems start this far off the bottom, in hundredths…
+const VOL_FLOOR = 9;            // the stems start this far off the bottom, in hundredths…
 const VOL_TOP = 78;             // … the first row reaches this far up it…
 const VOL_CEIL = 90;            // … and nothing ever gets past this, however the wander falls
-const VOL_FALL = 5;             // … the row at the back reaches this share of it, the rows in
+const VOL_FALL = 2;             // … the row at the back reaches this share of it, the rows in
                                 //   between spread evenly down from one to the other
 const VOL_LOW = 16;             // a letter never sinks below this share of its own reach
 const VOL_ARCH = 40;            // how much higher the middle of a row stands than its ends
-const VOL_JITTER = 10;          // … and how far each letter wanders off that, as a share of the
+const VOL_JITTER = 11;          // … and how far each letter wanders off that, as a share of the
                                 //   front row's reach, so a low row is as uneven as a tall one
-const VOL_SIZE = 150;           // the letters, as a share of the size the rows can carry
+const VOL_SIZE = 138;           // the letters, as a share of the size the rows can carry
 const VOL_STEM = 65;            // the stems, as a share of the house thread…
-const VOL_LEAN = 0;             // … and how far they lean in to meet in the middle on the way down
-const VOL_INSET = 36;           // every row behind draws in this much from the sides
-const VOL_EASE = "smooth";      // the curve a letter rises and sinks on
+const VOL_LEAN = 100;           // … and how far they lean in to meet in the middle on the way down
+const VOL_INSET = 14;           // every row behind draws in this much from the sides
+const VOL_EASE = "sway";        // the curve a letter rises and sinks on
 
 const COLOUR = "spectrum";      // how the palette is spent. "spectrum": the letters take one
                                 // colour, the background the second, and the copies are solid steps
@@ -432,7 +432,7 @@ function layout(n, font = FONT) {
    bare defaults; Flower is the settled set from the lab. */
 const CARD = {
   flower: { echoes: 7, echoDelay: 435, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false },
-  volume: { echoes: 6, echoDelay: 95, seed: 67138 },
+  volume: { echoes: 4, echoDelay: 205, seed: 67138 },
 };
 
 /* Runs the piece on a virtual clock. step(dt) advances it; snapshot(frame)
