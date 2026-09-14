@@ -36,7 +36,7 @@
    Settled, from the lab (September 2026) — everything below is decided:
      motion   cubic-bezier(0.51, 0, 0.33, 1.01) — a slow leave, a quick
               middle, a hair of overshoot at the edge
-     timing   1300 ms a slide, 380 ms standing at each end, 112 ms
+     timing   1935 ms a slide, 565 ms standing at each end, 112 ms
               between one letter and the next (scaled down past 13 letters)
      colour   lime · pink · orange · yellow, each taking a turn as the
               background; the sticker one colour, the copies solid steps
@@ -44,7 +44,7 @@
               The lime never pairs with the orange or with the pink as the
               two ends of that gradient — both go grey in the middle — and
               a set that asks for it has the sticker swapped in instead
-     echo     seven copies, 130 ms apart
+     echo     six copies, 120 ms apart
      type     Switzer 500 slate on a sticker cut to the letter (Collection
               01's), the sticker 0.84 of its row, the column four fifths of
               the frame's height, 95 px clear of the sides
@@ -62,10 +62,10 @@
               and every letter behind it is that same head a moment
               earlier — so the tail is always chasing the head, and the
               word strings out and gathers up as the head pulls away and
-              eases. Six surges to a round of 16 s, on Sway's own curve
+              eases. Six surges to a round of 20 s, on Sway's own curve
      spread   the letters take the whole ring, packed and spread alike:
               the chase is in the pace, not in the width
-     copies   seven, 130 ms apart, each stepping 11% inside the ring the
+     copies   six, 120 ms apart, each stepping 11% inside the ring the
               last one was on, turned 61° back round it and drawn 7%
               smaller — which is what makes the flower
      thread   none: the copies are the drawing
@@ -82,23 +82,24 @@
      grounds  Flower on the pink, Sway on the lime, Volume on the orange;
               each one's sticker and gradient follow from that
      words    Flower power · sway today · Grow slowly
-     thread   1.6× the house weight — 0.0675 of a row — on every thread the
+     thread   1.4× the house weight — 0.0675 of a row — on every thread the
               collection draws, and Flower bare, its copies being the
               drawing. A stem is not a thread: it is measured against the
               letter it holds up, 16% of the narrowest letter in the word,
               and it is never allowed past the width of that letter
-     copies   seven, 130 ms apart, on all three
-     margin   each card names the edge it keeps clear — Flower 7%, Sway 8%,
-              Volume 10% — and the drawing fills the square inside it,
+     copies   six, 120 ms apart, on all three
+     margin   each card names the edge it keeps clear — Flower 15%, Sway 8%,
+              Volume 22% — and the drawing fills the square inside it,
               measured over a whole loop so a long word cannot spill and a
               short one cannot sit small. A margin is not a scale: a letter
               is the size the card made it whatever the margin says, and so
               are the sticker and the thread. What gives is the room
               between things — the ring's radius, the column's travel, how
               far the plant spreads
+     round    one whole loop: Flower 20 s, Sway 5 s (two passes), Volume
+              3.1 s
      export   whole rounds at the speed the site runs them, never under
-              four seconds: Sway 6.72 s (two passes twice over), Flower
-              16 s, Volume 4.1 s
+              four seconds: Sway 5 s, Flower 20 s, Volume 6.2 s
 
    Effect contract (studio / embed):  mount(stage, { word, palette, seed }) → { stop() }
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
@@ -480,9 +481,9 @@ function layout(n, font = FONT) {
    apart) and a thread 1.6× the house weight, so they read as one family;
    what differs is the margin each one wants and the motion of its own. */
 const CARD = {
-  sway:   { echoes: 7, echoDelay: 130, threadScale: 1.6, margin: 8 },
-  flower: { echoes: 7, echoDelay: 130, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false, threadScale: 1.6, margin: 7 },
-  volume: { echoes: 7, echoDelay: 130, seed: 67138, threadScale: 1.6, margin: 10 },
+  sway:   { echoes: 6, echoDelay: 120, threadScale: 1.4, margin: 8, move: 1935, hold: 565 },
+  flower: { echoes: 6, echoDelay: 120, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false, threadScale: 1.4, margin: 15, barTurn: 20000 },
+  volume: { echoes: 6, echoDelay: 120, seed: 67138, threadScale: 1.4, margin: 22, volRate: 3100 },
 };
 
 /* Runs the piece on a virtual clock. step(dt) advances it; snapshot(frame)
@@ -495,6 +496,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
                         curve = CURVE, font = FONT, echoes = ECHOES,
                         echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR,
                         shape = SHAPE, thread = true, threadScale = 1, weight = WEIGHT, margin = 0,
+                        letter = 100, travel = 100,
                         /* Rings */
                         ringFace = false, ringOne = false,
                         barTurn = RING_BAR_TURN, barBeats = RING_BAR_BEATS, barTight = RING_BAR_TIGHT,
@@ -544,7 +546,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
      sticker is a different width per letter, which is exactly what makes
      a wide W and a narrow I still end flush. */
   const pad = Math.min(LANE_PAD, L.lane * 0.18);
-  const halfFor = (w) => Math.max(0, (L.lane / 2 - pad - (shaped ? w / 2 : 0)) / (1 + 2 * over));
+  const halfFor = (w) => Math.max(0, (L.lane / 2 - pad - (shaped ? w / 2 : 0)) / (1 + 2 * over)) * (travel / 100);
   const stagger = staggerOpt === undefined
     ? Math.max(STAGGER_MIN, Math.min(STAGGER, STAGGER_SPAN / Math.max(1, chars.length)))
     : staggerOpt;
@@ -606,13 +608,20 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
   /* How wide a sticker is on this card, before any letter is known. */
   const boxW = (h) => (cut ? h * TILE_W * 0.8 : shaped ? h * TILE_W : h * GLYPH_W);
 
+  /* A card works out how big a letter wants to be from the room it has;
+     `letter` is the say the page gets over that afterwards, and it moves
+     the letter alone — the row it sits in, the ring it is bent round and
+     the height it climbs are already decided, so a smaller letter is more
+     air between letters rather than a smaller drawing. */
+  const sized = () => { tileSize = Math.max(6, tileSize * (letter / 100)); syncTile(); };
+
   function build() {
     letters = [];
     tileSize = L.h;
     if (empty) return;
-    if (card === "flower") { buildFlower(); return syncTile(); }
-    if (card === "eight") { buildEights(); return syncTile(); }
-    if (card === "volume") { buildVolume(); return syncTile(); }
+    if (card === "flower") { buildFlower(); return sized(); }
+    if (card === "eight") { buildEights(); return sized(); }
+    if (card === "volume") { buildVolume(); return sized(); }
     chars.forEach((ch, i) => {
       const col = Math.floor(i / L.rows);
       const row = i % L.rows;
@@ -627,7 +636,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         cx, cy, t0: BEAT + (stagger < 0 ? chars.length - 1 - i : i) * Math.abs(stagger),
       });
     });
-    syncTile();
+    sized();
   }
 
   /* Rings — a word to a ring, the first word outermost, its letters spread
