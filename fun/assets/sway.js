@@ -146,10 +146,12 @@ const VOL_BEAT = 5400;          // ms for a letter to rise and sink back once
 const VOL_OFFSET = 180;         // … and this long after the letter beside it
 const VOL_FLOOR = 8;            // the base line sits this far off the bottom, in hundredths
 const VOL_TOP = 78;             // the first row reaches this far up the frame, in hundredths
-const VOL_FALL = 72;            // … and every row behind it reaches this share of the last
+const VOL_FALL = 72;            // … the row at the back reaches this share of it, the rows in
+                                //   between spread evenly down from one to the other
 const VOL_LOW = 10;             // a letter never sinks below this share of its own reach
 const VOL_ARCH = 55;            // how much higher the middle of a row stands than its ends
-const VOL_JITTER = 22;          // … and how far each letter wanders off that, seeded
+const VOL_JITTER = 22;          // … and how far each letter wanders off that, as a share of the
+                                //   front row's reach, so a low row is as uneven as a tall one
 const VOL_SIZE = 100;           // the letters, as a share of the size the rows can carry
 const VOL_STEM = 100;           // the stems, as a share of the house thread
 const VOL_INSET = 12;           // every row behind draws in this much from the sides
@@ -702,26 +704,37 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
     ws.forEach((wd, wi) => {
       const n = wd.length;
       /* Every row behind draws in from the sides, so the rows read one
-         inside the other and the whole thing tapers like a shrub. */
-      const wide = usable * Math.max(0.25, 1 - (volInset / 100) * wi);
+         inside the other and the whole thing tapers like a shrub. Like the
+         reaches, the drawing-in is spread evenly from the front row to the
+         back one rather than taken again off each row in turn — otherwise
+         the third row of anything is a heap. */
+      const tuck = ws.length > 1 ? (volInset / 100) * (wi / (ws.length - 1)) : 0;
+      const wide = usable * Math.max(0.25, 1 - tuck);
       const left = LANE_PAD + (usable - wide) / 2;
       const step = wide / n;
       /* Every row starts at the same base and reaches less far than the one
          in front, and sits half a step across from it so the rows nest
-         rather than stack. */
-      const top = reach * (volTop / 100) * Math.pow(volFall / 100, wi);
+         rather than stack. The reaches are spread evenly between the front
+         row's and the back row's — 80, 50, 20 rather than 80, 40, 20 — so
+         a row at the back is lower but still has a plant's worth of room
+         to be uneven in. */
+      const far = volTop / 100, near = far * (volFall / 100);
+      const top = reach * (ws.length > 1 ? far - (far - near) * (wi / (ws.length - 1)) : far);
       const shift = volNest && wi % 2 ? step / 2 : 0;
       wd.forEach((i, j) => {
         const col = rtl ? n - 1 - j : j;
         /* Sine across the row — the middle stands higher than the ends —
            and then a seeded wander off it, so no two are quite alike. */
         const arch = 1 - volArch / 100 + (volArch / 100) * Math.sin((Math.PI * (j + 0.5)) / n);
-        const wander = 1 + (volJitter / 100) * (r() * 2 - 1);
+        /* The wander is measured off the front row's reach, not off each
+           row's own: a row at the back is lower, but just as uneven as the
+           one in front rather than flattened along with it. */
+        const wander = reach * far * (volJitter / 100) * (r() * 2 - 1);
         letters.push({
           id: i, ch: chars[i], blank: false, group: wi, top: j === 0, fill: tone(i),
           cx: Math.min(STAGE - LANE_PAD, Math.max(LANE_PAD, left + step * (col + 0.5) + shift)),
           cy: floor, floor,
-          rise: Math.max(tileSize, top * arch * wander),
+          rise: Math.min(reach, Math.max(tileSize, top * arch + wander)),
           low: volLow / 100,
           beat: (2 * Math.PI) / volRate,
           phase: (-2 * Math.PI * (col * volOffset + wi * volOffset * 2)) / volRate,
