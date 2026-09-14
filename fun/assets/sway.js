@@ -464,7 +464,7 @@ function engine(mode, o = {}) { return piece(mode, { ...CARD[mode], ...o }); }
 function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS,
                         curve = CURVE, font = FONT, echoes = ECHOES,
                         echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR,
-                        shape = SHAPE, thread = true, weight = WEIGHT,
+                        shape = SHAPE, thread = true, threadScale = 1, weight = WEIGHT,
                         /* Rings */
                         ringFace = false, ringOne = false,
                         barTurn = RING_BAR_TURN, barBeats = RING_BAR_BEATS, barTight = RING_BAR_TIGHT,
@@ -896,7 +896,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
           if (q.out) spoke.push([q.x, q.y]);
         }
         if (spoke.length > 1) {
-          tiles.push({ kind: "thread", id: `spoke${Lt.id}`, d: threadPath(spoke, false), colour: toneOf(Lt, 0), width: tileSize * THREAD, alpha: 1 });
+          tiles.push({ kind: "thread", id: `spoke${Lt.id}`, d: threadPath(spoke, false), colour: toneOf(Lt, 0), width: tileSize * THREAD * threadScale, alpha: 1 });
         }
       }
     }
@@ -906,7 +906,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
       for (let k = echoIn || echoTurn ? echoes : 0; k >= 0; k--) {
         let run = [], g = -1, tone = null;
         const flush = () => {
-          if (run.length > 1) tiles.push({ kind: "thread", id: `ring${k}-${g}`, d: arcPath(run, STAGE / 2, STAGE / 2), colour: tone, width: tileSize * THREAD * rankScale(k), alpha: 1 });
+          if (run.length > 1) tiles.push({ kind: "thread", id: `ring${k}-${g}`, d: arcPath(run, STAGE / 2, STAGE / 2), colour: tone, width: tileSize * THREAD * threadScale * rankScale(k), alpha: 1 });
           run = [];
         };
         for (const Lt of letters) {
@@ -928,7 +928,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
          frame — well past the square the piece is drawn in, so a taller
          frame simply gets a longer stem while the letters stay where they
          are. There is no base line: the bottom of the frame is the base. */
-      const w = tileSize * THREAD * (volStem / 100);
+      const w = tileSize * THREAD * threadScale * (volStem / 100);
       const foot = (STAGE * 2.5).toFixed(1);
       const lean = Math.min(1, Math.max(0, volLean / 100));
       for (let k = volStems === "all" ? echoes : 0; k >= 0; k--) {
@@ -959,7 +959,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         let run = [], g = -1, tone = null, closed = false;
         const flush = () => {
           if (run.length > 1) {
-            tiles.push({ kind: "thread", id: `t${k}-${g}`, d: threadPath(run, closed), colour: tone, width: tileSize * THREAD, alpha });
+            tiles.push({ kind: "thread", id: `t${k}-${g}`, d: threadPath(run, closed), colour: tone, width: tileSize * THREAD * threadScale, alpha });
           }
           run = [];
         };
