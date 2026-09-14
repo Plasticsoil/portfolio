@@ -8,6 +8,22 @@ project's own `project.js` and its `assets/` folder.
 
 ---
 
+## Hosting and deploy
+
+The site is served by **Cloudflare Pages** (project `portfolio`, production
+branch `main`, build output `/`, no build command). Merging to `main` is the
+deploy; it goes live at yamliv.net within a minute or two.
+
+- `wrangler.toml` — Pages config and the `LEADERBOARD` KV binding.
+- `functions/api/` — Pages Functions (`/api/leaderboard`, `/api/glyph`).
+- `_redirects` — short links (`/cv`, `/resume`).
+- `moji/CLOUDFLARE-SETUP.md` — one-time dashboard setup.
+
+**Netlify is not the host.** The Netlify account is out of quota, so
+`netlify.toml` and `netlify/` are dormant leftovers: nothing reaches them,
+and changing them changes nothing on the live site. Don't add new Netlify
+functions or config; put server-side code under `functions/` instead.
+
 ## Folder map
 
 ```

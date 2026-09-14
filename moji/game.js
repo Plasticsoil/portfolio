@@ -442,7 +442,8 @@
   }
 
   // ── Leaderboard ──────────────────────────────────────────
-  // Global board via the /api/leaderboard function (Netlify Blobs).
+  // Global board via the /api/leaderboard function (Cloudflare Pages
+  // Function backed by Workers KV; see functions/api/leaderboard.js).
   // Falls back to a local board if the network/API isn't available
   // (e.g. opening the file directly while developing).
   const API = '/api/leaderboard';
