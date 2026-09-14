@@ -1,4 +1,4 @@
-/* FunType — Collection 04: Sway.
+/* FunType — Collection 04: Sway, Flower.
 
    Behind every letter trail a few copies of it, each showing where the
    letter was a moment ago. The letters are one colour and the ground
@@ -38,10 +38,7 @@
               middle, a hair of overshoot at the edge
      timing   1300 ms a slide, 380 ms standing at each end, 112 ms
               between one letter and the next (scaled down past 13 letters)
-     rings    the letters spread round the ring and strung on the arcs
-              between them — how it travels is still open, and the copies
-              are off until it is settled
-     colour   blue · orange · pink · white, each taking a turn as the
+     colour   lime · pink · orange · yellow, each taking a turn as the
               background; the sticker one colour, the copies solid steps
               along a gradient between the other two, letters always slate
      echo     six copies, 120 ms apart
@@ -53,6 +50,26 @@
      rate     12 fps, the house stop-motion — settled against 8 and 10
      name     Sway (Slide, Drift, Comb and Lag were the other names on
               the table)
+
+   Card two, Flower, settled the same way (September 2026):
+     motion   the word is a loading bar bent round a ring. Its head goes
+              round for ever, surging and easing off but never stopping,
+              and every letter behind it is that same head a moment
+              earlier — so the tail is always chasing the head, and the
+              word strings out and gathers up as the head pulls away and
+              eases. Six surges to a round of 16 s, on Sway's own curve
+     spread   the letters take the whole ring, packed and spread alike:
+              the chase is in the pace, not in the width
+     copies   seven, 435 ms apart, each stepping 11% inside the ring the
+              last one was on, turned 61° back round it and drawn 7%
+              smaller — which is what makes the flower
+     thread   none: the copies are the drawing
+     colour   the pink ground, orange sticker, the copies stepping from
+              the lime to the yellow
+     word     Flower power
+     type     as Sway: Switzer 500 slate on Collection 01's letter-cut
+              sticker, the grain, 12 fps
+     name     Flower (it was Rings while it was still being drawn)
 
    Effect contract (studio / embed):  mount(stage, { word, palette, seed }) → { stop() }
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
@@ -108,20 +125,13 @@ const ECHO_ALPHA = 0.5;         // … at this opacity, when the copies are set 
 /* Rings */
 const RING_GAP = 1.8;           // the step from one ring to the next, in sticker heights
 const RING_LEAD = 600;          // the word stands still this long before it sets off
-const RING_MOTION = "bar";      // how it travels: "bar", "steady", "stride" or "swing"
-const RING_TURN = 9000;         // "steady": ms for one turn of the ring
-const RING_STEPS = 6;           // "stride": strides to the turn…
-const RING_MOVE = 700;          // … one stride…
-const RING_HOLD = 800;          // … and the rest after it
-const RING_SWING = 0.9;         // "swing": how far it rocks, as a share of a letter-gap
-const RING_LAG = 90;            // each letter sets off this long after the one in front
-const RING_BAR_TURN = 4600;     // "bar": ms for the word to travel once round the ring
-const RING_BAR_BEATS = 1;       // … how many times in that round it packs and spreads again…
-const RING_BAR_TIGHT = 1.2;     // … how close the letters pack, in letter-widths…
-const RING_BAR_SQUEEZE = 0.5;   // … how much of the ring the packed bar takes, which is also
-                                //   what sets the letter size on a bar ring…
+const RING_BAR_TURN = 16000;    // ms for the word to travel once round the ring
+const RING_BAR_BEATS = 6;       // … how many surges it makes in that round…
+const RING_BAR_TIGHT = 0.8;     // … how close the letters pack, in letter-widths…
+const RING_BAR_SQUEEZE = 1;     // … how far it pulls in, which is also what sets the letter
+                                //   size on the ring…
 const RING_BAR_SPREAD = 1;      // … and how much of it the spread bar takes
-const RING_BAR_EASE = "sine";   // … the curve it surges on…
+const RING_BAR_EASE = "sway";   // … the curve it surges on…
 const RING_BAR_CHASE = 1;       // … and how far behind the head the tail runs it, as a share
                                 //   of the longest lag the round can carry
 /* Eights */
@@ -144,10 +154,10 @@ const COLOUR = "spectrum";      // how the palette is spent. "spectrum": the let
    turn as the background; then white on black; then Collection 01's,
    02's and 03's palettes, read the same way. */
 export const p = [
-  { frame: "#7E9CFC", card: "#FF8F5E", ink: "#FFBEF8", anchor: "#FFFFFF" },   // blue ground
-  { frame: "#FF8F5E", card: "#FFBEF8", ink: "#FFFFFF", anchor: "#7E9CFC" },   // orange ground
-  { frame: "#FFBEF8", card: "#FFFFFF", ink: "#7E9CFC", anchor: "#FF8F5E" },   // pink ground
-  { frame: "#FFFFFF", card: "#7E9CFC", ink: "#FF8F5E", anchor: "#FFBEF8" },   // white ground
+  { frame: "#D9FF7E", card: "#FFBECA", ink: "#FF8F5E", anchor: "#FFFF85" },   // lime ground — Sway
+  { frame: "#FFBECA", card: "#FF8F5E", ink: "#D9FF7E", anchor: "#FFFF85" },   // pink ground — Flower
+  { frame: "#FF8F5E", card: "#FFFF85", ink: "#FFBECA", anchor: "#D9FF7E" },   // orange ground
+  { frame: "#FFFF85", card: "#D9FF7E", ink: "#FF8F5E", anchor: "#FFBECA" },   // yellow ground
   { frame: "#0D0D0F", card: "#FFFFFF", ink: "#FFFFFF", anchor: "#FFFFFF" },   // white on black — not quite
                                                                              // pure, so the grain still lives
   { frame: "#49C7FD", card: "#FA8EFA", ink: "#FFFF66", anchor: "#FFFFFF" },   // blue · pink · yellow
@@ -168,7 +178,7 @@ export const p = [
    shuffles a card out of this, so a new set can still come from the
    family rather than from nowhere. */
 export const POOL = [
-  "#7E9CFC", "#FF8F5E", "#FFBEF8", "#FFFFFF", "#0D0D0F",                  // Collection 04
+  "#D9FF7E", "#FFBECA", "#FF8F5E", "#FFFF85", "#0D0D0F",                  // Collection 04
   "#49C7FD", "#FA8EFA", "#FFFF66",                                        // 03
   "#A9FF67", "#5BE03A", "#D9FF93", "#B9F1FA",                             // 02
   "#FF42FF", "#FFDD00", "#FF7300", "#FF721E",                             // 01
@@ -400,18 +410,24 @@ function layout(n, font = FONT) {
 
 /* ---------- the engine ---------- */
 
+/* What a card ships with, before anything the page asks for. Sway takes the
+   bare defaults; Flower is the settled set from the lab. */
+const CARD = {
+  flower: { echoes: 7, echoDelay: 435, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false },
+};
+
 /* Runs the piece on a virtual clock. step(dt) advances it; snapshot(frame)
    describes what to paint for stop-motion frame `frame`. The word is on
    screen from the first frame and nothing ever ends: once the wave has
    reached the last letter, every letter is oscillating with the same
    period (loopPeriod), a stagger apart. */
-function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS,
+function engine(mode, o = {}) { return piece(mode, { ...CARD[mode], ...o }); }
+function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS,
                         curve = CURVE, font = FONT, echoes = ECHOES,
                         echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR,
                         shape = SHAPE, thread = true, weight = WEIGHT,
                         /* Rings */
-                        ringFace = false, ringOne = false, ringMotion = RING_MOTION,
-                        ringSteps = RING_STEPS, ringLag = RING_LAG,
+                        ringFace = false, ringOne = false,
                         barTurn = RING_BAR_TURN, barBeats = RING_BAR_BEATS, barTight = RING_BAR_TIGHT,
                         barSqueeze = RING_BAR_SQUEEZE, barSpread = RING_BAR_SPREAD, barEase = RING_BAR_EASE,
                         barChase = RING_BAR_CHASE,
@@ -519,7 +535,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
     letters = [];
     tileSize = L.h;
     if (empty) return;
-    if (card === "rings") { buildRings(); return syncTile(); }
+    if (card === "flower") { buildFlower(); return syncTile(); }
     if (card === "eight") { buildEights(); return syncTile(); }
     if (card === "volume") { buildVolume(); return syncTile(); }
     chars.forEach((ch, i) => {
@@ -547,7 +563,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      one another before they all come to rest together; "swing" rocks it one
      way and back instead of going round. Every one of them is built out of
      whole turns or whole strides, so the round always closes on itself. */
-  function buildRings() {
+  function buildFlower() {
     const ws = ringOne ? [words().flat()] : words();
     rings = ws.length;
     /* The letters are spread round the whole circumference, so what has to
@@ -556,7 +572,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
        next when the word is spread round the whole ring — and, when it is a
        bar, twice that and more, since the packed bar may only take its own
        share of the ring and the letters have to come down to fit. */
-    const claim = ringMotion === "bar" ? barTight / barSqueeze : 1.15;
+    const claim = barTight / barSqueeze;
     let h = MAX_H;
     for (; h > 14; h -= 2) {
       const w = boxW(h);
@@ -573,7 +589,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       /* Every ring inside turns against the one outside it. The bar runs
          the other way about, so that the word still reads round the ring
          the way a word on a ring reads — with its first letter in front. */
-      const dir = (ri % 2 ? -1 : 1) * (ringMotion === "bar" ? -1 : 1);
+      const dir = ri % 2 ? 1 : -1;
       const gap = (dir * 2 * Math.PI) / wd.length; // one letter-gap, in radians
       /* The bar's two ends: at its widest the letters are spread round the
          whole ring, at its tightest they are shoulder to shoulder. */
@@ -605,11 +621,8 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
       wd.forEach((i, j) => {
         letters.push({
           id: i, ch: chars[i], blank: false, group: ri, fill: tone(i), ed: echoDelay,
-          cx: STAGE / 2, cy: STAGE / 2, r, ring: ri, dir, gap,
-          step: (dir * 2 * Math.PI) / ringSteps,
-          a0: -Math.PI / 2 + j * gap,
-          slot: j, n, lag, gap0, amp,
-          off: RING_LEAD + (ringMotion === "bar" ? 0 : j * ringLag),
+          cx: STAGE / 2, cy: STAGE / 2, r, ring: ri, dir,
+          slot: j, n, lag, gap0, amp, off: RING_LEAD,
         });
       });
     });
@@ -723,38 +736,20 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
      the copies, the threads, the stickers — is drawn from this one answer,
      which is why a new card is only ever a new line here. */
   function posAt(Lt, t, w, k) {
-    if (card === "rings") {
+    if (card === "flower") {
       /* Whichever way the ring travels, a letter waits out its own delay
          first — so the first letter leads and the rest follow it. */
       const local = t - Lt.off;
-      let a = Lt.a0, rad = Lt.r;
-      if (ringMotion === "bar") {
+      let rad = Lt.r;
         /* A loading bar bent round the ring, and the tail chasing the head.
            The head goes round for ever, surging and easing off but never
            stopping; every letter behind it is the same head a moment
            earlier, so when it pulls away the word strings out and when it
            eases the word gathers back up. A whole turn and whole surges to
            the round, so it closes on itself. */
-        const u = Math.max(0, local) / barTurn - Lt.slot * Lt.lag;
-        const head = 2 * Math.PI * u + Lt.amp * wiggle(barBeats * u);
-        a = -Math.PI / 2 + Lt.dir * (head - Lt.slot * Lt.gap0);
-      } else if (local > 0) {
-        if (ringMotion === "steady") {
-          a += ((Lt.dir * 2 * Math.PI) / RING_TURN) * local;
-        } else if (ringMotion === "swing") {
-          /* Out and back, one letter-gap's worth, resting at both ends. */
-          const pulse = RING_MOVE + RING_HOLD;
-          const k = Math.floor(local / pulse);
-          const u = ease(Math.min(1, (local - k * pulse) / RING_MOVE));
-          const from = k % 2 === 0 ? 0 : 1, to = k % 2 === 0 ? 1 : 0;
-          a += Lt.gap * RING_SWING * (from + (to - from) * u);
-        } else {
-          /* A stride at a time: move, rest, move again. */
-          const pulse = RING_MOVE + RING_HOLD;
-          const k = Math.floor(local / pulse);
-          a += Lt.step * (k + ease(Math.min(1, (local - k * pulse) / RING_MOVE)));
-        }
-      }
+      const u = Math.max(0, local) / barTurn - Lt.slot * Lt.lag;
+      const head = 2 * Math.PI * u + Lt.amp * wiggle(barBeats * u);
+      let a = -Math.PI / 2 + Lt.dir * (head - Lt.slot * Lt.gap0);
       /* Where the mandala comes from: a copy can step inside the ring and
          be turned a little further round it than the letter it follows. */
       if (k) {
@@ -809,7 +804,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
        before the beads: it stretches while the word is striding and gathers
        back up as it rests, and it never draws a circle the word has not
        walked. */
-    if (thread && card === "rings" && ringThread !== "ring" && echoes) {
+    if (thread && card === "flower" && ringThread !== "ring" && echoes) {
       /* The other way to string a mandala: not round each ring but across
          them — one thread down the radius from a letter through its own
          copies, so the word reads as spokes rather than as circles. */
@@ -825,7 +820,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
         }
       }
     }
-    if (thread && card === "rings" && ringThread !== "spoke") {
+    if (thread && card === "flower" && ringThread !== "spoke") {
       /* Only the letters' own ring is strung, unless the copies have rings
          of their own to be strung on — which is the mandala. */
       for (let k = echoIn || echoTurn ? echoes : 0; k >= 0; k--) {
@@ -851,7 +846,7 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
          carries on to the next letter. */
       /* A run is one group — a column, an eight, a bar. The rings are the
          exception: their thread is the ring itself and is already down. */
-      if (thread && card !== "rings") {
+      if (thread && card !== "flower") {
         let run = [], g = -1, tone = null, closed = false;
         const flush = () => {
           if (run.length > 1) {
@@ -907,17 +902,12 @@ function engine(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move 
        frame. */
     get bar() { return barInfo; },
     get loopStart() {
-      if (card === "rings") return ringStart;
+      if (card === "flower") return ringStart;
       if (card === "eight" || card === "volume") return 0;
       return (chars.length - 1) * Math.abs(stagger) + BEAT + passGap;
     },
     get loopPeriod() {
-      if (card === "rings") {
-        if (ringMotion === "bar") return barTurn;
-        if (ringMotion === "steady") return RING_TURN;
-        if (ringMotion === "swing") return 2 * (RING_MOVE + RING_HOLD);
-        return ringSteps * (RING_MOVE + RING_HOLD);
-      }
+      if (card === "flower") return barTurn;
       if (card === "eight") return EIGHT_TURN * Math.max(1, eightFlip);
       if (card === "volume") return VOL_BEAT;
       return 2 * passGap;
@@ -1068,7 +1058,7 @@ function mount(stage, mode, opts = {}) {
 }
 
 export const s = (stage, opts) => mount(stage, "sway", opts);
-export const r = (stage, opts) => mount(stage, "rings", opts);
+export const f = (stage, opts) => mount(stage, "flower", opts);
 export const e = (stage, opts) => mount(stage, "eight", opts);
 export const v = (stage, opts) => mount(stage, "volume", opts);
 
@@ -1132,7 +1122,7 @@ export function paint(ctx, s, size) {
    i of `total`. Sway never ends, so instead of one round we sample one
    period of the steady state — from the moment every letter is sliding,
    two passes long — which joins back onto itself exactly. */
-const EXPORT_SEED = 20260912, SIM_DT = 1 / 120;
+const EXPORT_SEED = 20260912, SIM_DT = 1 / 120, EXPORT_SECONDS = 7.5;
 
 /* The same outline on a canvas, around (cx, cy). */
 function stickerPath(ctx, cx, cy, w, h, shape) {
@@ -1185,11 +1175,21 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, gra
     paint(ctx, frames[Math.max(0, Math.min(frames.length - 1, frame | 0))], size);
   }
   const g = grainFor(pal.frame, { opacity: grainOpacity });
-  return { draw, n: 90, pal, grain: grain ? { opacity: g.opacity, blend: g.blend, scale: grainScale, animated: true } : null };
+  /* How long the exported loop has to be for the card to play at the speed
+     it plays on the site: whole rounds, and at least the export page's own
+     7.5 s unless one round is longer than that. Flower's round is 16 s, so
+     squeezing it into 7.5 s would run it at more than twice the speed. */
+  const probe = engine(mode, opts);
+  const period = probe.empty ? EXPORT_SECONDS : probe.loopPeriod / 1000;
+  const seconds = period * Math.max(1, Math.round(EXPORT_SECONDS / period));
+  return {
+    draw, seconds, n: Math.round(seconds * FPS), pal,
+    grain: grain ? { opacity: g.opacity, blend: g.blend, scale: grainScale, animated: true } : null,
+  };
 }
 export const x = {
   sway: (o) => scene("sway", o),
-  "sway-rings": (o) => scene("rings", o),
+  "sway-flower": (o) => scene("flower", o),
   "sway-eight": (o) => scene("eight", o),
   "sway-volume": (o) => scene("volume", o),
 };
