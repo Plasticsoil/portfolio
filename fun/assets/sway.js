@@ -561,6 +561,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
      for itself on the others. */
   let tileSize = L.h, tileH = L.h * TILE, tileW = tileH * TILE_W;
   let fitted = null;                        // the margin's fit, worked out once the piece is built
+  let laid = null;                          // what the layout came out as, for a page that wants to say so
   let rowsWanted = 0;                       // how many rows a plant is down to, 0 for a row a word
   let rowGap = Infinity;                    // the closest two rows of a plant come
   let crowded = 1;                          // … and what the letter had to give up for it
@@ -673,6 +674,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         cx, cy, t0: BEAT + (stagger < 0 ? chars.length - 1 - i : i) * Math.abs(stagger),
       });
     });
+    laid = { of: "column", n: L.cols, rows: L.rows };
     sized();
   }
 
@@ -720,6 +722,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
       if (hh > h) { ws = cand; h = hh; }
     }
     rings = ws.length;
+    laid = { of: "ring", n: ws.length };
     tileSize = h;
     /* A full ring needs fewer copies. The copies step inside the ring and
        are what draws the flower, so once the letters themselves go most of
@@ -827,6 +830,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
 
   function buildVolume() {
     const ws = pack(words(), rowsWanted || words().length);
+    laid = { of: "row", n: ws.length };
     rowGap = Infinity;
     const floor = STAGE * (1 - volFloor / 100);
     /* All the room there is to grow into, and the ceiling nothing may pass:
@@ -1198,6 +1202,9 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
     /* What the plant had to give up to keep its rows apart, for a page
        that wants to say so. */
     get plant() { return { rows: rowsWanted, gap: rowGap, letter: crowded }; },
+    /* What the text came out as — how many rings, rows or columns it took,
+       how many copies are left on it and how tall a letter ended up. */
+    get laid() { return { ...(laid || { of: "row", n: 1 }), copies: echoes, tile: Math.round(tileH) }; },
     get loopStart() {
       if (card === "flower") return ringStart;
       if (card === "eight" || card === "volume") return 0;
