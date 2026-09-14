@@ -44,7 +44,7 @@
               The lime never pairs with the orange or with the pink as the
               two ends of that gradient — both go grey in the middle — and
               a set that asks for it has the sticker swapped in instead
-     echo     six copies, 120 ms apart
+     echo     seven copies, 130 ms apart
      type     Switzer 500 slate on a sticker cut to the letter (Collection
               01's), the sticker 0.84 of its row, the column four fifths of
               the frame's height, 95 px clear of the sides
@@ -65,12 +65,12 @@
               eases. Six surges to a round of 16 s, on Sway's own curve
      spread   the letters take the whole ring, packed and spread alike:
               the chase is in the pace, not in the width
-     copies   seven, 435 ms apart, each stepping 11% inside the ring the
+     copies   seven, 130 ms apart, each stepping 11% inside the ring the
               last one was on, turned 61° back round it and drawn 7%
               smaller — which is what makes the flower
      thread   none: the copies are the drawing
      colour   the pink ground, orange sticker, the copies stepping from
-              the lime to the yellow
+              the yellow to the lime
      word     Flower power
      type     as Sway: Switzer 500 slate on Collection 01's letter-cut
               sticker, the grain, 12 fps
@@ -81,13 +81,24 @@
               pink and the orange
      grounds  Flower on the pink, Sway on the lime, Volume on the orange;
               each one's sticker and gradient follow from that
-     words    Flower power · Make it sway · Grow slowly
-     thread   one weight for every thread the collection draws — 0.0675 of
-              a row — and Flower bare, its copies being the drawing
-     copies   each card keeps its own: six 120 ms apart, seven 435 apart,
-              four 205 apart. They read differently on each card
-     export   whole rounds at the speed the site runs them: Sway 6.72 s,
-              Flower 16 s, Volume 4.1 s
+     words    Flower power · sway today · Grow slowly
+     thread   1.6× the house weight — 0.0675 of a row — on every thread the
+              collection draws, and Flower bare, its copies being the
+              drawing. A stem is not a thread: it is measured against the
+              letter it holds up, 16% of the narrowest letter in the word,
+              and it is never allowed past the width of that letter
+     copies   seven, 130 ms apart, on all three
+     margin   each card names the edge it keeps clear — Flower 7%, Sway 8%,
+              Volume 10% — and the drawing fills the square inside it,
+              measured over a whole loop so a long word cannot spill and a
+              short one cannot sit small. A margin is not a scale: a letter
+              is the size the card made it whatever the margin says, and so
+              are the sticker and the thread. What gives is the room
+              between things — the ring's radius, the column's travel, how
+              far the plant spreads
+     export   whole rounds at the speed the site runs them, never under
+              four seconds: Sway 6.72 s (two passes twice over), Flower
+              16 s, Volume 4.1 s
 
    Effect contract (studio / embed):  mount(stage, { word, palette, seed }) → { stop() }
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
@@ -172,7 +183,7 @@ const VOL_ARCH = 40;            // how much higher the middle of a row stands th
 const VOL_JITTER = 11;          // … and how far each letter wanders off that, as a share of the
                                 //   front row's reach, so a low row is as uneven as a tall one
 const VOL_SIZE = 138;           // the letters, as a share of the size the rows can carry
-const VOL_STEM = 100;           // the stems, at that same weight…
+const VOL_STEM = 16;        // a stem, as a share of the narrowest letter in the word
 const VOL_LEAN = 100;           // … and how far they lean in to meet in the middle on the way down
 const VOL_INSET = 14;           // every row behind draws in this much from the sides
 const VOL_EASE = "sway";        // the curve a letter rises and sinks on
@@ -191,7 +202,8 @@ const COLOUR = "spectrum";      // how the palette is spent. "spectrum": the let
    02's and 03's palettes, read the same way. */
 export const p = [
   { frame: "#D9FF7E", card: "#FFBECA", ink: "#FF8F5E", anchor: "#FFFF85" },   // lime ground — Sway
-  { frame: "#FFBECA", card: "#FF8F5E", ink: "#D9FF7E", anchor: "#FFFF85" },   // pink ground — Flower
+  { frame: "#FFBECA", card: "#FF8F5E", ink: "#FFFF85", anchor: "#D9FF7E" },   // pink ground — Flower, whose
+                                                                             // copies run yellow to lime
   { frame: "#FF8F5E", card: "#FFBECA", ink: "#D9FF7E", anchor: "#FFFF85" },   // orange ground — Volume
   { frame: "#FFFF85", card: "#D9FF7E", ink: "#FF8F5E", anchor: "#FFBECA" },   // yellow ground
   { frame: "#0D0D0F", card: "#FFFFFF", ink: "#FFFFFF", anchor: "#FFFFFF" },   // white on black — not quite
@@ -463,11 +475,14 @@ function layout(n, font = FONT) {
 
 /* ---------- the engine ---------- */
 
-/* What a card ships with, before anything the page asks for. Sway takes the
-   bare defaults; Flower is the settled set from the lab. */
+/* What a card ships with, before anything the page asks for — the settled
+   set from the collection lab. The three share their copies (seven, 130 ms
+   apart) and a thread 1.6× the house weight, so they read as one family;
+   what differs is the margin each one wants and the motion of its own. */
 const CARD = {
-  flower: { echoes: 7, echoDelay: 435, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false, scale: 0.75 },
-  volume: { echoes: 4, echoDelay: 205, seed: 67138, scale: 0.75 },
+  sway:   { echoes: 7, echoDelay: 130, threadScale: 1.6, margin: 8 },
+  flower: { echoes: 7, echoDelay: 130, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false, threadScale: 1.6, margin: 7 },
+  volume: { echoes: 7, echoDelay: 130, seed: 67138, threadScale: 1.6, margin: 10 },
 };
 
 /* Runs the piece on a virtual clock. step(dt) advances it; snapshot(frame)
@@ -479,7 +494,7 @@ function engine(mode, o = {}) { return piece(mode, { ...CARD[mode], ...o }); }
 function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS,
                         curve = CURVE, font = FONT, echoes = ECHOES,
                         echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR,
-                        shape = SHAPE, thread = true, threadScale = 1, weight = WEIGHT, scale = 1,
+                        shape = SHAPE, thread = true, threadScale = 1, weight = WEIGHT, margin = 0,
                         /* Rings */
                         ringFace = false, ringOne = false,
                         barTurn = RING_BAR_TURN, barBeats = RING_BAR_BEATS, barTight = RING_BAR_TIGHT,
@@ -509,6 +524,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
   /* A row's height: the column's own on Sway, whatever the card worked out
      for itself on the others. */
   let tileSize = L.h, tileH = L.h * TILE, tileW = tileH * TILE_W;
+  let fitted = null;                        // the margin's fit, worked out once the piece is built
   let rings = 1, ringStart = 0;             // how many rings the text made, and when they start turning
   let barInfo = null;                       // what the bar actually managed, for a page that wants to say so
   const syncTile = () => { tileH = tileSize * TILE; tileW = tileH * TILE_W; };
@@ -887,8 +903,8 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
     return {
       p: card === "sway" ? align(Lt, t) : 0.5, spec, w, sc, rot: at.rot || 0,
       a: at.a, out: at.out !== false,
-      x: at.x + wobble(Lt.id, frame, 0) * JITTER,
-      y: at.y + wobble(Lt.id, frame, 1) * JITTER,
+      x: mapX(at.x + wobble(Lt.id, frame, 0) * JITTER),
+      y: mapY(at.y + wobble(Lt.id, frame, 1) * JITTER),
     };
   }
 
@@ -921,7 +937,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
       for (let k = echoIn || echoTurn ? echoes : 0; k >= 0; k--) {
         let run = [], g = -1, tone = null;
         const flush = () => {
-          if (run.length > 1) tiles.push({ kind: "thread", id: `ring${k}-${g}`, d: arcPath(run, STAGE / 2, STAGE / 2), colour: tone, width: tileSize * THREAD * threadScale * rankScale(k), alpha: 1 });
+          if (run.length > 1) tiles.push({ kind: "thread", id: `ring${k}-${g}`, d: arcPath(run, mapX(STAGE / 2), mapY(STAGE / 2)), colour: tone, width: tileSize * THREAD * threadScale * rankScale(k), alpha: 1 });
           run = [];
         };
         for (const Lt of letters) {
@@ -943,7 +959,14 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
          frame — well past the square the piece is drawn in, so a taller
          frame simply gets a longer stem while the letters stay where they
          are. There is no base line: the bottom of the frame is the base. */
-      const w = tileSize * THREAD * threadScale * (volStem / 100);
+      /* A stem is measured against the letter it holds up: 100 is as wide
+         as the narrowest letter in the word, and it never goes past that.
+         The collection's thread weight is Sway's business — a stem is
+         thicker than a thread and answers to the plant instead. */
+      let narrow = Infinity;
+      for (const Lt of letters) if (!Lt.blank) narrow = Math.min(narrow, place(Lt, 0, frame).w);
+      if (!isFinite(narrow)) narrow = tileW;
+      const w = narrow * (Math.min(100, Math.max(0, volStem)) / 100);
       const foot = (STAGE * 2.5).toFixed(1);
       const lean = Math.min(1, Math.max(0, volLean / 100));
       for (let k = volStems === "all" ? echoes : 0; k >= 0; k--) {
@@ -954,7 +977,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
              meet the others at the middle of the bottom edge, or anywhere
              between — and from wherever it lands it runs on straight down
              and out of the frame. */
-          const root = (Lt.cx + (STAGE / 2 - Lt.cx) * lean).toFixed(1);
+          const root = mapX(Lt.cx + (STAGE / 2 - Lt.cx) * lean).toFixed(1);
           tiles.push({
             kind: "thread", id: `stem${Lt.id}-${k}`,
             d: `M${q.x.toFixed(1)},${q.y.toFixed(1)}L${root},${STAGE}L${root},${foot}`,
@@ -1004,14 +1027,68 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         });
       }
     }
-    /* How big the card's own drawing sits in the frame — the ground and
-       the grain still fill it, everything else is scaled about the middle. */
-    return { bg: pal.frame, tiles, scale };
+    return { bg: pal.frame, tiles };
   }
 
   build();
-  return {
+
+  /* What the card actually draws, measured rather than guessed: over one
+     whole loop, where every letter and every copy gets to, and how much
+     room a letter needs around the point it is hung on. The threads are
+     left out of it — Volume's stems run off the bottom of the frame on
+     purpose, and a ring's arcs only ever join letters that are in the box
+     already. Measured with the fit off, so it describes the card's own
+     geometry rather than the last answer. */
+  function contentBox() {
+    const keep = now, held = fitted;
+    fitted = null;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    let padL = 0, padR = 0, padY = 0;
+    const N = 24, from = api.loopStart, period = api.loopPeriod;
+    for (let i = 0; i < N; i++) {
+      now = from + (period * i) / N;
+      for (const t of snapshot(i).tiles) {
+        if (t.kind === "thread") continue;
+        x0 = Math.min(x0, t.x); x1 = Math.max(x1, t.x);
+        y0 = Math.min(y0, t.y); y1 = Math.max(y1, t.y);
+        padL = Math.max(padL, t.w * t.p);
+        padR = Math.max(padR, t.w * (1 - t.p));
+        padY = Math.max(padY, t.h / 2);
+      }
+    }
+    now = keep; fitted = held;
+    if (!(x1 >= x0)) return null;
+    return { x0, x1, y0, y1, padL, padR, padY };
+  }
+
+  /* The margin is a promise about the frame: the drawing fills the square
+     inside it and never crosses it. It is not a scale — a letter is the
+     size the card made it whatever the margin says, and the sticker and
+     the thread keep their weight. What gives is the room between things:
+     the ring's radius, the column's travel, how far the plant spreads. */
+  function fitFor() {
+    const b = empty ? null : contentBox();
+    if (!b) return null;
+    const room = STAGE * (1 - (2 * margin) / 100);
+    const w = b.x1 - b.x0, h = b.y1 - b.y0;
+    const sx = w > 0.5 ? (room - b.padL - b.padR) / w : Infinity;
+    const sy = h > 0.5 ? (room - 2 * b.padY) / h : Infinity;
+    let s = Math.min(sx, sy);
+    if (!isFinite(s)) s = 1;
+    s = Math.min(4, Math.max(0.1, s));
+    return {
+      s,
+      dx: (STAGE + b.padL - b.padR) / 2 - (s * (b.x0 + b.x1)) / 2,
+      dy: STAGE / 2 - (s * (b.y0 + b.y1)) / 2,
+    };
+  }
+  /* Every point the card draws goes through here on its way out. */
+  const mapX = (x) => (fitted ? fitted.dx + fitted.s * x : x);
+  const mapY = (y) => (fitted ? fitted.dy + fitted.s * y : y);
+
+  const api = {
     step, snapshot, restart, pal, empty,
+    get fit() { return fitted; },
     get loops() { return loops; },
     get now() { return now; },
     /* One seamless loop of the steady state. Sway settles once the wave has
@@ -1032,6 +1109,8 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
       return 2 * passGap;
     },
   };
+  fitted = fitFor();
+  return api;
 }
 
 /* ---------- DOM renderer (studio, embed) ---------- */
@@ -1066,10 +1145,6 @@ function mount(stage, mode, opts = {}) {
 
   const layer = document.createElement("div");
   layer.style.cssText = "position:absolute;inset:0;";
-  if (opts.scale && opts.scale !== 1) {
-    layer.style.transform = `scale(${opts.scale})`;
-    layer.style.transformOrigin = "50% 50%";
-  }
   stage.appendChild(layer);
   /* Film grain: a few noise tiles cycled per frame (iOS Safari often
      skips the SVG turbulence filter inside a scaled stage). */
@@ -1195,11 +1270,6 @@ export function paint(ctx, s, size) {
   ctx.fillRect(0, 0, size, size);
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  if (s.scale && s.scale !== 1) {
-    ctx.translate(size / 2, size / 2);
-    ctx.scale(s.scale, s.scale);
-    ctx.translate(-size / 2, -size / 2);
-  }
   for (const t of s.tiles) {
     ctx.globalAlpha = t.alpha;
     if (t.kind === "thread") {
