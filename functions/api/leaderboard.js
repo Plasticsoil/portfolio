@@ -1,8 +1,7 @@
 // moji — global daily leaderboard, Cloudflare Pages Function.
 // Stored in Workers KV (free tier). Bind a KV namespace named
 // LEADERBOARD in the Pages dashboard (Settings → Functions → KV
-// namespace bindings). The frontend hits this at /api/leaderboard,
-// the exact same path the Netlify version used, so no client change.
+// namespace bindings). The frontend hits this at /api/leaderboard.
 //
 //   GET  /api/leaderboard?date=YYYY-MM-DD     → { date, top:[…24] }
 //   POST /api/leaderboard { name, ms, date }  → { date, top, you }

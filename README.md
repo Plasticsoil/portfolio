@@ -15,6 +15,8 @@ V3/
 ├── index.html                 ← Main page (shell, styles, cursor, overlay, all JS)
 ├── blocks.js                  ← renderBlock() — turns a block object into HTML
 ├── README.md                  ← (this file)
+├── HOSTING.md                 ← Cloudflare Pages: how the site is served
+├── functions/api/             ← Pages Functions — /api/leaderboard, /api/glyph
 │
 ├── hero/
 │   └── hero-config.js         ← Which project's 3D model appears in the hero ring-card
@@ -85,3 +87,12 @@ When a "custom" pattern starts repeating, promote it to its own block type.
 The hero shows ONE project's 3D model as a floating card. To change which
 project is featured, edit `hero/hero-config.js` — it's a pointer to a project
 slug + which asset in that project to show. No files move.
+
+---
+
+## Hosting
+
+The site is served by **Cloudflare Pages** from `main` — static files
+straight out of the repo root, no build step, and the API routes as Pages
+Functions in `functions/api/`. Pushing to `main` is the deploy. Netlify is
+not used; that account is out of free quota. See `HOSTING.md`.
