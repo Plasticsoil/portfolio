@@ -470,7 +470,6 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
   /* A row's height: the column's own on Sway, whatever the card worked out
      for itself on the others. */
   let tileSize = L.h, tileH = L.h * TILE, tileW = tileH * TILE_W;
-  let volBase = 0;
   let rings = 1, ringStart = 0;             // how many rings the text made, and when they start turning
   let barInfo = null;                       // what the bar actually managed, for a page that wants to say so
   const syncTile = () => { tileH = tileSize * TILE; tileW = tileH * TILE_W; };
@@ -729,7 +728,6 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         });
       });
     });
-    volBase = floor;
   }
 
   /* Where a letter sits in its lane right now, as one number: 0 is flush
@@ -887,19 +885,19 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
        their own — they are the letter on its way up, so they already sit
        on it like beads. */
     if (thread && card === "volume") {
+      /* A stem runs from the letter straight down and off the bottom of the
+         frame — well past the square the piece is drawn in, so a taller
+         frame simply gets a longer stem while the letters stay where they
+         are. There is no base line: the bottom of the frame is the base. */
       const w = tileSize * THREAD * (volStem / 100);
-      tiles.push({
-        kind: "thread", id: "base",
-        d: `M${LANE_PAD / 2},${volBase.toFixed(1)}L${(STAGE - LANE_PAD / 2).toFixed(1)},${volBase.toFixed(1)}`,
-        colour: toneOf(letters[0] || { fill: stops[0] }, 0), width: w, alpha: 1,
-      });
+      const foot = (STAGE * 2.5).toFixed(1);
       for (let k = volStems === "all" ? echoes : 0; k >= 0; k--) {
         for (const Lt of letters) {
           if (Lt.blank) continue;
           const q = place(Lt, k, frame);
           tiles.push({
             kind: "thread", id: `stem${Lt.id}-${k}`,
-            d: `M${Lt.cx.toFixed(1)},${volBase.toFixed(1)}L${q.x.toFixed(1)},${q.y.toFixed(1)}`,
+            d: `M${Lt.cx.toFixed(1)},${foot}L${q.x.toFixed(1)},${q.y.toFixed(1)}`,
             colour: toneOf(Lt, k), width: w * rankScale(k), alpha: 1,
           });
         }
@@ -946,7 +944,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         });
       }
     }
-    return { bg: pal.frame, tiles, clipBelow: card === "volume" ? volBase + tileSize * THREAD : null };
+    return { bg: pal.frame, tiles };
   }
 
   build();
@@ -1047,8 +1045,6 @@ function mount(stage, mode, opts = {}) {
   function paint(frame) {
     const s = eng.snapshot(frame);
     if (noise) noise.style.backgroundImage = tiles[frame % tiles.length];
-    /* Volume's bars sink out of sight under the floor. */
-    layer.style.clipPath = s.clipBelow ? `inset(0 0 ${(STAGE - s.clipBelow).toFixed(1)}px 0)` : "";
     const seen = new Set();
     /* Elements are made as they are first needed, so on a card where the
        letters arrive over time the order they sit in the layer is the order
@@ -1133,11 +1129,6 @@ export function paint(ctx, s, size) {
   ctx.fillRect(0, 0, size, size);
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  if (s.clipBelow) {
-    ctx.beginPath();
-    ctx.rect(0, 0, size, s.clipBelow * k);
-    ctx.clip();
-  }
   for (const t of s.tiles) {
     ctx.globalAlpha = t.alpha;
     if (t.kind === "thread") {
