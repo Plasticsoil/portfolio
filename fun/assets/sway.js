@@ -74,6 +74,19 @@
               sticker, the grain, 12 fps
      name     Flower (it was Rings while it was still being drawn)
 
+   And the collection itself, settled across the three (September 2026):
+     order    Flower, Sway, Volume — the lime ground in the middle of the
+              pink and the orange
+     grounds  Flower on the pink, Sway on the lime, Volume on the orange;
+              each one's sticker and gradient follow from that
+     words    Flower power · Make it sway · Grow slowly
+     thread   one weight for every thread the collection draws — 0.0675 of
+              a row — and Flower bare, its copies being the drawing
+     copies   each card keeps its own: six 120 ms apart, seven 435 apart,
+              four 205 apart. They read differently on each card
+     export   whole rounds at the speed the site runs them: Sway 6.72 s,
+              Flower 16 s, Volume 4.1 s
+
    Effect contract (studio / embed):  mount(stage, { word, palette, seed }) → { stop() }
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
 
@@ -117,7 +130,7 @@ const LETTER = "#4E4B5D";       // Stickers' slate letter colour, on every stick
 const SHAPE = "letter";         // the sticker under the letter: "letter" (Collection 01's, cut to
                                 // the letter's own shape), "capsule", "chamfer" or "none"
 const LETTER_W = 0.8;           // "letter": the glyph's size inside its sticker
-const THREAD = 0.09;            // the thread a rank is strung on, as a share of a row
+const THREAD = 0.0675;          // every thread the collection draws, as a share of a row
 const TILE = 0.84;              // a sticker's height as a share of its row, so the rows keep air
 const TILE_W = 1.42;            // … and its width as a share of its own height
 const TILE_FONT = 0.52;         // … and the letter's size inside it
@@ -157,7 +170,7 @@ const VOL_ARCH = 40;            // how much higher the middle of a row stands th
 const VOL_JITTER = 11;          // … and how far each letter wanders off that, as a share of the
                                 //   front row's reach, so a low row is as uneven as a tall one
 const VOL_SIZE = 138;           // the letters, as a share of the size the rows can carry
-const VOL_STEM = 65;            // the stems, as a share of the house thread…
+const VOL_STEM = 100;           // the stems, at that same weight…
 const VOL_LEAN = 100;           // … and how far they lean in to meet in the middle on the way down
 const VOL_INSET = 14;           // every row behind draws in this much from the sides
 const VOL_EASE = "sway";        // the curve a letter rises and sinks on
@@ -177,7 +190,7 @@ const COLOUR = "spectrum";      // how the palette is spent. "spectrum": the let
 export const p = [
   { frame: "#D9FF7E", card: "#FFBECA", ink: "#FF8F5E", anchor: "#FFFF85" },   // lime ground — Sway
   { frame: "#FFBECA", card: "#FF8F5E", ink: "#D9FF7E", anchor: "#FFFF85" },   // pink ground — Flower
-  { frame: "#FF8F5E", card: "#D9FF7E", ink: "#FFBECA", anchor: "#FFFF85" },   // orange ground
+  { frame: "#FF8F5E", card: "#FFBECA", ink: "#D9FF7E", anchor: "#FFFF85" },   // orange ground — Volume
   { frame: "#FFFF85", card: "#D9FF7E", ink: "#FF8F5E", anchor: "#FFBECA" },   // yellow ground
   { frame: "#0D0D0F", card: "#FFFFFF", ink: "#FFFFFF", anchor: "#FFFFFF" },   // white on black — not quite
                                                                              // pure, so the grain still lives
@@ -1217,7 +1230,7 @@ export function paint(ctx, s, size) {
    i of `total`. Sway never ends, so instead of one round we sample one
    period of the steady state — from the moment every letter is sliding,
    two passes long — which joins back onto itself exactly. */
-const EXPORT_SEED = 20260912, SIM_DT = 1 / 120, EXPORT_SECONDS = 7.5;
+const EXPORT_SEED = 20260912, SIM_DT = 1 / 120, EXPORT_LEAST = 4;
 
 /* The same outline on a canvas, around (cx, cy). */
 function stickerPath(ctx, cx, cy, w, h, shape) {
@@ -1271,12 +1284,13 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, gra
   }
   const g = grainFor(pal.frame, { opacity: grainOpacity });
   /* How long the exported loop has to be for the card to play at the speed
-     it plays on the site: whole rounds, and at least the export page's own
-     7.5 s unless one round is longer than that. Flower's round is 16 s, so
-     squeezing it into 7.5 s would run it at more than twice the speed. */
+     it plays on the site: whole rounds, and as few of them as gets past a
+     few seconds — a round of its own is plenty for a card that takes its
+     time, and half the file. Flower's round is 16 s, so squeezing it into
+     the page's own 7.5 s would run it at more than twice the speed. */
   const probe = engine(mode, opts);
-  const period = probe.empty ? EXPORT_SECONDS : probe.loopPeriod / 1000;
-  const seconds = period * Math.max(1, Math.round(EXPORT_SECONDS / period));
+  const period = probe.empty ? EXPORT_LEAST : probe.loopPeriod / 1000;
+  const seconds = period * Math.max(1, Math.ceil(EXPORT_LEAST / period));
   return {
     draw, seconds, n: Math.round(seconds * FPS), pal,
     grain: grain ? { opacity: g.opacity, blend: g.blend, scale: grainScale, animated: true } : null,
@@ -1285,7 +1299,8 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, gra
 export const x = {
   sway: (o) => scene("sway", o),
   "sway-flower": (o) => scene("flower", o),
-  "sway-eight": (o) => scene("eight", o),
+  /* Eight is built but not registered anywhere yet — the card is still
+     an idea rather than a decision, so the site does not offer it. */
   "sway-volume": (o) => scene("volume", o),
 };
 
