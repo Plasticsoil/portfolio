@@ -138,8 +138,21 @@ const RING_BAR_CHASE = 1;       // … and how far behind the head the tail runs
 const EIGHT_TURN = 7000;        // ms to travel the whole eight once
 const EIGHT_FLIP = 2;           // … and the figure turns over once every this many rounds
 /* Volume */
-const VOL_BEAT = 5400;          // ms for the slowest bar to rise and fall once
-const VOL_FLOOR = 70;           // the floor sits this far off the bottom of the frame
+/* Volume — every letter is a stem growing out of a base line along the
+   bottom of the frame, rising and sinking back. A word is a row: the same
+   base, a lower reach than the row before it, so the whole thing stands
+   like a shrub. */
+const VOL_BEAT = 5400;          // ms for a letter to rise and sink back once
+const VOL_OFFSET = 180;         // … and this long after the letter beside it
+const VOL_FLOOR = 8;            // the base line sits this far off the bottom, in hundredths
+const VOL_TOP = 78;             // the first row reaches this far up the frame, in hundredths
+const VOL_FALL = 72;            // … and every row behind it reaches this share of the last
+const VOL_LOW = 10;             // a letter never sinks below this share of its own reach
+const VOL_ARCH = 55;            // how much higher the middle of a row stands than its ends
+const VOL_JITTER = 22;          // … and how far each letter wanders off that, seeded
+const VOL_SIZE = 100;           // the letters, as a share of the size the rows can carry
+const VOL_STEM = 100;           // the stems, as a share of the house thread
+const VOL_INSET = 12;           // every row behind draws in this much from the sides
 
 const COLOUR = "spectrum";      // how the palette is spent. "spectrum": the letters take one
                                 // colour, the background the second, and the copies are solid steps
@@ -414,6 +427,7 @@ function layout(n, font = FONT) {
    bare defaults; Flower is the settled set from the lab. */
 const CARD = {
   flower: { echoes: 7, echoDelay: 435, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false },
+  volume: { echoes: 6, echoDelay: 300 },
 };
 
 /* Runs the piece on a virtual clock. step(dt) advances it; snapshot(frame)
@@ -437,7 +451,11 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
                         /* Eights */
                         eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
                         /* Volume */
-                        volTight = false, volOrder = "free", volThread = "both", volBounce = false } = {}) {
+                        volRate = VOL_BEAT, volOffset = VOL_OFFSET, volFloor = VOL_FLOOR,
+                        volTop = VOL_TOP, volFall = VOL_FALL, volLow = VOL_LOW,
+                        volArch = VOL_ARCH, volJitter = VOL_JITTER, volSize = VOL_SIZE,
+                        volStem = VOL_STEM, volStems = "one", volNest = true,
+                        volInset = VOL_INSET } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
@@ -451,6 +469,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
   /* A row's height: the column's own on Sway, whatever the card worked out
      for itself on the others. */
   let tileSize = L.h, tileH = L.h * TILE, tileW = tileH * TILE_W;
+  let volBase = 0;
   let rings = 1, ringStart = 0;             // how many rings the text made, and when they start turning
   let barInfo = null;                       // what the bar actually managed, for a page that wants to say so
   const syncTile = () => { tileH = tileSize * TILE; tileW = tileH * TILE_W; };
@@ -666,30 +685,49 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
      sinking at their own rates, so their tops draw a moving horizon. */
   function buildVolume() {
     const ws = words();
-    const span = (STAGE - 2 * LANE_PAD) / ws.length;
+    const floor = STAGE * (1 - volFloor / 100);
+    const reach = floor - LANE_PAD / 2;           // all the room there is to grow into
+    const usable = STAGE - 2 * LANE_PAD;
     const longest = Math.max(...ws.map((w) => w.length));
-    const floor = STAGE - VOL_FLOOR;
-    const h = Math.max(14, Math.min(MAX_H, (floor - VOL_FLOOR) / Math.max(2, longest), span / 1.15));
-    tileSize = h;
-    /* Tight packs the bars against each other, so the tops read as one
-       skyline rather than separate towers. */
-    const pitch = volTight ? boxW(h) * 1.02 : span;
-    const x0 = volTight ? (STAGE - pitch * ws.length) / 2 : LANE_PAD;
+    /* The letters come down until a row of them fits across the frame with
+       room to breathe, and then take whatever share of that the size asks
+       for. */
+    let h = MAX_H;
+    for (; h > 12; h -= 2) if (usable / longest >= boxW(h) * 1.06) break;
+    tileSize = Math.max(10, h * (volSize / 100));
+    /* The rise is seeded, so the same seed always grows the same plant and
+       a new one is a new shrub. */
+    const r = rng(seed);
     ws.forEach((wd, wi) => {
-      const col = rtl ? ws.length - 1 - wi : wi;
-      const cx = x0 + pitch * (col + 0.5);
-      const rise = wd.length * h + h;
+      const n = wd.length;
+      /* Every row behind draws in from the sides, so the rows read one
+         inside the other and the whole thing tapers like a shrub. */
+      const wide = usable * Math.max(0.25, 1 - (volInset / 100) * wi);
+      const left = LANE_PAD + (usable - wide) / 2;
+      const step = wide / n;
+      /* Every row starts at the same base and reaches less far than the one
+         in front, and sits half a step across from it so the rows nest
+         rather than stack. */
+      const top = reach * (volTop / 100) * Math.pow(volFall / 100, wi);
+      const shift = volNest && wi % 2 ? step / 2 : 0;
       wd.forEach((i, j) => {
+        const col = rtl ? n - 1 - j : j;
+        /* Sine across the row — the middle stands higher than the ends —
+           and then a seeded wander off it, so no two are quite alike. */
+        const arch = 1 - volArch / 100 + (volArch / 100) * Math.sin((Math.PI * (j + 0.5)) / n);
+        const wander = 1 + (volJitter / 100) * (r() * 2 - 1);
         letters.push({
           id: i, ch: chars[i], blank: false, group: wi, top: j === 0, fill: tone(i),
-          cx, cy: floor - h / 2 - (wd.length - 1 - j) * h,
-          rise, floor,
-          beat: (volOrder === "wave" ? 1 : 1 + (wi % 3)) * ((2 * Math.PI) / VOL_BEAT),
-          phase: volOrder === "wave" ? (-2 * Math.PI * col) / ws.length : rand() * Math.PI * 2,
-          t0: 0,
+          cx: Math.min(STAGE - LANE_PAD, Math.max(LANE_PAD, left + step * (col + 0.5) + shift)),
+          cy: floor, floor,
+          rise: Math.max(tileSize, top * arch * wander),
+          low: volLow / 100,
+          beat: (2 * Math.PI) / volRate,
+          phase: (-2 * Math.PI * (col * volOffset + wi * volOffset * 2)) / volRate,
         });
       });
     });
+    volBase = floor;
   }
 
   /* Where a letter sits in its lane right now, as one number: 0 is flush
@@ -769,11 +807,11 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
       return { x: Lt.cx + dx * c - dy * s2, y: Lt.cy + dx * s2 + dy * c };
     }
     if (card === "volume") {
-      const th = Lt.beat * t + Lt.phase;
-      let v = 0.5 - 0.5 * Math.cos(th);
-      /* A kick at the top of the rise, without breaking the round. */
-      if (volBounce) v += 0.07 * Math.sin(2 * th) * Math.max(0, Math.sin(th));
-      return { x: Lt.cx, y: Lt.cy + (1 - v) * Lt.rise };
+      /* Up and back down for ever: nothing enters, nothing leaves, and a
+         letter never sinks quite into the base it grew out of. */
+      const v = 0.5 - 0.5 * Math.cos(Lt.beat * t + Lt.phase);
+      const climb = Lt.low + (1 - Lt.low) * v;
+      return { x: Lt.cx, y: Lt.floor - tileSize / 2 - climb * Lt.rise };
     }
     return { x: Lt.cx + (align(Lt, t) * 2 - 1) * halfFor(w), y: Lt.cy };
   }
@@ -839,6 +877,29 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         flush();
       }
     }
+    /* Volume's thread is the plant itself: one base line along the bottom,
+       and a stem from it up to every letter. The copies need no stem of
+       their own — they are the letter on its way up, so they already sit
+       on it like beads. */
+    if (thread && card === "volume") {
+      const w = tileSize * THREAD * (volStem / 100);
+      tiles.push({
+        kind: "thread", id: "base",
+        d: `M${LANE_PAD / 2},${volBase.toFixed(1)}L${(STAGE - LANE_PAD / 2).toFixed(1)},${volBase.toFixed(1)}`,
+        colour: toneOf(letters[0] || { fill: stops[0] }, 0), width: w, alpha: 1,
+      });
+      for (let k = volStems === "all" ? echoes : 0; k >= 0; k--) {
+        for (const Lt of letters) {
+          if (Lt.blank) continue;
+          const q = place(Lt, k, frame);
+          tiles.push({
+            kind: "thread", id: `stem${Lt.id}-${k}`,
+            d: `M${Lt.cx.toFixed(1)},${volBase.toFixed(1)}L${q.x.toFixed(1)},${q.y.toFixed(1)}`,
+            colour: toneOf(Lt, k), width: w * rankScale(k), alpha: 1,
+          });
+        }
+      }
+    }
     for (let k = echoes; k >= 0; k--) {
       const alpha = solid || k === 0 ? 1 : (echoAlpha * (echoes - k + 1)) / echoes;
       /* The thread this rank is strung on — one run per column, laid down
@@ -846,7 +907,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
          carries on to the next letter. */
       /* A run is one group — a column, an eight, a bar. The rings are the
          exception: their thread is the ring itself and is already down. */
-      if (thread && card !== "flower") {
+      if (thread && card !== "flower" && card !== "volume") {
         let run = [], g = -1, tone = null, closed = false;
         const flush = () => {
           if (run.length > 1) {
@@ -856,19 +917,12 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         };
         for (const Lt of letters) {
           if (Lt.blank) continue;
-          if (card === "volume" && volThread === "horizon") break;
           if (Lt.group !== g) { flush(); g = Lt.group; closed = !!Lt.closed; }
           const q = place(Lt, k, frame);
           tone = toneOf(Lt, k);
           run.push([q.x, q.y]);
         }
         flush();
-        /* Volume also strings the tops of the bars together: that line is
-           the horizon the card is named for. */
-        if (card === "volume" && volThread !== "bars") {
-          const ridge = letters.filter((Lt) => Lt.top).map((Lt) => { const q = place(Lt, k, frame); return [q.x, q.y]; });
-          if (ridge.length > 1) tiles.push({ kind: "thread", id: `h${k}`, d: threadPath(ridge, false), colour: toneOf(letters[0], k), width: tileSize * THREAD, alpha });
-        }
       }
       for (const Lt of letters) {
         if (Lt.blank) continue;
@@ -887,7 +941,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         });
       }
     }
-    return { bg: pal.frame, tiles, clipBelow: card === "volume" ? STAGE - VOL_FLOOR : null };
+    return { bg: pal.frame, tiles, clipBelow: card === "volume" ? volBase + tileSize * THREAD : null };
   }
 
   build();
@@ -909,7 +963,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
     get loopPeriod() {
       if (card === "flower") return barTurn;
       if (card === "eight") return EIGHT_TURN * Math.max(1, eightFlip);
-      if (card === "volume") return VOL_BEAT;
+      if (card === "volume") return volRate;
       return 2 * passGap;
     },
   };
