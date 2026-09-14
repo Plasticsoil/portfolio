@@ -8,6 +8,22 @@ project's own `project.js` and its `assets/` folder.
 
 ---
 
+## Hosting and deploy
+
+The site is served by **Cloudflare Pages** (project `portfolio`, production
+branch `main`, build output `/`, no build command). Merging to `main` is the
+deploy; it goes live at yamliv.net within a minute or two.
+
+- `wrangler.toml` — Pages config and the `LEADERBOARD` KV binding.
+- `functions/api/` — Pages Functions (`/api/leaderboard`, `/api/glyph`).
+- `_redirects` — short links (`/cv`, `/resume`).
+- `HOSTING.md` — what runs where, and the one-time dashboard setup.
+
+**Netlify is not the host.** That account is out of quota and nothing was
+reaching it, so its config (`netlify.toml`, `netlify/functions/`) has been
+removed. Don't add new Netlify functions or config; server-side code goes
+under `functions/` instead.
+
 ## Folder map
 
 ```
@@ -87,12 +103,3 @@ When a "custom" pattern starts repeating, promote it to its own block type.
 The hero shows ONE project's 3D model as a floating card. To change which
 project is featured, edit `hero/hero-config.js` — it's a pointer to a project
 slug + which asset in that project to show. No files move.
-
----
-
-## Hosting
-
-The site is served by **Cloudflare Pages** from `main` — static files
-straight out of the repo root, no build step, and the API routes as Pages
-Functions in `functions/api/`. Pushing to `main` is the deploy. Netlify is
-not used; that account is out of free quota. See `HOSTING.md`.
