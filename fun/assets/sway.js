@@ -466,8 +466,8 @@ function layout(n, font = FONT) {
 /* What a card ships with, before anything the page asks for. Sway takes the
    bare defaults; Flower is the settled set from the lab. */
 const CARD = {
-  flower: { echoes: 7, echoDelay: 435, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false },
-  volume: { echoes: 4, echoDelay: 205, seed: 67138 },
+  flower: { echoes: 7, echoDelay: 435, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false, scale: 0.75 },
+  volume: { echoes: 4, echoDelay: 205, seed: 67138, scale: 0.75 },
 };
 
 /* Runs the piece on a virtual clock. step(dt) advances it; snapshot(frame)
@@ -479,7 +479,7 @@ function engine(mode, o = {}) { return piece(mode, { ...CARD[mode], ...o }); }
 function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS,
                         curve = CURVE, font = FONT, echoes = ECHOES,
                         echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR,
-                        shape = SHAPE, thread = true, threadScale = 1, weight = WEIGHT,
+                        shape = SHAPE, thread = true, threadScale = 1, weight = WEIGHT, scale = 1,
                         /* Rings */
                         ringFace = false, ringOne = false,
                         barTurn = RING_BAR_TURN, barBeats = RING_BAR_BEATS, barTight = RING_BAR_TIGHT,
@@ -1004,7 +1004,9 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         });
       }
     }
-    return { bg: pal.frame, tiles };
+    /* How big the card's own drawing sits in the frame — the ground and
+       the grain still fill it, everything else is scaled about the middle. */
+    return { bg: pal.frame, tiles, scale };
   }
 
   build();
@@ -1064,6 +1066,10 @@ function mount(stage, mode, opts = {}) {
 
   const layer = document.createElement("div");
   layer.style.cssText = "position:absolute;inset:0;";
+  if (opts.scale && opts.scale !== 1) {
+    layer.style.transform = `scale(${opts.scale})`;
+    layer.style.transformOrigin = "50% 50%";
+  }
   stage.appendChild(layer);
   /* Film grain: a few noise tiles cycled per frame (iOS Safari often
      skips the SVG turbulence filter inside a scaled stage). */
@@ -1189,6 +1195,11 @@ export function paint(ctx, s, size) {
   ctx.fillRect(0, 0, size, size);
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
+  if (s.scale && s.scale !== 1) {
+    ctx.translate(size / 2, size / 2);
+    ctx.scale(s.scale, s.scale);
+    ctx.translate(-size / 2, -size / 2);
+  }
   for (const t of s.tiles) {
     ctx.globalAlpha = t.alpha;
     if (t.kind === "thread") {
