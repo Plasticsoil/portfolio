@@ -103,10 +103,18 @@
               rather than a smaller drawing
      round    one whole loop: Flower 22.3 s, Sway 5 s (two passes), Volume
               3.4 s
-     more     what each card does when it is given more than a line. The
-              rule is the same on all three: the layout gives way before
-              the letter does, because a letter too small to read is not
-              this collection whatever else is right about it.
+     more     what each card does when it is given more than a line. Two
+              things give, and both give gradually, against how full the
+              card is — nothing under twelve letters, everything by forty,
+              so a card travels between a word and a sentence rather than
+              stepping. The copies come down, six to two, since they are
+              what fills the room between letters; and the margin comes in
+              to six per cent, since a word can afford an edge and a
+              sentence needs the frame. The collection's own three are
+              under twelve letters and nothing here touches them.
+                Then the layout gives, before the letter does, because a
+              letter too small to read is not this collection whatever
+              else is right about it.
                 Sway takes another column rather than shorter rows — a row
               under 72 px is a column split instead
                 Flower keeps a ring to a word while the whole text is
@@ -167,7 +175,10 @@ const LETTER_W = 0.8;           // "letter": the glyph's size inside its sticker
 const THREAD = 0.0675;          // every thread the collection draws, as a share of a row
 const ROW_CLEAR = 0.82;         // a plant's rows leave each other this much of the gap
 const RING_FULL = 11;           // letters a flower carries as rings; past this it is one ring
-const ECHO_ROOM = 11;           // … and past this its copies start thinning too
+const CROWD_FROM = 12;          // letters a card carries before it starts giving room back…
+const CROWD_FULL = 40;          // … and where it has given everything it has
+const COPY_FLOOR = 2;           // copies a crowded card keeps whatever happens
+const MARGIN_FLOOR = 6;         // … and the edge it still keeps clear
 const RING_COMFY = 130;         // a flower's letters are bold: rings give way until
                                 // one is at least this tall, or there is one ring left
 const COMFY_H = 72;             // a row this tall still reads: a column whose rows
@@ -547,9 +558,18 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
                         volStem = VOL_STEM, volStems = "one", volNest = true,
                         volInset = VOL_INSET, volEase = VOL_EASE, volLean = VOL_LEAN } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
-  const echoes0 = echoes;                   // what the page asked for, before a full ring thins it
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
+  /* How full the card is: nothing for a word, all of it for a frame of
+     text. Everything that has to give as the text grows gives against
+     this, so a card travels between a word and a sentence rather than
+     stepping. Below CROWD_FROM it is zero, which is where the collection's
+     own three sit — they are settled and nothing here touches them. */
+  const dense = Math.min(1, Math.max(0, (chars.filter((c) => c !== " ").length - CROWD_FROM) / (CROWD_FULL - CROWD_FROM)));
+  /* The copies are what fill the room between letters, so they are the
+     first thing a crowded card gives up. */
+  const echoes0 = echoes;
+  echoes = Math.max(COPY_FLOOR, Math.round(echoes0 + (COPY_FLOOR - echoes0) * dense));
   /* Hebrew and Arabic, written out in escapes so the module survives being
      read as anything but UTF-8. */
   const rtl = /[\u0590-\u05FF\u0600-\u06FF]/.test(chars.join(""));
@@ -724,12 +744,6 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
     rings = ws.length;
     laid = { of: "ring", n: ws.length };
     tileSize = h;
-    /* A full ring needs fewer copies. The copies step inside the ring and
-       are what draws the flower, so once the letters themselves go most of
-       the way round there is no room left in the middle for six of them —
-       the flower closes into a disc. They come down as the ring fills, so
-       the middle stays open and the word stays readable round the edge. */
-    echoes = full > ECHO_ROOM ? Math.max(2, Math.round((echoes0 * ECHO_ROOM) / full)) : echoes0;
     const r0 = STAGE / 2 - LANE_PAD / 2 - boxW(h) / 2;
     ringStart = RING_LEAD;
     ws.forEach((wd, ri) => {
@@ -1171,7 +1185,10 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
   function fitFor() {
     const b = empty ? null : contentBox();
     if (!b) return null;
-    const room = STAGE * (1 - (2 * margin) / 100);
+    /* A word can afford the whole margin; a sentence needs the frame, so
+       the edge it keeps clear comes in as the card fills. */
+    const edge = margin + (MARGIN_FLOOR - margin) * (margin > MARGIN_FLOOR ? dense : 0);
+    const room = STAGE * (1 - (2 * edge) / 100);
     const w = b.x1 - b.x0, h = b.y1 - b.y0;
     const sx = w > 0.5 ? (room - b.padL - b.padR) / w : Infinity;
     const sy = h > 0.5 ? (room - 2 * b.padY) / h : Infinity;
