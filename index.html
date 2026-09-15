@@ -21,10 +21,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400&family=Instrument+Serif&display=swap" rel="stylesheet">
-  <!-- The block system the studio builds against. Every rule in it is scoped
-       under .blk-canvas, so it is inert on a page that never renders one —
-       which is every case study still authored as a project.js. -->
-  <link rel="stylesheet" href="shared/blocks.css">
   <!-- model-viewer: renders .glb / .gltf in the browser -->
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
   <!-- Lottie player web component — enables <lottie-player src="..."> for case-study animations -->
@@ -1091,20 +1087,6 @@
       box-sizing: border-box;
     }
 
-    /* That padding is a desktop measurement and it was being applied at
-       every width: 176px of a 390px phone, leaving a 159px column to
-       read a case study in. Every project was affected, not just the
-       ones on the new block system — the blocks themselves collapse
-       2 → 1 correctly, they were simply doing it inside a sliver.
-       The top stays generous because the close and share controls sit
-       up there and the content has to clear them. */
-    @media (max-width: 900px) {
-      .overlay-case-scroll { padding: 96px 28px 72px; }
-    }
-    @media (max-width: 600px) {
-      .overlay-case-scroll { padding: 80px 16px 56px; }
-    }
-
     .overlay-case-scroll::-webkit-scrollbar {
       display: none;
     }
@@ -1738,12 +1720,7 @@
       line-height: 114px;
       letter-spacing: 0;
       text-transform: capitalize;
-      /* The literal value of --color-muted. Kept as the design, by
-         decision: it is 2.4:1 on this background, which is below the
-         contrast floor even at 88px, and it reads lighter than the
-         16px subheadings beneath it. Written as the token rather than
-         the hex so the palette owns it in one place. */
-      color: var(--color-muted);
+      color: #A3A09B;
       text-align: center;
     }
 
@@ -3774,11 +3751,7 @@
       <!-- SHLTR case study: scrollable content + bottom gradient strip -->
       <div class="overlay-view overlay-view--case" hidden>
         <div class="overlay-case">
-          <!-- data-scroll-root is what Blocks.enhance() looks for to find
-               the thing to scroll. Without it "Back to top" scrolled the
-               window, which does not move — the case study scrolls inside
-               this panel, not the page. -->
-          <div class="overlay-case-scroll" id="overlay-case-scroll" data-scroll-root></div>
+          <div class="overlay-case-scroll" id="overlay-case-scroll"></div>
           <footer class="overlay-case-footer">
             <div class="overlay-case-footer-inner">
               <span id="overlay-case-title" class="overlay-case-name"></span>
@@ -3923,13 +3896,6 @@
          3) projects/index.js – exposes window.PROJECTS_ORDER + registry
          4) each project.js   – populates window.__PROJECTS__[slug]
   ══════════════════════════════════════════════════════ -->
-  <!-- Order matters, and not for the usual reason. shared/blocks.js was
-       written as a drop-in replacement and claims window.renderBlocks for
-       itself, so loading it second would quietly move all 19 existing case
-       studies onto the new renderer. It goes first: it keeps window.Blocks,
-       blocks.js takes window.renderBlocks back, and each project is routed
-       by buildCaseStudyHTML rather than by load order. -->
-  <script src="shared/blocks.js"></script>
   <script src="blocks.js"></script>
   <script src="hero/hero-config.js"></script>
   <script src="hero/hero-sphere.js"></script>
@@ -4077,13 +4043,6 @@
           stage.appendChild(img);
         } else if (existing && entry.model) {
           existing.setAttribute('src', entry.model);
-        }
-        // Size. The stage is scale(1.6) in CSS; `scale` multiplies that, so
-        // an image or a model can be sized like the emoji already could.
-        // Emoji keep their own font-size path above — scaling the stage as
-        // well would apply it twice.
-        if (stage && entry.scale && !entry.emoji) {
-          stage.style.transform = 'scale(' + (1.6 * entry.scale) + ')';
         }
         if (entry.tooltip) card.setAttribute('data-cursor-tooltip', entry.tooltip);
         const tagName = card.querySelector('.ring-tag-name');
@@ -5775,18 +5734,6 @@
     function buildCaseStudyHTML(project) {
       // Block-based projects (V3): delegate to the shared renderer.
       if (project && project._hasBlocks && typeof window.renderBlocks === 'function') {
-        /* Two renderers live here at once. The old one owns the 19 case
-           studies written as project.js and keeps rendering them exactly as
-           before; the new one (shared/blocks.js) owns what the studio saves.
-           A project goes to the new renderer only when it uses a block the
-           old one has never heard of — so nothing that reads today changes,
-           and the types list comes off the registry rather than a copy of
-           it that would drift. */
-        var known = (window.renderBlocks.types || []);
-        var needsNew = window.Blocks && project.caseStudy.blocks.some(function (b) {
-          return b && b.type && known.indexOf(b.type) < 0;
-        });
-        if (needsNew) return window.Blocks.render(project.caseStudy.blocks, project);
         return window.renderBlocks(project.caseStudy.blocks, project);
       }
       const assets = project.caseStudyAssets || {};
@@ -6216,12 +6163,6 @@
       if (isCase) {
         const scrollEl = document.getElementById('overlay-case-scroll');
         scrollEl.innerHTML = buildCaseStudyHTML(project);
-        /* The new block system carries behaviour that can't be expressed in
-           markup — hover-play video, back-to-top. It marks what it binds, so
-           the call is a no-op on a page the old renderer drew. */
-        if (window.Blocks && scrollEl.querySelector('.blk-canvas')) {
-          window.Blocks.enhance(scrollEl);
-        }
         scrollEl.scrollTop = 0;
         // 4 case-study tiles: no turntable — user controls rotation/zoom via camera-controls.
         bindOutroVideoControls(scrollEl);

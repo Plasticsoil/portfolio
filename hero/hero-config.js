@@ -16,9 +16,7 @@
                                      −x = left, −y = up)
 
    Sizing:
-     scale       → emoji: glyph size multiplier (1 = 116px)
-                   image / model / sphere: multiplies the stage, which
-                   is scale(1.6) in CSS. 1 = as drawn.
+     scale       → emoji size multiplier (1 = 116px glyph)
      sphereOpts  → see hero/hero-sphere.js (lat/lon density, lineWidth,
                    speed, scale = radius vs. the 232×248 stage)
 ════════════════════════════════════════════════════════════════ */

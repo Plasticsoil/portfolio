@@ -535,8 +535,4 @@
     }</div>`;
   };
 
-  /* What this renderer can draw. Read by index.html to decide whether a
-     project belongs to it or to the newer block system in shared/. */
-  window.renderBlocks.types = Object.keys(REGISTRY);
-
 })();
