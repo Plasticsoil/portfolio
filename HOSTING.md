@@ -18,6 +18,15 @@ spent — so nothing here should be pointed back at it.
 Cloudflare Pages serves the static site with **unlimited bandwidth** and
 runs the functions on the free tier.
 
+## Caching
+
+`_headers` holds FunType's bundles to a minute and a revalidation. Their
+names carry a hash from the Vite build that made them, which normally means
+a file never changes and may be cached for a year — but these are edited in
+place and keep their names, so that promise is no longer true of them. A
+browser that took one at its word would go on running last week's
+collection. Everything else keeps Pages' own defaults.
+
 ## How it was set up (kept for reference — this is already done)
 
 ### 1. Create the Cloudflare account

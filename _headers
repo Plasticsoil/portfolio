@@ -1,0 +1,10 @@
+# Cloudflare Pages reads this. FunType's bundles are edited in place and keep
+# their names, so the hash in a filename is no longer a promise that the file
+# never changes — a browser that cached one would go on running last week's
+# collection. A minute of freshness and a revalidation costs nothing here and
+# means a deploy actually reaches the people looking at it.
+/fun/assets/*
+  Cache-Control: public, max-age=60, must-revalidate
+
+/fun/*.html
+  Cache-Control: public, max-age=60, must-revalidate

@@ -9,6 +9,9 @@
   Effects are added by editing the bundles in place (see
   `fun/assets/bounce.js` for the readable Collection 03 module and the
   registration points in `main-*.js`, `embed-*.js`, `export-*.js`).
+  Because they are edited rather than rebuilt, their hashed names no longer
+  promise a file never changes — `_headers` holds `/fun/assets/*` to a
+  minute so a deploy reaches people who have the page open.
   `fun/assets/sway.js` is Collection 04 — Sway, Flower and Volume — and is
   written to be read: the block at the top of it says what is settled and
   why, for the collection as well as for each card.
