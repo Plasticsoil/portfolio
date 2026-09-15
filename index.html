@@ -2425,11 +2425,15 @@
     .share-modal-close:hover svg path { stroke: var(--color-ink-muted); }
 
     /* Left column — thumbnail (video poster or image) */
+    /* The card's shape, so the share preview is the work card rather
+       than a crop of it. Was a flat 300x440 — 0.68 against the card's
+       0.83 — which cover() then trimmed the sides off. Written as the
+       ratio, not a width, so it stays right if the panel height moves. */
     .share-modal-thumb {
       position: relative;
-      flex: 0 0 300px;
-      width: 300px;
+      flex: 0 0 auto;
       height: 100%;
+      aspect-ratio: 144 / 173;
       background: #F4F1ED;
       overflow: hidden;
     }
@@ -2445,6 +2449,11 @@
     .share-modal-thumb-video { object-fit: contain; }
     /* Image: cover (fill the column edge-to-edge — no beige showing). */
     .share-modal-thumb-img   { object-fit: cover; }
+    /* Except a logo standing in for a missing thumbnail. A project whose
+       card is a spinning model has no flat image to show here, and the
+       logo is artwork on a canvas, not a photograph — cropping it to
+       fill gives a slab of whatever happens to be in the middle. */
+    .share-modal-thumb-img--logo { object-fit: contain; padding: 18%; box-sizing: border-box; }
     .share-modal-thumb-fallback {
       position: absolute;
       inset: 0;
@@ -6515,6 +6524,7 @@
         thumbFb.hidden  = false;
         thumbVid.removeAttribute('src');
         thumbImg.removeAttribute('src');
+        thumbImg.classList.remove('share-modal-thumb-img--logo');
 
         const isVid = s => typeof s === 'string' && /\.(mp4|webm|ogg)(\?.*)?$/i.test(s);
 
@@ -6554,6 +6564,7 @@
         }
         if (project.turntableLogo) {
           thumbImg.src = project.turntableLogo;
+          thumbImg.classList.add('share-modal-thumb-img--logo');
           thumbImg.hidden = false;
           thumbFb.hidden  = true;
         }
