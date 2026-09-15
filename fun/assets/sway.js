@@ -90,6 +90,10 @@
               letter it holds up, 21% of the narrowest letter in the word,
               and it is never allowed past the width of that letter
      copies   six, 120 ms apart, on all three
+     rings    a sticker and a bit apart — 1.35 of one — whatever the word:
+              the rings stay rings you can tell apart, and the letters come
+              down until that step fits. Settled against three other
+              spacings on three words
      margin   each card names the edge it keeps clear — Flower 15%, Sway 12%,
               Grow 22% — and the drawing fills the square inside it,
               measured over a whole loop so a long word cannot spill and a
@@ -554,7 +558,7 @@ function layout(n, font = FONT) {
    what differs is the margin each one wants and the motion of its own. */
 const CARD = {
   sway:   { echoes: 6, echoDelay: 120, threadScale: 1.4, margin: 12, letter: 108, move: 1935, hold: 565 },
-  flower: { echoes: 6, echoDelay: 120, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false, threadScale: 1.4, margin: 15, letter: 96, barTurn: 22300 },
+  flower: { echoes: 6, echoDelay: 120, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false, threadScale: 1.4, margin: 15, letter: 96, barTurn: 22300, ringStep: 1.35 },
   volume: { echoes: 6, echoDelay: 120, seed: 67138, threadScale: 1.4, margin: 22, letter: 76, volRate: 3400, volTop: 100, volStem: 21 },
 };
 
