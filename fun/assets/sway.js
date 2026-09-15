@@ -82,7 +82,8 @@
      grounds  Flower on the pink, Sway on the lime, Grow on the orange;
               each one's sticker and gradient follow from that
      words    Flower power · all the sway · Grow slowly — and Sway takes
-              twelve letters, which is what one column holds
+              twelve letters, which is what one column holds, and Flower
+              takes three words, which is what a flower stays a flower on
      thread   1.4× the house weight — 0.0675 of a row — on every thread the
               collection draws, and Flower bare, its copies being the
               drawing. A stem is not a thread: it is measured against the
@@ -165,6 +166,7 @@ const MAX_H = STAGE * FILL / 4; // a row is never taller than a quarter of a ful
 const MIN_H = 40;               // … and past this the text takes a second column
                                 // rather than setting too small to read
 const SWAY_MOST = 12;           // the most letters one column carries and is still read
+const FLOWER_MOST = 3;          // … and the most words a flower is still a flower on
 const FONT = 0.76;              // letter size / row height: a capital is ~0.72 em, so this
                                 // leaves nearly a whole cap height of air between the rows
 const GLYPH_W = 0.72;           // roughly how wide a capital sits, as a fraction of its size
@@ -223,7 +225,7 @@ const TURN_LEAST = 0.15;        // the least of its sweep a crowded flower's cop
 const ECHO_SHARE = 1.05;        // how far into the next ring a flower's copies may reach
 const RING_ROOM = 2.7;          // the room a letter takes beside the next on a ring, in its
                                 // own widths — past this a word stops reading as a word
-const ROW_ROOM = 1.05;           // … and in a row, where a word is read straight across
+const ROW_ROOM = 1.45;           // … and in a row, where a word is read straight across
 const RING_GAP = 1.8;           // the step from one ring to the next, in sticker heights
 const RING_LEAD = 600;          // the word stands still this long before it sets off
 const RING_BAR_TURN = 16000;    // ms for the word to travel once round the ring
@@ -572,7 +574,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
                         barTurn = RING_BAR_TURN, barBeats = RING_BAR_BEATS, barTight = RING_BAR_TIGHT,
                         barSqueeze = RING_BAR_SQUEEZE, barSpread = RING_BAR_SPREAD, barEase = RING_BAR_EASE,
                         barChase = RING_BAR_CHASE,
-                        ringThread = "ring",
+                        ringThread = "ring", ringStep = 0,
                         /* … and what the copies do with the ring, which is where the mandala comes from */
                         echoIn = 0, echoTurn = 0, echoShrink = 0,
                         /* Eights */
@@ -585,12 +587,16 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
                         volInset = VOL_INSET, volEase = VOL_EASE, volLean = VOL_LEAN } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
   let chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
-  /* Sway is one column, so it takes what one column holds; the cards that
-     grow rings and rows take whatever they are given. */
-  if (mode === "sway" && chars.length > SWAY_MOST) {
-    chars = chars.slice(0, SWAY_MOST);
-    while (chars.length && chars[chars.length - 1] === " ") chars.pop();
+  /* Each card takes what it can carry and still be itself. Sway is one
+     column, so it takes what one column holds. A flower is rings inside
+     rings with arms between them, and past three of them it stops being
+     one, so it takes three words. Grow takes whatever it is given. */
+  if (mode === "sway" && chars.length > SWAY_MOST) chars = chars.slice(0, SWAY_MOST);
+  if (mode === "flower") {
+    const said = chars.join("").split(" ").filter(Boolean);
+    if (said.length > FLOWER_MOST) chars = [...said.slice(0, FLOWER_MOST).join(" ")];
   }
+  while (chars.length && chars[chars.length - 1] === " ") chars.pop();
   const empty = !chars.filter((c) => c !== " ").length;
   /* How full the card is: nothing for a word, all of it for a frame of
      text. Everything that has to give as the text grows gives against
@@ -779,6 +785,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
          the margin pulls the whole drawing in afterwards, so the step
          booked here is that much bigger. */
       const apart = (h * least) / Math.max(0.2, lastFit);
+      if (ringStep > 0) return apart;
       return Math.max(apart, Math.min(full, (outer(h) - needFor(h, ws)) / (ws.length - 1)));
     };
     /* How big a letter comes out: it comes down until every word has room
@@ -799,10 +806,17 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
        that is meant to adapt, not the reading. */
     const ws = said;
     let h = 0, least = RING_GAP;
-    for (const step of [0, RING_TIGHT, RING_PACK]) {
-      const hh = sizeFor(ws, step);
-      if (hh > h) { h = hh; least = step; }
-      if (h >= RING_COMFY) break;
+    if (ringStep > 0) {
+      /* A page can name the step itself, in stickers, and the letters come
+         down until that step fits. */
+      least = ringStep;
+      h = sizeFor(ws, ringStep);
+    } else {
+      for (const step of [0, RING_TIGHT, RING_PACK]) {
+        const hh = sizeFor(ws, step);
+        if (hh > h) { h = hh; least = step; }
+        if (h >= RING_COMFY) break;
+      }
     }
     rings = ws.length;
     laid = { of: "ring", n: ws.length };
