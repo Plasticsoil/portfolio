@@ -1,0 +1,503 @@
+/* ══════════════════════════════════════════════════════════════
+   TOKENS THE BLOCK SYSTEM ADDS
+
+   site.css already owns the palette, the type faces, the short
+   spaces and the durations, and every one of those agrees with
+   what this system was written against — checked value by value,
+   not assumed. Only what site.css does not define is declared
+   here, so nothing the rest of the site already reads is
+   redefined underneath it.
+
+   Two exceptions, and they are the point. site.css sets
+   --space-xl and --space-2xl to flat 80px and 120px. Those are
+   the gaps between case-study sections, and a flat 120px on a
+   390px phone is most of the screen. The fluid version is
+   restated on .blk-canvas only, so it reaches the blocks and
+   stops there — no other page moves.
+════════════════════════════════════════════════════════════════ */
+
+.blk-canvas {
+  --accent-pink:   #FF6EFD;
+  --block-width:   960px;   /* the case-study content column     */
+  --color-frame:   #F4F1ED; /* media tile backing                */
+  --color-line:    #E7E4DE; /* hairline borders                  */
+  --ease-out:      cubic-bezier(0.22, 1, 0.36, 1);
+  --gutter:        clamp(20px, 5vw, 60px);
+  --leading-snug:  1.3;
+  --leading-tight: 1.08;
+  --measure:       720px;   /* max width of a single prose column */
+  --radius-md:     14px;
+  --radius-sm:     8px;
+
+  /* A fluid type scale. Each one is already a clamp, which is
+     why a block never needs a font-size media query. */
+  --text-display: clamp(48px, 9vw,   88px);
+  --text-h2:      clamp(26px, 3.6vw, 40px);
+  --text-h3:      clamp(19px, 2.1vw, 24px);
+  --text-body:    clamp(15px, 1.5vw, 17px);
+  --text-small:   clamp(13px, 1.2vw, 14px);
+  --text-tag:     clamp(11px, 1.1vw, 12px);
+
+  /* The two overrides. Scoped here on purpose — see above. */
+  --space-xl:  clamp(40px,  6vw,  80px);
+  --space-2xl: clamp(56px,  9vw, 120px);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BLOCKS — the lego set.
+
+   Nine layout primitives that every case study, tool page and
+   product page is assembled from. Requires tokens.css + base.css.
+
+   The old V4 system had 22 block types because layout and media
+   were welded together: grid4-3d, grid4-phones, grid4-lottie,
+   grid2-images, grid2x2-videos and grid4-videos-ppong were all
+   the same grid holding different things.
+
+   Here the two are separate:
+     LAYOUT  .blk-grid / .blk-media / .blk-text / .blk-rows / …
+     MEDIA   .blk-m    — one element that can be an image, a video,
+                         a Lottie, a GLB or an embed.
+
+   Everything sizes by ratio, never by fixed pixels, so all of it
+   is responsive by construction rather than by patching.
+════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════
+   1. CANVAS — the column blocks live in
+════════════════════════════════════════════════════════════════ */
+
+.blk-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+  width: 100%;
+  max-width: calc(var(--block-width) + var(--gutter) * 2);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+
+  /* Stated, not inherited. The studio's preview frame sets the face on
+     <body> and so never needed this, but the case-study overlay in
+     index.html sets none — a canvas dropped in there inherited the
+     browser's default serif. The system declares its own tokens; it
+     should declare its own type too. */
+  font-family: var(--font-sans);
+  color: var(--color-muted);
+}
+
+/* A block can opt out of the column and run edge to edge. */
+.blk-canvas > .blk--bleed {
+  width: 100vw;
+  max-width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  padding-inline: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   2. SHARED PARTS — headings, labels, captions
+════════════════════════════════════════════════════════════════ */
+
+/* "/ Section heading" — the site's signature subhead. */
+.blk-head {
+  font-size: var(--text-h3);
+  font-weight: 400;
+  color: var(--color-ink-muted);
+  margin-bottom: var(--space-md);
+}
+.blk-head-slash { color: var(--color-muted-50); margin-inline-end: 0.4em; }
+
+/* "/ label" chip pinned inside a media tile's top-left. */
+.blk-tag {
+  position: absolute;
+  top: var(--space-sm);
+  left: var(--space-sm);
+  z-index: 2;
+  font-size: var(--text-tag);
+  letter-spacing: 0.02em;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+.blk-tag span { color: var(--color-muted-50); margin-inline-end: 0.35em; }
+
+/* Caption sitting under a tile. */
+/* A media block fills the content column by default. --w makes it
+   narrower and centres it, so a still can sit inside the page rather
+   than span it — a portrait shot at full column width is enormous.
+   The caption is narrowed with it: it belongs to the media, and left
+   at column width it would hang off both sides of what it describes. */
+.blk-media > .blk-m,
+.blk-media > .blk-caption {
+  max-width: var(--w, none);
+  margin-inline: auto;
+}
+
+.blk-caption {
+  margin-top: var(--space-sm);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+  color: var(--color-muted);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   3. MEDIA ATOM — .blk-m
+   One box, five possible contents. `--ratio` controls its shape;
+   nothing here is a fixed pixel size.
+════════════════════════════════════════════════════════════════ */
+
+.blk-m {
+  position: relative;
+  width: 100%;
+  /* 16:9 is the default because it is what media arrives as. A
+     still or a Lottie that is some other shape sits inside the
+     same box rather than changing it — give the item
+     fit:'contain' and it letterboxes, so a column of blocks
+     keeps one rhythm instead of stepping around each asset.
+     Any block can still name its own `ratio`. */
+  aspect-ratio: var(--ratio, 16 / 9);
+  background: var(--color-frame);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+/* Media that shouldn't be boxed — a transparent PNG, a Lottie, a
+   3D model floating on the page background. */
+.blk-m--plain {
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
+}
+
+/* Let the asset decide its own height instead of forcing a ratio.
+   Used for the outro video and any full-bleed composite. */
+.blk-m--natural {
+  aspect-ratio: auto;
+  background: transparent;
+}
+.blk-m--natural > * { position: static; height: auto; }
+
+/* Every child fills the box; `object-fit` decides crop vs letterbox. */
+.blk-m > img,
+.blk-m > video,
+.blk-m > iframe,
+.blk-m > model-viewer,
+.blk-m > lottie-player {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.blk-m > img,
+.blk-m > video { object-fit: var(--fit, cover); }
+
+.blk-m--contain { --fit: contain; }
+
+/* Lottie and 3D always letterbox — cropping them loses the subject. */
+.blk-m > lottie-player,
+.blk-m > model-viewer { object-fit: contain; background: transparent; }
+
+/* Draggable 3D gets a grab affordance even with the custom cursor off. */
+.blk-m > model-viewer { pointer-events: auto; cursor: grab; }
+.blk-m > model-viewer:active { cursor: grabbing; }
+
+/* Inner white frame — the "card inside a tile" pattern. */
+.blk-m--framed {
+  background: var(--color-surface);
+  padding: clamp(16px, 3vw, 32px);
+}
+.blk-m--framed > * {
+  position: absolute;
+  inset: clamp(16px, 3vw, 32px);
+  width: auto;
+  height: auto;
+}
+
+/* 3D badge — marks a tile the visitor can actually rotate. */
+.blk-m-3d {
+  position: absolute;
+  right: var(--space-sm);
+  bottom: var(--space-sm);
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   4. TEXT — heading + 1…3 prose columns
+   Replaces: twoCol, twoCol-subheads
+════════════════════════════════════════════════════════════════ */
+
+.blk-text-cols {
+  display: grid;
+  gap: var(--space-lg);
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+}
+
+.blk-text-col { font-size: var(--text-body); color: var(--color-muted); }
+
+/* A line break typed into a column is a line break. Without this the
+   textarea in the studio accepts Enter, stores the newline, writes it
+   to project.json — and then HTML collapses it to a space, so the
+   break is lost somewhere between typing it and reading it back, with
+   nothing to show for it. Paragraphs are still made by separate
+   columns; this is for the short break inside one. */
+.blk-text-col p { white-space: pre-line; }
+.blk-text-col > * + * { margin-top: var(--space-sm); }
+
+/* Per-column subheading (the "no shared heading" variant). */
+.blk-text-col-head {
+  font-size: var(--text-h3);
+  color: var(--color-ink-muted);
+  margin-bottom: var(--space-sm);
+}
+
+/* One column reads better constrained; two or more already are. */
+.blk-text-cols[style*="--cols:1"] .blk-text-col { max-width: var(--measure); }
+
+/* ══════════════════════════════════════════════════════════════
+   5. GRID — N media across
+   Replaces: grid4-3d, grid4-phones, grid4-lottie, grid2-images,
+             grid2x2-videos, grid4-videos-ppong, sketch-logo
+════════════════════════════════════════════════════════════════ */
+
+.blk-grid {
+  display: grid;
+  gap: var(--space-lg);
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+  align-items: start;
+}
+
+.blk-grid-item { min-width: 0; }   /* let grid children actually shrink */
+
+/* ══════════════════════════════════════════════════════════════
+   6. ROWS — alternating media ↔ text
+   Replaces: feature-row-lottie
+════════════════════════════════════════════════════════════════ */
+
+.blk-rows { display: flex; flex-direction: column; gap: var(--space-xl); }
+
+.blk-row {
+  display: grid;
+  gap: var(--space-lg);
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+}
+
+/* Every other row flips, so the eye zig-zags down the page. */
+.blk-row--flip .blk-row-media { order: 2; }
+
+.blk-row-title { font-size: var(--text-h3); color: var(--color-ink); margin-bottom: var(--space-xs); }
+.blk-row-desc  { font-size: var(--text-body); color: var(--color-muted); }
+
+/* ══════════════════════════════════════════════════════════════
+   7. PANEL — framed container with a card grid
+   Replaces: panel-cards
+════════════════════════════════════════════════════════════════ */
+
+.blk-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  padding: clamp(24px, 5vw, 56px);
+}
+
+.blk-panel-head { text-align: center; margin-bottom: var(--space-xl); }
+.blk-panel-title { font-size: var(--text-h2); color: var(--color-ink); }
+.blk-panel-sub {
+  margin-top: var(--space-sm);
+  margin-inline: auto;
+  max-width: var(--measure);
+  color: var(--color-muted);
+}
+
+.blk-panel-grid {
+  display: grid;
+  gap: var(--space-md);
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+}
+
+.blk-panel-card {
+  background: var(--color-white);
+  border-radius: var(--radius-sm);
+  padding: clamp(20px, 3vw, 32px);
+}
+.blk-panel-card-icon { width: 56px; height: 56px; margin-bottom: var(--space-md); }
+.blk-panel-card-icon > * { width: 100%; height: 100%; }
+.blk-panel-card-title { font-size: var(--text-h3); color: var(--color-ink); margin-bottom: var(--space-xs); }
+.blk-panel-card-desc  { font-size: var(--text-small); color: var(--color-muted); }
+
+/* ══════════════════════════════════════════════════════════════
+   8. MARQUEE — infinite scrolling strip
+   Replaces: icon-library, lottie-strip
+════════════════════════════════════════════════════════════════ */
+
+.blk-marquee {
+  position: relative;
+  overflow: hidden;
+  /* Soft gradient edges — she prefers fades over hard vignettes. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.blk-marquee-track {
+  display: flex;
+  gap: var(--space-lg);
+  width: max-content;
+  animation: blk-marquee-scroll linear infinite;
+}
+
+/* Pausing on hover lets the visitor actually look at one. */
+.blk-marquee:hover .blk-marquee-track { animation-play-state: paused; }
+
+.blk-marquee-item {
+  flex: 0 0 auto;
+  width: clamp(64px, 9vw, 80px);
+  height: clamp(64px, 9vw, 80px);
+  background: var(--color-white);
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+}
+.blk-marquee-item > * { width: 78%; height: 78%; }
+
+@keyframes blk-marquee-scroll {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blk-marquee-track { animation: none; }
+  .blk-marquee { overflow-x: auto; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   9. HOTSPOTS — a still image with overlays positioned in
+   percentages of its own box, so they stay locked while it scales.
+   Replaces: solution-nav-bar (and generalises it)
+════════════════════════════════════════════════════════════════ */
+
+.blk-hotspots { position: relative; width: 100%; }
+.blk-hotspots-bg { width: 100%; height: 100%; object-fit: contain; }
+
+.blk-hotspot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+.blk-hotspot > * { width: 100%; height: 100%; }
+
+.blk-hotspot-hit {
+  position: absolute;
+  border-radius: 4px;
+  transition: background var(--dur-md) var(--ease-out);
+}
+.blk-hotspot-hit:hover { background: color-mix(in srgb, var(--accent-pink) 14%, transparent); }
+
+/* ══════════════════════════════════════════════════════════════
+   10. TITLE / QUOTE / BACK-TO-TOP — the small ones
+════════════════════════════════════════════════════════════════ */
+
+/* The same title the live overlay draws, property for property:
+   centred, capitalised, regular weight, and the muted grey. The block
+   system had it left-aligned in ink, which is a different thing wearing
+   the same name — a project opened here should not look like a
+   different site from one still drawn by the old renderer.
+   --text-display is a clamp, so it is 88px on a desktop like the live
+   rule and comes down on a phone instead of running off the side. */
+.blk-title {
+  align-self: center;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: var(--text-display);
+  line-height: var(--leading-tight);
+  letter-spacing: 0;
+  text-transform: capitalize;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+/* Pull quote — new in v2. Case studies kept faking these with
+   `custom` HTML, which is exactly the signal to promote a block. */
+.blk-quote {
+  max-width: var(--measure);
+  margin-inline: auto;
+  text-align: center;
+}
+.blk-quote-text {
+  font-family: var(--font-serif);
+  font-size: var(--text-h2);
+  line-height: var(--leading-snug);
+  color: var(--color-ink);
+}
+.blk-quote-cite {
+  margin-top: var(--space-md);
+  font-size: var(--text-small);
+  color: var(--color-muted);
+}
+
+/* The live site sets this as a word, not a control — the case-study
+   title's own face at its own size, with nothing drawn around it. The
+   bordered pill that was here read as a form button at the end of a
+   piece of design, and it was the only chrome on the page.
+
+   Colour matches the live rule exactly — muted at rest, darkening to
+   --color-ink-muted on hover, the same pair the title uses.
+
+   --text-display is a clamp, so unlike the live rule's flat 88px this
+   one comes down on a phone instead of running off the side. */
+.blk-back-to-top {
+  align-self: center;
+  margin-inline: auto;
+  padding: var(--space-xl) 0;
+  background: transparent;
+  border: 0;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: var(--text-display);
+  line-height: var(--leading-tight);
+  letter-spacing: 0;
+  text-transform: capitalize;
+  text-align: center;
+  color: var(--color-muted);
+  transition: color var(--dur-md);
+}
+.blk-back-to-top:hover { color: var(--color-ink-muted); }
+
+/* ══════════════════════════════════════════════════════════════
+   11. RESPONSIVE — the whole point of v2.
+
+   Every multi-column layout reads three custom properties:
+     --cols     desktop
+     --cols-md  ≤900px
+     --cols-sm  ≤600px
+   The renderer sets them per block, so a 4-across 3D grid and a
+   4-across phone grid can collapse differently without either one
+   needing its own CSS.
+════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  .blk-canvas { gap: var(--space-xl); }
+
+  .blk-grid,
+  .blk-text-cols,
+  .blk-panel-grid { grid-template-columns: repeat(var(--cols-md, 2), minmax(0, 1fr)); }
+
+  .blk-row { grid-template-columns: 1fr; gap: var(--space-md); }
+  /* Stacked rows always read media-then-text; the zig-zag is
+     meaningless in one column and just scrambles the order. */
+  .blk-row--flip .blk-row-media { order: 0; }
+}
+
+@media (max-width: 600px) {
+  .blk-grid,
+  .blk-text-cols,
+  .blk-panel-grid { grid-template-columns: repeat(var(--cols-sm, 1), minmax(0, 1fr)); }
+
+  .blk-grid { gap: var(--space-md); }
+
+  /* Tall portrait media (phone mockups) would eat three screens at
+     full width on a phone — cap it to something scrollable. */
+  .blk-m { max-height: 78vh; }
+  .blk-m--natural { max-height: none; }
+}
