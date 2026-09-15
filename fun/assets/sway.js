@@ -116,20 +116,33 @@
               letter too small to read is not this collection whatever
               else is right about it.
                 Sway takes another column rather than shorter rows — a row
-              under 72 px is a column split instead
+              under 72 px is a column split instead — and every column
+              starts at its own point in the loop, evenly spaced round it,
+              so two stand opposite each other and three share the round
+              between them: they fill the square between themselves rather
+              than all leaning the same way at once
                 Flower opens a ring for every word, always, and never puts
               two words on one ring. What adapts is the rings: they step in
               by a sticker and a bit while there is room for it, close up
               to a sticker apart when there are more of them, and overlap
               rather than let the letters go to nothing. The innermost is
               never smaller than the word that has to stand round it
+                A flower's copies also turn less of the way round as its
+              rings multiply. On a word or two they sweep right across it,
+              which is what makes its arms; on more rings that same sweep
+              carries them over every other ring and the whole thing closes
+              into a disc, so instead they trail along their own ring and
+              the rings go on reading as rings
                 Grow opens a row for every word, the same way, and the
               rows adapt: each one is as uneven as the room it has — the
               step down to the row behind, less a letter, measured in the
               frame after the margin has pulled them together — so two
               rows are as wild as they like and six flatten their tiers
               instead of piling into each other. Only when a flat row still
-              cannot hold a letter does the letter itself come down
+              cannot hold a letter does the letter itself come down. A
+              row's letters also jump against their own band rather than
+              against the frame, so seven rows hop the way two stride —
+              the same gesture at its own size
      export   whole rounds at the speed the site runs them, never under
               four seconds: Sway 5 s, Flower 22.3 s, Grow 6.8 s
 
@@ -199,6 +212,7 @@ const ECHO_ALPHA = 0.5;         // … at this opacity, when the copies are set 
 /* What a pointer does to a piece. Only the renderer that has one — the
    studio and the embed — ever asks for these; an export is the same
    picture wherever it is drawn. */
+const JUMP_SHARE = 1.25;        // how far a row's letters travel, against the step to the row behind
 const STRIKE_MS = 900;          // how long a click takes to swell and settle
 const STRIKE_OUT = 0.14;        // … how far a flower pulses out, as a share of its radius
 const STRIKE_OPEN = 0.3;        // … how far a plant opens sideways
@@ -206,10 +220,11 @@ const STRIKE_UP = 1.1;          // … and how far a column's letters lift, in s
 const STRIKE_WAKE = 0.55;       // the share of the click the wave takes to reach the top
 const LEAN_PULL = 0.18;         // how far the letters lean towards a pointer…
 const LEAN_REACH = 0.45;        // … and how near it has to be, as a share of the frame
+const TURN_LEAST = 0.15;        // the least of its sweep a crowded flower's copies keep
 const ECHO_SHARE = 1.05;        // how far into the next ring a flower's copies may reach
 const RING_ROOM = 2.7;          // the room a letter takes beside the next on a ring, in its
                                 // own widths — past this a word stops reading as a word
-const ROW_ROOM = 1.5;           // … and in a row, where a word is read straight across
+const ROW_ROOM = 1.2;           // … and in a row, where a word is read straight across
 const RING_GAP = 1.8;           // the step from one ring to the next, in sticker heights
 const RING_LEAD = 600;          // the word stands still this long before it sets off
 const RING_BAR_TURN = 16000;    // ms for the word to travel once round the ring
@@ -714,7 +729,13 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         id: i, ch, blank: ch === " ", group: col, fill: tone(i),
         /* A negative delay just turns the wave around: the bottom letter
            leads and the top one follows. */
-        cx, cy, t0: BEAT + (stagger < 0 ? chars.length - 1 - i : i) * Math.abs(stagger),
+        /* The wave runs down a column, letter by letter — and each column
+           starts at its own point in the loop, evenly spaced round it, so
+           two columns stand opposite each other and three share the round
+           between them. They fill the square between themselves instead of
+           leaning the same way at the same time. */
+        cx, cy, t0: BEAT + (stagger < 0 ? inCol - 1 - row : row) * Math.abs(stagger)
+          + (L.cols > 1 ? (col * 2 * passGap) / L.cols : 0),
         /* Where in its column it stands, counting from the bottom — which
            is the order a click runs up it in. */
         wake: L.rows > 1 ? (inCol - 1 - row) / (L.rows - 1) : 0,
@@ -800,6 +821,13 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
          may take, or every gap fills in and the rings stop reading. */
       const share = ECHO_SHARE / (ws.length - 1);
       echoIn = Math.min(echoIn, (ringGap * share) / (r0 * echoes));
+      /* And how far round a copy is turned from the letter it follows. On
+         a word or two the copies sweep right across the flower, which is
+         what makes its arms. On more rings that same sweep carries them
+         over every other ring and the whole thing closes into a disc — so
+         they turn less and trail along their own ring instead, and the
+         rings go on reading as rings. */
+      if (ws.length > 2) echoTurn *= Math.max(TURN_LEAST, Math.pow(2 / ws.length, 1.5));
     }
     ringStart = RING_LEAD;
     ws.forEach((wd, ri) => {
@@ -974,12 +1002,18 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
            row's own: a row at the back is lower, but just as uneven as the
            one in front rather than flattened along with it. */
         const wander = reach * far * (volJitter / 100) * calm * (r() * 2 - 1);
+        const rise = Math.min(ceiling, Math.max(tileSize, top * arch + wander));
         letters.push({
           id: i, ch: chars[i], blank: false, group: wi, top: j === 0, fill: tone(i),
           cx: Math.min(STAGE - LANE_PAD, Math.max(LANE_PAD, left + step * (col + 0.5) + shift)),
           cy: floor, floor,
-          rise: Math.min(ceiling, Math.max(tileSize, top * arch + wander)),
-          low: volLow / 100,
+          rise,
+          /* How far a letter actually travels on its way up and down. The
+             jump is measured against the row's own band rather than
+             against the whole frame, so a plant of seven rows hops the
+             way a plant of two strides — the same gesture at its own
+             size, instead of small letters flying about. */
+          low: Math.max(volLow / 100, 1 - (tier * JUMP_SHARE) / Math.max(1, rise)),
           beat: (2 * Math.PI) / volRate,
           phase: (-2 * Math.PI * (col * volOffset + wi * volOffset * 2)) / volRate,
         });
