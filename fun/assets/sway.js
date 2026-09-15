@@ -223,6 +223,7 @@ const STRIKE_OUT = 0.14;        // … how far a flower pulses out, as a share o
 const STRIKE_OPEN = 0.3;        // … how far a plant opens sideways
 const STRIKE_UP = 1.1;          // … and how far a column's letters lift, in stickers
 const STRIKE_WAKE = 0.55;       // the share of the click the wave takes to reach the top
+const LEAN_TURN = 0.3;          // how much of the turn towards a pointer Sway's column takes
 const LEAN_PULL = 0.18;         // how far the letters lean towards a pointer…
 const LEAN_REACH = 0.45;        // … and how near it has to be, as a share of the frame
 const TURN_LEAST = 0.15;        // the least of its sweep a crowded flower's copies keep
@@ -1346,7 +1347,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
      touching goes through untouched. */
   function touched(Lt, x, y) {
     const mid = STAGE / 2;
-    /* Sway stands its column up at whatever angle is asked for: the whole
+    /* Sway leans its column at whatever angle is asked for: the whole
        layout turns about the middle, so the travel — which runs across the
        column — turns with it, while the letters stay upright. */
     if (aim && card === "sway") {
@@ -1379,8 +1380,8 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
       }
     }
     /* A hover: the letters lean towards the pointer, the ones further from
-       it less than the ones under it. Sway answers a pointer by standing
-       its column up instead. */
+       it less than the ones under it. Sway answers a pointer by leaning
+       its column at it instead. */
     if (lean && lean.k && card !== "sway") {
       const dx = lean.x - x, dy = lean.y - y, reach = STAGE * LEAN_REACH;
       const near = 1 / (1 + (dx * dx + dy * dy) / (reach * reach));
@@ -1590,8 +1591,18 @@ function mount(stage, mode, opts = {}) {
     want.x = ((e.clientX - r.left) / r.width) * STAGE;
     want.y = ((e.clientY - r.top) / r.height) * STAGE;
     want.k = 1;
-    /* Sway's column stands across the pointer rather than leaning at it. */
-    want.aim = mode === "sway" ? Math.atan2(want.y - STAGE / 2, want.x - STAGE / 2) + Math.PI / 2 : 0;
+    /* Sway's column stands across the pointer rather than leaning at it —
+       but barely. Facing it outright means a pointer a hair to one side of
+       the middle already asks for a quarter turn, which reads as a snap;
+       so the turn is scaled right down, and scaled again by how far out
+       the pointer is, which leaves the middle of the card a quiet place to
+       be and saves the lean for the edges. */
+    if (mode !== "sway") { want.aim = 0; return; }
+    const dx = (want.x - STAGE / 2) / (STAGE / 2), dy = (want.y - STAGE / 2) / (STAGE / 2);
+    let a = Math.atan2(dy, dx) + Math.PI / 2;
+    while (a > Math.PI) a -= 2 * Math.PI;
+    while (a < -Math.PI) a += 2 * Math.PI;
+    want.aim = a * Math.min(1, Math.hypot(dx, dy)) * LEAN_TURN;
   };
   const gone = () => { want.k = 0; want.aim = 0; };
   const onMove = (e) => seen(e);
