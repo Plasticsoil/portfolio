@@ -12,7 +12,7 @@
   Because they are edited rather than rebuilt, their hashed names no longer
   promise a file never changes — `_headers` holds `/fun/assets/*` to a
   minute so a deploy reaches people who have the page open.
-  `fun/assets/sway.js` is Collection 04 — Sway, Flower and Volume — and is
+  `fun/assets/sway.js` is Collection 04 — Flower, Sway and Grow — and is
   written to be read: the block at the top of it says what is settled and
   why, for the collection as well as for each card.
 - Outputs of FunType are CC BY-NC 4.0, the tool is all rights reserved;
