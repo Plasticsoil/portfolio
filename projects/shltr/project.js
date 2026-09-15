@@ -21,7 +21,7 @@ window.__PROJECTS__["shltr"] = {
     "Video Editing"
   ],
   "thumbnail": null,
-  "shareImage": null,
+  "shareImage": "projects/shltr/assets/share.jpg",
   "turntableLogo": "projects/shltr/assets/shltr-logo.svg",
   "turntableModel": "projects/shltr/assets/Fracture 3D.glb",
   "caseStudy": {

@@ -2454,6 +2454,34 @@
        logo is artwork on a canvas, not a photograph — cropping it to
        fill gives a slab of whatever happens to be in the middle. */
     .share-modal-thumb-img--logo { object-fit: contain; padding: 18%; box-sizing: border-box; }
+    /* A project whose card is a spinning model has no flat image to
+       preview. Rather than fall back to something else, the share panel
+       shows the card: the same model at the same 150% zoom with the same
+       logo over it, so what gets shared looks like what was clicked. */
+    .share-modal-thumb-3d { position: absolute; inset: 0; }
+    .share-modal-thumb-3d model-viewer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      transform: scale(1.5);
+      transform-origin: 50% 50%;
+      background-color: transparent;
+    }
+    .share-modal-thumb-3d .share-modal-thumb-3d-logo {
+      position: absolute;
+      z-index: 10;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(185px, 88%);
+      max-height: 42%;
+      height: auto;
+      object-fit: contain;
+      pointer-events: none;
+      display: block;
+    }
+
     .share-modal-thumb-fallback {
       position: absolute;
       inset: 0;
@@ -3868,6 +3896,7 @@
       <div class="share-modal-thumb">
         <video class="share-modal-thumb-video" muted playsinline loop autoplay hidden></video>
         <img   class="share-modal-thumb-img"   alt="" hidden/>
+        <div   class="share-modal-thumb-3d"    hidden></div>
         <div   class="share-modal-thumb-fallback" aria-hidden="true"></div>
       </div>
 
@@ -6291,9 +6320,31 @@
     // Track the currently displayed project so the Share button knows what to share.
     let _activeProject = null;
 
-    function openOverlay(projectId) {
+    /* ── The address and the overlay, kept in step ──────────────
+       A case study is a page to everyone outside the tab: it has its
+       own URL, the back button leaves it, and a pasted link opens it.
+       Nothing here reloads — it is the same overlay it always was,
+       with history told the truth alongside it. Before this the share
+       button handed out a #hash that opened nothing at all, because
+       no code read the URL on the way in. */
+    function slugFromUrl() {
+      const path = decodeURIComponent(location.pathname).replace(/^\/+|\/+$/g, '').toLowerCase();
+      if (path) return path;
+      // Links shared before this existed still work.
+      return decodeURIComponent(location.hash).replace(/^#/, '').toLowerCase();
+    }
+    function knownProject(slug) {
+      return slug && PROJECTS.some(p => p.id === slug) ? slug : null;
+    }
+
+    function openOverlay(projectId, opts) {
       const project = PROJECTS.find(p => p.id === projectId) || PROJECTS[0];
       _activeProject = project;
+      /* Not when we are only catching up with an address the visitor
+         arrived on — that would put the same page in history twice. */
+      if (!(opts && opts.fromUrl)) {
+        history.pushState({ project: project.id }, '', '/' + encodeURIComponent(project.id));
+      }
       populateOverlay(project);
 
       overlay.style.display = 'block';
@@ -6307,7 +6358,10 @@
       document.body.style.overflow = 'hidden';
     }
 
-    function closeOverlay() {
+    function closeOverlay(opts) {
+      if (!(opts && opts.fromUrl) && knownProject(slugFromUrl())) {
+        history.pushState({}, '', '/');
+      }
       overlay.classList.remove('open');
       document.body.classList.remove('overlay-open');
       overlayPanel.addEventListener('transitionend', () => {
@@ -6315,6 +6369,28 @@
         document.body.style.overflow = '';
       }, { once: true }); // {once:true} auto-removes the listener after it fires
     }
+
+    /* Arriving on /shltr, and the back button. The overlay is opened
+       without touching history on the way in, because the address is
+       already right — pushing it again would mean two taps of Back to
+       leave one page. A link-out project (moji, sphere) is left alone:
+       those have pages of their own. */
+    function syncOverlayToUrl(opts) {
+      const slug = knownProject(slugFromUrl());
+      const open = document.body.classList.contains('overlay-open');
+      if (slug) {
+        const proj = window.__PROJECTS__ && window.__PROJECTS__[slug];
+        if (proj && proj.link) return;
+        if (!open || !_activeProject || _activeProject.id !== slug) {
+          openOverlay(slug, { fromUrl: true });
+        }
+      } else if (open) {
+        closeOverlay({ fromUrl: true });
+      }
+    }
+
+    window.addEventListener('popstate', () => syncOverlayToUrl());
+    syncOverlayToUrl();
 
     // ── Gallery infinite vertical scroll ────────────────
     // INIT_LEFT / INIT_RIGHT: starting translateY offsets so the
@@ -6509,12 +6585,13 @@
       const thumbVid = modal.querySelector('.share-modal-thumb-video');
       const thumbImg = modal.querySelector('.share-modal-thumb-img');
       const thumbFb  = modal.querySelector('.share-modal-thumb-fallback');
+
+      const thumb3d  = modal.querySelector('.share-modal-thumb-3d');
       const shareBtn = document.querySelector('.overlay-share');
 
       // Build a shareable URL for a project (hash-based so it works offline too)
       function projectUrl(project) {
-        const base = location.origin + location.pathname;
-        return `${base}#${encodeURIComponent(project.id)}`;
+        return `${location.origin}/${encodeURIComponent(project.id)}`;
       }
 
       // Pick the best preview asset for the thumbnail column
@@ -6525,12 +6602,47 @@
         thumbVid.removeAttribute('src');
         thumbImg.removeAttribute('src');
         thumbImg.classList.remove('share-modal-thumb-img--logo');
+        thumb3d.hidden = true;
+        thumb3d.innerHTML = '';   /* drop the old model, or its GL context leaks */
 
         const isVid = s => typeof s === 'string' && /\.(mp4|webm|ogg)(\?.*)?$/i.test(s);
 
-        // Priority: explicit shareImage (forces image preview, skips video)
-        //           → explicit shareVideo → outro-video block → legacy heroVideo
-        //           → thumbnail image → project turntable logo.
+        /* The panel shows what the card shows, so a project whose card
+           is a spinning model gets the model here too. shareImage sits
+           below it on purpose: that one exists for link scrapers, which
+           cannot render a GLB and need a flat picture — it is not what
+           somebody who just clicked the card should be handed back.
+
+           Below that: explicit shareVideo → outro-video block → legacy
+           heroVideo → thumbnail image → the flat logo. */
+        if (project.turntableModel) {
+          const mv = document.createElement('model-viewer');
+          mv.setAttribute('src', project.turntableModel);
+          /* This is built while the modal is still hidden, and
+             model-viewer's default lazy loading never fires for an
+             element with no box on screen — it would sit there empty
+             until something resized it. */
+          mv.setAttribute('loading', 'eager');
+          mv.setAttribute('interaction-prompt', 'none');
+          mv.setAttribute('shadow-intensity', '0');
+          mv.setAttribute('shadow-softness', '0');
+          mv.setAttribute('exposure', '1');
+          mv.setAttribute('environment-image', 'neutral');
+          mv.setAttribute('min-field-of-view', '42deg');
+          mv.setAttribute('max-field-of-view', '42deg');
+          mv.setAttribute('camera-orbit', '0deg 78deg 105%');
+          thumb3d.appendChild(mv);
+          if (project.turntableLogo) {
+            const logo = document.createElement('img');
+            logo.className = 'share-modal-thumb-3d-logo';
+            logo.src = project.turntableLogo;
+            logo.alt = '';
+            thumb3d.appendChild(logo);
+          }
+          thumb3d.hidden = false;
+          thumbFb.hidden = true;
+          return;
+        }
         if (project.shareImage) {
           thumbImg.src = project.shareImage;
           thumbImg.hidden = false;
