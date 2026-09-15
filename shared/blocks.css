@@ -29,14 +29,17 @@
   --radius-md:     14px;
   --radius-sm:     8px;
 
-  /* A fluid type scale. Each one is already a clamp, which is
-     why a block never needs a font-size media query. */
+  /* Two sizes on a case study, not six. Everything that is not the
+     project title or Back to top is 14px Switzer in --color-muted —
+     headings, body, captions, tile tags, row titles, the lot. The
+     clamp is kept only on the display size, which is the one thing
+     big enough to need to come down on a phone. */
   --text-display: clamp(48px, 9vw,   88px);
-  --text-h2:      clamp(26px, 3.6vw, 40px);
-  --text-h3:      clamp(19px, 2.1vw, 24px);
-  --text-body:    clamp(15px, 1.5vw, 17px);
-  --text-small:   clamp(13px, 1.2vw, 14px);
-  --text-tag:     clamp(11px, 1.1vw, 12px);
+  --text-h2:      14px;
+  --text-h3:      14px;
+  --text-body:    14px;
+  --text-small:   14px;
+  --text-tag:     14px;
 
   /* The two overrides. Scoped here on purpose — see above. */
   --space-xl:  clamp(40px,  6vw,  80px);
@@ -101,7 +104,7 @@
 .blk-head {
   font-size: var(--text-h3);
   font-weight: 400;
-  color: var(--color-ink-muted);
+  color: var(--color-muted);
   margin-bottom: var(--space-md);
 }
 .blk-head-slash { color: var(--color-muted-50); margin-inline-end: 0.4em; }
@@ -249,7 +252,7 @@
 /* Per-column subheading (the "no shared heading" variant). */
 .blk-text-col-head {
   font-size: var(--text-h3);
-  color: var(--color-ink-muted);
+  color: var(--color-muted);
   margin-bottom: var(--space-sm);
 }
 
@@ -288,7 +291,7 @@
 /* Every other row flips, so the eye zig-zags down the page. */
 .blk-row--flip .blk-row-media { order: 2; }
 
-.blk-row-title { font-size: var(--text-h3); color: var(--color-ink); margin-bottom: var(--space-xs); }
+.blk-row-title { font-size: var(--text-h3); color: var(--color-muted); margin-bottom: var(--space-xs); }
 .blk-row-desc  { font-size: var(--text-body); color: var(--color-muted); }
 
 /* ══════════════════════════════════════════════════════════════
@@ -304,7 +307,7 @@
 }
 
 .blk-panel-head { text-align: center; margin-bottom: var(--space-xl); }
-.blk-panel-title { font-size: var(--text-h2); color: var(--color-ink); }
+.blk-panel-title { font-size: var(--text-h2); color: var(--color-muted); }
 .blk-panel-sub {
   margin-top: var(--space-sm);
   margin-inline: auto;
@@ -325,7 +328,7 @@
 }
 .blk-panel-card-icon { width: 56px; height: 56px; margin-bottom: var(--space-md); }
 .blk-panel-card-icon > * { width: 100%; height: 100%; }
-.blk-panel-card-title { font-size: var(--text-h3); color: var(--color-ink); margin-bottom: var(--space-xs); }
+.blk-panel-card-title { font-size: var(--text-h3); color: var(--color-muted); margin-bottom: var(--space-xs); }
 .blk-panel-card-desc  { font-size: var(--text-small); color: var(--color-muted); }
 
 /* ══════════════════════════════════════════════════════════════
@@ -428,7 +431,7 @@
   font-family: var(--font-serif);
   font-size: var(--text-h2);
   line-height: var(--leading-snug);
-  color: var(--color-ink);
+  color: var(--color-muted);
 }
 .blk-quote-cite {
   margin-top: var(--space-md);
