@@ -77,9 +77,9 @@
      name     Flower (it was Rings while it was still being drawn)
 
    And the collection itself, settled across the three (September 2026):
-     order    Flower, Sway, Volume — the lime ground in the middle of the
+     order    Flower, Sway, Grow — the lime ground in the middle of the
               pink and the orange
-     grounds  Flower on the pink, Sway on the lime, Volume on the orange;
+     grounds  Flower on the pink, Sway on the lime, Grow on the orange;
               each one's sticker and gradient follow from that
      words    Flower power · all the sway · Grow slowly
      thread   1.4× the house weight — 0.0675 of a row — on every thread the
@@ -89,7 +89,7 @@
               and it is never allowed past the width of that letter
      copies   six, 120 ms apart, on all three
      margin   each card names the edge it keeps clear — Flower 15%, Sway 12%,
-              Volume 22% — and the drawing fills the square inside it,
+              Grow 22% — and the drawing fills the square inside it,
               measured over a whole loop so a long word cannot spill and a
               short one cannot sit small. A margin is not a scale: a letter
               is the size the card made it whatever the margin says, and so
@@ -97,11 +97,11 @@
               between things — the ring's radius, the column's travel, how
               far the plant spreads
      letter   the say each card gets over its own letter once it knows the
-              room it has — Flower 96%, Sway 108%, Volume 76%. It moves the
+              room it has — Flower 96%, Sway 108%, Grow 76%. It moves the
               letter alone: the row, the ring and the climb are already
               decided, so a smaller letter is more air between letters
               rather than a smaller drawing
-     round    one whole loop: Flower 22.3 s, Sway 5 s (two passes), Volume
+     round    one whole loop: Flower 22.3 s, Sway 5 s (two passes), Grow
               3.4 s
      more     what each card does when it is given more than a line. Two
               things give, and both give gradually, against how full the
@@ -123,7 +123,7 @@
               to a sticker apart when there are more of them, and overlap
               rather than let the letters go to nothing. The innermost is
               never smaller than the word that has to stand round it
-                Volume opens a row for every word, the same way, and the
+                Grow opens a row for every word, the same way, and the
               rows adapt: each one is as uneven as the room it has — the
               step down to the row behind, less a letter, measured in the
               frame after the margin has pulled them together — so two
@@ -131,7 +131,7 @@
               instead of piling into each other. Only when a flat row still
               cannot hold a letter does the letter itself come down
      export   whole rounds at the speed the site runs them, never under
-              four seconds: Sway 5 s, Flower 22.3 s, Volume 6.8 s
+              four seconds: Sway 5 s, Flower 22.3 s, Grow 6.8 s
 
    Effect contract (studio / embed):  mount(stage, { word, palette, seed }) → { stop() }
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
@@ -196,6 +196,16 @@ const ECHOES = 6;               // how many copies trail behind each letter…
 const ECHO_MS = 120;            // … each one showing where the letter was this long ago…
 const ECHO_ALPHA = 0.5;         // … at this opacity, when the copies are set by opacity at all
 /* Rings */
+/* What a pointer does to a piece. Only the renderer that has one — the
+   studio and the embed — ever asks for these; an export is the same
+   picture wherever it is drawn. */
+const STRIKE_MS = 900;          // how long a click takes to swell and settle
+const STRIKE_OUT = 0.14;        // … how far a flower pulses out, as a share of its radius
+const STRIKE_OPEN = 0.3;        // … how far a plant opens sideways
+const STRIKE_UP = 1.1;          // … and how far a column's letters lift, in stickers
+const STRIKE_WAKE = 0.55;       // the share of the click the wave takes to reach the top
+const LEAN_PULL = 0.18;         // how far the letters lean towards a pointer…
+const LEAN_REACH = 0.45;        // … and how near it has to be, as a share of the frame
 const ECHO_SHARE = 1.05;        // how far into the next ring a flower's copies may reach
 const RING_ROOM = 2.7;          // the room a letter takes beside the next on a ring, in its
                                 // own widths — past this a word stops reading as a word
@@ -214,8 +224,8 @@ const RING_BAR_CHASE = 1;       // … and how far behind the head the tail runs
 /* Eights */
 const EIGHT_TURN = 7000;        // ms to travel the whole eight once
 const EIGHT_FLIP = 2;           // … and the figure turns over once every this many rounds
-/* Volume */
-/* Volume — every letter is a stem growing out of a base line along the
+/* Grow */
+/* Grow — every letter is a stem growing out of a base line along the
    bottom of the frame, rising and sinking back. A word is a row: the same
    base, a lower reach than the row before it, so the whole thing stands
    like a shrub. */
@@ -252,7 +262,7 @@ export const p = [
   { frame: "#D9FF7E", card: "#FFBECA", ink: "#FF8F5E", anchor: "#FFFF85" },   // lime ground — Sway
   { frame: "#FFBECA", card: "#FF8F5E", ink: "#FFFF85", anchor: "#D9FF7E" },   // pink ground — Flower, whose
                                                                              // copies run yellow to lime
-  { frame: "#FF8F5E", card: "#FFBECA", ink: "#D9FF7E", anchor: "#FFFF85" },   // orange ground — Volume
+  { frame: "#FF8F5E", card: "#FFBECA", ink: "#D9FF7E", anchor: "#FFFF85" },   // orange ground — Grow
   { frame: "#FFFF85", card: "#D9FF7E", ink: "#FF8F5E", anchor: "#FFBECA" },   // yellow ground
   { frame: "#0D0D0F", card: "#FFFFFF", ink: "#FFFFFF", anchor: "#FFFFFF" },   // white on black — not quite
                                                                              // pure, so the grain still lives
@@ -560,7 +570,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
                         echoIn = 0, echoTurn = 0, echoShrink = 0,
                         /* Eights */
                         eightOne = false, eightFlip = EIGHT_FLIP, eightLie = false,
-                        /* Volume */
+                        /* Grow */
                         volRate = VOL_BEAT, volOffset = VOL_OFFSET, volFloor = VOL_FLOOR,
                         volTop = VOL_TOP, volFall = VOL_FALL, volLow = VOL_LOW,
                         volArch = VOL_ARCH, volJitter = VOL_JITTER, volSize = VOL_SIZE,
@@ -591,6 +601,10 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
   let tileSize = L.h, tileH = L.h * TILE, tileW = tileH * TILE_W;
   let fitted = null;                        // the margin's fit, worked out once the piece is built
   let laid = null;                          // what the layout came out as, for a page that wants to say so
+  /* What a pointer is doing to the piece, if anything. */
+  let aim = 0;                              // the angle Sway's column stands at
+  let lean = null;                          // a point the letters lean towards, and how much
+  let struck = -1e9;                        // when the piece was last clicked, on its own clock
   let lastFit = 1;                          // the fit the plant last laid itself out against
   let rowGap = Infinity;                    // the closest two rows of a plant come
   let crowded = 1;                          // … and what the letter had to give up for it
@@ -701,6 +715,9 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         /* A negative delay just turns the wave around: the bottom letter
            leads and the top one follows. */
         cx, cy, t0: BEAT + (stagger < 0 ? chars.length - 1 - i : i) * Math.abs(stagger),
+        /* Where in its column it stands, counting from the bottom — which
+           is the order a click runs up it in. */
+        wake: L.rows > 1 ? (inCol - 1 - row) / (L.rows - 1) : 0,
       });
     });
     laid = { of: "column", n: L.cols, rows: L.rows };
@@ -874,7 +891,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
     });
   }
 
-  /* Volume — a word to a bar standing on the floor, the bars rising and
+  /* Grow — a word to a bar standing on the floor, the bars rising and
      sinking at their own rates, so their tops draw a moving horizon. */
   function buildVolume() {
     const ws = words();
@@ -1081,11 +1098,12 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
     const spec = cut ? stickerFor(Lt.ch, tileH * sc, weight) : null;
     const w = cut ? spec.W : (shaped ? tileW : L.w) * sc;
     const at = posAt(Lt, t, w, k);
+    const [x, y] = touched(Lt,
+      mapX(at.x + wobble(Lt.id, frame, 0) * JITTER),
+      mapY(at.y + wobble(Lt.id, frame, 1) * JITTER));
     return {
       p: card === "sway" ? align(Lt, t) : 0.5, spec, w, sc, rot: at.rot || 0,
-      a: at.a, out: at.out !== false,
-      x: mapX(at.x + wobble(Lt.id, frame, 0) * JITTER),
-      y: mapY(at.y + wobble(Lt.id, frame, 1) * JITTER),
+      a: at.a, out: at.out !== false, x, y,
     };
   }
 
@@ -1131,7 +1149,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         flush();
       }
     }
-    /* Volume's thread is the plant itself: one base line along the bottom,
+    /* Grow's thread is the plant itself: one base line along the bottom,
        and a stem from it up to every letter. The copies need no stem of
        their own — they are the letter on its way up, so they already sit
        on it like beads. */
@@ -1216,7 +1234,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
   /* What the card actually draws, measured rather than guessed: over one
      whole loop, where every letter and every copy gets to, and how much
      room a letter needs around the point it is hung on. The threads are
-     left out of it — Volume's stems run off the bottom of the frame on
+     left out of it — Grow's stems run off the bottom of the frame on
      purpose, and a ring's arcs only ever join letters that are in the box
      already. Measured with the fit off, so it describes the card's own
      geometry rather than the last answer. */
@@ -1261,7 +1279,10 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
     if (!isFinite(s)) s = 1;
     s = Math.min(4, Math.max(0.1, s));
     return {
-      s,
+      s, room,
+      /* How wide and how tall the drawing ends up, which is what a piece
+         turning on its side has to fit back into the frame. */
+      span: [s * w + b.padL + b.padR, s * h + 2 * b.padY],
       dx: (STAGE + b.padL - b.padR) / 2 - (s * (b.x0 + b.x1)) / 2,
       dy: STAGE / 2 - (s * (b.y0 + b.y1)) / 2,
     };
@@ -1269,6 +1290,55 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
   /* Every point the card draws goes through here on its way out. */
   const mapX = (x) => (fitted ? fitted.dx + fitted.s * x : x);
   const mapY = (y) => (fitted ? fitted.dy + fitted.s * y : y);
+
+  /* … and then through whatever the pointer is doing, so the threads and
+     the stems follow their letters without being told. A piece nobody is
+     touching goes through untouched. */
+  function touched(Lt, x, y) {
+    const mid = STAGE / 2;
+    /* Sway stands its column up at whatever angle is asked for: the whole
+       layout turns about the middle, so the travel — which runs across the
+       column — turns with it, while the letters stay upright. */
+    if (aim && card === "sway") {
+      const dx = x - mid, dy = y - mid, c = Math.cos(aim), n = Math.sin(aim);
+      /* A tall thing lying on its side is a wide thing, and it would be
+         over the edges of the frame. So it draws itself in as it turns,
+         by exactly as much as turning costs it. */
+      let k = 1;
+      if (fitted) {
+        const [W, H] = fitted.span, ac = Math.abs(c), an = Math.abs(n);
+        k = Math.min(1, fitted.room / (W * ac + H * an), fitted.room / (W * an + H * ac));
+      }
+      x = mid + (dx * c - dy * n) * k;
+      y = mid + (dx * n + dy * c) * k;
+    }
+    /* A click. The flower pulses out and back; the plant opens sideways
+       for a moment, as if it were letting the light in; the column runs a
+       small lift up itself, the bottom letter first. */
+    const u = (now - struck) / STRIKE_MS;
+    if (u > 0 && u < 1) {
+      if (card === "flower") {
+        const k = 1 + STRIKE_OUT * Math.sin(Math.PI * u);
+        x = mid + (x - mid) * k;
+        y = mid + (y - mid) * k;
+      } else if (card === "volume") {
+        x = mid + (x - mid) * (1 + STRIKE_OPEN * Math.sin(Math.PI * u));
+      } else {
+        const v = (u - (Lt.wake || 0) * STRIKE_WAKE) / (1 - STRIKE_WAKE);
+        if (v > 0 && v < 1) y -= STRIKE_UP * tileH * Math.sin(Math.PI * v);
+      }
+    }
+    /* A hover: the letters lean towards the pointer, the ones further from
+       it less than the ones under it. Sway answers a pointer by standing
+       its column up instead. */
+    if (lean && lean.k && card !== "sway") {
+      const dx = lean.x - x, dy = lean.y - y, reach = STAGE * LEAN_REACH;
+      const near = 1 / (1 + (dx * dx + dy * dy) / (reach * reach));
+      x += dx * LEAN_PULL * lean.k * near;
+      y += dy * LEAN_PULL * lean.k * near;
+    }
+    return [x, y];
+  }
 
   const api = {
     step, snapshot, restart, pal, empty,
@@ -1281,6 +1351,11 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
        turns; the eights and the bars are in their stride from the first
        frame. */
     get bar() { return barInfo; },
+    /* What a pointer is doing, for the renderer that has one. */
+    set aim(v) { aim = Number(v) || 0; },
+    get aim() { return aim; },
+    set lean(p) { lean = p && p.k ? p : null; },
+    strike() { struck = now; },
     /* What the plant had to give up to keep its rows apart, for a page
        that wants to say so. */
     get plant() { return { gap: rowGap, letter: crowded }; },
@@ -1307,7 +1382,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
      which leaves the rows a little more room than the first pass asked
      for. */
   /* A word opens a ring of its own on Flower and a row of its own on
-     Volume, always — that is what the cards are. What adapts is the room
+     Grow, always — that is what the cards are. What adapts is the room
      between them, and the room is in the frame: the margin pulls the whole
      drawing in afterwards, which pulls the rings and the rows towards each
      other. So both are laid out against the fit they are going to get,
@@ -1452,21 +1527,66 @@ function mount(stage, mode, opts = {}) {
     eng.step(opts.startAt / 1000);
     frame = Math.round((opts.startAt / 1000) * fps);
   }
+  /* The pointer. Where it is, and how much of it the piece is feeling —
+     both eased, so a piece answers a pointer the way it moves: it leans
+     in as the pointer arrives and stands back up when it leaves, rather
+     than snapping. Nothing here reaches the export: a frame drawn on a
+     canvas is the same frame wherever it is drawn. */
+  const want = { x: STAGE / 2, y: STAGE / 2, k: 0, aim: 0 };
+  const felt = { x: STAGE / 2, y: STAGE / 2, k: 0, aim: 0 };
+  const seen = (e) => {
+    const r = stage.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    want.x = ((e.clientX - r.left) / r.width) * STAGE;
+    want.y = ((e.clientY - r.top) / r.height) * STAGE;
+    want.k = 1;
+    /* Sway's column stands across the pointer rather than leaning at it. */
+    want.aim = mode === "sway" ? Math.atan2(want.y - STAGE / 2, want.x - STAGE / 2) + Math.PI / 2 : 0;
+  };
+  const gone = () => { want.k = 0; want.aim = 0; };
+  const onMove = (e) => seen(e);
+  const onLeave = () => gone();
+  const onDown = () => eng.strike();
+  stage.addEventListener("pointermove", onMove);
+  stage.addEventListener("pointerleave", onLeave);
+  stage.addEventListener("pointercancel", onLeave);
+  stage.addEventListener("pointerdown", onDown);
+
+  function follow(dt) {
+    const e = Math.min(1, dt * 6);
+    felt.x += (want.x - felt.x) * e;
+    felt.y += (want.y - felt.y) * e;
+    felt.k += (want.k - felt.k) * e;
+    /* Round the short way about, so a pointer crossing behind the piece
+       does not send the column the long way round. */
+    let d = want.aim - felt.aim;
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    felt.aim += d * e;
+    eng.aim = felt.aim * felt.k;
+    eng.lean = felt.k > 0.002 ? felt : null;
+  }
+
   function tick(t) {
     if (!last) last = t;
     const dt = Math.min(0.05, (t - last) / 1000);
     last = t;
+    follow(dt);
     eng.step(dt);
     acc += dt;
     if (acc >= 1 / fps) { acc = 0; frame++; paint(frame); }
     raf = requestAnimationFrame(tick);
   }
-  const onClick = () => eng.restart();
-  stage.addEventListener("click", onClick);
   paint(frame);
   raf = requestAnimationFrame(tick);
   return {
-    stop() { cancelAnimationFrame(raf); stage.removeEventListener("click", onClick); },
+    stop() {
+      cancelAnimationFrame(raf);
+      stage.removeEventListener("pointermove", onMove);
+      stage.removeEventListener("pointerleave", onLeave);
+      stage.removeEventListener("pointercancel", onLeave);
+      stage.removeEventListener("pointerdown", onDown);
+    },
     get now() { return eng.now; },
     get bar() { return eng.bar; },
   };
