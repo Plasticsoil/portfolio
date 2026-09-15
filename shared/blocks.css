@@ -75,6 +75,14 @@
   max-width: calc(var(--block-width) + var(--gutter) * 2);
   margin-inline: auto;
   padding-inline: var(--gutter);
+
+  /* Stated, not inherited. The studio's preview frame sets the face on
+     <body> and so never needed this, but the case-study overlay in
+     index.html sets none — a canvas dropped in there inherited the
+     browser's default serif. The system declares its own tokens; it
+     should declare its own type too. */
+  font-family: var(--font-sans);
+  color: var(--color-muted);
 }
 
 /* A block can opt out of the column and run edge to edge. */
@@ -112,6 +120,17 @@
 .blk-tag span { color: var(--color-muted-50); margin-inline-end: 0.35em; }
 
 /* Caption sitting under a tile. */
+/* A media block fills the content column by default. --w makes it
+   narrower and centres it, so a still can sit inside the page rather
+   than span it — a portrait shot at full column width is enormous.
+   The caption is narrowed with it: it belongs to the media, and left
+   at column width it would hang off both sides of what it describes. */
+.blk-media > .blk-m,
+.blk-media > .blk-caption {
+  max-width: var(--w, none);
+  margin-inline: auto;
+}
+
 .blk-caption {
   margin-top: var(--space-sm);
   font-size: var(--text-small);
@@ -217,6 +236,14 @@
 }
 
 .blk-text-col { font-size: var(--text-body); color: var(--color-muted); }
+
+/* A line break typed into a column is a line break. Without this the
+   textarea in the studio accepts Enter, stores the newline, writes it
+   to project.json — and then HTML collapses it to a space, so the
+   break is lost somewhere between typing it and reading it back, with
+   nothing to show for it. Paragraphs are still made by separate
+   columns; this is for the short break inside one. */
+.blk-text-col p { white-space: pre-line; }
 .blk-text-col > * + * { margin-top: var(--space-sm); }
 
 /* Per-column subheading (the "no shared heading" variant). */
@@ -371,11 +398,23 @@
    10. TITLE / QUOTE / BACK-TO-TOP — the small ones
 ════════════════════════════════════════════════════════════════ */
 
+/* The same title the live overlay draws, property for property:
+   centred, capitalised, regular weight, and the muted grey. The block
+   system had it left-aligned in ink, which is a different thing wearing
+   the same name — a project opened here should not look like a
+   different site from one still drawn by the old renderer.
+   --text-display is a clamp, so it is 88px on a desktop like the live
+   rule and comes down on a phone instead of running off the side. */
 .blk-title {
+  align-self: center;
   font-family: var(--font-serif);
+  font-weight: 400;
   font-size: var(--text-display);
   line-height: var(--leading-tight);
-  color: var(--color-ink);
+  letter-spacing: 0;
+  text-transform: capitalize;
+  text-align: center;
+  color: var(--color-muted);
 }
 
 /* Pull quote — new in v2. Case studies kept faking these with
@@ -397,16 +436,33 @@
   color: var(--color-muted);
 }
 
+/* The live site sets this as a word, not a control — the case-study
+   title's own face at its own size, with nothing drawn around it. The
+   bordered pill that was here read as a form button at the end of a
+   piece of design, and it was the only chrome on the page.
+
+   Colour matches the live rule exactly — muted at rest, darkening to
+   --color-ink-muted on hover, the same pair the title uses.
+
+   --text-display is a clamp, so unlike the live rule's flat 88px this
+   one comes down on a phone instead of running off the side. */
 .blk-back-to-top {
   align-self: center;
-  padding: 12px 28px;
-  border: 1px solid var(--color-muted-50);
-  border-radius: 999px;
-  font-size: var(--text-small);
+  margin-inline: auto;
+  padding: var(--space-xl) 0;
+  background: transparent;
+  border: 0;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: var(--text-display);
+  line-height: var(--leading-tight);
+  letter-spacing: 0;
+  text-transform: capitalize;
+  text-align: center;
   color: var(--color-muted);
-  transition: color var(--dur-md), border-color var(--dur-md);
+  transition: color var(--dur-md);
 }
-.blk-back-to-top:hover { color: var(--color-ink); border-color: var(--color-ink); }
+.blk-back-to-top:hover { color: var(--color-ink-muted); }
 
 /* ══════════════════════════════════════════════════════════════
    11. RESPONSIVE — the whole point of v2.

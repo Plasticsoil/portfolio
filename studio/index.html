@@ -78,6 +78,20 @@
     padding: 12px 18px;
     border-bottom: 1px solid var(--color-muted-15);
     background: var(--color-surface);
+    /* It did not wrap, and nothing here scrolls, so on a narrow window
+       the buttons ran off the right edge and were simply gone — Save
+       included. They wrap to a second line now. body is a grid with an
+       auto first row, so a taller bar takes the space it needs. */
+    flex-wrap: wrap;
+  }
+  /* The controls stay together and move as one, so Save never ends up
+     alone on a line while the status chip keeps the width. */
+  .st-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-inline-start: auto;
   }
   .st-brand {
     font-family: var(--font-serif);
@@ -96,6 +110,10 @@
     border: 1px solid var(--color-muted-15);
     white-space: nowrap;
     color: var(--color-muted);
+    /* The chip gives way before the buttons do. */
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .st-mode[data-ok="yes"] { color: var(--color-ink); }
 
@@ -165,14 +183,14 @@
   }
   .st-sec i { color: var(--color-muted-50); font-style: normal; margin-inline-end: 6px; }
 
-  .st-field { margin-bottom: 12px; }
+  .st-field { margin-bottom: 8px; }
   .st-label {
     display: block;
     font-size: 11.5px;
     letter-spacing: .04em;
     text-transform: uppercase;
     color: var(--color-muted-50);
-    margin-bottom: 5px;
+    margin-bottom: 3px;
   }
   .st-input, .st-area, .st-select {
     width: 100%;
@@ -181,11 +199,11 @@
     color: var(--color-ink);
     background: var(--color-surface);
     border: 1px solid var(--color-muted-15);
-    padding: 8px 10px;
+    padding: 6px 9px;
     outline: none;
   }
   .st-input:focus, .st-area:focus, .st-select:focus { border-color: var(--color-muted); }
-  .st-area { resize: vertical; min-height: 74px; line-height: 1.5; }
+  .st-area { resize: vertical; min-height: 58px; line-height: 1.45; }
   .st-row { display: flex; gap: 10px; }
   .st-row > * { flex: 1 1 0; min-width: 0; }
 
@@ -229,7 +247,27 @@
     color: var(--color-ink);
   }
   .st-blk-kind i { color: var(--color-muted-50); font-style: normal; margin-inline-end: 5px; }
-  .st-blk-body { padding: 11px; }
+  .st-blk-body { padding: 10px; }
+
+  /* An item inside a grid or a rows block: its own name, its remove
+     button on that same line, and the fields under it. Nothing here
+     gets a full-width button of its own. */
+  .st-item {
+    border-top: 1px solid var(--color-muted-15);
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+  .st-item-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .st-item-head .st-label { flex: 1 1 auto; margin: 0; }
+  .st-item > .st-input, .st-item > .st-area { margin-top: 6px; }
+
+  /* The marker on a label that carries a tooltip. Deliberately quiet:
+     it is there to be found, not read. */
+  .st-q {
+    font-style: normal;
+    opacity: .5;
+    cursor: help;
+  }
   .st-mini {
     border: 1px solid var(--color-muted-15);
     background: transparent;
@@ -423,12 +461,13 @@
 <div class="st-bar">
   <span class="st-brand"><i>/</i>Studio</span>
   <span class="st-mode" id="st-mode" data-ok="no">checking…</span>
-  <span class="st-spacer"></span>
-  <a class="st-btn" href="/studio/hero.html" style="text-decoration:none">Hero</a>
-  <button class="st-btn" type="button" id="st-meta-toggle" aria-pressed="false">Details</button>
-  <button class="st-btn" type="button" id="st-connect">Choose site folder</button>
-  <button class="st-btn" type="button" id="st-load">Open a project</button>
-  <button class="st-btn st-btn--go" type="button" id="st-save">Save</button>
+  <div class="st-actions">
+    <a class="st-btn" href="/studio/hero.html" style="text-decoration:none">Hero</a>
+    <button class="st-btn" type="button" id="st-meta-toggle" aria-pressed="false">Details</button>
+    <button class="st-btn" type="button" id="st-connect">Choose site folder</button>
+    <button class="st-btn" type="button" id="st-load">Open a project</button>
+    <button class="st-btn st-btn--go" type="button" id="st-save">Save</button>
+  </div>
 </div>
 
 <div class="st-main">
@@ -630,6 +669,18 @@
     blocks: []
   };
 
+  /* The file that was opened, kept whole. This studio does not have a
+     control for every field a project.js can carry, and the honest
+     thing for a field it cannot edit is to put it back exactly as it
+     was rather than write a null over it. SHLTR is the project that
+     forces the point: its card tags read "VR, 3D, Collab" while its
+     overlay tags read "Virtual Reality, 3D, Collaboration", and it has
+     both a flat SVG logo and a 3D model where there is one slot here.
+     A Save without this would quietly take a field off each. */
+  var opened = null;
+  var tagsTouched  = false;   // did the tags field actually change
+  var tlogoTouched = false;   // did the spun-logo slot actually change
+
   /* One image does both jobs — thumbnail and shareImage — which is
      what Radiant already does. So the shape is the card's, because
      the card is the one that crops to a fixed box: .card-b-body is
@@ -659,9 +710,15 @@
     var el = $('st-mode');
     if (!CAN_WRITE) {
       el.dataset.ok = 'no';
-      el.textContent = 'download mode — open over localhost to write files directly';
+      /* Two different reasons land here and the fix is different for
+         each, so say which one it is rather than one line that covers
+         both and helps with neither. */
+      el.textContent = !window.isSecureContext
+        ? 'opened straight off the disk — serve it over localhost to write files'
+        : 'this browser cannot write into a folder — open it in Chrome or Edge';
+      /* Only the folder button goes. Opening a project is a fetch and
+         works anywhere, so the tool stays usable read-only. */
       $('st-connect').disabled = true;
-      $('st-load').disabled = true;
     } else if (dirHandle) {
       el.dataset.ok = 'yes';
       el.textContent = 'writing into ' + dirHandle.name + '/projects/';
@@ -759,8 +816,8 @@
     switch (type) {
       case 'title':  return { type: 'title', text: '' };
       case 'text':   return { type: 'text', heading: '', cols: [''] };
-      case 'media':  return { type: 'media', heading: '', asset: null, ratio: '', fit: 'cover', caption: '' };
-      case 'grid':   return { type: 'grid', heading: '', cols: 2, items: [] };
+      case 'media':  return { type: 'media', heading: '', asset: null, ratio: '', fit: 'cover', width: '', caption: '' };
+      case 'grid':   return { type: 'grid', heading: '', cols: 2, ratio: '', fit: 'cover', items: [] };
       case 'rows':   return { type: 'rows', items: [{ asset: null, title: '', desc: '' }] };
       case 'quote':  return { type: 'quote', text: '', cite: '' };
       default:       return null;
@@ -796,24 +853,48 @@
 
       case 'media': {
         var m = mediaOf(b.asset, {
-          ratio: b.ratio || undefined,
+          ratio: ratioFor(b.ratio, b.asset),
           fit: b.fit || undefined,
-          caption: b.caption || undefined
+          width: b.width || undefined,
+          caption: b.caption || undefined,
+          hoverPlay: b.hoverPlay || undefined,
+          bg: b.bg || undefined
         });
         m.type = 'media';
         if (b.heading) m.heading = b.heading;
         return m;
       }
 
-      case 'grid':
+      case 'grid': {
+        /* Resolved once, off the first tile, then written onto every
+           tile — b_grid only passes the grid's ratio down, not its
+           fit, so fit has to ride on the items. */
+        var gRatio = ratioFor(b.ratio, (b.items && b.items[0] && b.items[0].asset) || null);
         return {
           type: 'grid',
           heading: b.heading || undefined,
           cols: Number(b.cols) || 2,
+          ratio: gRatio,
           items: (b.items || []).map(function (it) {
-            return mediaOf(it.asset, { caption: it.caption || undefined });
+            return mediaOf(it.asset, { caption: it.caption || undefined,
+                                       label:   it.label   || undefined,
+                                       /* The grid's shape wins when one is
+                                          chosen, but an item that came in with
+                                          its own keeps it. A pair of stills of
+                                          genuinely different proportions was
+                                          being flattened to whichever was
+                                          first. */
+                                       ratio:   gRatio || it.ratio || undefined,
+                                       fit:     b.fit || undefined,
+                                       /* No control for these two, so they
+                                          ride through untouched rather than
+                                          being dropped on the way out. */
+                                       hoverPlay: it.hoverPlay || undefined,
+                                       bg:        it.bg        || undefined,
+                                       plain:     it.plain     || undefined });
           })
         };
+      }
 
       case 'rows':
         return {
@@ -825,6 +906,9 @@
 
       case 'quote':
         return { type: 'quote', text: b.text, cite: b.cite || undefined };
+
+      case '__kept':
+        return b.raw;
 
       default:
         return null;
@@ -863,7 +947,11 @@
       var host = $(row[0]);
       if (!host) return;
       host.innerHTML = '';
-      host.appendChild(mediaSlot(project[row[1]], function (k) { project[row[1]] = k; draw(); }));
+      host.appendChild(mediaSlot(project[row[1]], function (k) {
+        if (row[1] === 'tlogoAsset') tlogoTouched = true;
+        project[row[1]] = k;
+        draw();
+      }));
     });
   }
 
@@ -874,7 +962,80 @@
     pushPreview();
   }
 
+  /* ── Crash insurance ─────────────────────────────────────────
+     Everything above lives in memory until Save, so a reload — a
+     stray refresh, a tab the browser decided to discard — took the
+     whole session with it. The writing is the expensive part and it
+     serialises fine, so it is kept on every change.
+
+     Files cannot be kept: a dropped File has no address the next page
+     load could resolve, and localStorage is far too small for the
+     bytes. So a restored draft comes back with its media slots empty
+     and everything else intact — which is worth much more than
+     nothing, because re-dropping a file is seconds and retyping a
+     case study is not.
+  ────────────────────────────────────────────────────────────── */
+  var STASH = 'studio:draft';
+  var stashTimer = null;
+
+  function stash() {
+    clearTimeout(stashTimer);
+    stashTimer = setTimeout(function () {
+      try {
+        if (!project.title && !project.blocks.length) return;
+        var d = projectJson();
+
+        /* An asset still carrying a File has no file on disk yet, so
+           the path projectJson() writes for it would be a dead link
+           after a reload. Those come out; assets opened from disk
+           already have a real path and stay. */
+        var pending = {};
+        Object.keys(assets).forEach(function (k) {
+          if (assets[k].file) pending[assetPath(k)] = 1;
+        });
+        (function strip(o) {
+          if (!o || typeof o !== 'object') return;
+          if (Array.isArray(o)) { o.forEach(strip); return; }
+          Object.keys(o).forEach(function (k) {
+            if (typeof o[k] === 'string' && pending[o[k]]) o[k] = null;
+            else strip(o[k]);
+          });
+        })(d);
+
+        localStorage.setItem(STASH, JSON.stringify({ at: Date.now(), data: d }));
+      } catch (e) { /* private window, or quota — not worth a dialog */ }
+    }, 400);
+  }
+
+  function offerRestore() {
+    var raw;
+    try { raw = localStorage.getItem(STASH); } catch (e) { return; }
+    if (!raw) return;
+    var saved;
+    try { saved = JSON.parse(raw); } catch (e) { return; }
+    if (!saved || !saved.data) return;
+
+    var blocks = (saved.data.caseStudy && saved.data.caseStudy.blocks) || [];
+    if (!saved.data.title && !blocks.length) return;
+
+    var when = new Date(saved.at);
+    var name = saved.data.title || saved.data.id || 'an untitled project';
+    if (!confirm('Unsaved work on ' + name + ' from ' +
+                 when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
+                 ' — ' + blocks.length + ' block' + (blocks.length === 1 ? '' : 's') +
+                 '.\n\nBring it back? Any media will need dropping in again.')) {
+      try { localStorage.removeItem(STASH); } catch (e) {}
+      return;
+    }
+    hydrate(saved.data);
+  }
+
+  /* Every edit ends here — a field that only retypes a string calls
+     this and not draw(), which is why the stash hangs off it. Hung off
+     draw() it would have missed all the typing, which is the only part
+     of a case study that is expensive to lose. */
   function pushPreview() {
+    stash();
     if (!frameReady) return;
     $('st-frame').contentWindow.postMessage({
       kind: 'studio:render',
@@ -891,7 +1052,8 @@
   /* ── Editor rendering ────────────────────────────────────── */
   var LABEL = {
     title: 'Title', text: 'Text', media: 'Media',
-    grid: 'Grid', rows: 'Rows', quote: 'Quote'
+    grid: 'Grid', rows: 'Rows', quote: 'Quote',
+    __kept: 'Kept as it is'
   };
 
   function el(tag, cls, html) {
@@ -901,12 +1063,31 @@
     return n;
   }
 
-  function field(label, node) {
+  function field(label, node, tip) {
     var f = el('div', 'st-field');
     var l = el('label', 'st-label', label);
     f.appendChild(l);
     f.appendChild(node);
+    /* Hints used to be a line of italic text under every control. It
+       is read once and then occupies height on every block for the
+       rest of the session, which on a four-item grid is most of the
+       card. They hang off the control as its tooltip now. */
+    if (tip) { f.title = tip; l.innerHTML = label + ' <i class="st-q">?</i>'; }
     return f;
+  }
+
+  /* An item's name and its remove button on one line. As a full-width
+     button underneath, Remove cost a whole row per item — four items
+     in a grid meant four rows of chrome. */
+  function itemHead(label, onRemove) {
+    var h = el('div', 'st-item-head');
+    h.appendChild(el('span', 'st-label', label));
+    var x = el('button', 'st-mini', '&times;');
+    x.type = 'button';
+    x.title = 'Remove ' + label;
+    x.addEventListener('click', onRemove);
+    h.appendChild(x);
+    return h;
   }
 
   function input(value, placeholder, oninput) {
@@ -924,6 +1105,48 @@
     t.placeholder = placeholder || '';
     t.addEventListener('input', function () { oninput(t.value); });
     return t;
+  }
+
+  /* One list, used by every block that has a shape. 'auto' is not a
+     CSS ratio — it is resolved at export from the pixel size read off
+     the file, so an image keeps its own proportions instead of being
+     cropped into a box someone picked from a menu. */
+  var RATIOS = [
+    { value: 'auto',  label: 'Auto' },
+    { value: '',      label: '16:9' },
+    { value: '3/2',   label: '3:2' },
+    { value: '4/3',   label: '4:3' },
+    { value: '1/1',   label: '1:1' },
+    { value: '4/5',   label: '4:5' },
+    { value: '3/4',   label: '3:4' },
+    { value: '9/16',  label: '9:16' },
+    { value: '21/9',  label: '21:9' }
+  ];
+
+  var FITS = [
+    { value: 'cover',   label: 'Fill' },
+    { value: 'contain', label: 'Inside' }
+  ];
+
+  var WIDTHS = [
+    { value: '',     label: 'Full' },
+    { value: '75%',  label: '3/4' },
+    { value: '66%',  label: '2/3' },
+    { value: '50%',  label: '1/2' },
+    { value: '33%',  label: '1/3' }
+  ];
+
+  /* Only images are measured — a video would have to be decoded first
+     and nothing here needs that — so auto on a video or a model falls
+     through to the 16:9 default rather than guessing. */
+  function autoRatio(key) {
+    var a = key && assets[key];
+    return (a && a.w && a.h) ? a.w + '/' + a.h : undefined;
+  }
+
+  function ratioFor(value, key) {
+    if (value === 'auto') return autoRatio(key);
+    return value || undefined;
   }
 
   function select(options, value, onchange) {
@@ -1026,10 +1249,20 @@
   }
 
   function buildFields(b, body) {
+    /* A block the renderer draws but this studio has no form for. It
+       is shown so it can be moved or removed on purpose, and written
+       back untouched otherwise — the alternative is Save deleting the
+       parts of a page nobody chose to delete. */
+    if (b.type === '__kept') {
+      body.appendChild(el('p', 'st-hint',
+        'A <b>' + String(b.raw.type).replace(/[<&>"]/g, '') + '</b> block. The page draws it; there is no form ' +
+        'for it here yet, so it is written back exactly as it came. Move it or remove it.'));
+      return;
+    }
+
     if (b.type === 'title') {
       body.appendChild(field('Text', input(b.text, project.title || 'Project name',
-        function (v) { b.text = v; pushPreview(); })));
-      body.appendChild(el('p', 'st-hint', 'Empty → the project title.'));
+        function (v) { b.text = v; pushPreview(); }), 'Leave it empty and it uses the project title.'));
     }
 
     if (b.type === 'text') {
@@ -1045,6 +1278,7 @@
       var add = el('button', 'st-btn', 'Add a column');
       add.type = 'button';
       add.disabled = b.cols.length >= 3;
+      add.title = 'Two columns become one below 600px.';
       add.addEventListener('click', function () { b.cols.push(''); draw(); });
       var less = el('button', 'st-btn', 'One fewer');
       less.type = 'button';
@@ -1052,7 +1286,6 @@
       less.addEventListener('click', function () { b.cols.pop(); draw(); });
       row.appendChild(add); row.appendChild(less);
       body.appendChild(row);
-      body.appendChild(el('p', 'st-hint', '2 cols → 1 below 600px.'));
     }
 
     if (b.type === 'media') {
@@ -1060,21 +1293,20 @@
         function (v) { b.heading = v; pushPreview(); })));
       body.appendChild(field('File', mediaSlot(b.asset, function (k) { b.asset = k; draw(); })));
 
+      /* Three questions that are always asked together, so they are
+         asked on one line: what shape the box is, how the file sits in
+         it, and how much of the column the box takes. */
       var r = el('div', 'st-row');
-      r.appendChild(field('Shape', select([
-        { value: '',      label: '16:9 (default)' },
-        { value: '4/3',   label: '4:3' },
-        { value: '1/1',   label: 'Square' },
-        { value: '3/4',   label: 'Portrait 3:4' },
-        { value: '9/16',  label: 'Portrait 9:16' },
-        { value: '21/9',  label: 'Wide 21:9' }
-      ], b.ratio, function (v) { b.ratio = v; pushPreview(); })));
-      r.appendChild(field('Fit', select([
-        { value: 'cover',   label: 'Fill the box (crop)' },
-        { value: 'contain', label: 'Sit inside it (letterbox)' }
-      ], b.fit, function (v) { b.fit = v; pushPreview(); })));
+      r.appendChild(field('Shape', select(RATIOS, b.ratio,
+        function (v) { b.ratio = v; pushPreview(); }),
+        'Auto takes the shape off the file, so nothing is cropped or letterboxed. Images only.'));
+      r.appendChild(field('Fit', select(FITS, b.fit,
+        function (v) { b.fit = v; pushPreview(); }),
+        'Fill crops to the box. Inside letterboxes within it.'));
+      r.appendChild(field('Width', select(WIDTHS, b.width,
+        function (v) { b.width = v; pushPreview(); }),
+        'How much of the column. Narrower sits centred, and the caption follows it.'));
       body.appendChild(r);
-      body.appendChild(el('p', 'st-hint', 'Fill = crop. Inside = letterbox.'));
 
       body.appendChild(field('Caption (optional)', input(b.caption, '',
         function (v) { b.caption = v; pushPreview(); })));
@@ -1083,46 +1315,60 @@
     if (b.type === 'grid') {
       body.appendChild(field('Heading (optional)', input(b.heading, 'Screens',
         function (v) { b.heading = v; pushPreview(); })));
-      body.appendChild(field('Across, on a desktop', select([
+
+      var gr = el('div', 'st-row');
+      gr.appendChild(field('Across', select([
         { value: 2, label: '2' }, { value: 3, label: '3' }, { value: 4, label: '4' }
-      ], b.cols, function (v) { b.cols = Number(v); pushPreview(); })));
+      ], b.cols, function (v) { b.cols = Number(v); pushPreview(); }),
+        'On a desktop. Four become two at 900px and one at 600px.'));
+      gr.appendChild(field('Shape', select(RATIOS, b.ratio,
+        function (v) { b.ratio = v; pushPreview(); }),
+        'One shape for every tile, or a ragged row. Auto reads the first one. Images only.'));
+      gr.appendChild(field('Fit', select(FITS, b.fit,
+        function (v) { b.fit = v; pushPreview(); }),
+        'Fill crops to the box. Inside letterboxes within it.'));
+      body.appendChild(gr);
 
       b.items.forEach(function (it, ii) {
-        var wrap = el('div', 'st-field');
-        wrap.appendChild(el('label', 'st-label', 'Item ' + (ii + 1)));
+        var wrap = el('div', 'st-item');
+        wrap.appendChild(itemHead('Item ' + (ii + 1), function () {
+          b.items.splice(ii, 1); draw();
+        }));
         wrap.appendChild(mediaSlot(it.asset, function (k) { it.asset = k; draw(); }));
-        var x = el('button', 'st-btn', 'Remove item ' + (ii + 1));
-        x.type = 'button';
-        x.addEventListener('click', function () { b.items.splice(ii, 1); draw(); });
-        wrap.appendChild(x);
+        var ir = el('div', 'st-row');
+        ir.appendChild(field('Label on the tile', input(it.label, 'Anthem 3D',
+          function (v) { it.label = v; pushPreview(); })));
+        ir.appendChild(field('Caption under it', input(it.caption, '',
+          function (v) { it.caption = v; pushPreview(); })));
+        wrap.appendChild(ir);
         body.appendChild(wrap);
       });
 
       var addI = el('button', 'st-btn', 'Add an item');
       addI.type = 'button';
-      addI.addEventListener('click', function () { b.items.push({ asset: null, caption: '' }); draw(); });
+      addI.addEventListener('click', function () {
+        b.items.push({ asset: null, caption: '', label: '' }); draw();
+      });
       body.appendChild(addI);
-      body.appendChild(el('p', 'st-hint', '4 → 2 → 1 at 900px and 600px. Every item the same box.'));
     }
 
     if (b.type === 'rows') {
       b.items.forEach(function (it, ii) {
-        var wrap = el('div', 'st-field');
-        wrap.appendChild(el('label', 'st-label', 'Row ' + (ii + 1) + (ii % 2 ? ' — media on the right' : ' — media on the left')));
+        var wrap = el('div', 'st-item');
+        wrap.appendChild(itemHead('Row ' + (ii + 1) + (ii % 2 ? ' · media right' : ' · media left'),
+          function () { b.items.splice(ii, 1); draw(); }));
         wrap.appendChild(mediaSlot(it.asset, function (k) { it.asset = k; draw(); }));
         wrap.appendChild(input(it.title, 'Row heading', function (v) { it.title = v; pushPreview(); }));
         wrap.appendChild(area(it.desc, 'What this row says…', function (v) { it.desc = v; pushPreview(); }));
-        var x = el('button', 'st-btn', 'Remove row ' + (ii + 1));
-        x.type = 'button';
-        x.addEventListener('click', function () { b.items.splice(ii, 1); draw(); });
-        wrap.appendChild(x);
         body.appendChild(wrap);
       });
       var addR = el('button', 'st-btn', 'Add a row');
       addR.type = 'button';
-      addR.addEventListener('click', function () { b.items.push({ asset: null, title: '', desc: '' }); draw(); });
+      addR.title = 'Sides alternate down the block. Stacks below 600px.';
+      addR.addEventListener('click', function () {
+        b.items.push({ asset: null, title: '', desc: '' }); draw();
+      });
       body.appendChild(addR);
-      body.appendChild(el('p', 'st-hint', 'Sides alternate. Stacks below 600px.'));
     }
 
     if (b.type === 'quote') {
@@ -1154,6 +1400,7 @@
   });
 
   $('p-tags').addEventListener('input', function () {
+    tagsTouched = true;
     project.tags = this.value.split(',')
       .map(function (t) { return t.trim(); })
       .filter(Boolean);
@@ -1316,7 +1563,28 @@
     try {
       dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
       setMode();
-    } catch (e) { /* dismissed */ }
+
+      /* The folder that gets picked by mistake is the one above or the
+         one below — Website, or V4/projects. Both look right in the
+         picker and neither works. The site folder is the one with a
+         projects/ inside it, so that is the thing to test, and it is
+         better to say so here than to fail later at Save. */
+      try {
+        await dirHandle.getDirectoryHandle('projects');
+      } catch (_) {
+        var w = $('st-mode');
+        w.dataset.ok = 'no';
+        w.textContent = 'no projects/ inside ' + dirHandle.name +
+                        ' — pick the V4 folder itself, not the one above or below it';
+      }
+    } catch (e) {
+      /* Dismissing the picker is not a failure. Anything else is, and
+         swallowing it left the button looking dead with no reason. */
+      if (e && e.name === 'AbortError') return;
+      var el = $('st-mode');
+      el.dataset.ok = 'no';
+      el.textContent = 'could not open that folder — ' + ((e && e.message) || e);
+    }
   });
 
   /* The shape an existing project.js already has, so what comes out
@@ -1354,6 +1622,17 @@
     /* The rest are left out entirely when empty rather than written as
        null — index.html tests for their presence, and an absent key and
        a null one are the same to it, but the file stays readable. */
+    /* Put back what was never edited. Only these two, and only when
+       the control that owns them was not touched — a blanket merge
+       would resurrect a field the user had deliberately cleared. */
+    if (opened) {
+      if (!tagsTouched && opened.overlayTags) out.overlayTags = opened.overlayTags;
+      if (!tlogoTouched) {
+        if (opened.turntableLogo)  out.turntableLogo  = opened.turntableLogo;
+        if (opened.turntableModel) out.turntableModel = opened.turntableModel;
+      }
+    }
+
     if (project.link)          out.link = project.link;
     if (project.linkBg)        out.linkBg = project.linkBg;
     if (project.cursorTooltip) out.cursorTooltip = project.cursorTooltip;
@@ -1400,6 +1679,19 @@
         var mine     = await projects.getDirectoryHandle(project.id, { create: true });
         await writeInto(mine, 'project.json', new Blob([json], { type: 'application/json' }));
 
+        /* The site reads project.js, not project.json — index.html loads
+           each one as a <script> that pushes onto window.__PROJECTS__, and
+           a fetch would race that. So the same object goes down twice: the
+           JSON is what this studio reopens, the JS is what the page draws.
+           Written together from one value, so the two cannot drift. */
+        await writeInto(mine, 'project.js', new Blob([
+          '/* Written by the studio. The page reads this file; the studio\n' +
+          '   reads project.json beside it. Both come from one Save — edit\n' +
+          '   in the studio rather than here. */\n' +
+          'window.__PROJECTS__ = window.__PROJECTS__ || {};\n' +
+          'window.__PROJECTS__[' + JSON.stringify(project.id) + '] = ' + json + ';\n'
+        ], { type: 'text/javascript' }));
+
         if (used.length) {
           var assetsDir = await mine.getDirectoryHandle('assets', { create: true });
           for (var i = 0; i < used.length; i++) {
@@ -1408,6 +1700,7 @@
           }
         }
         report = 'projects/' + project.id + '/project.json    written\n' +
+          'projects/' + project.id + '/project.js      written\n' +
           used.map(function (k) {
             return 'projects/' + project.id + '/assets/' + assets[k].name + '    written';
           }).join('\n');
@@ -1432,17 +1725,11 @@
        config, by hand, and this is the request to go and edit it. */
     if (project.hero) {
       var a = project.heroAsset && assets[project.heroAsset];
-      report += '
-
-HERO — wants an entry in hero/hero-config.js:
-' +
-        '  projectId: '' + (project.id || '') + ''
-' +
+      report += '\n\nHERO — wants an entry in hero/hero-config.js:\n' +
+        '  projectId: \'' + (project.id || '') + '\'\n' +
         '  ' + (a ? (a.kind === 'glb' ? 'model' : 'image') + ": '" + assetPath(project.heroAsset) + "'"
-                  : '(no file chosen — needs one)') + '
-' +
-        '  label: '' + (project.title || '') + ''
-' +
+                  : '(no file chosen — needs one)') + '\n' +
+        '  label: \'' + (project.title || '') + '\'\n' +
         '  x, y, scale: to be placed by eye';
     }
 
@@ -1466,20 +1753,33 @@ HERO — wants an entry in hero/hero-config.js:
 
   /* ── Opening one back up ─────────────────────────────────── */
   $('st-load').addEventListener('click', async function () {
-    if (!dirHandle) { alert('Choose the site folder first.'); return; }
     var name = prompt('Which project folder? (e.g. radiant)');
     if (!name) return;
+    var slug = slugify(name);
     try {
-      var projects = await dirHandle.getDirectoryHandle('projects');
-      var mine     = await projects.getDirectoryHandle(slugify(name));
-      var fh       = await mine.getFileHandle('project.json');
-      var text     = await (await fh.getFile()).text();
-      var data     = JSON.parse(text);
-      alert('Loaded ' + (data.title || name) + '. Media already on disk stays where it is; ' +
-            'blocks come back as they were saved.');
+      var data;
+      if (dirHandle) {
+        var projects = await dirHandle.getDirectoryHandle('projects');
+        var mine     = await projects.getDirectoryHandle(slug);
+        var fh       = await mine.getFileHandle('project.json');
+        data = JSON.parse(await (await fh.getFile()).text());
+      } else {
+        /* Reading asks nothing of the folder. This page is served out
+           of the site root, so a project is one fetch away — the
+           folder handle is what Save needs, not what Open needs, and
+           demanding it up front kept the whole tool behind a dialog
+           that has nothing to do with looking at a project. */
+        var res = await fetch('/projects/' + slug + '/project.json');
+        if (!res.ok) throw new Error('project.json — ' + res.status + ' ' + res.statusText);
+        data = await res.json();
+      }
       hydrate(data);
+      alert('Loaded ' + (data.title || slug) + '. Media already on disk stays where it is; ' +
+            'blocks come back as they were saved.' +
+            (dirHandle ? '' : '\n\nNo folder chosen, so Save will hand you a download ' +
+                              'rather than writing into the site.'));
     } catch (err) {
-      alert('Could not open that one: ' + err.message);
+      alert('Could not open ' + slug + ': ' + err.message);
     }
   });
 
@@ -1487,6 +1787,9 @@ HERO — wants an entry in hero/hero-config.js:
      already on disk is kept as a path rather than re-uploaded —
      the slot shows the filename and leaves the file alone. */
   function hydrate(data) {
+    opened = data;
+    tagsTouched = false;
+    tlogoTouched = false;
     project.id = data.id || '';
     project.title = data.title || '';
     project.year = data.year || '';
@@ -1542,14 +1845,23 @@ HERO — wants an entry in hero/hero-config.js:
       if (b.type === 'title') return { type: 'title', text: b.text || '' };
       if (b.type === 'text')  return { type: 'text', heading: b.heading || '', cols: b.cols || [b.text || ''] };
       if (b.type === 'media') return { type: 'media', heading: b.heading || '', asset: keyForPath(pathIn(b)),
-                                       ratio: b.ratio || '', fit: b.fit || 'cover', caption: b.caption || '' };
+                                       ratio: b.ratio || '', fit: b.fit || 'cover', width: b.width || '',
+                                       hoverPlay: !!b.hoverPlay, bg: b.bg || '',
+                                       caption: b.caption || '' };
       if (b.type === 'grid')  return { type: 'grid', heading: b.heading || '', cols: b.cols || 2,
+                                       ratio: b.ratio || (b.items && b.items[0] && b.items[0].ratio) || '',
+                                       fit: (b.items && b.items[0] && b.items[0].fit) || 'cover',
                                        items: (b.items || []).map(function (m) {
-                                         return { asset: keyForPath(pathIn(m)), caption: m.caption || '' }; }) };
+                                         return { asset: keyForPath(pathIn(m)), caption: m.caption || '',
+                                                  label: m.label || '',
+                                                  ratio: m.ratio || '', plain: !!m.plain,
+                                                  hoverPlay: !!m.hoverPlay, bg: m.bg || '' }; }) };
       if (b.type === 'rows')  return { type: 'rows', items: (b.items || []).map(function (m) {
                                          return { asset: keyForPath(pathIn(m)), title: m.title || '', desc: m.desc || '' }; }) };
       if (b.type === 'quote') return { type: 'quote', text: b.text || '', cite: b.cite || '' };
-      return null;
+      /* Everything else is kept rather than dropped. Opening a project
+         and saving it should never be a way to lose a block. */
+      return { type: '__kept', raw: b };
     }).filter(Boolean);
 
     draw();
@@ -1557,6 +1869,7 @@ HERO — wants an entry in hero/hero-config.js:
 
   setMode();
   draw();
+  offerRestore();
 })();
 </script>
 </body>

@@ -195,7 +195,11 @@
       ? '<h3 class="blk-head"><span class="blk-head-slash">/</span>' + esc(b.heading) + '</h3>'
       : '';
     var cls = 'blk blk-media' + (b.bleed ? ' blk--bleed' : '');
-    return '<section class="' + cls + '" aria-label="' + esc(b.heading || 'Media') + '">' +
+    /* `width` narrows the media inside the column and centres it —
+       '60%', '480px', whatever CSS takes. Without it the media fills
+       the column, which is the common case and stays the default. */
+    return '<section class="' + cls + '"' + style({ '--w': b.width || null }) +
+           ' aria-label="' + esc(b.heading || 'Media') + '">' +
            head + mediaWithCaption(b) + '</section>';
   }
 
@@ -518,7 +522,17 @@
     media:       media,
     enhance:     enhance,
     types:       Object.keys(REGISTRY),
-    legacyTypes: Object.keys(LEGACY)
+    legacyTypes: Object.keys(LEGACY),
+
+    /* The v1 → v2 translation on its own, without rendering. Converting
+       an old project.js into the project.json the studio reads is made
+       of exactly this, and doing it through the same table the renderer
+       uses is what stops a converted project from drifting from the one
+       still being drawn from project.js. A block already in v2, or of a
+       type with no translation, comes back untouched. */
+    toModern: function (b) {
+      return (b && b.type && LEGACY[b.type]) ? LEGACY[b.type](b) : b;
+    }
   };
 
   /* v1 call sites in index.html expect these two globals. Keeping
