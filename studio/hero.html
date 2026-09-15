@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Hero — place the objects</title>
+
+<!-- ══════════════════════════════════════════════════════════════
+     HERO PLACEMENT
+
+     The hero is a composition, not a list. Its numbers — x, y, scale,
+     where the hover label sits — are arrived at by eye, which is why
+     a form of number fields for them would be worse than editing the
+     file: at least in the file you refresh and look. So this is not a
+     form. It is the hero at its real size, with the objects draggable.
+
+     Real size matters. The stage here is 100vw × calc(100vh - 160px),
+     which is what .hero is in index.html, and each object is placed
+     with the same expression index.html uses:
+
+         left: calc(50% - 133.335px + x)
+         top:  calc(50% - 88.235px  + y)
+
+     So x and y are the offset of the object's centre from the hero's
+     centre, and dragging writes exactly the number the site reads.
+     Nothing is scaled down and converted back, because that is where
+     a placement tool usually starts lying.
+
+     Save writes hero/hero-config.js. What it cannot know is what an
+     object should be called or which project it opens, so those stay
+     as fields in the panel.
+   ══════════════════════════════════════════════════════════════ -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/site.css">
+
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+
+<style>
+  /* site.css hides the OS cursor for the site's own. This is a tool. */
+  *, *::before, *::after { cursor: auto !important; }
+  button, select, label { cursor: pointer !important; }
+  input, textarea { cursor: text !important; }
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    font-family: var(--font-sans);
+    color: var(--color-muted);
+    overflow-x: hidden;
+  }
+
+  /* The home page is long, so it always has a vertical scrollbar, and
+     that scrollbar takes ~15px off the width the hero centres within.
+     This page is one screen and would have none — which moved the
+     centre about 8px and put every object 8px off where it will sit.
+     Reserve the gutter so both pages centre in the same width. */
+  html { scrollbar-gutter: stable; overflow-y: scroll; }
+
+  /* ── The stage ───────────────────────────────────────────────
+     There is no look-alike here. The page loads site.css and builds
+     .hero > .hero-cards > .ring-card — the site's own markup, its own
+     classes — so the sizes and positions are not matched by hand,
+     they are the same rules doing the same thing. The only CSS below
+     is the two handles the editor adds on top.
+
+     An earlier version drew its own boxes and filters and came out
+     close but not identical, which for a placement tool is the same
+     as wrong. */
+
+  .hero { cursor: default !important; }
+
+  /* The settled state, immediately.
+
+     site.css pre-hides the objects for the entrance — .hero-cards
+     .ring-card is opacity:0, scale(.7) — and index.html releases them
+     1.7s later by adding .is-entered. This page adds that class on
+     load and cancels the transitions, so the objects sit at full size
+     and full opacity from the first frame.
+
+     That is the state worth composing against: the hero as it is once
+     it has settled, not the 70% it passes through on the way. Without
+     this everything here was drawn at 0.7 and invisible with it. */
+  .hero-cards .ring-card,
+  .hero-labels,
+  .hero-headline { transition: none !important; animation: none !important; }
+
+  /* Centre lines, so "centred" is visible rather than checked after. */
+  .hx-cross {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 6;
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  .hero-cards.dragging .hx-cross { opacity: 1; }
+  .hx-cross::before, .hx-cross::after { content: ""; position: absolute; background: var(--color-muted-50); }
+  .hx-cross::before { left: 50%; top: 0; bottom: 0; width: 1px; }
+  .hx-cross::after  { top: 50%; left: 0; right: 0; height: 1px; }
+
+  /* The grab surface covers the card's real box, which is what the
+     x/y expression positions — so what you push is what moves. */
+  .hx-grab {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    cursor: grab !important;
+    border: 1px dashed transparent;
+    transition: border-color .15s ease;
+  }
+  .ring-card:hover .hx-grab { border-color: var(--color-muted-50); }
+  .ring-card.sel .hx-grab   { border-color: var(--color-ink); }
+  .hx-grab:active { cursor: grabbing !important; }
+
+  .hx-size {
+    position: absolute;
+    right: -7px; bottom: -7px;
+    width: 14px; height: 14px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-ink);
+    z-index: 6;
+    cursor: nwse-resize !important;
+    display: none;
+  }
+  .ring-card.sel .hx-size { display: block; }
+
+  /* ── The panel ───────────────────────────────────────────────*/
+  .hx-panel {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 300px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: var(--color-surface);
+    border: 1px solid var(--color-muted-15);
+    padding: 16px;
+    z-index: 50;
+    font-size: 13px;
+  }
+  .hx-panel h2 {
+    font-family: var(--font-serif);
+    font-size: 17px;
+    color: var(--color-ink);
+    margin: 0 0 12px;
+  }
+  .hx-panel h2 i { color: var(--color-muted-50); font-style: normal; margin-inline-end: 6px; }
+
+  /* Radiant sits at x +499.67, which on a 1440 screen puts it under
+     this panel. An object you cannot see is an object you cannot
+     place, so the panel folds away to a tab and gives the composition
+     back the full width. */
+  .hx-fold {
+    float: right;
+    width: 22px; height: 22px;
+    border: 1px solid var(--color-muted-15);
+    background: transparent;
+    color: var(--color-muted);
+    font-size: 15px; line-height: 1;
+    padding: 0;
+  }
+  .hx-fold:hover { color: var(--color-ink); border-color: var(--color-ink); }
+  body.folded .hx-panel > *:not(h2) { display: none; }
+  body.folded .hx-panel { width: auto; padding: 10px 12px; }
+  body.folded .hx-panel h2 { margin: 0; }
+  body.folded .hx-fold { transform: scaleX(-1); margin-inline-start: 8px; }
+
+  .hx-list { margin-bottom: 12px; }
+  .hx-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 9px;
+    border: 1px solid var(--color-muted-15);
+    margin-bottom: 6px;
+  }
+  .hx-row.on { border-color: var(--color-ink); }
+  .hx-row span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink); }
+  .hx-row small { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--color-muted-50); flex: none; }
+
+  .hx-f { margin-bottom: 10px; }
+  .hx-f label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--color-muted-50);
+    margin-bottom: 4px;
+  }
+  .hx-f input, .hx-f select {
+    width: 100%;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--color-ink);
+    background: var(--color-bg);
+    border: 1px solid var(--color-muted-15);
+    padding: 7px 9px;
+    outline: none;
+  }
+  .hx-two { display: flex; gap: 8px; }
+  .hx-two > * { flex: 1 1 0; min-width: 0; }
+
+  .hx-btn {
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    padding: 7px 12px;
+    border: 1px solid var(--color-muted-15);
+    background: transparent;
+    color: var(--color-muted);
+    transition: color .15s ease, border-color .15s ease;
+  }
+  .hx-btn:hover { color: var(--color-ink); border-color: var(--color-ink); }
+  .hx-btn--go { background: var(--color-ink); border-color: var(--color-ink); color: var(--color-bg); width: 100%; }
+  .hx-btn--wide { width: 100%; }
+
+  .hx-drop {
+    border: 1px dashed var(--color-muted-50);
+    padding: 14px;
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--color-muted-50);
+    margin-bottom: 12px;
+  }
+  .hx-drop:hover, .hx-drop.over { border-color: var(--color-ink); color: var(--color-ink); }
+
+  .hx-rule { height: 1px; background: var(--color-muted-15); margin: 14px 0; }
+  .hx-note { font-size: 11px; font-style: italic; color: var(--color-muted-50); line-height: 1.45; margin: 6px 0 0; }
+  .hx-xy {
+    font-size: 11.5px;
+    color: var(--color-ink);
+    padding: 6px 9px;
+    border: 1px solid var(--color-muted-15);
+    margin-bottom: 10px;
+  }
+
+  .hx-out {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(38,37,30,.4); backdrop-filter: blur(6px);
+  }
+  .hx-out[hidden] { display: none; }
+  .hx-out-panel {
+    width: 720px; max-width: calc(100vw - 40px); max-height: calc(100vh - 80px);
+    display: flex; flex-direction: column;
+    background: var(--color-surface); border: 1px solid var(--color-muted-15);
+  }
+  .hx-out-head { display: flex; gap: 10px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--color-muted-15); }
+  .hx-out-head h3 { font-family: var(--font-serif); font-size: 19px; color: var(--color-ink); margin: 0; flex: 1 1 auto; }
+  .hx-out pre {
+    margin: 0; padding: 18px; overflow: auto;
+    font-size: 11.5px; line-height: 1.55; color: var(--color-ink);
+    white-space: pre-wrap; word-break: break-word;
+  }
+</style>
+</head>
+<body>
+
+<!-- The hero's own markup, straight out of index.html. The headline
+     carries real text rather than the site's data-text trick, because
+     the entrance animation that reveals it is not loaded here and the
+     point of it being present is to compose against. -->
+<section class="hero">
+  <div class="hero-cards" id="hx-cards">
+    <div class="hx-cross"></div>
+  </div>
+  <div class="hero-text">
+    <!-- .ready is what site.css waits for; without it the headline is
+           opacity:0 and visibility:hidden, which is how it went missing. -->
+      <h1 class="hero-headline ready">Welcome to my exhibition</h1>
+    <div class="hero-labels">
+      <span>Selected works</span>
+      <span>creative explorations</span>
+    </div>
+  </div>
+</section>
+
+<div class="hx-panel">
+  <h2><i>/</i>Hero<button class="hx-fold" type="button" id="hx-fold" title="Hide the panel">&rsaquo;</button></h2>
+
+  <div class="hx-drop" id="hx-drop">Drop a file, or click<br><small>png · svg · glb · gltf</small></div>
+  <input type="file" id="hx-file" accept="image/*,.glb,.gltf" hidden>
+
+  <div class="hx-list" id="hx-list"></div>
+
+  <div id="hx-edit" hidden>
+    <div class="hx-rule"></div>
+    <div class="hx-xy" id="hx-xy">—</div>
+
+    <div class="hx-f">
+      <label for="hx-label">Label</label>
+      <input type="text" id="hx-label" placeholder="SHLTR">
+    </div>
+    <div class="hx-f">
+      <label for="hx-pid">Opens this project</label>
+      <input type="text" id="hx-pid" placeholder="shltr">
+    </div>
+    <div class="hx-two">
+      <div class="hx-f">
+        <label for="hx-tip">Hover says</label>
+        <input type="text" id="hx-tip" placeholder="See More">
+      </div>
+      <div class="hx-f">
+        <label for="hx-scale">Size</label>
+        <input type="text" id="hx-scale" placeholder="1">
+      </div>
+    </div>
+    <button class="hx-btn hx-btn--wide" type="button" id="hx-del">Remove this one</button>
+    <p class="hx-note">Drag to place. Drag the corner to size. Arrow keys nudge by 1,
+      with Shift by 10.</p>
+  </div>
+
+  <div class="hx-rule"></div>
+  <button class="hx-btn hx-btn--wide" type="button" id="hx-folder">Choose site folder</button>
+  <div style="height:8px"></div>
+  <button class="hx-btn hx-btn--go" type="button" id="hx-save">Save hero-config.js</button>
+  <p class="hx-note" id="hx-mode">Without a folder it shows you the config to paste.</p>
+</div>
+
+<div class="hx-out" id="hx-out" hidden>
+  <div class="hx-out-panel">
+    <div class="hx-out-head">
+      <h3 id="hx-out-title">hero/hero-config.js</h3>
+      <button class="hx-btn" type="button" id="hx-copy">Copy</button>
+      <button class="hx-btn" type="button" id="hx-close">Close</button>
+    </div>
+    <pre id="hx-out-body"></pre>
+  </div>
+</div>
+
+<!-- The site's own sphere, so the centred wireframe here is the one
+     that ships rather than a circle standing in for it. -->
+<script src="/hero/hero-sphere.js"></script>
+<script src="/hero/hero-config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* The two halves of the .ring-card box. index.html positions a card
+     with `calc(50% - 133.335px + x)`, so these are what turn a dragged
+     pixel back into the x the site reads. */
+  var HALF_W = 133.335, HALF_H = 88.235;
+
+  var cards = $('hx-cards');
+  var stage = cards;
+  var items = [];        // { entry, el, blob }
+  var sel   = -1;
+  var dirHandle = null;
+
+  var CAN_WRITE = typeof window.showDirectoryPicker === 'function' && window.isSecureContext;
+  if (!CAN_WRITE) {
+    $('hx-folder').disabled = true;
+    $('hx-mode').textContent = 'Open this over localhost to write the file directly.';
+  }
+
+  /* ── Build one object ───────────────────────────────────────
+     The site's own markup, node for node. Every attribute on the
+     model-viewer is copied from index.html — min/max-field-of-view
+     42deg and camera-orbit "0deg 78deg 105%" in particular, because
+     those are what decide how large a model reads inside its box.
+     Guessing them was why an earlier version came out the wrong size. */
+
+  function rootPath(v) {
+    var t = String(v || '');
+    if (!t) return '';
+    return /^(https?:|data:|blob:|\/)/i.test(t) ? t : '/' + t.replace(/^\.\//, '');
+  }
+
+  function visual(entry, blobUrl) {
+    if (entry.emoji) {
+      var wrap = document.createElement('div');
+      wrap.className = 'ring-card-emoji';
+      if (entry.scale) wrap.style.fontSize = Math.round(116 * entry.scale) + 'px';
+      var glyph = document.createElement('span');
+      glyph.className = 'glyph';
+      glyph.textContent = entry.emoji;
+      if (entry.sway === false) glyph.style.animation = 'none';
+      wrap.appendChild(glyph);
+      return wrap;
+    }
+
+    if (entry.sphere) {
+      var cv = document.createElement('canvas');
+      cv.className = 'ring-card-sphere';
+      /* Drawn by the site's own script, with the entry's own options.
+         A stand-in ring was close enough to place against and wrong
+         enough to mislead about how much room it takes. */
+      requestAnimationFrame(function () {
+        if (typeof window.initHeroSphere === 'function') {
+          window.initHeroSphere(cv, entry.sphereOpts || {});
+        }
+      });
+      return cv;
+    }
+
+    var src = rootPath(blobUrl || entry.model || entry.image);
+
+    if (entry.model) {
+      var m = document.createElement('model-viewer');
+      m.className = 'ring-card-model';
+      m.setAttribute('src', src);
+      m.setAttribute('interaction-prompt', 'none');
+      m.setAttribute('shadow-intensity', '0');
+      m.setAttribute('shadow-softness', '0');
+      m.setAttribute('exposure', '1');
+      m.setAttribute('environment-image', 'neutral');
+      m.setAttribute('min-field-of-view', '42deg');
+      m.setAttribute('max-field-of-view', '42deg');
+      m.setAttribute('camera-orbit', '0deg 78deg 105%');
+      /* index.html turns every .ring-card-model on a shared clock —
+         auto-rotate at 16deg/s, no delay. Without it a model stands
+         at its rest angle here and at some other angle on the site,
+         which is the sort of difference that makes a placement look
+         right in the tool and wrong once it ships. */
+      m.setAttribute('auto-rotate', '');
+      m.setAttribute('auto-rotate-delay', '0');
+      m.setAttribute('rotation-per-second', '16deg');
+      m.style.backgroundColor = 'transparent';
+      return m;
+    }
+
+    var img = document.createElement('img');
+    img.className = 'ring-card-model';
+    img.src = src;
+    img.alt = '';
+    img.draggable = false;
+    return img;
+  }
+
+  function build(entry, blobUrl) {
+    var card = document.createElement('div');
+    card.className = 'ring-card';
+
+    var hit = document.createElement('div');
+    hit.className = 'ring-card-hit';
+    hit.setAttribute('aria-hidden', 'true');
+    if (entry.hit) {
+      hit.style.width  = entry.hit.w + 'px';
+      hit.style.height = entry.hit.h + 'px';
+      hit.style.left = 'calc(50% - ' + (entry.hit.w / 2) + 'px)';
+      hit.style.top  = 'calc(50% - ' + (entry.hit.h / 2) + 'px)';
+    }
+
+    var mask = document.createElement('div');
+    mask.className = 'ring-card-mask';
+    var st = document.createElement('div');
+    st.className = 'ring-card-stage';
+    if (entry.scale && !entry.emoji) st.style.transform = 'scale(' + (1.6 * entry.scale) + ')';
+    st.appendChild(visual(entry, blobUrl));
+    mask.appendChild(st);
+
+    var tag = document.createElement('div');
+    tag.className = 'ring-tag';
+    if (entry.tag) {
+      if (entry.tag.left != null) tag.style.left = entry.tag.left;
+      if (entry.tag.top  != null) tag.style.top  = entry.tag.top;
+    }
+    var slash = document.createElement('span');
+    slash.className = 'ring-tag-slash';
+    slash.textContent = '/';
+    var nm = document.createElement('span');
+    nm.className = 'ring-tag-name';
+    nm.textContent = entry.label || entry.projectId || 'untitled';
+    tag.appendChild(slash); tag.appendChild(nm);
+
+    /* The editor's own two, on top of the site's structure. */
+    var grab = document.createElement('div');
+    grab.className = 'hx-grab';
+    var size = document.createElement('div');
+    size.className = 'hx-size';
+
+    card.appendChild(hit);
+    card.appendChild(mask);
+    card.appendChild(tag);
+    card.appendChild(grab);
+    card.appendChild(size);
+    cards.appendChild(card);
+
+    var rec = { entry: entry, el: card, stage: st, name: nm, blob: blobUrl || null };
+    items.push(rec);
+    place(rec);
+    wire(rec);
+    return rec;
+  }
+
+  /* The one expression that has to match index.html. */
+  function place(rec) {
+    var x = rec.entry.x || 0, y = rec.entry.y || 0;
+    rec.el.style.left = 'calc(50% - ' + HALF_W + 'px + ' + x + 'px)';
+    rec.el.style.top  = 'calc(50% - ' + HALF_H + 'px + ' + y + 'px)';
+  }
+
+  /* An entry written as position:'left'|'right' has no x/y. The site
+     turns those into ±499.67 and +0.24, so they are converted on the
+     way in — otherwise dragging one would look like it jumped. */
+  function normalise(entry) {
+    if (typeof entry.x === 'number' || typeof entry.y === 'number') return entry;
+    if (entry.position === 'left')  { entry.x = -499.67; entry.y = 0.24; delete entry.position; }
+    if (entry.position === 'right') { entry.x =  499.67; entry.y = 0.24; delete entry.position; }
+    return entry;
+  }
+
+  /* ── Drag and resize ──────────────────────────────────────── */
+  function wire(rec) {
+    var grab = rec.el.querySelector('.hx-grab');
+    var size = rec.el.querySelector('.hx-size');
+
+    grab.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      select(items.indexOf(rec));
+      grab.setPointerCapture(e.pointerId);
+      stage.classList.add('dragging');
+      var sx = e.clientX, sy = e.clientY;
+      var ox = rec.entry.x || 0, oy = rec.entry.y || 0;
+
+      function move(ev) {
+        rec.entry.x = Math.round(ox + (ev.clientX - sx));
+        rec.entry.y = Math.round(oy + (ev.clientY - sy));
+        place(rec); readout();
+      }
+      function up() {
+        stage.classList.remove('dragging');
+        grab.removeEventListener('pointermove', move);
+        grab.removeEventListener('pointerup', up);
+      }
+      grab.addEventListener('pointermove', move);
+      grab.addEventListener('pointerup', up);
+    });
+
+    /* Sized from the centre outward, so an object grows where it sits
+       rather than drifting toward the corner being pulled. */
+    size.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      select(items.indexOf(rec));
+      size.setPointerCapture(e.pointerId);
+      var sx = e.clientX;
+      var base = rec.entry.scale || 1;
+
+      function move(ev) {
+        var s = Math.max(0.1, Math.round((base + (ev.clientX - sx) / 200) * 100) / 100);
+        rec.entry.scale = s;
+        applyScale(rec);
+        readout();
+      }
+      function up() {
+        size.removeEventListener('pointermove', move);
+        size.removeEventListener('pointerup', up);
+      }
+      size.addEventListener('pointermove', move);
+      size.addEventListener('pointerup', up);
+    });
+  }
+
+  function applyScale(rec) {
+    var s = rec.entry.scale || 1;
+    if (rec.entry.emoji) {
+      var g = rec.stage.querySelector('.ring-card-emoji');
+      if (g) g.style.fontSize = Math.round(116 * s) + 'px';
+    } else {
+      rec.stage.style.transform = 'scale(' + (1.6 * s) + ')';
+    }
+    if ($('hx-scale')) $('hx-scale').value = s;
+  }
+
+  /* Arrow keys, because the last few pixels are never a drag. */
+  document.addEventListener('keydown', function (e) {
+    if (sel < 0) return;
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+    var d = { ArrowLeft: [-1,0], ArrowRight: [1,0], ArrowUp: [0,-1], ArrowDown: [0,1] }[e.key];
+    if (!d) return;
+    e.preventDefault();
+    var step = e.shiftKey ? 10 : 1;
+    var rec = items[sel];
+    rec.entry.x = (rec.entry.x || 0) + d[0] * step;
+    rec.entry.y = (rec.entry.y || 0) + d[1] * step;
+    place(rec); readout();
+  });
+
+  /* ── Selection + panel ────────────────────────────────────── */
+  function select(i) {
+    sel = i;
+    items.forEach(function (r, n) { r.el.classList.toggle('sel', n === i); });
+    renderList();
+    var on = i >= 0 && items[i];
+    $('hx-edit').hidden = !on;
+    if (!on) return;
+    var en = items[i].entry;
+    $('hx-label').value = en.label || '';
+    $('hx-pid').value   = en.projectId || '';
+    $('hx-tip').value   = en.tooltip || '';
+    $('hx-scale').value = en.scale || '';
+    readout();
+  }
+
+  function readout() {
+    if (sel < 0) return;
+    var en = items[sel].entry;
+    $('hx-xy').textContent = 'x ' + (en.x || 0) + '   y ' + (en.y || 0) +
+                             (en.scale ? '   scale ' + en.scale : '');
+  }
+
+  function renderList() {
+    var host = $('hx-list');
+    host.innerHTML = '';
+    items.forEach(function (r, i) {
+      var row = document.createElement('div');
+      row.className = 'hx-row' + (i === sel ? ' on' : '');
+      var kind = r.entry.emoji ? 'emoji' : r.entry.sphere ? 'sphere'
+               : r.entry.model ? 'model' : 'image';
+      var nm = document.createElement('span');
+      nm.textContent = r.entry.label || r.entry.projectId || 'untitled';
+      var kd = document.createElement('small');
+      kd.textContent = kind;
+      row.appendChild(kd); row.appendChild(nm);
+      row.addEventListener('click', function () { select(i); });
+      host.appendChild(row);
+    });
+  }
+
+  ['label', 'pid', 'tip'].forEach(function (k) {
+    var field = { label: 'label', pid: 'projectId', tip: 'tooltip' }[k];
+    $('hx-' + k).addEventListener('input', function () {
+      if (sel < 0) return;
+      items[sel].entry[field] = this.value.trim();
+      items[sel].name.textContent = items[sel].entry.label || items[sel].entry.projectId || 'untitled';
+      renderList();
+    });
+  });
+  $('hx-scale').addEventListener('input', function () {
+    if (sel < 0) return;
+    var v = parseFloat(this.value);
+    items[sel].entry.scale = isFinite(v) && v > 0 ? v : undefined;
+    applyScale(items[sel]); readout();
+  });
+  $('hx-del').addEventListener('click', function () {
+    if (sel < 0) return;
+    items[sel].el.remove();
+    items.splice(sel, 1);
+    select(-1);
+  });
+
+  /* ── Files in ─────────────────────────────────────────────── */
+  function addFile(file) {
+    if (!file) return;
+    var url = URL.createObjectURL(file);
+    var isModel = /\.(glb|gltf)$/i.test(file.name);
+    var entry = {
+      projectId: '',
+      label: file.name.replace(/\.[^.]+$/, ''),
+      tooltip: 'See More',
+      x: 0, y: 0
+    };
+    /* The path it will have once the file is in the repo. The studio
+       writes project assets to projects/<slug>/assets/, so a hero
+       object dropped here is named the same way and the two agree. */
+    entry[isModel ? 'model' : 'image'] = 'hero/assets/' + file.name.toLowerCase().replace(/[^a-z0-9.]+/g, '-');
+    var rec = build(entry, url);
+    rec.file = file;
+    select(items.length - 1);
+  }
+
+  $('hx-drop').addEventListener('click', function () { $('hx-file').click(); });
+  $('hx-file').addEventListener('change', function () { addFile(this.files[0]); this.value = ''; });
+  ['dragover','dragenter'].forEach(function (t) {
+    $('hx-drop').addEventListener(t, function (e) { e.preventDefault(); this.classList.add('over'); });
+  });
+  $('hx-drop').addEventListener('dragleave', function () { this.classList.remove('over'); });
+  $('hx-drop').addEventListener('drop', function (e) {
+    e.preventDefault(); this.classList.remove('over');
+    addFile(e.dataTransfer.files && e.dataTransfer.files[0]);
+  });
+  window.addEventListener('dragover', function (e) { e.preventDefault(); });
+  window.addEventListener('drop', function (e) { e.preventDefault(); });
+
+  stage.addEventListener('pointerdown', function (e) {
+    if (e.target === stage || e.target.closest('.hx-head')) select(-1);
+  });
+
+  /* ── Out ──────────────────────────────────────────────────── */
+  function serialise() {
+    var lines = items.map(function (r) {
+      var e = r.entry, parts = [];
+      if (e.projectId) parts.push("      projectId: '" + e.projectId + "'");
+      if (e.model)  parts.push("      model: '" + e.model + "'");
+      if (e.image)  parts.push("      image: '" + e.image + "'");
+      if (e.emoji)  parts.push("      emoji: '" + e.emoji + "'");
+      if (e.sphere) parts.push("      sphere: true");
+      if (e.sway)   parts.push("      sway: true");
+      if (e.tooltip) parts.push("      tooltip: '" + e.tooltip + "'");
+      if (e.label)   parts.push("      label: '" + e.label + "'");
+      parts.push("      x: " + (e.x || 0) + ", y: " + (e.y || 0));
+      if (e.scale) parts.push("      scale: " + e.scale);
+      if (e.tag)   parts.push("      tag: { left: '" + e.tag.left + "', top: '" + e.tag.top + "' }");
+      if (e.hit)   parts.push("      hit: { w: " + e.hit.w + ", h: " + e.hit.h + " }");
+      if (e.sphereOpts) parts.push("      sphereOpts: " + JSON.stringify(e.sphereOpts).replace(/"/g, '').replace(/,/g, ', ').replace(/:/g, ': '));
+      return "    {\n" + parts.join(',\n') + "\n    }";
+    });
+
+    return "/* ══════════════════════════════════════════════════════════\n" +
+      "   HERO CONFIG\n" +
+      "   Written by /studio/hero.html. x and y are the offset of an\n" +
+      "   object's centre from the hero's centre, in pixels; scale\n" +
+      "   multiplies the stage (emoji: the glyph).\n" +
+      "\n" +
+      "   Safe to edit by hand — the placement page reads this file back.\n" +
+      "═════════════════════════════════════════════════════════════ */\n\n" +
+      "window.HERO_CONFIG = {\n  cards: [\n" + lines.join(',\n') + "\n  ]\n};\n";
+  }
+
+  $('hx-folder').addEventListener('click', async function () {
+    try {
+      dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      $('hx-mode').textContent = 'Writing into ' + dirHandle.name + '/hero/';
+    } catch (e) { /* dismissed */ }
+  });
+
+  async function write(dir, name, blob) {
+    var fh = await dir.getFileHandle(name, { create: true });
+    var w = await fh.createWritable();
+    await w.write(blob);
+    await w.close();
+  }
+
+  $('hx-save').addEventListener('click', async function () {
+    var src = serialise();
+    var title = 'hero/hero-config.js';
+
+    if (dirHandle) {
+      try {
+        var hero = await dirHandle.getDirectoryHandle('hero', { create: true });
+        await write(hero, 'hero-config.js', new Blob([src], { type: 'text/javascript' }));
+
+        /* Any file dropped in this session has to land beside it, or
+           the config would point at something that is not there. */
+        var withFiles = items.filter(function (r) { return r.file; });
+        if (withFiles.length) {
+          var ad = await hero.getDirectoryHandle('assets', { create: true });
+          for (var i = 0; i < withFiles.length; i++) {
+            var r = withFiles[i];
+            await write(ad, (r.entry.model || r.entry.image).split('/').pop(), r.file);
+          }
+        }
+        title = 'Written — hero/hero-config.js' +
+                (withFiles.length ? ' and ' + withFiles.length + ' file(s) into hero/assets/' : '');
+      } catch (err) {
+        title = 'Could not write: ' + err.message;
+      }
+    }
+
+    $('hx-out-title').textContent = title;
+    $('hx-out-body').textContent = src;
+    $('hx-out').hidden = false;
+  });
+
+  $('hx-fold').addEventListener('click', function () {
+    document.body.classList.toggle('folded');
+  });
+
+  $('hx-copy').addEventListener('click', function () {
+    navigator.clipboard.writeText($('hx-out-body').textContent).then(function () {
+      $('hx-copy').textContent = 'Copied';
+      setTimeout(function () { $('hx-copy').textContent = 'Copy'; }, 1500);
+    });
+  });
+  $('hx-close').addEventListener('click', function () { $('hx-out').hidden = true; });
+
+  /* ── Start from what is live ──────────────────────────────── */
+  /* Settle the hero before anything is drawn into it. */
+  cards.classList.add('is-entered');
+  var lab = document.querySelector('.hero-labels');
+  if (lab) lab.classList.add('is-entered');
+
+  var live = (window.HERO_CONFIG && window.HERO_CONFIG.cards) || [];
+  live.forEach(function (e) { build(normalise(Object.assign({}, e))); });
+  renderList();
+  select(-1);
+})();
+</script>
+</body>
+</html>

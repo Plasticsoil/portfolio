@@ -19,10 +19,10 @@ window.PROJECTS_ORDER = [
   // ── Hidden until built ─────────────────────────────────────────
   // Re-add a slug below to make that project appear on the home grid.
   // 'globe',
+  // 'cinnabun',   // built and reviewed locally; not published yet
   // 'sourcix',
   // 'achalta',
   // 'h1',
-  // 'cinnabun',
   // 'neon',
   // '3d-type-system',
   // 'sculptural-calligraphy',

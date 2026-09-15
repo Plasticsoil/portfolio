@@ -1,3 +1,18 @@
 # Clean short links → CV (the file lives at /contact/ with spaces in its name)
 /cv       /contact/Yam%20Livnat%20resume.pdf   302
 /resume   /contact/Yam%20Livnat%20resume.pdf   302
+
+# The studio is a local authoring tool, not a page. It is in the repo so
+# it is versioned alongside the blocks it builds against, which means the
+# deploy carries it too — so it is closed at the edge. Nothing there is
+# secret and it cannot reach anyone's disk over the network, but a
+# CMS-shaped page on a portfolio is an invitation to go poking.
+#
+# Sent home rather than 404'd on purpose. There is a 404 page now, but
+# it announces that a page is missing — and nothing is missing here, the
+# studio simply is not for the web. Home is the honest answer.
+#
+# _redirects is read by the deploy, never by a local server, so the
+# studio keeps working on localhost either way.
+/studio        /   301
+/studio/*      /   301
