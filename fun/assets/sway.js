@@ -36,7 +36,7 @@
    Settled, from the lab (September 2026) — everything below is decided:
      motion   cubic-bezier(0.51, 0, 0.33, 1.01) — a slow leave, a quick
               middle, a hair of overshoot at the edge
-     timing   1300 ms a slide, 380 ms standing at each end, 112 ms
+     timing   1935 ms a slide, 565 ms standing at each end, 112 ms
               between one letter and the next (scaled down past 13 letters)
      colour   lime · pink · orange · yellow, each taking a turn as the
               background; the sticker one colour, the copies solid steps
@@ -62,15 +62,15 @@
               and every letter behind it is that same head a moment
               earlier — so the tail is always chasing the head, and the
               word strings out and gathers up as the head pulls away and
-              eases. Six surges to a round of 16 s, on Sway's own curve
+              eases. Six surges to a round of 22.3 s, on Sway's own curve
      spread   the letters take the whole ring, packed and spread alike:
               the chase is in the pace, not in the width
-     copies   seven, 435 ms apart, each stepping 11% inside the ring the
+     copies   six, 120 ms apart, each stepping 11% inside the ring the
               last one was on, turned 61° back round it and drawn 7%
               smaller — which is what makes the flower
      thread   none: the copies are the drawing
      colour   the pink ground, orange sticker, the copies stepping from
-              the lime to the yellow
+              the yellow to the lime
      word     Flower power
      type     as Sway: Switzer 500 slate on Collection 01's letter-cut
               sticker, the grain, 12 fps
@@ -81,13 +81,57 @@
               pink and the orange
      grounds  Flower on the pink, Sway on the lime, Volume on the orange;
               each one's sticker and gradient follow from that
-     words    Flower power · Make it sway · Grow slowly
-     thread   one weight for every thread the collection draws — 0.0675 of
-              a row — and Flower bare, its copies being the drawing
-     copies   each card keeps its own: six 120 ms apart, seven 435 apart,
-              four 205 apart. They read differently on each card
-     export   whole rounds at the speed the site runs them: Sway 6.72 s,
-              Flower 16 s, Volume 4.1 s
+     words    Flower power · all the sway · Grow slowly
+     thread   1.4× the house weight — 0.0675 of a row — on every thread the
+              collection draws, and Flower bare, its copies being the
+              drawing. A stem is not a thread: it is measured against the
+              letter it holds up, 21% of the narrowest letter in the word,
+              and it is never allowed past the width of that letter
+     copies   six, 120 ms apart, on all three
+     margin   each card names the edge it keeps clear — Flower 15%, Sway 12%,
+              Volume 22% — and the drawing fills the square inside it,
+              measured over a whole loop so a long word cannot spill and a
+              short one cannot sit small. A margin is not a scale: a letter
+              is the size the card made it whatever the margin says, and so
+              are the sticker and the thread. What gives is the room
+              between things — the ring's radius, the column's travel, how
+              far the plant spreads
+     letter   the say each card gets over its own letter once it knows the
+              room it has — Flower 96%, Sway 108%, Volume 76%. It moves the
+              letter alone: the row, the ring and the climb are already
+              decided, so a smaller letter is more air between letters
+              rather than a smaller drawing
+     round    one whole loop: Flower 22.3 s, Sway 5 s (two passes), Volume
+              3.4 s
+     more     what each card does when it is given more than a line. Two
+              things give, and both give gradually, against how full the
+              card is — nothing under twelve letters, everything by forty,
+              so a card travels between a word and a sentence rather than
+              stepping. The copies come down, six to two, since they are
+              what fills the room between letters; and the margin comes in
+              to six per cent, since a word can afford an edge and a
+              sentence needs the frame. The collection's own three are
+              under twelve letters and nothing here touches them.
+                Then the layout gives, before the letter does, because a
+              letter too small to read is not this collection whatever
+              else is right about it.
+                Sway takes another column rather than shorter rows — a row
+              under 72 px is a column split instead
+                Flower opens a ring for every word, always, and never puts
+              two words on one ring. What adapts is the rings: they step in
+              by a sticker and a bit while there is room for it, close up
+              to a sticker apart when there are more of them, and overlap
+              rather than let the letters go to nothing. The innermost is
+              never smaller than the word that has to stand round it
+                Volume opens a row for every word, the same way, and the
+              rows adapt: each one is as uneven as the room it has — the
+              step down to the row behind, less a letter, measured in the
+              frame after the margin has pulled them together — so two
+              rows are as wild as they like and six flatten their tiers
+              instead of piling into each other. Only when a flat row still
+              cannot hold a letter does the letter itself come down
+     export   whole rounds at the speed the site runs them, never under
+              four seconds: Sway 5 s, Flower 22.3 s, Volume 6.8 s
 
    Effect contract (studio / embed):  mount(stage, { word, palette, seed }) → { stop() }
    Export contract:                   scene({ word, palette, seed, grain… }) → { draw(ctx, size, frame, total), n, grain } */
@@ -133,6 +177,17 @@ const SHAPE = "letter";         // the sticker under the letter: "letter" (Colle
                                 // the letter's own shape), "capsule", "chamfer" or "none"
 const LETTER_W = 0.8;           // "letter": the glyph's size inside its sticker
 const THREAD = 0.0675;          // every thread the collection draws, as a share of a row
+const ROW_CLEAR = 0.82;         // a plant's rows leave each other this much of the gap
+const RING_MIN = 0.9;           // the innermost ring is still this much of a sticker across…
+const RING_TIGHT = 1;           // … and no two rings come closer than a sticker…
+const RING_PACK = 0.55;         // … unless there are so many that they have to overlap
+const RING_COMFY = 130;         // a letter this tall is comfortable; under it the rings close up
+const CROWD_FROM = 12;          // letters a card carries before it starts giving room back…
+const CROWD_FULL = 40;          // … and where it has given everything it has
+const COPY_FLOOR = 2;           // copies a crowded card keeps whatever happens
+const MARGIN_FLOOR = 6;         // … and the edge it still keeps clear
+const COMFY_H = 72;             // a row this tall still reads: a column whose rows
+                                // come under it spills into another column instead
 const TILE = 0.84;              // a sticker's height as a share of its row, so the rows keep air
 const TILE_W = 1.42;            // … and its width as a share of its own height
 const TILE_FONT = 0.52;         // … and the letter's size inside it
@@ -172,7 +227,7 @@ const VOL_ARCH = 40;            // how much higher the middle of a row stands th
 const VOL_JITTER = 11;          // … and how far each letter wanders off that, as a share of the
                                 //   front row's reach, so a low row is as uneven as a tall one
 const VOL_SIZE = 138;           // the letters, as a share of the size the rows can carry
-const VOL_STEM = 100;           // the stems, at that same weight…
+const VOL_STEM = 16;        // a stem, as a share of the narrowest letter in the word
 const VOL_LEAN = 100;           // … and how far they lean in to meet in the middle on the way down
 const VOL_INSET = 14;           // every row behind draws in this much from the sides
 const VOL_EASE = "sway";        // the curve a letter rises and sinks on
@@ -191,7 +246,8 @@ const COLOUR = "spectrum";      // how the palette is spent. "spectrum": the let
    02's and 03's palettes, read the same way. */
 export const p = [
   { frame: "#D9FF7E", card: "#FFBECA", ink: "#FF8F5E", anchor: "#FFFF85" },   // lime ground — Sway
-  { frame: "#FFBECA", card: "#FF8F5E", ink: "#D9FF7E", anchor: "#FFFF85" },   // pink ground — Flower
+  { frame: "#FFBECA", card: "#FF8F5E", ink: "#FFFF85", anchor: "#D9FF7E" },   // pink ground — Flower, whose
+                                                                             // copies run yellow to lime
   { frame: "#FF8F5E", card: "#FFBECA", ink: "#D9FF7E", anchor: "#FFFF85" },   // orange ground — Volume
   { frame: "#FFFF85", card: "#D9FF7E", ink: "#FF8F5E", anchor: "#FFBECA" },   // yellow ground
   { frame: "#0D0D0F", card: "#FFFFFF", ink: "#FFFFFF", anchor: "#FFFFFF" },   // white on black — not quite
@@ -450,11 +506,17 @@ function layout(n, font = FONT) {
   /* Whichever reading is on, a row is this wide at most: a capsule is the
      widest of the stickers, and a bare letter is narrower than all of them. */
   const widest = (h) => Math.max(h * TILE * TILE_W, h * font * GLYPH_W);
-  for (let c = 1; c <= MAX_COLS; c++) {
-    const rows = Math.ceil(n / c);
-    const h = Math.min(MAX_H, usable / rows);
-    const lane = STAGE / c;
-    if (h >= MIN_H && widest(h) * 1.6 <= lane) return { cols: c, rows, h, w: h * font * GLYPH_W, lane };
+  /* More text is a second column before it is a smaller letter: the first
+     pass will only take a column whose rows are still comfortable to read,
+     and only if no number of columns manages that does the second pass let
+     the rows come down to the floor. */
+  for (const least of [COMFY_H, MIN_H]) {
+    for (let c = 1; c <= MAX_COLS; c++) {
+      const rows = Math.ceil(n / c);
+      const h = Math.min(MAX_H, usable / rows);
+      const lane = STAGE / c;
+      if (h >= least && widest(h) * 1.6 <= lane) return { cols: c, rows, h, w: h * font * GLYPH_W, lane };
+    }
   }
   const rows = Math.ceil(n / MAX_COLS);
   const h = Math.min(MAX_H, usable / rows);
@@ -463,11 +525,14 @@ function layout(n, font = FONT) {
 
 /* ---------- the engine ---------- */
 
-/* What a card ships with, before anything the page asks for. Sway takes the
-   bare defaults; Flower is the settled set from the lab. */
+/* What a card ships with, before anything the page asks for — the settled
+   set from the collection lab. The three share their copies (seven, 130 ms
+   apart) and a thread 1.6× the house weight, so they read as one family;
+   what differs is the margin each one wants and the motion of its own. */
 const CARD = {
-  flower: { echoes: 7, echoDelay: 435, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false },
-  volume: { echoes: 4, echoDelay: 205, seed: 67138 },
+  sway:   { echoes: 6, echoDelay: 120, threadScale: 1.4, margin: 12, letter: 108, move: 1935, hold: 565 },
+  flower: { echoes: 6, echoDelay: 120, echoIn: 0.11, echoTurn: -61, echoShrink: 0.07, thread: false, threadScale: 1.4, margin: 15, letter: 96, barTurn: 22300 },
+  volume: { echoes: 6, echoDelay: 120, seed: 67138, threadScale: 1.4, margin: 22, letter: 76, volRate: 3400, volTop: 100, volStem: 21 },
 };
 
 /* Runs the piece on a virtual clock. step(dt) advances it; snapshot(frame)
@@ -479,7 +544,8 @@ function engine(mode, o = {}) { return piece(mode, { ...CARD[mode], ...o }); }
 function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move = MOVE_MS, hold = HOLD_MS,
                         curve = CURVE, font = FONT, echoes = ECHOES,
                         echoDelay = ECHO_MS, echoAlpha = ECHO_ALPHA, colour = COLOUR,
-                        shape = SHAPE, thread = true, threadScale = 1, weight = WEIGHT,
+                        shape = SHAPE, thread = true, threadScale = 1, weight = WEIGHT, margin = 0,
+                        letter = 100, travel = 100,
                         /* Rings */
                         ringFace = false, ringOne = false,
                         barTurn = RING_BAR_TURN, barBeats = RING_BAR_BEATS, barTight = RING_BAR_TIGHT,
@@ -499,6 +565,16 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
   const pal = dealPalette(mode, palette || p[0]);
   const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
   const empty = !chars.filter((c) => c !== " ").length;
+  /* How full the card is: nothing for a word, all of it for a frame of
+     text. Everything that has to give as the text grows gives against
+     this, so a card travels between a word and a sentence rather than
+     stepping. Below CROWD_FROM it is zero, which is where the collection's
+     own three sit — they are settled and nothing here touches them. */
+  const dense = Math.min(1, Math.max(0, (chars.filter((c) => c !== " ").length - CROWD_FROM) / (CROWD_FULL - CROWD_FROM)));
+  /* The copies are what fill the room between letters, so they are the
+     first thing a crowded card gives up. */
+  const echoes0 = echoes;
+  echoes = Math.max(COPY_FLOOR, Math.round(echoes0 + (COPY_FLOOR - echoes0) * dense));
   /* Hebrew and Arabic, written out in escapes so the module survives being
      read as anything but UTF-8. */
   const rtl = /[\u0590-\u05FF\u0600-\u06FF]/.test(chars.join(""));
@@ -509,6 +585,11 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
   /* A row's height: the column's own on Sway, whatever the card worked out
      for itself on the others. */
   let tileSize = L.h, tileH = L.h * TILE, tileW = tileH * TILE_W;
+  let fitted = null;                        // the margin's fit, worked out once the piece is built
+  let laid = null;                          // what the layout came out as, for a page that wants to say so
+  let lastFit = 1;                          // the fit the plant last laid itself out against
+  let rowGap = Infinity;                    // the closest two rows of a plant come
+  let crowded = 1;                          // … and what the letter had to give up for it
   let rings = 1, ringStart = 0;             // how many rings the text made, and when they start turning
   let barInfo = null;                       // what the bar actually managed, for a page that wants to say so
   const syncTile = () => { tileH = tileSize * TILE; tileW = tileH * TILE_W; };
@@ -528,7 +609,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
      sticker is a different width per letter, which is exactly what makes
      a wide W and a narrow I still end flush. */
   const pad = Math.min(LANE_PAD, L.lane * 0.18);
-  const halfFor = (w) => Math.max(0, (L.lane / 2 - pad - (shaped ? w / 2 : 0)) / (1 + 2 * over));
+  const halfFor = (w) => Math.max(0, (L.lane / 2 - pad - (shaped ? w / 2 : 0)) / (1 + 2 * over)) * (travel / 100);
   const stagger = staggerOpt === undefined
     ? Math.max(STAGGER_MIN, Math.min(STAGGER, STAGGER_SPAN / Math.max(1, chars.length)))
     : staggerOpt;
@@ -590,13 +671,20 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
   /* How wide a sticker is on this card, before any letter is known. */
   const boxW = (h) => (cut ? h * TILE_W * 0.8 : shaped ? h * TILE_W : h * GLYPH_W);
 
+  /* A card works out how big a letter wants to be from the room it has;
+     `letter` is the say the page gets over that afterwards, and it moves
+     the letter alone — the row it sits in, the ring it is bent round and
+     the height it climbs are already decided, so a smaller letter is more
+     air between letters rather than a smaller drawing. */
+  const sized = () => { tileSize = Math.max(6, tileSize * (letter / 100)); syncTile(); };
+
   function build() {
     letters = [];
     tileSize = L.h;
     if (empty) return;
-    if (card === "flower") { buildFlower(); return syncTile(); }
-    if (card === "eight") { buildEights(); return syncTile(); }
-    if (card === "volume") { buildVolume(); return syncTile(); }
+    if (card === "flower") { buildFlower(); return sized(); }
+    if (card === "eight") { buildEights(); return sized(); }
+    if (card === "volume") { buildVolume(); return sized(); }
     chars.forEach((ch, i) => {
       const col = Math.floor(i / L.rows);
       const row = i % L.rows;
@@ -611,7 +699,8 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         cx, cy, t0: BEAT + (stagger < 0 ? chars.length - 1 - i : i) * Math.abs(stagger),
       });
     });
-    syncTile();
+    laid = { of: "column", n: L.cols, rows: L.rows };
+    sized();
   }
 
   /* Rings — a word to a ring, the first word outermost, its letters spread
@@ -623,28 +712,61 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
      way and back instead of going round. Every one of them is built out of
      whole turns or whole strides, so the round always closes on itself. */
   function buildFlower() {
-    const ws = ringOne ? [words().flat()] : words();
-    rings = ws.length;
-    /* The letters are spread round the whole circumference, so what has to
-       fit is the gap between two of them. */
+    const said = ringOne ? [words().flat()] : words();
     /* What one letter needs of the circumference: room to stand beside the
        next when the word is spread round the whole ring — and, when it is a
        bar, twice that and more, since the packed bar may only take its own
        share of the ring and the letters have to come down to fit. */
     const claim = barTight / barSqueeze;
-    let h = MAX_H;
-    for (; h > 14; h -= 2) {
-      const w = boxW(h);
-      const r0 = STAGE / 2 - LANE_PAD / 2 - w / 2;
-      const inner = (i) => r0 - i * h * RING_GAP;
-      if (inner(ws.length - 1) < h * 0.9) continue;
-      if (ws.every((wd, i) => (2 * Math.PI * inner(i)) / wd.length >= w * claim)) break;
+    /* A word opens a ring of its own, always — that is the card. What
+       adapts is the rings: they step in by a sticker and a bit while there
+       is room for it, and close up towards each other as there get to be
+       more of them, down to a letter apart. The innermost is still a ring
+       rather than a dot. */
+    const outer = (h) => STAGE / 2 - LANE_PAD / 2 - boxW(h) / 2;
+    /* How small the innermost ring may be: a ring rather than a dot, and
+       never so small that its own word cannot stand round it. */
+    const needFor = (h, ws) =>
+      Math.max(h * RING_MIN, (ws[ws.length - 1].length * boxW(h) * claim) / (2 * Math.PI));
+    /* The step from one ring to the next. A few words get the full step, a
+       sticker and a bit; more of them and the rings close up towards each
+       other — as far as `least` lets them — instead of the letters coming
+       down to nothing. */
+    const gapFor = (h, ws, least) => {
+      const full = h * RING_GAP;
+      if (ws.length < 2) return full;
+      return Math.max(h * least, Math.min(full, (outer(h) - needFor(h, ws)) / (ws.length - 1)));
+    };
+    /* How big a letter comes out: it comes down until every word has room
+       to stand round its own ring, and until the innermost is still a ring. */
+    const sizeFor = (ws, least) => {
+      let h = MAX_H;
+      for (; h > 14; h -= 2) {
+        const w = boxW(h), gap = gapFor(h, ws, least);
+        const inner = (i) => outer(h) - i * gap;
+        if (inner(ws.length - 1) < needFor(h, ws)) continue;
+        if (ws.every((wd, i) => (2 * Math.PI * inner(i)) / wd.length >= w * claim)) break;
+      }
+      return h;
+    };
+    /* Roomy first. Only when that has brought the letters down too far do
+       the rings give up their step — first to a sticker apart, then to
+       overlapping — since a ring a word is the card and it is the spacing
+       that is meant to adapt, not the reading. */
+    const ws = said;
+    let h = 0, least = RING_GAP;
+    for (const step of [RING_GAP, RING_TIGHT, RING_PACK]) {
+      const hh = sizeFor(ws, step);
+      if (hh > h) { h = hh; least = step; }
+      if (h >= RING_COMFY) break;
     }
+    rings = ws.length;
+    laid = { of: "ring", n: ws.length };
     tileSize = h;
-    const r0 = STAGE / 2 - LANE_PAD / 2 - boxW(h) / 2;
+    const r0 = outer(h), ringGap = gapFor(h, ws, least);
     ringStart = RING_LEAD;
     ws.forEach((wd, ri) => {
-      const r = r0 - ri * h * RING_GAP;
+      const r = r0 - ri * ringGap;
       /* Every ring inside turns against the one outside it. The bar runs
          the other way about, so that the word still reads round the ring
          the way a word on a ring reads — with its first letter in front. */
@@ -725,6 +847,8 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
      sinking at their own rates, so their tops draw a moving horizon. */
   function buildVolume() {
     const ws = words();
+    laid = { of: "row", n: ws.length };
+    rowGap = Infinity;
     const floor = STAGE * (1 - volFloor / 100);
     /* All the room there is to grow into, and the ceiling nothing may pass:
        the tallest letter's own top stops at VOL_CEIL per cent of the frame,
@@ -737,7 +861,10 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
        for. */
     let h = MAX_H;
     for (; h > 12; h -= 2) if (usable / longest >= boxW(h) * 1.06) break;
-    tileSize = Math.max(10, h * (volSize / 100));
+    /* The plant works out its letter here rather than after the fact: the
+       ceiling it may not pass and the floor a letter may not sink below
+       are both measured against the letter it is actually going to draw. */
+    tileSize = Math.max(10, h * (volSize / 100) * crowded);
     /* The rise is seeded, so the same seed always grows the same plant and
        a new one is a new shrub. */
     const r = rng(seed);
@@ -761,16 +888,29 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
          to be uneven in. */
       const far = volTop / 100, near = far * (volFall / 100);
       const top = reach * (ws.length > 1 ? far - (far - near) * (wi / (ws.length - 1)) : far);
+      /* A row is uneven on purpose — the middle stands higher, and every
+         letter wanders off that. How uneven it may be is the room it has:
+         the step down to the next row, less a letter. A plant of two rows
+         is as wild as it likes; one of six flattens its tiers rather than
+         piling them into each other. */
+      const tier = ws.length > 1 ? (reach * (far - near)) / (ws.length - 1) : Infinity;
+      /* The letter has to keep its height clear of the row behind — and it
+         keeps it in the frame, after the margin has pulled the rows
+         together, so the room it books here is that much bigger. */
+      const tall = (tileSize * TILE * (letter / 100)) / Math.max(0.2, lastFit);
+      const swing = top * (volArch / 100) + 2 * reach * far * (volJitter / 100);
+      const calm = swing > 0 ? Math.min(1, Math.max(0, tier - tall) / swing) : 1;
       const shift = volNest && wi % 2 ? step / 2 : 0;
       wd.forEach((i, j) => {
         const col = rtl ? n - 1 - j : j;
         /* Sine across the row — the middle stands higher than the ends —
            and then a seeded wander off it, so no two are quite alike. */
-        const arch = 1 - volArch / 100 + (volArch / 100) * Math.sin((Math.PI * (j + 0.5)) / n);
+        const bend = (volArch / 100) * calm;
+        const arch = 1 - bend + bend * Math.sin((Math.PI * (j + 0.5)) / n);
         /* The wander is measured off the front row's reach, not off each
            row's own: a row at the back is lower, but just as uneven as the
            one in front rather than flattened along with it. */
-        const wander = reach * far * (volJitter / 100) * (r() * 2 - 1);
+        const wander = reach * far * (volJitter / 100) * calm * (r() * 2 - 1);
         letters.push({
           id: i, ch: chars[i], blank: false, group: wi, top: j === 0, fill: tone(i),
           cx: Math.min(STAGE - LANE_PAD, Math.max(LANE_PAD, left + step * (col + 0.5) + shift)),
@@ -782,6 +922,17 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
         });
       });
     });
+    /* How much clear air there is between one row and the row behind it —
+       the lowest letter of the one in front against the highest letter of
+       the one behind, arch and wander and all. A row is uneven on purpose,
+       so this is the gap that actually decides whether the plant reads as
+       rows or as a heap. */
+    const band = [];
+    for (const Lt of letters) {
+      const b = band[Lt.group] || (band[Lt.group] = { lo: Infinity, hi: -Infinity });
+      b.lo = Math.min(b.lo, Lt.rise); b.hi = Math.max(b.hi, Lt.rise);
+    }
+    for (let i = 1; i < band.length; i++) rowGap = Math.min(rowGap, band[i - 1].lo - band[i].hi);
   }
 
   /* Where a letter sits in its lane right now, as one number: 0 is flush
@@ -887,8 +1038,8 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
     return {
       p: card === "sway" ? align(Lt, t) : 0.5, spec, w, sc, rot: at.rot || 0,
       a: at.a, out: at.out !== false,
-      x: at.x + wobble(Lt.id, frame, 0) * JITTER,
-      y: at.y + wobble(Lt.id, frame, 1) * JITTER,
+      x: mapX(at.x + wobble(Lt.id, frame, 0) * JITTER),
+      y: mapY(at.y + wobble(Lt.id, frame, 1) * JITTER),
     };
   }
 
@@ -921,7 +1072,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
       for (let k = echoIn || echoTurn ? echoes : 0; k >= 0; k--) {
         let run = [], g = -1, tone = null;
         const flush = () => {
-          if (run.length > 1) tiles.push({ kind: "thread", id: `ring${k}-${g}`, d: arcPath(run, STAGE / 2, STAGE / 2), colour: tone, width: tileSize * THREAD * threadScale * rankScale(k), alpha: 1 });
+          if (run.length > 1) tiles.push({ kind: "thread", id: `ring${k}-${g}`, d: arcPath(run, mapX(STAGE / 2), mapY(STAGE / 2)), colour: tone, width: tileSize * THREAD * threadScale * rankScale(k), alpha: 1 });
           run = [];
         };
         for (const Lt of letters) {
@@ -943,7 +1094,14 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
          frame — well past the square the piece is drawn in, so a taller
          frame simply gets a longer stem while the letters stay where they
          are. There is no base line: the bottom of the frame is the base. */
-      const w = tileSize * THREAD * threadScale * (volStem / 100);
+      /* A stem is measured against the letter it holds up: 100 is as wide
+         as the narrowest letter in the word, and it never goes past that.
+         The collection's thread weight is Sway's business — a stem is
+         thicker than a thread and answers to the plant instead. */
+      let narrow = Infinity;
+      for (const Lt of letters) if (!Lt.blank) narrow = Math.min(narrow, place(Lt, 0, frame).w);
+      if (!isFinite(narrow)) narrow = tileW;
+      const w = narrow * (Math.min(100, Math.max(0, volStem)) / 100);
       const foot = (STAGE * 2.5).toFixed(1);
       const lean = Math.min(1, Math.max(0, volLean / 100));
       for (let k = volStems === "all" ? echoes : 0; k >= 0; k--) {
@@ -954,7 +1112,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
              meet the others at the middle of the bottom edge, or anywhere
              between — and from wherever it lands it runs on straight down
              and out of the frame. */
-          const root = (Lt.cx + (STAGE / 2 - Lt.cx) * lean).toFixed(1);
+          const root = mapX(Lt.cx + (STAGE / 2 - Lt.cx) * lean).toFixed(1);
           tiles.push({
             kind: "thread", id: `stem${Lt.id}-${k}`,
             d: `M${q.x.toFixed(1)},${q.y.toFixed(1)}L${root},${STAGE}L${root},${foot}`,
@@ -1008,8 +1166,67 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
   }
 
   build();
-  return {
+
+  /* What the card actually draws, measured rather than guessed: over one
+     whole loop, where every letter and every copy gets to, and how much
+     room a letter needs around the point it is hung on. The threads are
+     left out of it — Volume's stems run off the bottom of the frame on
+     purpose, and a ring's arcs only ever join letters that are in the box
+     already. Measured with the fit off, so it describes the card's own
+     geometry rather than the last answer. */
+  function contentBox() {
+    const keep = now, held = fitted;
+    fitted = null;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    let padL = 0, padR = 0, padY = 0;
+    const N = 24, from = api.loopStart, period = api.loopPeriod;
+    for (let i = 0; i < N; i++) {
+      now = from + (period * i) / N;
+      for (const t of snapshot(i).tiles) {
+        if (t.kind === "thread") continue;
+        x0 = Math.min(x0, t.x); x1 = Math.max(x1, t.x);
+        y0 = Math.min(y0, t.y); y1 = Math.max(y1, t.y);
+        padL = Math.max(padL, t.w * t.p);
+        padR = Math.max(padR, t.w * (1 - t.p));
+        padY = Math.max(padY, t.h / 2);
+      }
+    }
+    now = keep; fitted = held;
+    if (!(x1 >= x0)) return null;
+    return { x0, x1, y0, y1, padL, padR, padY };
+  }
+
+  /* The margin is a promise about the frame: the drawing fills the square
+     inside it and never crosses it. It is not a scale — a letter is the
+     size the card made it whatever the margin says, and the sticker and
+     the thread keep their weight. What gives is the room between things:
+     the ring's radius, the column's travel, how far the plant spreads. */
+  function fitFor() {
+    const b = empty ? null : contentBox();
+    if (!b) return null;
+    /* A word can afford the whole margin; a sentence needs the frame, so
+       the edge it keeps clear comes in as the card fills. */
+    const edge = margin + (MARGIN_FLOOR - margin) * (margin > MARGIN_FLOOR ? dense : 0);
+    const room = STAGE * (1 - (2 * edge) / 100);
+    const w = b.x1 - b.x0, h = b.y1 - b.y0;
+    const sx = w > 0.5 ? (room - b.padL - b.padR) / w : Infinity;
+    const sy = h > 0.5 ? (room - 2 * b.padY) / h : Infinity;
+    let s = Math.min(sx, sy);
+    if (!isFinite(s)) s = 1;
+    s = Math.min(4, Math.max(0.1, s));
+    return {
+      s,
+      dx: (STAGE + b.padL - b.padR) / 2 - (s * (b.x0 + b.x1)) / 2,
+      dy: STAGE / 2 - (s * (b.y0 + b.y1)) / 2,
+    };
+  }
+  /* Every point the card draws goes through here on its way out. */
+  const mapX = (x) => (fitted ? fitted.dx + fitted.s * x : x);
+  const mapY = (y) => (fitted ? fitted.dy + fitted.s * y : y);
+
+  const api = {
     step, snapshot, restart, pal, empty,
+    get fit() { return fitted; },
     get loops() { return loops; },
     get now() { return now; },
     /* One seamless loop of the steady state. Sway settles once the wave has
@@ -1018,6 +1235,12 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
        turns; the eights and the bars are in their stride from the first
        frame. */
     get bar() { return barInfo; },
+    /* What the plant had to give up to keep its rows apart, for a page
+       that wants to say so. */
+    get plant() { return { gap: rowGap, letter: crowded }; },
+    /* What the text came out as — how many rings, rows or columns it took,
+       how many copies are left on it and how tall a letter ended up. */
+    get laid() { return { ...(laid || { of: "row", n: 1 }), copies: echoes, tile: Math.round(tileH) }; },
     get loopStart() {
       if (card === "flower") return ringStart;
       if (card === "eight" || card === "volume") return 0;
@@ -1030,6 +1253,35 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
       return 2 * passGap;
     },
   };
+  fitted = fitFor();
+  /* The margin pulls the drawing in, which pulls the rows towards each
+     other; a plant whose rows have come closer than a letter is tall is a
+     heap rather than a plant, so the letter gives way until the gap is a
+     gap again. Twice is enough: a smaller letter makes a smaller box,
+     which leaves the rows a little more room than the first pass asked
+     for. */
+  /* A word opens a row of its own, always — that is the card. What adapts
+     is the room: the margin pulls the drawing in, which pulls the rows
+     towards each other, and rows closer than a letter is tall are a heap
+     rather than a plant. So the letter comes down until the rows have
+     their air back. A few passes are enough: a smaller letter makes a
+     smaller box, which leaves the rows a little more room than the pass
+     before it asked for. */
+  for (let pass = 0; pass < 6 && fitted && card === "volume"; pass++) {
+    if (!isFinite(rowGap)) break;            // one row has nothing to keep clear of
+    const room = rowGap * fitted.s * ROW_CLEAR;
+    if (room >= tileH && Math.abs(fitted.s - lastFit) < 0.02) break;
+    /* First let the rows lay themselves out again against the fit they
+       actually got — flatter tiers, further apart. Only if they have
+       flattened as far as they go and still cannot hold a letter does the
+       letter itself come down. */
+    const settled = Math.abs(fitted.s - lastFit) < 0.02;
+    lastFit = fitted.s;
+    if (settled && room < tileH) crowded = Math.max(0.3, crowded * Math.max(0.6, room / tileH));
+    build();
+    fitted = fitFor();
+  }
+  return api;
 }
 
 /* ---------- DOM renderer (studio, embed) ---------- */
