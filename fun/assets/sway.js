@@ -81,7 +81,8 @@
               pink and the orange
      grounds  Flower on the pink, Sway on the lime, Grow on the orange;
               each one's sticker and gradient follow from that
-     words    Flower power · all the sway · Grow slowly
+     words    Flower power · all the sway · Grow slowly — and Sway takes
+              twelve letters, which is what one column holds
      thread   1.4× the house weight — 0.0675 of a row — on every thread the
               collection draws, and Flower bare, its copies being the
               drawing. A stem is not a thread: it is measured against the
@@ -115,12 +116,10 @@
                 Then the layout gives, before the letter does, because a
               letter too small to read is not this collection whatever
               else is right about it.
-                Sway takes another column rather than shorter rows — a row
-              under 72 px is a column split instead — and every column
-              starts at its own point in the loop, evenly spaced round it,
-              so two stand opposite each other and three share the round
-              between them: they fill the square between themselves rather
-              than all leaning the same way at once
+                Sway is one column and stays one column: two of them was
+              interesting and it was not this card, so it carries the
+              twelve letters a column can hold and be read, and leaves the
+              rest. The other two take whatever they are given
                 Flower opens a ring for every word, always, and never puts
               two words on one ring. What adapts is the rings: they step in
               by a sticker and a bit while there is room for it, close up
@@ -165,7 +164,7 @@ const MAX_H = STAGE * FILL / 4; // a row is never taller than a quarter of a ful
                                 // instead of being blown up; four already fill it…
 const MIN_H = 40;               // … and past this the text takes a second column
                                 // rather than setting too small to read
-const MAX_COLS = 8;             // … up to this many columns; past that the letters just get small
+const SWAY_MOST = 12;           // the most letters one column carries and is still read
 const FONT = 0.76;              // letter size / row height: a capital is ~0.72 em, so this
                                 // leaves nearly a whole cap height of air between the rows
 const GLYPH_W = 0.72;           // roughly how wide a capital sits, as a fraction of its size
@@ -224,7 +223,7 @@ const TURN_LEAST = 0.15;        // the least of its sweep a crowded flower's cop
 const ECHO_SHARE = 1.05;        // how far into the next ring a flower's copies may reach
 const RING_ROOM = 2.7;          // the room a letter takes beside the next on a ring, in its
                                 // own widths — past this a word stops reading as a word
-const ROW_ROOM = 1.2;           // … and in a row, where a word is read straight across
+const ROW_ROOM = 1.05;           // … and in a row, where a word is read straight across
 const RING_GAP = 1.8;           // the step from one ring to the next, in sticker heights
 const RING_LEAD = 600;          // the word stands still this long before it sets off
 const RING_BAR_TURN = 16000;    // ms for the word to travel once round the ring
@@ -322,7 +321,7 @@ const atOdds = (a, b) => {
    you see, with one exception: if the two ends of the gradient are a pair
    that would go grey between them, the sticker takes one of their places.
    With four colours there is always a way round. */
-function dealPalette(_mode, given) {
+export function dealPalette(_mode, given) {
   let { frame, card, ink, anchor } = given;
   if (atOdds(ink, anchor)) {
     if (!atOdds(ink, card)) [card, anchor] = [anchor, card];
@@ -535,21 +534,14 @@ function layout(n, font = FONT) {
   /* Whichever reading is on, a row is this wide at most: a capsule is the
      widest of the stickers, and a bare letter is narrower than all of them. */
   const widest = (h) => Math.max(h * TILE * TILE_W, h * font * GLYPH_W);
-  /* More text is a second column before it is a smaller letter: the first
-     pass will only take a column whose rows are still comfortable to read,
-     and only if no number of columns manages that does the second pass let
-     the rows come down to the floor. */
-  for (const least of [COMFY_H, MIN_H]) {
-    for (let c = 1; c <= MAX_COLS; c++) {
-      const rows = Math.ceil(n / c);
-      const h = Math.min(MAX_H, usable / rows);
-      const lane = STAGE / c;
-      if (h >= least && widest(h) * 1.6 <= lane) return { cols: c, rows, h, w: h * font * GLYPH_W, lane };
-    }
-  }
-  const rows = Math.ceil(n / MAX_COLS);
+  /* One column, always. A second column was interesting and it was not
+     Sway: the card is a column with a wave running down it, and two of
+     them is two cards. So the text is held to what one column can carry
+     and still be read — SWAY_MOST rows — and the rows keep their size. */
+  const rows = Math.min(n, SWAY_MOST);
   const h = Math.min(MAX_H, usable / rows);
-  return { cols: MAX_COLS, rows, h, w: h * font * GLYPH_W, lane: STAGE / MAX_COLS };
+  if (h >= MIN_H) return { cols: 1, rows, h, w: h * font * GLYPH_W, lane: STAGE };
+  return { cols: 1, rows, h: MIN_H, w: MIN_H * font * GLYPH_W, lane: STAGE };
 }
 
 /* ---------- the engine ---------- */
@@ -592,7 +584,13 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
                         volStem = VOL_STEM, volStems = "one", volNest = true,
                         volInset = VOL_INSET, volEase = VOL_EASE, volLean = VOL_LEAN } = {}) {
   const pal = dealPalette(mode, palette || p[0]);
-  const chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
+  let chars = [...String(word).toUpperCase().replace(/\s+/g, " ").trim()];
+  /* Sway is one column, so it takes what one column holds; the cards that
+     grow rings and rows take whatever they are given. */
+  if (mode === "sway" && chars.length > SWAY_MOST) {
+    chars = chars.slice(0, SWAY_MOST);
+    while (chars.length && chars[chars.length - 1] === " ") chars.pop();
+  }
   const empty = !chars.filter((c) => c !== " ").length;
   /* How full the card is: nothing for a word, all of it for a frame of
      text. Everything that has to give as the text grows gives against
@@ -801,7 +799,7 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
        that is meant to adapt, not the reading. */
     const ws = said;
     let h = 0, least = RING_GAP;
-    for (const step of [0, RING_TIGHT]) {
+    for (const step of [0, RING_TIGHT, RING_PACK]) {
       const hh = sizeFor(ws, step);
       if (hh > h) { h = hh; least = step; }
       if (h >= RING_COMFY) break;
@@ -816,11 +814,11 @@ function piece(mode, { word = "", palette, seed = 0, stagger: staggerOpt, move =
        they may go is the gap to the next ring, however many rings there
        are: two rings let the copies run deep, seven keep them close. */
     if (ws.length > 1 && echoes) {
-      /* Two rings can let the copies run the whole gap — that is the
-         flower's arms. The more rings there are the less of the gap they
-         may take, or every gap fills in and the rings stop reading. */
-      const share = ECHO_SHARE / (ws.length - 1);
-      echoIn = Math.min(echoIn, (ringGap * share) / (r0 * echoes));
+      /* The copies may step in as far as the ring behind and no further:
+         they fill the gap they are given, which is what keeps the flower
+         as full at seven rings as it is at two, and they stop short of
+         landing among another ring's letters. */
+      echoIn = Math.min(echoIn, (ringGap * ECHO_SHARE) / (r0 * echoes));
       /* And how far round a copy is turned from the letter it follows. On
          a word or two the copies sweep right across the flower, which is
          what makes its arms. On more rings that same sweep carries them
