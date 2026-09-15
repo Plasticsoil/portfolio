@@ -1,8 +1,4 @@
-/* Written by the studio. The page reads this file; the studio
-   reads project.json beside it. Both come from one Save - edit
-   in the studio rather than here. */
-window.__PROJECTS__ = window.__PROJECTS__ || {};
-window.__PROJECTS__["shltr"] = {
+{
   "id": "shltr",
   "title": "SHLTR",
   "year": "",
@@ -162,4 +158,4 @@ window.__PROJECTS__["shltr"] = {
       }
     ]
   }
-};
+}
