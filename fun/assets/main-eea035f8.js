@@ -50,9 +50,10 @@ import"./render-CCgHOVR5.js";import{m as BN,c as BC,t as BT,r as BR,p as BP}from
 const rafRaw = requestAnimationFrame.bind(window),
       cafRaw = cancelAnimationFrame.bind(window),
       GATE_ID = 1e9,                  /* our frame ids sit above the native ones */
-      RETIRE_MS = 1e4;
+      RETIRE_MS = 1e4,
+      MOUNT_CAP = 4;
 let gateSeq = GATE_ID, inCard = null, fontsIn = false;
-const gateFrames = new Map(), gateCards = new Set();
+const gateFrames = new Map(), gateCards = new Set(), gateBuilt = [];
 
 window.requestAnimationFrame = function (cb) {
   const card = inCard;
@@ -119,30 +120,72 @@ function gateMount(card) {
   card.beforeFonts = !fontsIn;
   const prev = inCard;
   inCard = card;
-  try { card.fx = card.make(); } finally { inCard = prev; }
+  try { card.fx = card.make(card.stage()); } finally { inCard = prev; }
   /* The effects write the stage's whole style attribute as they mount,
      which drops the fit-to-card scale — so it goes back on after. */
   if (card.after) card.after();
   /* Built ahead of the fold: it has painted its first frame, and it
      holds there until it is actually looked at. */
   if (!card.seen || document.hidden) gatePark(card);
+  gateBuilt.push(card);
+  gateTrim();
+}
+
+/* A ceiling on how many cards are built at once, and the reason the gate
+   exists at all. What a card costs on a phone is not its loop, it is its
+   backing store: a card is a 1080x1080 stage, and between the stage, the
+   grain it blends over the top and the full-frame overlays the effects
+   draw into, each one is about four surfaces of that size. Twelve cards
+   came to 163MB of compositor memory, which is past what iOS will let a
+   tab hold — it is killed, and Safari says a problem repeatedly occurred
+   while Chrome, WebKit underneath on that platform, says it cannot open
+   the page.
+
+   The retirement timer alone loses this race: scrolling the studio end
+   to end builds every card well inside ten seconds. So the ceiling is
+   counted, not timed. Cards near the fold are never given up — if more
+   than the cap are genuinely near, they are all wanted — and the rest go
+   oldest first. */
+function gateTrim() {
+  for (let i = 0; i < gateBuilt.length && gateBuilt.length > MOUNT_CAP; ) {
+    const card = gateBuilt[i];
+    if (card.near && !document.hidden) i++;
+    else gateRetire(card);
+  }
 }
 
 function gateRetire(card) {
+  const at = gateBuilt.indexOf(card);
+  if (at >= 0) gateBuilt.splice(at, 1);
   if (!card.fx || card.dead) return;
   if (card.fx.stop) card.fx.stop();
   card.frames.forEach((f) => { if (f.native) cafRaw(f.native); gateFrames.delete(f.id); });
   card.frames.clear();
   card.fx = null;
   card.running = false;
-  const stage = card.el.querySelector(".card-stage");
-  if (stage) { stage.innerHTML = ""; stage.removeAttribute("style"); }
+  /* The stage element goes, not just its children. Some effects take
+     the card's pointer events and hand back a stop() that only stops
+     the clock, so emptying the stage would leave those listeners on it —
+     and each one holds the whole subtree it was built with. Swapping in
+     a fresh stage drops the listeners with the node, whatever any one
+     effect remembers to clean up. */
+  const stage = card.stage();
+  if (stage) {
+    const fresh = document.createElement("div");
+    fresh.className = "card-stage";
+    stage.replaceWith(fresh);
+    if (card.after) card.after();
+  }
 }
 
 function gateSync(card) {
   if (card.dead) return;
   const live = !document.hidden, build = card.near && live;
-  if (card.seen && live) { card.fx ? gateRun(card) : gateQueue(card); }
+  if (card.seen && live) {
+    const at = gateBuilt.indexOf(card);
+    if (at >= 0) { gateBuilt.splice(at, 1); gateBuilt.push(card); }
+    card.fx ? gateRun(card) : gateQueue(card);
+  }
   else if (card.fx) gatePark(card);
   else if (build) gateQueue(card);
   /* Parked costs no main thread, but a mounted card holds its promoted
@@ -170,6 +213,7 @@ function gateCard(el, make, after) {
   gateWatchers();
   const card = {
     el, make, after,
+    stage: () => el.querySelector(".card-stage"),
     fx: null, frames: new Set(), running: false, timer: 0,
     parked: 0, since: 0, near: false, seen: false, dead: false,
     stop() {
@@ -178,6 +222,8 @@ function gateCard(el, make, after) {
       watchNear.unobserve(el);
       watchSeen.unobserve(el);
       gateCards.delete(this);
+      const at = gateBuilt.indexOf(this);
+      if (at >= 0) gateBuilt.splice(at, 1);
       this.frames.forEach((f) => { if (f.native) cafRaw(f.native); gateFrames.delete(f.id); });
       this.frames.clear();
       if (this.fx && this.fx.stop) this.fx.stop();
@@ -217,7 +263,7 @@ if (document.fonts && document.fonts.ready)
     });
   });
 
-const L=document.getElementById("studio"),_={"corner-pin":"click",boxes:"click",carousel:"click",pack:"click",dots:"click",loop:"click",bounce:"click","bounce-chaos":"click","bounce-tower":"click","bounce-pillars":"click",sway:"click","sway-flower":"click","sway-volume":"click"};function se(e,n,c){const t=document.createElement("div");t.className="card-wrap";const o=document.createElement("div");o.className="card-header";const r=document.createElement("a");if(r.className="card-name",r.href="#",r.innerHTML=`<span class="card-slash">/</span> <span class="card-name-text">${n.name||""}</span>`,o.appendChild(r),n.kind!=="empty"){const a=document.createElement("a");a.className="card-export",a.title="Open export view",a.setAttribute("aria-label","Open export view"),a.dataset.tip="more",a.setAttribute("data-tip-arrow",""),a.target="_blank",a.rel="noopener",a.innerHTML=C.arrowRight;const s=()=>{a.href=ne(A(e,n),S(e,n,c),n,e.seed)};s(),a.addEventListener("click",s),r.href=a.href,r.addEventListener("click",l=>{s(),r.href=a.href}),o.appendChild(a)}t.appendChild(o);const i=document.createElement("div");if(i.className="card",_[n.kind]&&(i.dataset.tip=_[n.kind]),N[n.kind]){const a=document.createElement("div");a.className="card-stagewrap";const s=document.createElement("div");s.className="card-stage",a.appendChild(s),i.appendChild(a);const l=A(e,n),d=S(e,n,c);const p=()=>{const m=a.clientWidth;m&&(s.style.transform=`scale(${m/1080})`)},f=new ResizeObserver(p);f.observe(a),e.observers.push(f),i._setScale=p,i.style.background=d.frame,i._fx=gateCard(i,()=>N[n.kind](s,{word:l,palette:d,seed:e.seed|0}),p)}return t.appendChild(i),t._fx=i._fx,t._setScale=i._setScale,t}function x(e,n){(n.loops||[]).forEach(t=>t.stop&&t.stop()),n.loops=[],n.observers.forEach(t=>t.disconnect()),n.observers=[],n.cardsEl.innerHTML="";const c=e.cards.map((t,o)=>se(n,t,o));c.forEach(t=>n.cardsEl.appendChild(t)),c.forEach(t=>{t._fx&&n.loops.push(t._fx),t._setScale&&t._setScale()})}function oe(e,n){const c=document.createElement("div");c.className="pill text-pill";const t=document.createElement("input");t.type="text",t.value=e.word,t.maxLength=e.section&&e.section.maxLength||30,t.placeholder="Type here…",t.spellcheck=!1;let o;t.addEventListener("input",()=>{e.word=t.value,clearTimeout(o),o=setTimeout(n,400)});const r=document.createElement("button");return r.className="pill-btn",r.title="Random word",r.setAttribute("aria-label","Random word"),r.dataset.tip="shuffle word",r.innerHTML=C.shuffle,r.addEventListener("click",()=>{e.word=j(e.word),t.value=e.word,n()}),c.append(t,r),c}function re(e,n){const c=document.createElement("div");c.className="pill color-pill";const t=()=>e.paletteOverride||e.section&&e.section.cards[0]&&e.section.cards[0].palette||q,o={};function r(a,s){if(a===s)return;const l=h.indexOf(a),d=h.indexOf(s);if(l<0||d<0)return;e.cardPalettes=null,e.paletteOverride=e.paletteOverride||{...t()};const p=h.map(m=>e.paletteOverride[m]),[f]=p.splice(l,1);p.splice(d,0,f),h.forEach((m,E)=>{e.paletteOverride[m]=p[E],o[m].el.style.background=p[E],o[m].input.value=p[E]}),n()}h.forEach(a=>{const s=document.createElement("label");s.className="dot",s.title=te[a],s.style.background=t()[a];const l=document.createElement("input");l.type="color",l.className="dot-input",l.value=t()[a],l.addEventListener("input",()=>{e.cardPalettes=null,e.paletteOverride=e.paletteOverride||{...t()},e.paletteOverride[a]=l.value,s.style.background=l.value,n()}),s.appendChild(l),s.draggable=!0,s.addEventListener("dragstart",d=>{d.dataTransfer.setData("text/plain",a),d.dataTransfer.effectAllowed="move",s.classList.add("dot-dragging")}),s.addEventListener("dragend",()=>{s.classList.remove("dot-dragging")}),s.addEventListener("dragenter",d=>{d.dataTransfer.types.includes("text/plain")&&(d.preventDefault(),s.classList.add("dot-drop-target"))}),s.addEventListener("dragover",d=>{d.dataTransfer.types.includes("text/plain")&&(d.preventDefault(),d.dataTransfer.dropEffect="move")}),s.addEventListener("dragleave",()=>{s.classList.remove("dot-drop-target")}),s.addEventListener("drop",d=>{d.preventDefault(),s.classList.remove("dot-drop-target");const p=d.dataTransfer.getData("text/plain");p&&r(p,a)}),o[a]={el:s,input:l},c.appendChild(s)});const i=document.createElement("button");return i.className="pill-btn",i.title="Mix colors",i.setAttribute("aria-label","Mix colors"),i.dataset.tip="shuffle palette",i.innerHTML=C.shuffle,i.addEventListener("click",()=>{const a=e.section&&e.section.permute?(P=>[0,1,2,3].map(k=>{const q=[P.frame,P.card,P.ink,P.anchor];return SWD(null,{frame:q[k],card:q[(k+1)%4],ink:q[(k+2)%4],anchor:q[(k+3)%4]})}))(t()):e.section&&e.section.palettes||g,s=ae(e.section.cards.length,a);e.paletteOverride=null,e.cardPalettes=s,e.seed=Math.random()*4294967295|0;const l=s[0];h.forEach(d=>{o[d].el.style.background=l[d],o[d].input.value=l[d]}),n()}),c.appendChild(i),c}function ce(e,n){const c=document.createElement("section");c.className="section",c.id=`c${n+1}`;const t={word:"",paletteOverride:null,seed:0,observers:[],loops:[],section:e},o=document.createElement("div");o.className="section-head";const r=document.createElement("span");r.className="section-label",r.textContent=e.label;const i=()=>x(e,t);o.append(r,oe(t,i),re(t,i)),c.appendChild(o);const a=document.createElement("div");return a.className="cards",c.appendChild(a),t.cardsEl=a,x(e,t),H.push(()=>x(e,t)),c}function ie(){const e=document.getElementById("mastNav");e&&k.forEach((n,c)=>{const t=document.createElement("div");t.className="mnav-col";const o=document.createElement("a");o.className="mnav-title",o.href=`#c${c+1}`,o.textContent=n.short||n.label;const r=document.createElement("div");r.className="mnav-items";const i=document.createElement("div");i.className="mnav-line";const a=document.createElement("div");a.className="mnav-list",n.cards.forEach(s=>{const l=document.createElement("a");l.className="mnav-item",l.href=`#c${c+1}`,l.textContent=s.name||"Coming soon",a.appendChild(l)}),r.append(i,a),t.append(o,r),e.appendChild(t)})}function le(){const e=document.createElement("button");e.className="fz-menu-btn",e.type="button",e.setAttribute("aria-label","Open collection menu"),e.setAttribute("aria-expanded","false"),e.dataset.tip="menu",e.innerHTML=`
+const L=document.getElementById("studio"),_={"corner-pin":"click",boxes:"click",carousel:"click",pack:"click",dots:"click",loop:"click",bounce:"click","bounce-chaos":"click","bounce-tower":"click","bounce-pillars":"click",sway:"click","sway-flower":"click","sway-volume":"click"};function se(e,n,c){const t=document.createElement("div");t.className="card-wrap";const o=document.createElement("div");o.className="card-header";const r=document.createElement("a");if(r.className="card-name",r.href="#",r.innerHTML=`<span class="card-slash">/</span> <span class="card-name-text">${n.name||""}</span>`,o.appendChild(r),n.kind!=="empty"){const a=document.createElement("a");a.className="card-export",a.title="Open export view",a.setAttribute("aria-label","Open export view"),a.dataset.tip="more",a.setAttribute("data-tip-arrow",""),a.target="_blank",a.rel="noopener",a.innerHTML=C.arrowRight;const s=()=>{a.href=ne(A(e,n),S(e,n,c),n,e.seed)};s(),a.addEventListener("click",s),r.href=a.href,r.addEventListener("click",l=>{s(),r.href=a.href}),o.appendChild(a)}t.appendChild(o);const i=document.createElement("div");if(i.className="card",_[n.kind]&&(i.dataset.tip=_[n.kind]),N[n.kind]){const a=document.createElement("div");a.className="card-stagewrap";const s=document.createElement("div");s.className="card-stage",a.appendChild(s),i.appendChild(a);const l=A(e,n),d=S(e,n,c);const p=()=>{const m=a.clientWidth,y=a.firstElementChild;m&&y&&(y.style.transform=`scale(${m/1080})`)},f=new ResizeObserver(p);f.observe(a),e.observers.push(f),i._setScale=p,i.style.background=d.frame,i._fx=gateCard(i,y=>N[n.kind](y,{word:l,palette:d,seed:e.seed|0}),p)}return t.appendChild(i),t._fx=i._fx,t._setScale=i._setScale,t}function x(e,n){(n.loops||[]).forEach(t=>t.stop&&t.stop()),n.loops=[],n.observers.forEach(t=>t.disconnect()),n.observers=[],n.cardsEl.innerHTML="";const c=e.cards.map((t,o)=>se(n,t,o));c.forEach(t=>n.cardsEl.appendChild(t)),c.forEach(t=>{t._fx&&n.loops.push(t._fx),t._setScale&&t._setScale()})}function oe(e,n){const c=document.createElement("div");c.className="pill text-pill";const t=document.createElement("input");t.type="text",t.value=e.word,t.maxLength=e.section&&e.section.maxLength||30,t.placeholder="Type here…",t.spellcheck=!1;let o;t.addEventListener("input",()=>{e.word=t.value,clearTimeout(o),o=setTimeout(n,400)});const r=document.createElement("button");return r.className="pill-btn",r.title="Random word",r.setAttribute("aria-label","Random word"),r.dataset.tip="shuffle word",r.innerHTML=C.shuffle,r.addEventListener("click",()=>{e.word=j(e.word),t.value=e.word,n()}),c.append(t,r),c}function re(e,n){const c=document.createElement("div");c.className="pill color-pill";const t=()=>e.paletteOverride||e.section&&e.section.cards[0]&&e.section.cards[0].palette||q,o={};function r(a,s){if(a===s)return;const l=h.indexOf(a),d=h.indexOf(s);if(l<0||d<0)return;e.cardPalettes=null,e.paletteOverride=e.paletteOverride||{...t()};const p=h.map(m=>e.paletteOverride[m]),[f]=p.splice(l,1);p.splice(d,0,f),h.forEach((m,E)=>{e.paletteOverride[m]=p[E],o[m].el.style.background=p[E],o[m].input.value=p[E]}),n()}h.forEach(a=>{const s=document.createElement("label");s.className="dot",s.title=te[a],s.style.background=t()[a];const l=document.createElement("input");l.type="color",l.className="dot-input",l.value=t()[a],l.addEventListener("input",()=>{e.cardPalettes=null,e.paletteOverride=e.paletteOverride||{...t()},e.paletteOverride[a]=l.value,s.style.background=l.value,n()}),s.appendChild(l),s.draggable=!0,s.addEventListener("dragstart",d=>{d.dataTransfer.setData("text/plain",a),d.dataTransfer.effectAllowed="move",s.classList.add("dot-dragging")}),s.addEventListener("dragend",()=>{s.classList.remove("dot-dragging")}),s.addEventListener("dragenter",d=>{d.dataTransfer.types.includes("text/plain")&&(d.preventDefault(),s.classList.add("dot-drop-target"))}),s.addEventListener("dragover",d=>{d.dataTransfer.types.includes("text/plain")&&(d.preventDefault(),d.dataTransfer.dropEffect="move")}),s.addEventListener("dragleave",()=>{s.classList.remove("dot-drop-target")}),s.addEventListener("drop",d=>{d.preventDefault(),s.classList.remove("dot-drop-target");const p=d.dataTransfer.getData("text/plain");p&&r(p,a)}),o[a]={el:s,input:l},c.appendChild(s)});const i=document.createElement("button");return i.className="pill-btn",i.title="Mix colors",i.setAttribute("aria-label","Mix colors"),i.dataset.tip="shuffle palette",i.innerHTML=C.shuffle,i.addEventListener("click",()=>{const a=e.section&&e.section.permute?(P=>[0,1,2,3].map(k=>{const q=[P.frame,P.card,P.ink,P.anchor];return SWD(null,{frame:q[k],card:q[(k+1)%4],ink:q[(k+2)%4],anchor:q[(k+3)%4]})}))(t()):e.section&&e.section.palettes||g,s=ae(e.section.cards.length,a);e.paletteOverride=null,e.cardPalettes=s,e.seed=Math.random()*4294967295|0;const l=s[0];h.forEach(d=>{o[d].el.style.background=l[d],o[d].input.value=l[d]}),n()}),c.appendChild(i),c}function ce(e,n){const c=document.createElement("section");c.className="section",c.id=`c${n+1}`;const t={word:"",paletteOverride:null,seed:0,observers:[],loops:[],section:e},o=document.createElement("div");o.className="section-head";const r=document.createElement("span");r.className="section-label",r.textContent=e.label;const i=()=>x(e,t);o.append(r,oe(t,i),re(t,i)),c.appendChild(o);const a=document.createElement("div");return a.className="cards",c.appendChild(a),t.cardsEl=a,x(e,t),H.push(()=>x(e,t)),c}function ie(){const e=document.getElementById("mastNav");e&&k.forEach((n,c)=>{const t=document.createElement("div");t.className="mnav-col";const o=document.createElement("a");o.className="mnav-title",o.href=`#c${c+1}`,o.textContent=n.short||n.label;const r=document.createElement("div");r.className="mnav-items";const i=document.createElement("div");i.className="mnav-line";const a=document.createElement("div");a.className="mnav-list",n.cards.forEach(s=>{const l=document.createElement("a");l.className="mnav-item",l.href=`#c${c+1}`,l.textContent=s.name||"Coming soon",a.appendChild(l)}),r.append(i,a),t.append(o,r),e.appendChild(t)})}function le(){const e=document.createElement("button");e.className="fz-menu-btn",e.type="button",e.setAttribute("aria-label","Open collection menu"),e.setAttribute("aria-expanded","false"),e.dataset.tip="menu",e.innerHTML=`
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
       <path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/>
     </svg>`,document.body.appendChild(e);const n=document.createElement("div");n.className="fz-menu-sheet",n.setAttribute("role","dialog"),n.setAttribute("aria-label","Collections"),n.innerHTML=`

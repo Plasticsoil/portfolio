@@ -18,13 +18,23 @@
 - The studio page runs its cards through the **card gate** at the top of
   `fun/assets/main-*.js` — a card is built just before it reaches the
   viewport, draws only while it is on screen and the tab is visible, and
-  gives its DOM back once it has been away a while. Twelve 1080x1080
-  engines running at once is what used to kill the tab on a phone. A new
-  effect needs nothing for this: the gate wraps `requestAnimationFrame`,
-  so any effect that animates on rAF is gated by the fact that it does.
-  What it must not do is hold its own wall clock (`performance.now()`,
-  `Date.now()`) — read time from the rAF timestamp, which is the one the
-  gate can stop.
+  is given back when it has been away a while or when more than
+  `MOUNT_CAP` are built. Twelve of them at once is what used to kill the
+  tab on a phone, and the cost that did it is memory, not the loops: a
+  card is a 1080x1080 stage, and between the stage, the grain blended
+  over it and the full-frame overlays the effects draw into, each one is
+  about four surfaces of that size — twelve came to 163MB of compositor
+  memory, past what iOS lets a tab hold. Keep the cap low; if a new
+  collection adds full-stage layers, measure before raising it.
+- A new effect needs nothing to be gated: the gate wraps
+  `requestAnimationFrame`, so anything animating on rAF is gated by the
+  fact that it does. Two things it must not do. Do not hold your own wall
+  clock (`performance.now()`, `Date.now()`) — read time from the rAF
+  timestamp, which is the one the gate can stop. And do not assume
+  `stop()` is the only teardown: the gate retires a card by replacing its
+  stage element, so listeners on the stage go with the node. Anything
+  hung on `window` or `document` would not, and must be removed in
+  `stop()`.
 - Outputs of FunType are CC BY-NC 4.0, the tool is all rights reserved;
   the credit line, footer and metadata live in the export bundle and
   `fun/license.html`. Keep them when touching exports.
