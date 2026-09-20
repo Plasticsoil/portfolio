@@ -469,46 +469,43 @@ const GLYPHS = {
    three the 5-wide bitmap has nothing left to give, so the letter is given
    the room instead of the stroke being taken away. */
 const matrices = new Map();
-function matrix(ch, thick, wide) {
-  const key = `${ch}/${thick}/${wide}`;
+
+/* Two ways to get from one instance across a stroke to three, and they are
+   not the same picture.
+
+   grid   the font's own grid, kept. The glyph is widened in whole cells if
+          it is asked for, and then every lit cell simply claims its
+          neighbours out to (thick - 1) / 2 — on the same lattice, at the
+          same step. A 5 x 7 letter becomes 7 x 9. Every instance still
+          stands on a cell of the grid the face was drawn on, a diagonal is
+          still the staircase the face drew, and a letter is still countable
+          in dots. What it costs is the counters: a thick stroke eats into
+          the hole in an O, which is what `wide` is for.
+
+   fine   the glyph is redrawn on a grid `thick` times finer, its cells
+          joined to their neighbours before anything is thickened, and the
+          skeleton then spread. This keeps diagonals running true and
+          counters open, but the instances no longer sit on the face's grid
+          — they sit on a subdivision of it, and the letter reads as a
+          texture poured into a letter shape rather than as a grid of dots.
+
+   `wide` stretches the letter sideways first, in both. On the grid reading
+   it is whole cells, because a cell is the unit and half a cell does not
+   exist there. */
+function matrix(ch, thick, wide, mode = "block") {
+  const key = `${ch}/${thick}/${wide}/${mode}`;
   let m = matrices.get(key);
   if (m) return m;
   const rows = GLYPHS[ch];
-  if (!rows) { m = { cells: [], w: 0, h: 0 }; matrices.set(key, m); return m; }
-
   const t = Math.max(1, Math.round(thick));
-  const sx = Math.max(1, Math.round(t * wide)), sy = t;
-  /* Where an original cell lands on the fine grid — its middle, so the
-     spread has the same room on either side. */
-  const fx = (c) => c * sx + ((sx - 1) >> 1);
-  const fy = (r) => r * sy + ((sy - 1) >> 1);
-
-  const lit = [];
-  for (let r = 0; r < GLYPH_ROWS; r++) {
-    for (let c = 0; c < GLYPH_COLS; c++) if (rows[r][c] === "1") lit.push([c, r]);
-  }
-  const on = new Set();
-  const mark = (x, y) => on.add(`${x},${y}`);
-  /* join: a straight run of cells between the two centres. */
-  const joinTo = (a, b) => {
-    const x0 = fx(a[0]), y0 = fy(a[1]), x1 = fx(b[0]), y1 = fy(b[1]);
-    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
-    for (let i = 0; i <= n; i++) {
-      mark(Math.round(x0 + ((x1 - x0) * i) / n), Math.round(y0 + ((y1 - y0) * i) / n));
-    }
-  };
-  const isLit = (c, r) => c >= 0 && c < GLYPH_COLS && r >= 0 && r < GLYPH_ROWS && rows[r][c] === "1";
-  for (const [c, r] of lit) {
-    mark(fx(c), fy(r));
-    /* Only forwards, so a pair is never joined twice. */
-    for (const [dc, dr] of [[1, 0], [0, 1], [1, 1], [-1, 1]]) {
-      if (isLit(c + dc, r + dr)) joinTo([c, r], [c + dc, r + dr]);
-    }
-  }
-
-  /* spread: a disc of this radius round every cell of the skeleton. At
-     thick 3 that is the full 3 x 3, which is exactly three across. */
   const rad = (t - 1) / 2;
+  if (!rows) {
+    m = { cells: [], w: 0, x0: 0, full: GLYPH_COLS, h: GLYPH_ROWS };
+    matrices.set(key, m);
+    return m;
+  }
+
+  /* The disc a cell claims when the stroke thickens. */
   const disc = [];
   const lim = (rad + 0.5) ** 2;
   for (let dy = -Math.ceil(rad); dy <= Math.ceil(rad); dy++) {
@@ -516,15 +513,72 @@ function matrix(ch, thick, wide) {
       if (dx * dx + dy * dy <= lim) disc.push([dx, dy]);
     }
   }
-  const out = new Set();
-  for (const k of on) {
-    const [x, y] = k.split(",").map(Number);
-    for (const [dx, dy] of disc) out.add(`${x + dx},${y + dy}`);
+
+  const lit = [];
+  for (let r = 0; r < GLYPH_ROWS; r++) {
+    for (let c = 0; c < GLYPH_COLS; c++) if (rows[r][c] === "1") lit.push([c, r]);
+  }
+  const on = new Set();
+  const mark = (x, y) => on.add(`${x},${y}`);
+  let cols, gridH, pad;
+
+  if (mode === "block") {
+    /* The most literal reading, and the one that keeps the face intact:
+       where DotsMono puts one instance, put `thick` of them across and
+       `thick` down. The grid is not left — it is read at `thick` times the
+       resolution, and every instance lands on a cell of it. A stroke is
+       three instances thick, a diagonal keeps exactly the staircase the
+       face drew, and the letter is still the letter, because nothing has
+       been joined, smoothed or spread into its counters. */
+    const sx = Math.max(1, Math.round(t * wide)), sy = t;
+    for (const [c, r] of lit) {
+      for (let j = 0; j < sy; j++) for (let i = 0; i < sx; i++) mark(c * sx + i, r * sy + j);
+    }
+    cols = GLYPH_COLS * sx; gridH = GLYPH_ROWS * sy; pad = 0;
+  } else if (mode === "fine") {
+    const sx = Math.max(1, Math.round(t * wide)), sy = t;
+    const fx = (c) => c * sx + ((sx - 1) >> 1);
+    const fy = (r) => r * sy + ((sy - 1) >> 1);
+    const joinTo = (aa, bb) => {
+      const x0 = fx(aa[0]), y0 = fy(aa[1]), x1 = fx(bb[0]), y1 = fy(bb[1]);
+      const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+      for (let i = 0; i <= n; i++) {
+        mark(Math.round(x0 + ((x1 - x0) * i) / n), Math.round(y0 + ((y1 - y0) * i) / n));
+      }
+    };
+    const isLit = (c, r) => c >= 0 && c < GLYPH_COLS && r >= 0 && r < GLYPH_ROWS && rows[r][c] === "1";
+    for (const [c, r] of lit) {
+      mark(fx(c), fy(r));
+      for (const [dc, dr] of [[1, 0], [0, 1], [1, 1], [-1, 1]]) {
+        if (isLit(c + dc, r + dr)) joinTo([c, r], [c + dc, r + dr]);
+      }
+    }
+    cols = GLYPH_COLS * sx; gridH = GLYPH_ROWS * sy; pad = 0;
+  } else {
+    /* The grid reading. Widen in whole cells: an original column becomes a
+       run of columns, so a horizontal stroke stays joined and every
+       instance still lands on a cell. */
+    cols = Math.max(GLYPH_COLS, Math.round(GLYPH_COLS * wide));
+    for (const [c, r] of lit) {
+      const from = Math.floor((c * cols) / GLYPH_COLS);
+      const to = Math.floor(((c + 1) * cols) / GLYPH_COLS) - 1;
+      for (let x = from; x <= to; x++) mark(x, r);
+    }
+    gridH = GLYPH_ROWS; pad = Math.ceil(rad);
   }
 
-  /* Both readings are kept, and the card picks: `full` is the face's own
-     five cells, which is what keeps a monospaced font monospaced; `w` and
-     `x0` are the letter measured to its own ink, for setting it tight. */
+  /* Spread. On the grid reading the letter grows outwards by the radius,
+     so the cells are nudged clear of the edge and the box grows with them. */
+  const out = new Set();
+  if (mode === "block") {
+    for (const k of on) out.add(k);                  // already `thick` across
+  } else {
+    for (const k of on) {
+      const [x, y] = k.split(",").map(Number);
+      for (const [dx, dy] of disc) out.add(`${x + dx + pad},${y + dy + pad}`);
+    }
+  }
+
   let minX = Infinity, maxX = -Infinity;
   const cells = [];
   for (const k of out) {
@@ -533,18 +587,16 @@ function matrix(ch, thick, wide) {
     if (x < minX) minX = x;
     if (x > maxX) maxX = x;
   }
+  const full = cols + 2 * pad;
   if (!cells.length) {
-    m = { cells: [], w: 0, x0: 0, full: GLYPH_COLS * sx, h: GLYPH_ROWS * sy };
+    m = { cells: [], w: 0, x0: 0, full, h: gridH + 2 * pad };
     matrices.set(key, m);
     return m;
   }
-  m = {
-    cells,
-    w: maxX - minX + 1,
-    x0: minX,
-    full: GLYPH_COLS * sx,
-    h: GLYPH_ROWS * sy,
-  };
+  /* Both readings are kept, and the card picks: `full` is the face's own
+     advance, which is what keeps a monospaced font monospaced; `w` and `x0`
+     are the letter measured to its own ink, for setting it tight. */
+  m = { cells, w: maxX - minX + 1, x0: minX, full, h: gridH + 2 * pad };
   matrices.set(key, m);
   return m;
 }
@@ -626,7 +678,7 @@ function dotsPiece({
   margin = MARGIN, thick = 3, wide = 1, track = 1, lead = 1.4,
   size = 0.82, prims = PRIM_NAMES, colour = "letter",
   jitter = JITTER, round = ROUND, lines: linesOpt = 0,
-  mono = true, caps = "type",
+  mono = true, caps = "type", grid = "block",
 } = {}) {
   const pal = dealPalette("dots", palette || p[0]);
   const rand = rng(seed);
@@ -647,7 +699,7 @@ function dotsPiece({
   const sx = Math.max(1, Math.round(t * wide)), sy = t;
   const trackCells = Math.max(0, Math.round(track * sx));
   const spaceCells = SPACE_COLS * sx;
-  const glyphH = GLYPH_ROWS * sy;
+  const glyphH = matrix("A", t, wide, grid).h;
   const gapCells = Math.max(0, Math.round(lead * sy));
 
   const pad = STAGE * (margin / 100);
@@ -662,7 +714,7 @@ function dotsPiece({
     const cs = [...text];
     let w = 0;
     cs.forEach((ch, i) => {
-      w += ch === " " ? spaceCells : advance(matrix(ch, t, wide));
+      w += ch === " " ? spaceCells : advance(matrix(ch, t, wide, grid));
       if (i < cs.length - 1) w += trackCells;
     });
     return w;
@@ -740,7 +792,7 @@ function dotsPiece({
       const cy = y0 + li * (glyphH + gapCells) * cell;
       cs.forEach((ch, i) => {
         if (ch === " ") { cx += (spaceCells + trackCells) * cell; wordN++; return; }
-        const m = matrix(ch, t, wide);
+        const m = matrix(ch, t, wide, grid);
         const shift = mono ? 0 : m.x0;
         const tone = colour === "ramp" ? ramp(stops, inkLetters > 1 ? letterN / (inkLetters - 1) : 0)
                    : colour === "word" ? stops[wordN % stops.length]
@@ -803,7 +855,7 @@ function dotsPiece({
 const CARD = {
   still: {},
   /* Three instances across, and every primitive in the bag. */
-  dots: { thick: 3, wide: 1, track: 1, lead: 1.4, size: 0.82, margin: 10, colour: "letter", mono: true },
+  dots: { thick: 3, wide: 1, track: 1, lead: 1.4, size: 0.82, margin: 10, colour: "letter", mono: true, grid: "block" },
 };
 
 function engine(mode, o = {}) {

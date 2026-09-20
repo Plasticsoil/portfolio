@@ -46,14 +46,18 @@
     font-family: Inter, system-ui, sans-serif;
     font-size: 13px;
     -webkit-font-smoothing: antialiased;
+    /* The card never scrolls out of sight. The page itself does not move;
+       only the rail of dials does, inside its own box. */
+    overflow: hidden;
   }
-  #lab { display: flex; height: 100%; align-items: stretch; }
+  #lab { display: flex; height: 100%; align-items: stretch; min-height: 0; }
 
   /* ---- stage ---- */
   #view {
-    flex: 1 1 auto; min-width: 0;
+    flex: 1 1 auto; min-width: 0; min-height: 0;
     display: flex; flex-direction: column;
     padding: 16px; padding-block: 16px; gap: 12px;
+    overflow: hidden;
   }
   #surround {
     flex: 1 1 auto; min-height: 0;
@@ -83,7 +87,7 @@
 
   /* ---- rail ---- */
   #rail {
-    flex: none; width: var(--rail);
+    flex: none; width: var(--rail); min-height: 0;
     background: var(--panel); border-left: 1px solid var(--line);
     overflow-y: auto; overscroll-behavior: contain;
     padding: 0 16px 28px;
@@ -164,10 +168,17 @@
   }
   #toast.show { opacity: 1; }
 
+  /* Stacked, the card is pinned to the top and the dials run under it, so
+     it is still the thing you are looking at while you turn one. */
   @media (max-width: 860px) {
-    #lab { flex-direction: column; height: auto; }
-    #view { height: 74vh; }
-    #rail { width: auto; border-left: 0; border-top: 1px solid var(--line); }
+    body { overflow: auto; }
+    #lab { flex-direction: column; height: auto; min-height: 100%; }
+    #view {
+      position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
+      flex: none; height: 54vh; background: var(--ground);
+      border-bottom: 1px solid var(--line);
+    }
+    #rail { width: auto; border-left: 0; overflow: visible; }
   }
   @media (prefers-reduced-motion: reduce) {
     * { transition-duration: .01ms !important; }
@@ -220,6 +231,9 @@
     { key: "thick", type: "range", label: "Weight", def: 3, min: 1, max: 7, step: 2, only: "dots",
       names: { 1: "1 — the font's own", 3: "3 — black", 5: "5 — heavier", 7: "7 — solid" },
       hint: "Instances across a stroke. DotsMono spends its own weight axis on the size of the dot; this card leaves the dot alone and lays more of them across instead." },
+    { key: "grid", type: "select", label: "Thicken by", def: "block", only: "dots",
+      options: ["block", "fine", "grid"],
+      hint: "block: one instance becomes three, on the same grid read three times finer — the face's own staircase and square corners kept. fine: the cells are joined before spreading, which rounds the corners off. grid: no subdivision at all, dilated on the literal 5x7 — which closes the letters up." },
     { key: "mono", type: "toggle", label: "Monospaced", def: true, only: "dots",
       hint: "On, every glyph keeps the face's full five cells and the letters stack in columns. Off, each is measured to its own ink." },
     { key: "caps", type: "select", label: "Case", def: "type", only: "dots",
