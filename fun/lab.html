@@ -192,7 +192,7 @@
   <aside id="rail">
     <div id="railhead">
       <h1 class="wordmark">Collection 05 <span>/ lab</span></h1>
-      <p class="sub">Collection 01's palette, the house defaults, and card one: the dot-matrix letter built out of primitives.</p>
+      <p class="sub">Collection 01's palette, the house defaults, and card one: DotsMono 001's skeleton, drawn in primitives.</p>
       <p class="sub" id="faceNote"></p>
     </div>
     <div id="controls"></div>
@@ -210,15 +210,21 @@
      "Copy settings" can report only what has actually moved. */
   const SPEC = [
     { group: "Word" },
-    { key: "word", type: "text", label: "Word", def: "shapes" },
+    { key: "word", type: "text", label: "Word", def: "Dots Mono" },
 
     { group: "Card" },
     { key: "card", type: "select", label: "Card", def: "dots",
-      options: Object.keys(CARD), hint: "dots is card one — the 5x7 matrix letter, three instances thick. still is the bare canvas: type, sticker, palette and grain, no card on top." },
+      options: Object.keys(CARD), hint: "dots is card one — DotsMono 001 read as a 5x7 grid, three instances across a stroke. still is the bare canvas: type, sticker, palette and grain, no card on top." },
 
     { group: "Matrix", only: "dots" },
-    { key: "thick", type: "range", label: "Thickness", def: 3, min: 1, max: 7, step: 2, only: "dots",
-      hint: "Instances across a stroke. 1 is Collection 02's reading; 3 is this card's." },
+    { key: "thick", type: "range", label: "Weight", def: 3, min: 1, max: 7, step: 2, only: "dots",
+      names: { 1: "1 — the font's own", 3: "3 — black", 5: "5 — heavier", 7: "7 — solid" },
+      hint: "Instances across a stroke. DotsMono spends its own weight axis on the size of the dot; this card leaves the dot alone and lays more of them across instead." },
+    { key: "mono", type: "toggle", label: "Monospaced", def: true, only: "dots",
+      hint: "On, every glyph keeps the face's full five cells and the letters stack in columns. Off, each is measured to its own ink." },
+    { key: "caps", type: "select", label: "Case", def: "type", only: "dots",
+      options: ["type", "upper", "lower"],
+      hint: "DotsMono carries both cases and the punctuation, so the card sets what you type." },
     { key: "wide", type: "range", label: "Width", def: 1, min: 0.6, max: 2.4, step: 0.05, only: "dots",
       hint: "Stretches the letter sideways before it is thickened, so a thick stroke does not eat its counters." },
     { key: "size", type: "range", label: "Instance size", def: 0.82, min: 0.2, max: 1.6, step: 0.02, only: "dots",
@@ -441,9 +447,10 @@
       val.textContent = fmt(s, s.def);
       input.addEventListener("input", () => {
         state[s.key] = Number(input.value);
-        val.textContent = fmt(s, state[s.key]);
+        val.textContent = (s.names && s.names[state[s.key]]) || fmt(s, state[s.key]);
         rebuild(-1);
       });
+      if (s.names) val.textContent = s.names[s.def] || fmt(s, s.def);
       wrap.append(row, input);
     }
     if (s.hint) {
