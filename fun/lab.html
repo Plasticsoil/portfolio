@@ -1,0 +1,623 @@
+<!--
+  FunType — Collection 05 lab.
+
+  The bench the collection gets built on. Every number the plain canvas
+  takes is a control here, and "Copy settings" hands back the ones that
+  have moved away from the default — which is how a decision gets out of
+  the lab and into the block at the top of five.js, the way Collection
+  04's were.
+
+  Nothing here ships. The lab is not registered in main-*.js, embed-*.js
+  or export-*.js, so it is not on the site and cannot be reached from it.
+
+  This file is published as a private Artifact, so it carries no
+  <!doctype>/<html>/<body> of its own — the host supplies them.
+-->
+<meta charset="utf-8" />
+<title>Collection 05 Lab</title>
+<link rel="preconnect" href="https://api.fontshare.com" />
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@900,700,500,400,300&display=swap" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rubik:wght@400;500;700&display=swap" />
+
+<style>
+  /* One committed look: a quiet, desaturated chrome carrying a little of
+     the family's slate, so the 1080 card is the only saturated thing on
+     screen and its colours can be judged honestly. */
+  :root {
+    --ground: #17151C;
+    --panel: #201D27;
+    --raise: #2A2633;
+    --line: #363040;
+    --ink: #EDEBF0;
+    --dim: #948EA3;
+    --slate: #4E4B5D;
+    --accent: #FF7300;   /* Collection 01's orange, for active state only */
+    --rail: 352px;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: Inter, system-ui, sans-serif;
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+  }
+  #lab { display: flex; height: 100%; align-items: stretch; }
+
+  /* ---- stage ---- */
+  #view {
+    flex: 1 1 auto; min-width: 0;
+    display: flex; flex-direction: column;
+    padding: 16px; padding-block: 16px; gap: 12px;
+  }
+  #surround {
+    flex: 1 1 auto; min-height: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: #6E6A78;
+    transition: background .2s ease;
+    overflow: hidden;
+  }
+  #surround[data-bg="light"] { background: #F2F1F4; }
+  #surround[data-bg="dark"]  { background: #0D0D0F; }
+  #fit { position: relative; }
+  #stage { transform-origin: top left; }
+
+  /* ---- transport ---- */
+  #transport {
+    flex: none; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 9px 12px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 10px;
+  }
+  #scrub { flex: 1 1 140px; min-width: 100px; }
+  .read {
+    font-variant-numeric: tabular-nums; color: var(--dim);
+    font-size: 11px; letter-spacing: .02em; white-space: nowrap;
+  }
+  .read b { color: var(--ink); font-weight: 500; }
+
+  /* ---- rail ---- */
+  #rail {
+    flex: none; width: var(--rail);
+    background: var(--panel); border-left: 1px solid var(--line);
+    overflow-y: auto; overscroll-behavior: contain;
+    padding: 0 16px 28px;
+  }
+  #railhead {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--panel); padding-block: 14px 10px;
+    border-bottom: 1px solid var(--line); margin-bottom: 4px;
+  }
+  .wordmark {
+    font-family: Switzer, Inter, system-ui, sans-serif;
+    font-weight: 700; font-size: 17px; letter-spacing: -.01em; margin: 0;
+  }
+  .wordmark span { color: var(--dim); font-weight: 500; }
+  .sub { margin: 3px 0 0; color: var(--dim); font-size: 11px; line-height: 1.45; }
+  #faceNote.warn { color: #FFC27A; }
+
+  .group { border-bottom: 1px solid var(--line); padding-block: 14px; }
+  .group:last-of-type { border-bottom: 0; }
+  .glabel {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .09em;
+    color: var(--dim); font-weight: 600; margin: 0 0 11px;
+  }
+  .ctl { display: grid; gap: 5px; margin-bottom: 12px; }
+  .ctl:last-child { margin-bottom: 0; }
+  .crow { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .cname { font-size: 12px; color: var(--ink); }
+  .cval { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--dim); }
+  .hint { font-size: 10.5px; color: var(--dim); line-height: 1.45; margin: 1px 0 0; }
+
+  input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+  input[type="text"], select {
+    width: 100%; background: var(--raise); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 7px;
+    padding: 7px 9px; font: inherit; font-size: 12.5px;
+  }
+  input[type="text"]:focus-visible, select:focus-visible,
+  button:focus-visible, input[type="range"]:focus-visible, .dot:focus-within {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  button {
+    background: var(--raise); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 7px;
+    padding: 7px 10px; font: inherit; font-size: 12px; cursor: pointer;
+  }
+  button:hover { border-color: var(--dim); }
+  button.on { background: var(--accent); border-color: var(--accent); color: #17151C; font-weight: 600; }
+  .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btns button { flex: 1 1 auto; }
+
+  /* ---- palette ---- */
+  .sets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 11px; }
+  .set {
+    display: flex; height: 26px; border-radius: 6px; overflow: hidden;
+    border: 1px solid var(--line); cursor: pointer; padding: 0;
+  }
+  .set.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .set i { flex: 1; display: block; }
+  .dots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+  .dot {
+    position: relative; height: 40px; border-radius: 7px;
+    border: 1px solid var(--line); overflow: hidden; cursor: pointer;
+  }
+  .dot input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; border: 0; padding: 0; }
+  .dot em {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    font-style: normal; font-size: 9px; text-align: center;
+    background: rgba(23,21,28,.72); color: #fff; padding: 2px 0; letter-spacing: .04em;
+  }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    background: var(--accent); color: #17151C; font-weight: 600;
+    padding: 8px 14px; border-radius: 8px; font-size: 12px;
+    opacity: 0; pointer-events: none; transition: opacity .18s ease;
+    z-index: 40;
+  }
+  #toast.show { opacity: 1; }
+
+  @media (max-width: 860px) {
+    #lab { flex-direction: column; height: auto; }
+    #view { height: 74vh; }
+    #rail { width: auto; border-left: 0; border-top: 1px solid var(--line); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: .01ms !important; }
+  }
+</style>
+
+<div id="lab">
+  <section id="view">
+    <div id="surround" data-bg="grey">
+      <div id="fit"><div id="stage"></div></div>
+    </div>
+    <div id="transport">
+      <button id="playpause" type="button" aria-label="Pause">Pause</button>
+      <button id="stepb" type="button" aria-label="Step back">&minus;1</button>
+      <button id="stepf" type="button" aria-label="Step forward">+1</button>
+      <input id="scrub" type="range" min="0" max="119" step="1" value="0" aria-label="Frame" />
+      <span class="read">frame <b id="rFrame">0</b></span>
+      <span class="read">lines <b id="rLines">—</b> · row <b id="rRow">—</b>px · letters <b id="rLetters">—</b></span>
+    </div>
+  </section>
+
+  <aside id="rail">
+    <div id="railhead">
+      <h1 class="wordmark">Collection 05 <span>/ lab</span></h1>
+      <p class="sub">The plain canvas — house defaults only, on Collection 01's palette. No card decided yet.</p>
+      <p class="sub" id="faceNote"></p>
+    </div>
+    <div id="controls"></div>
+  </aside>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+  import { mount, clearSpecs, p as PALETTES, POOL, STAGE, CARD } from "./assets/five.js";
+  import { c as randomWord } from "./assets/palette-D5fFc6np.js";
+
+  /* Every dial the canvas takes, in one list. A new knob on a new card is
+     one row here and one option in five.js — which is the whole point of
+     keeping the lab data-driven. `def` is the canvas's own default, so
+     "Copy settings" can report only what has actually moved. */
+  const SPEC = [
+    { group: "Word" },
+    { key: "word", type: "text", label: "Word", def: "five" },
+
+    { group: "Card" },
+    { key: "card", type: "select", label: "Card", def: "still",
+      options: Object.keys(CARD), hint: "One card so far: still sets the word and does nothing, so what you see is type, sticker, palette and grain." },
+
+    { group: "Colour" },
+    { key: "colour", type: "select", label: "Rule", def: "ramp",
+      options: ["ramp", "cycle", "flat"],
+      hint: "ramp steps the three non-ground colours across the word; cycle takes them in turn; flat uses one." },
+
+    { group: "Type" },
+    { key: "shape", type: "select", label: "Sticker", def: "letter",
+      options: ["letter", "capsule", "chamfer", "none"],
+      hint: "letter is Collection 01's tile, cut to the glyph's own shape." },
+    { key: "weight", type: "select", label: "Weight", def: 500, cast: Number,
+      options: [300, 400, 500, 700, 900], hint: "Switzer 500 is the family's settled letter weight." },
+    { key: "letter", type: "range", label: "Letter", def: 100, min: 50, max: 160, step: 1, unit: "%",
+      hint: "The say the card gets over the glyph once the room is worked out — smaller is more air, not a smaller drawing." },
+    { key: "tile", type: "range", label: "Sticker height", def: 0.84, min: 0.4, max: 1, step: 0.01,
+      hint: "As a share of its row." },
+
+    { group: "Layout" },
+    { key: "margin", type: "range", label: "Margin", def: 12, min: 0, max: 30, step: 1, unit: "%" },
+    { key: "track", type: "range", label: "Tracking", def: 0.06, min: -0.1, max: 0.4, step: 0.01 },
+    { key: "lead", type: "range", label: "Leading", def: 0.18, min: 0, max: 0.8, step: 0.01 },
+
+    { group: "Thread" },
+    { key: "thread", type: "toggle", label: "Thread", def: false,
+      hint: "The line a run of letters is strung on. 04 drew one per rank." },
+    { key: "threadScale", type: "range", label: "Thread weight", def: 1, min: 0.3, max: 3, step: 0.05,
+      hint: "x the house 0.0675 of a row." },
+
+    { group: "Motion" },
+    { key: "round", type: "range", label: "Round", def: 2000, min: 500, max: 24000, step: 100, unit: "ms",
+      hint: "One whole loop. The export samples whole rounds of this." },
+
+    { group: "Film" },
+    { key: "fps", type: "range", label: "Rate", def: 12, min: 4, max: 30, step: 1, unit: "fps",
+      hint: "12 is the house stop-motion — settled in 03 against 8 and 10." },
+    { key: "jitter", type: "range", label: "Jitter", def: 2, min: 0, max: 12, step: 0.5, unit: "px",
+      hint: "Hand-held wobble per frame." },
+    { key: "grain", type: "toggle", label: "Grain", def: true },
+    { key: "grainOpacity", type: "range", label: "Grain amount", def: 0.5, min: 0, max: 1, step: 0.01,
+      hint: "0.5 overlaid on a light ground is the house value; a dark ground screens at 0.10 instead." },
+  ];
+
+  const state = {};
+  for (const s of SPEC) if (s.key) state[s.key] = s.def;
+  let palIndex = 0;
+  let pal = { ...PALETTES[0] };
+  const KEYS = ["frame", "card", "ink", "anchor"];
+  const KEYNAME = { frame: "Ground", card: "Card", ink: "Ink", anchor: "Anchor" };
+
+  const $ = (id) => document.getElementById(id);
+  const stage = $("stage"), fit = $("fit"), surround = $("surround");
+  let fx = null, paused = false;
+
+  /* A slider's readout. Declared as a function so it is hoisted above the
+     loop below, which builds every control and asks for it on the way. */
+  function fmt(s, v) {
+    const n = Number(v);
+    const txt = Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
+    return s.unit ? `${txt} ${s.unit}` : txt;
+  }
+
+  /* ---- build the rail from SPEC ---- */
+  const host = $("controls");
+  const refs = {};
+  let current = null;
+  for (const s of SPEC) {
+    if (s.group) {
+      current = document.createElement("section");
+      current.className = "group";
+      const h = document.createElement("h2");
+      h.className = "glabel";
+      h.textContent = s.group;
+      current.appendChild(h);
+      host.appendChild(current);
+      if (s.group === "Colour") buildPalette(current);
+      continue;
+    }
+    current.appendChild(control(s));
+  }
+
+  function control(s) {
+    const wrap = document.createElement("div");
+    wrap.className = "ctl";
+    const id = `c_${s.key}`;
+    const row = document.createElement("div");
+    row.className = "crow";
+    const name = document.createElement("label");
+    name.className = "cname";
+    name.htmlFor = id;
+    name.textContent = s.label;
+    const val = document.createElement("span");
+    val.className = "cval";
+    row.append(name, val);
+
+    let input;
+    if (s.type === "text") {
+      input = document.createElement("input");
+      input.type = "text"; input.id = id; input.value = s.def; input.spellcheck = false;
+      input.addEventListener("input", () => { state[s.key] = input.value; rebuild(250); });
+      const btns = document.createElement("div");
+      btns.className = "btns";
+      const dice = document.createElement("button");
+      dice.type = "button"; dice.textContent = "Random word";
+      dice.addEventListener("click", () => {
+        state[s.key] = input.value = randomWord(state[s.key]);
+        rebuild(0);
+      });
+      btns.appendChild(dice);
+      wrap.append(row, input, btns);
+      refs[s.key] = { input, val };
+      return wrap;
+    }
+    if (s.type === "select") {
+      input = document.createElement("select");
+      input.id = id;
+      for (const o of s.options) {
+        const opt = document.createElement("option");
+        opt.value = o; opt.textContent = o;
+        input.appendChild(opt);
+      }
+      input.value = s.def;
+      input.addEventListener("change", () => {
+        state[s.key] = s.cast ? s.cast(input.value) : input.value;
+        rebuild(0);
+      });
+      wrap.append(row, input);
+    } else if (s.type === "toggle") {
+      input = document.createElement("button");
+      input.type = "button"; input.id = id;
+      const sync = () => {
+        input.classList.toggle("on", !!state[s.key]);
+        input.textContent = state[s.key] ? "On" : "Off";
+        input.setAttribute("aria-pressed", String(!!state[s.key]));
+      };
+      input.addEventListener("click", () => { state[s.key] = !state[s.key]; sync(); rebuild(0); });
+      sync();
+      wrap.append(row, input);
+    } else {
+      input = document.createElement("input");
+      input.type = "range"; input.id = id;
+      input.min = s.min; input.max = s.max; input.step = s.step; input.value = s.def;
+      val.textContent = fmt(s, s.def);
+      input.addEventListener("input", () => {
+        state[s.key] = Number(input.value);
+        val.textContent = fmt(s, state[s.key]);
+        rebuild(-1);
+      });
+      wrap.append(row, input);
+    }
+    if (s.hint) {
+      const hint = document.createElement("p");
+      hint.className = "hint";
+      hint.textContent = s.hint;
+      wrap.appendChild(hint);
+    }
+    refs[s.key] = { input, val, spec: s };
+    return wrap;
+  }
+
+  /* ---- palette block: Collection 01's six sets, then free swatches ---- */
+  function buildPalette(section) {
+    const sets = document.createElement("div");
+    sets.className = "sets";
+    PALETTES.forEach((q, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "set" + (i === 0 ? " on" : "");
+      b.title = `Set ${i + 1} — ${q.frame} ground`;
+      b.setAttribute("aria-label", `Palette set ${i + 1}`);
+      for (const k of KEYS) {
+        const i2 = document.createElement("i");
+        i2.style.background = q[k];
+        b.appendChild(i2);
+      }
+      b.addEventListener("click", () => {
+        palIndex = i; pal = { ...q };
+        [...sets.children].forEach((c, j) => c.classList.toggle("on", j === i));
+        syncDots(); rebuild(0);
+      });
+      sets.appendChild(b);
+    });
+    section.appendChild(sets);
+
+    const dots = document.createElement("div");
+    dots.className = "dots";
+    const dotRefs = {};
+    for (const k of KEYS) {
+      const d = document.createElement("div");
+      d.className = "dot";
+      d.style.background = pal[k];
+      const inp = document.createElement("input");
+      inp.type = "color"; inp.value = pal[k];
+      inp.setAttribute("aria-label", KEYNAME[k]);
+      inp.addEventListener("input", () => {
+        pal[k] = inp.value.toUpperCase();
+        d.style.background = pal[k];
+        rebuild(-1);
+      });
+      const em = document.createElement("em");
+      em.textContent = KEYNAME[k];
+      d.append(inp, em);
+      dots.appendChild(d);
+      dotRefs[k] = { d, inp };
+    }
+    section.appendChild(dots);
+    window.__syncDots = () => {
+      for (const k of KEYS) { dotRefs[k].d.style.background = pal[k]; dotRefs[k].inp.value = pal[k]; }
+    };
+
+    const btns = document.createElement("div");
+    btns.className = "btns";
+    const rotate = document.createElement("button");
+    rotate.type = "button"; rotate.textContent = "Rotate";
+    rotate.title = "Move each colour one place along";
+    rotate.addEventListener("click", () => {
+      const v = KEYS.map((k) => pal[k]);
+      v.push(v.shift());
+      KEYS.forEach((k, i) => (pal[k] = v[i]));
+      syncDots(); rebuild(0);
+    });
+    const shuffle = document.createElement("button");
+    shuffle.type = "button"; shuffle.textContent = "Shuffle";
+    shuffle.title = "Four colours out of Collection 01's pool";
+    shuffle.addEventListener("click", () => {
+      const bag = [...POOL];
+      for (let i = bag.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [bag[i], bag[j]] = [bag[j], bag[i]];
+      }
+      KEYS.forEach((k, i) => (pal[k] = bag[i]));
+      syncDots(); rebuild(0);
+    });
+    btns.append(rotate, shuffle);
+    section.appendChild(btns);
+  }
+  const syncDots = () => window.__syncDots && window.__syncDots();
+
+  /* ---- surround + settings, in their own group at the end ---- */
+  {
+    const sec = document.createElement("section");
+    sec.className = "group";
+    const h = document.createElement("h2");
+    h.className = "glabel"; h.textContent = "Bench";
+    sec.appendChild(h);
+
+    const row = document.createElement("div");
+    row.className = "ctl";
+    const lbl = document.createElement("div");
+    lbl.className = "crow";
+    lbl.innerHTML = '<span class="cname">Surround</span>';
+    const btns = document.createElement("div");
+    btns.className = "btns";
+    for (const bg of ["light", "grey", "dark"]) {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = bg;
+      b.classList.toggle("on", bg === "grey");
+      b.addEventListener("click", () => {
+        surround.dataset.bg = bg;
+        [...btns.children].forEach((c) => c.classList.toggle("on", c === b));
+      });
+      btns.appendChild(b);
+    }
+    const hint = document.createElement("p");
+    hint.className = "hint";
+    hint.textContent = "What the card is judged against. The grain reads differently on each.";
+    row.append(lbl, btns, hint);
+    sec.appendChild(row);
+
+    const out = document.createElement("div");
+    out.className = "ctl";
+    const copy = document.createElement("button");
+    copy.type = "button"; copy.textContent = "Copy settings";
+    copy.title = "Everything that has moved off the default, as JSON";
+    copy.addEventListener("click", () => {
+      const moved = {};
+      for (const s of SPEC) if (s.key && state[s.key] !== s.def) moved[s.key] = state[s.key];
+      moved.palette = { ...pal };
+      const text = JSON.stringify(moved, null, 2);
+      navigator.clipboard?.writeText(text).then(
+        () => toast("Settings copied"),
+        () => toast("Copy blocked — see console"),
+      );
+      console.log(text);
+    });
+    const hint2 = document.createElement("p");
+    hint2.className = "hint";
+    hint2.textContent = "Only what has moved off the canvas default, plus the palette — the shape a decision travels in on its way into five.js.";
+    out.append(copy, hint2);
+    sec.appendChild(out);
+    host.appendChild(sec);
+  }
+
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._t);
+    t._t = setTimeout(() => t.classList.remove("show"), 1400);
+  }
+
+  /* ---- mounting ---- */
+  let pending = 0, timer = 0;
+  function rebuild(delay) {
+    clearTimeout(timer);
+    if (delay === -1) {                 // a dragged slider: one build per frame
+      if (pending) return;
+      pending = requestAnimationFrame(() => { pending = 0; build(); });
+      return;
+    }
+    if (delay > 0) { timer = setTimeout(build, delay); return; }
+    build();
+  }
+
+  function build() {
+    if (fx) fx.stop();
+    const { card, word, ...rest } = state;
+    /* At the house value, the grain is left to decide itself: 0.5 overlaid
+       on a light ground, 0.10 screened on a dark one. Moving the slider is
+       what makes it a deliberate figure the card is asking for. */
+    if (rest.grainOpacity === 0.5) delete rest.grainOpacity;
+    fx = mount(stage, card, { ...rest, word, palette: pal, seed: 0 });
+    if (paused) fx.pause && fx.pause();
+    const m = fx.eng && fx.eng.measure;
+    $("rLines").textContent = m ? m.lines : "—";
+    $("rRow").textContent = m ? Math.round(m.rowH) : "—";
+    $("rLetters").textContent = m ? m.letters : "—";
+    $("scrub").max = Math.max(1, Math.round((state.round / 1000) * state.fps) - 1);
+    size();
+  }
+
+  /* The card composes at 1080; the bench scales the whole thing to fit
+     whatever room the window gives it. */
+  function size() {
+    const box = surround.getBoundingClientRect();
+    const k = Math.max(0.05, Math.min((box.width - 24) / STAGE, (box.height - 24) / STAGE));
+    stage.style.transform = `scale(${k})`;
+    fit.style.width = `${STAGE * k}px`;
+    fit.style.height = `${STAGE * k}px`;
+  }
+  addEventListener("resize", size, { passive: true });
+
+  /* ---- transport ---- */
+  const scrub = $("scrub"), playpause = $("playpause");
+  playpause.addEventListener("click", () => {
+    paused = !paused;
+    if (!fx) return;
+    paused ? fx.pause() : fx.play();
+    playpause.textContent = paused ? "Play" : "Pause";
+    playpause.setAttribute("aria-label", paused ? "Play" : "Pause");
+  });
+  const nudge = (d) => {
+    if (!fx) return;
+    if (!paused) playpause.click();
+    const f = Math.max(0, fx.frame + d);
+    fx.seek(f); scrub.value = f; $("rFrame").textContent = f;
+  };
+  $("stepb").addEventListener("click", () => nudge(-1));
+  $("stepf").addEventListener("click", () => nudge(1));
+  scrub.addEventListener("input", () => {
+    if (!fx) return;
+    if (!paused) playpause.click();
+    fx.seek(Number(scrub.value));
+    $("rFrame").textContent = scrub.value;
+  });
+  /* While it runs, the readout follows the engine rather than the slider. */
+  (function poll() {
+    requestAnimationFrame(poll);
+    if (fx && !paused) {
+      $("rFrame").textContent = fx.frame;
+      scrub.value = fx.frame % (Number(scrub.max) + 1);
+    }
+  })();
+
+  addEventListener("keydown", (e) => {
+    if (e.target.matches("input, select, textarea")) return;
+    if (e.key === " ") { e.preventDefault(); playpause.click(); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); nudge(-1); }
+    if (e.key === "ArrowRight") { e.preventDefault(); nudge(1); }
+  });
+
+  /* Switzer has to be in before the first layout: the sticker is cut to
+     the letter it is measured around, so a fallback face would size every
+     tile wrong and the page would settle on those numbers. */
+  /* Which face actually turned up. The sticker is cut to the letter it is
+     measured around, so the lab is only telling the truth about the type
+     when the real Switzer is the one being measured. Published as an
+     Artifact it is not: the page may load stylesheets from Google Fonts
+     only, and Switzer is served from Fontshare — so the stack falls to
+     Rubik, the family's own Hebrew face, and the tiles are cut to that
+     instead. Everything else on the card is exact. */
+  function reportFace() {
+    const note = document.getElementById("faceNote");
+    const has = document.fonts && document.fonts.check('500 100px Switzer');
+    if (has) {
+      note.className = "sub";
+      note.textContent = "Type: Switzer 500 — the real face, so the sticker geometry is exact.";
+    } else {
+      note.className = "sub warn";
+      note.textContent = "Type: Rubik stand-in — Switzer is served from Fontshare, which this page may not load. Proportions and the letter-cut sticker are approximate; colour, grain, rate and layout are exact.";
+    }
+  }
+
+  build();
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => {
+    clearSpecs(); build(); reportFace();
+  });
+  reportFace();
+</script>
