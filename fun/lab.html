@@ -133,6 +133,7 @@
   button.on { background: var(--accent); border-color: var(--accent); color: #17151C; font-weight: 600; }
   .btns { display: flex; gap: 6px; flex-wrap: wrap; }
   .btns button { flex: 1 1 auto; }
+  .btns button.chip { flex: 0 1 auto; font-size: 11px; padding: 5px 8px; }
 
   /* ---- palette ---- */
   .sets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 11px; }
@@ -184,14 +185,14 @@
       <button id="stepf" type="button" aria-label="Step forward">+1</button>
       <input id="scrub" type="range" min="0" max="119" step="1" value="0" aria-label="Frame" />
       <span class="read">frame <b id="rFrame">0</b></span>
-      <span class="read">lines <b id="rLines">—</b> · row <b id="rRow">—</b>px · letters <b id="rLetters">—</b></span>
+      <span class="read">lines <b id="rLines">—</b> · <span id="rUnitName">row</span> <b id="rRow">—</b>px · <span id="rCountName">letters</span> <b id="rLetters">—</b></span>
     </div>
   </section>
 
   <aside id="rail">
     <div id="railhead">
       <h1 class="wordmark">Collection 05 <span>/ lab</span></h1>
-      <p class="sub">The plain canvas — house defaults only, on Collection 01's palette. No card decided yet.</p>
+      <p class="sub">Collection 01's palette, the house defaults, and card one: the dot-matrix letter built out of primitives.</p>
       <p class="sub" id="faceNote"></p>
     </div>
     <div id="controls"></div>
@@ -200,7 +201,7 @@
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
-  import { mount, clearSpecs, p as PALETTES, POOL, STAGE, CARD } from "./assets/five.js";
+  import { mount, clearSpecs, p as PALETTES, POOL, STAGE, CARD, PRIM_NAMES } from "./assets/five.js";
   import { c as randomWord } from "./assets/palette-D5fFc6np.js";
 
   /* Every dial the canvas takes, in one list. A new knob on a new card is
@@ -209,37 +210,53 @@
      "Copy settings" can report only what has actually moved. */
   const SPEC = [
     { group: "Word" },
-    { key: "word", type: "text", label: "Word", def: "five" },
+    { key: "word", type: "text", label: "Word", def: "shapes" },
 
     { group: "Card" },
-    { key: "card", type: "select", label: "Card", def: "still",
-      options: Object.keys(CARD), hint: "One card so far: still sets the word and does nothing, so what you see is type, sticker, palette and grain." },
+    { key: "card", type: "select", label: "Card", def: "dots",
+      options: Object.keys(CARD), hint: "dots is card one — the 5x7 matrix letter, three instances thick. still is the bare canvas: type, sticker, palette and grain, no card on top." },
+
+    { group: "Matrix", only: "dots" },
+    { key: "thick", type: "range", label: "Thickness", def: 3, min: 1, max: 7, step: 2, only: "dots",
+      hint: "Instances across a stroke. 1 is Collection 02's reading; 3 is this card's." },
+    { key: "wide", type: "range", label: "Width", def: 1, min: 0.6, max: 2.4, step: 0.05, only: "dots",
+      hint: "Stretches the letter sideways before it is thickened, so a thick stroke does not eat its counters." },
+    { key: "size", type: "range", label: "Instance size", def: 0.82, min: 0.2, max: 1.6, step: 0.02, only: "dots",
+      hint: "As a share of its cell. Under 1 leaves air between instances; over 1 they overlap." },
+    { key: "track", type: "range", label: "Letter gap", def: 1, min: 0, max: 4, step: 0.25, only: "dots", unit: "cells" },
+    { key: "lead", type: "range", label: "Line gap", def: 1.4, min: 0, max: 5, step: 0.1, only: "dots", unit: "rows" },
+    { key: "lines", type: "range", label: "Lines", def: 0, min: 0, max: 6, step: 1, only: "dots",
+      hint: "0 lets the card pick whichever arrangement fills the frame best." },
+
+    { group: "Shapes", only: "dots" },
+    { key: "prims", type: "multi", label: "In the bag", def: PRIM_NAMES.join(","), options: PRIM_NAMES, only: "dots",
+      hint: "Each cell takes one of these, picked off the seeded stream. Change the seed to reshuffle." },
 
     { group: "Colour" },
-    { key: "colour", type: "select", label: "Rule", def: "ramp",
-      options: ["ramp", "cycle", "flat"],
-      hint: "ramp steps the three non-ground colours across the word; cycle takes them in turn; flat uses one." },
+    { key: "colour", type: "select", label: "Rule", def: "letter",
+      options: ["ramp", "cycle", "flat", "letter", "word", "mix"],
+      hint: "letter/word give each one a colour; ramp steps across the whole text; mix picks per instance." },
+    { key: "seed", type: "seed", label: "Seed", def: 0,
+      hint: "Which confetti you get. 0 is a fresh random stream each build." },
 
-    { group: "Type" },
-    { key: "shape", type: "select", label: "Sticker", def: "letter",
+    { group: "Type", only: "still" },
+    { key: "shape", only: "still", type: "select", label: "Sticker", def: "letter",
       options: ["letter", "capsule", "chamfer", "none"],
       hint: "letter is Collection 01's tile, cut to the glyph's own shape." },
-    { key: "weight", type: "select", label: "Weight", def: 500, cast: Number,
+    { key: "weight", only: "still", type: "select", label: "Weight", def: 500, cast: Number,
       options: [300, 400, 500, 700, 900], hint: "Switzer 500 is the family's settled letter weight." },
-    { key: "letter", type: "range", label: "Letter", def: 100, min: 50, max: 160, step: 1, unit: "%",
+    { key: "letter", only: "still", type: "range", label: "Letter", def: 100, min: 50, max: 160, step: 1, unit: "%",
       hint: "The say the card gets over the glyph once the room is worked out — smaller is more air, not a smaller drawing." },
-    { key: "tile", type: "range", label: "Sticker height", def: 0.84, min: 0.4, max: 1, step: 0.01,
+    { key: "tile", only: "still", type: "range", label: "Sticker height", def: 0.84, min: 0.4, max: 1, step: 0.01,
       hint: "As a share of its row." },
 
     { group: "Layout" },
     { key: "margin", type: "range", label: "Margin", def: 12, min: 0, max: 30, step: 1, unit: "%" },
-    { key: "track", type: "range", label: "Tracking", def: 0.06, min: -0.1, max: 0.4, step: 0.01 },
-    { key: "lead", type: "range", label: "Leading", def: 0.18, min: 0, max: 0.8, step: 0.01 },
 
-    { group: "Thread" },
-    { key: "thread", type: "toggle", label: "Thread", def: false,
+    { group: "Thread", only: "still" },
+    { key: "thread", only: "still", type: "toggle", label: "Thread", def: false,
       hint: "The line a run of letters is strung on. 04 drew one per rank." },
-    { key: "threadScale", type: "range", label: "Thread weight", def: 1, min: 0.3, max: 3, step: 0.05,
+    { key: "threadScale", only: "still", type: "range", label: "Thread weight", def: 1, min: 0.3, max: 3, step: 0.05,
       hint: "x the house 0.0675 of a row." },
 
     { group: "Motion" },
@@ -278,6 +295,7 @@
   /* ---- build the rail from SPEC ---- */
   const host = $("controls");
   const refs = {};
+  const scoped = [];            // [element, card-it-belongs-to]
   let current = null;
   for (const s of SPEC) {
     if (s.group) {
@@ -288,11 +306,22 @@
       h.textContent = s.group;
       current.appendChild(h);
       host.appendChild(current);
+      if (s.only) scoped.push([current, s.only]);
       if (s.group === "Colour") buildPalette(current);
       continue;
     }
-    current.appendChild(control(s));
+    const el = control(s);
+    current.appendChild(el);
+    if (s.only) scoped.push([el, s.only]);
   }
+
+  /* A dial that belongs to one card is only shown while that card is up —
+     and only handed to the engine then, since `track` and `lead` mean
+     different things on a sticker card and on a dot-matrix one. */
+  function syncScope() {
+    for (const [el, card] of scoped) el.hidden = card !== state.card;
+  }
+  const inScope = (s) => !s.only || s.only === state.card;
 
   function control(s) {
     const wrap = document.createElement("div");
@@ -326,6 +355,59 @@
       refs[s.key] = { input, val };
       return wrap;
     }
+    if (s.type === "multi") {
+      const box = document.createElement("div");
+      box.className = "btns";
+      const on = new Set(String(s.def).split(","));
+      const sync = () => { state[s.key] = [...on].join(","); val.textContent = `${on.size}/${s.options.length}`; };
+      for (const o of s.options) {
+        const b = document.createElement("button");
+        b.type = "button"; b.textContent = o;
+        b.classList.add("chip");
+        b.classList.toggle("on", on.has(o));
+        b.setAttribute("aria-pressed", String(on.has(o)));
+        b.addEventListener("click", () => {
+          on.has(o) ? on.delete(o) : on.add(o);
+          if (!on.size) on.add(o);                 // never leave the bag empty
+          b.classList.toggle("on", on.has(o));
+          b.setAttribute("aria-pressed", String(on.has(o)));
+          sync(); rebuild(0);
+        });
+        box.appendChild(b);
+      }
+      sync();
+      wrap.append(row, box);
+      if (s.hint) {
+        const hint = document.createElement("p");
+        hint.className = "hint"; hint.textContent = s.hint;
+        wrap.appendChild(hint);
+      }
+      refs[s.key] = { input: box, val, spec: s };
+      return wrap;
+    }
+    if (s.type === "seed") {
+      const box = document.createElement("div");
+      box.className = "btns";
+      const num = document.createElement("input");
+      num.type = "text"; num.id = id; num.value = String(s.def); num.inputMode = "numeric";
+      num.addEventListener("input", () => { state[s.key] = Number(num.value) || 0; rebuild(250); });
+      const dice = document.createElement("button");
+      dice.type = "button"; dice.textContent = "Reshuffle";
+      dice.addEventListener("click", () => {
+        state[s.key] = (Math.random() * 4294967295) | 0;
+        num.value = String(state[s.key]);
+        rebuild(0);
+      });
+      box.append(num, dice);
+      wrap.append(row, box);
+      if (s.hint) {
+        const hint = document.createElement("p");
+        hint.className = "hint"; hint.textContent = s.hint;
+        wrap.appendChild(hint);
+      }
+      refs[s.key] = { input: num, val, spec: s };
+      return wrap;
+    }
     if (s.type === "select") {
       input = document.createElement("select");
       input.id = id;
@@ -337,6 +419,7 @@
       input.value = s.def;
       input.addEventListener("change", () => {
         state[s.key] = s.cast ? s.cast(input.value) : input.value;
+        if (s.key === "card") syncScope();
         rebuild(0);
       });
       wrap.append(row, input);
@@ -488,7 +571,7 @@
     copy.title = "Everything that has moved off the default, as JSON";
     copy.addEventListener("click", () => {
       const moved = {};
-      for (const s of SPEC) if (s.key && state[s.key] !== s.def) moved[s.key] = state[s.key];
+      for (const s of SPEC) if (s.key && inScope(s) && state[s.key] !== s.def) moved[s.key] = state[s.key];
       moved.palette = { ...pal };
       const text = JSON.stringify(moved, null, 2);
       navigator.clipboard?.writeText(text).then(
@@ -528,17 +611,24 @@
 
   function build() {
     if (fx) fx.stop();
-    const { card, word, ...rest } = state;
+    const card = state.card;
+    const opts = {};
+    for (const s of SPEC) {
+      if (!s.key || s.key === "card" || !inScope(s)) continue;
+      opts[s.key] = state[s.key];
+    }
     /* At the house value, the grain is left to decide itself: 0.5 overlaid
        on a light ground, 0.10 screened on a dark one. Moving the slider is
        what makes it a deliberate figure the card is asking for. */
-    if (rest.grainOpacity === 0.5) delete rest.grainOpacity;
-    fx = mount(stage, card, { ...rest, word, palette: pal, seed: 0 });
+    if (opts.grainOpacity === 0.5) delete opts.grainOpacity;
+    fx = mount(stage, card, { ...opts, palette: pal });
     if (paused) fx.pause && fx.pause();
     const m = fx.eng && fx.eng.measure;
     $("rLines").textContent = m ? m.lines : "—";
     $("rRow").textContent = m ? Math.round(m.rowH) : "—";
     $("rLetters").textContent = m ? m.letters : "—";
+    $("rUnitName").textContent = card === "dots" ? "cell" : "row";
+    $("rCountName").textContent = card === "dots" ? "instances" : "letters";
     $("scrub").max = Math.max(1, Math.round((state.round / 1000) * state.fps) - 1);
     size();
   }
@@ -615,6 +705,7 @@
     }
   }
 
+  syncScope();
   build();
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => {
     clearSpecs(); build(); reportFace();

@@ -319,6 +319,389 @@ export const CURVES = {
 };
 export const shapeOf = (c) => (typeof c === "function" ? c : CURVES[c] || CURVES.sway);
 
+/* ---------- the dot-matrix letter, and the shapes it is built from ---------- */
+
+/* Collection 02's Dots read a letter off a 5 x 7 bitmap and put one circle
+   in every lit cell. The letter is not an outline — it is a skeleton one
+   cell thick, and the circles are what you actually see. Same font here,
+   written out so it can be read and edited. */
+const GLYPH_COLS = 5, GLYPH_ROWS = 7, SPACE_COLS = 2;
+const GLYPHS = {
+  A  : ["01110","10001","10001","11111","10001","10001","10001"],
+  B  : ["11110","10001","10001","11110","10001","10001","11110"],
+  C  : ["01110","10001","10000","10000","10000","10001","01110"],
+  D  : ["11110","10001","10001","10001","10001","10001","11110"],
+  E  : ["11111","10000","10000","11110","10000","10000","11111"],
+  F  : ["11111","10000","10000","11110","10000","10000","10000"],
+  G  : ["01110","10001","10000","10111","10001","10001","01111"],
+  H  : ["10001","10001","10001","11111","10001","10001","10001"],
+  I  : ["11111","00100","00100","00100","00100","00100","11111"],
+  J  : ["00111","00010","00010","00010","00010","10010","01100"],
+  K  : ["10001","10010","10100","11000","10100","10010","10001"],
+  L  : ["10000","10000","10000","10000","10000","10000","11111"],
+  M  : ["10001","11011","10101","10101","10001","10001","10001"],
+  N  : ["10001","11001","10101","10011","10001","10001","10001"],
+  O  : ["01110","10001","10001","10001","10001","10001","01110"],
+  P  : ["11110","10001","10001","11110","10000","10000","10000"],
+  Q  : ["01110","10001","10001","10001","10101","10010","01101"],
+  R  : ["11110","10001","10001","11110","10100","10010","10001"],
+  S  : ["01111","10000","10000","01110","00001","00001","11110"],
+  T  : ["11111","00100","00100","00100","00100","00100","00100"],
+  U  : ["10001","10001","10001","10001","10001","10001","01110"],
+  V  : ["10001","10001","10001","10001","10001","01010","00100"],
+  W  : ["10001","10001","10001","10101","10101","10101","01010"],
+  X  : ["10001","10001","01010","00100","01010","10001","10001"],
+  Y  : ["10001","10001","01010","00100","00100","00100","00100"],
+  Z  : ["11111","00001","00010","00100","01000","10000","11111"],
+  0  : ["01110","10001","10011","10101","11001","10001","01110"],
+  1  : ["00100","01100","00100","00100","00100","00100","01110"],
+  2  : ["01110","10001","00001","00010","00100","01000","11111"],
+  3  : ["11111","00010","00100","00010","00001","10001","01110"],
+  4  : ["00010","00110","01010","10010","11111","00010","00010"],
+  5  : ["11111","10000","11110","00001","00001","10001","01110"],
+  6  : ["00110","01000","10000","11110","10001","10001","01110"],
+  7  : ["11111","00001","00010","00100","01000","01000","01000"],
+  8  : ["01110","10001","10001","01110","10001","10001","01110"],
+  9  : ["01110","10001","10001","01111","00001","00010","01100"],
+  "!": ["00100","00100","00100","00100","00100","00000","00100"],
+  "&": ["01100","10010","10100","01000","10101","10010","01101"],
+  "'": ["00100","00100","00000","00000","00000","00000","00000"],
+  "*": ["00000","10101","01110","11111","01110","10101","00000"],
+  "+": ["00000","00100","00100","11111","00100","00100","00000"],
+  ",": ["00000","00000","00000","00000","00000","00100","01000"],
+  "-": ["00000","00000","00000","01110","00000","00000","00000"],
+  ".": ["00000","00000","00000","00000","00000","00100","00100"],
+  "/": ["00001","00010","00010","00100","01000","01000","10000"],
+  ":": ["00000","00100","00000","00000","00100","00000","00000"],
+  "?": ["01110","10001","00001","00010","00100","00000","00100"],
+  "♥": ["00000","01010","11111","11111","01110","00100","00000"],
+};
+
+/* A stroke one cell thick is the whole of Collection 02's reading. This
+   card wants three, which is not the same as drawing the same skeleton
+   with fatter circles: the stroke has to become three instances across.
+
+   So the glyph is redrawn on a finer grid — `thick` cells for every one
+   of the original — and then thickened in two steps:
+
+     join    the lit cells are joined to their neighbours on the fine grid
+             before anything is thickened. Blowing the bitmap up on its own
+             turns every diagonal into a staircase of blocks; joining the
+             centres first keeps a diagonal a diagonal, so the A and the W
+             come out as strokes rather than as steps.
+     spread  then every cell of that skeleton claims its neighbours out to
+             a radius of (thick - 1) / 2 — which is what makes the stroke
+             `thick` instances across, evenly, whichever way it runs.
+
+   `wide` stretches the letter sideways before any of that. A thick stroke
+   eats a letter's counters — the hole in an O, the gap in an A — and past
+   three the 5-wide bitmap has nothing left to give, so the letter is given
+   the room instead of the stroke being taken away. */
+const matrices = new Map();
+function matrix(ch, thick, wide) {
+  const key = `${ch}/${thick}/${wide}`;
+  let m = matrices.get(key);
+  if (m) return m;
+  const rows = GLYPHS[ch];
+  if (!rows) { m = { cells: [], w: 0, h: 0 }; matrices.set(key, m); return m; }
+
+  const t = Math.max(1, Math.round(thick));
+  const sx = Math.max(1, Math.round(t * wide)), sy = t;
+  /* Where an original cell lands on the fine grid — its middle, so the
+     spread has the same room on either side. */
+  const fx = (c) => c * sx + ((sx - 1) >> 1);
+  const fy = (r) => r * sy + ((sy - 1) >> 1);
+
+  const lit = [];
+  for (let r = 0; r < GLYPH_ROWS; r++) {
+    for (let c = 0; c < GLYPH_COLS; c++) if (rows[r][c] === "1") lit.push([c, r]);
+  }
+  const on = new Set();
+  const mark = (x, y) => on.add(`${x},${y}`);
+  /* join: a straight run of cells between the two centres. */
+  const joinTo = (a, b) => {
+    const x0 = fx(a[0]), y0 = fy(a[1]), x1 = fx(b[0]), y1 = fy(b[1]);
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+    for (let i = 0; i <= n; i++) {
+      mark(Math.round(x0 + ((x1 - x0) * i) / n), Math.round(y0 + ((y1 - y0) * i) / n));
+    }
+  };
+  const isLit = (c, r) => c >= 0 && c < GLYPH_COLS && r >= 0 && r < GLYPH_ROWS && rows[r][c] === "1";
+  for (const [c, r] of lit) {
+    mark(fx(c), fy(r));
+    /* Only forwards, so a pair is never joined twice. */
+    for (const [dc, dr] of [[1, 0], [0, 1], [1, 1], [-1, 1]]) {
+      if (isLit(c + dc, r + dr)) joinTo([c, r], [c + dc, r + dr]);
+    }
+  }
+
+  /* spread: a disc of this radius round every cell of the skeleton. At
+     thick 3 that is the full 3 x 3, which is exactly three across. */
+  const rad = (t - 1) / 2;
+  const disc = [];
+  const lim = (rad + 0.5) ** 2;
+  for (let dy = -Math.ceil(rad); dy <= Math.ceil(rad); dy++) {
+    for (let dx = -Math.ceil(rad); dx <= Math.ceil(rad); dx++) {
+      if (dx * dx + dy * dy <= lim) disc.push([dx, dy]);
+    }
+  }
+  const out = new Set();
+  for (const k of on) {
+    const [x, y] = k.split(",").map(Number);
+    for (const [dx, dy] of disc) out.add(`${x + dx},${y + dy}`);
+  }
+
+  /* Trimmed to what the letter actually uses, so a narrow letter is narrow. */
+  let minX = Infinity, maxX = -Infinity;
+  const cells = [];
+  for (const k of out) {
+    const [x, y] = k.split(",").map(Number);
+    cells.push([x, y]);
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+  }
+  if (!cells.length) { m = { cells: [], w: 0, h: 0 }; matrices.set(key, m); return m; }
+  m = {
+    cells: cells.map(([x, y]) => [x - minX, y]),
+    w: maxX - minX + 1,
+    h: GLYPH_ROWS * sy,
+  };
+  matrices.set(key, m);
+  return m;
+}
+
+/* The instances. Collection 02 put a circle in every cell; this card puts
+   one of these, picked per cell off the seeded stream, so a word is the
+   same confetti every time it is drawn and a new seed reshuffles it.
+
+   Each is written as a path relative to its own middle, so a cell is one
+   move plus a body that was worked out once — the same string feeds an SVG
+   in the studio and a Path2D on the export canvas. */
+const n1 = (v) => (Math.round(v * 10) / 10).toString();
+function polyBody(pts) {
+  let d = `m${n1(pts[0][0])},${n1(pts[0][1])}`;
+  for (let i = 1; i < pts.length; i++) d += `l${n1(pts[i][0] - pts[i - 1][0])},${n1(pts[i][1] - pts[i - 1][1])}`;
+  return d + "z";
+}
+const spokes = (n, r, turn = -Math.PI / 2) =>
+  Array.from({ length: n }, (_, i) => {
+    const a = turn + (i * 2 * Math.PI) / n;
+    return [Math.cos(a) * r, Math.sin(a) * r];
+  });
+
+export const PRIMS = {
+  circle: (r) => `m${n1(-r)},0a${n1(r)},${n1(r)} 0 1,0 ${n1(2 * r)},0a${n1(r)},${n1(r)} 0 1,0 ${n1(-2 * r)},0z`,
+  /* A ring is the circle with the middle taken back out — the inner arc is
+     wound the other way, so under the default fill rule it reads as a hole
+     even when every shape on the card is one long path. */
+  ring: (r) => {
+    const i = r * 0.54;
+    return PRIMS.circle(r) + `m${n1(r - i)},0a${n1(i)},${n1(i)} 0 1,1 ${n1(2 * i)},0a${n1(i)},${n1(i)} 0 1,1 ${n1(-2 * i)},0z`;
+  },
+  square: (r) => { const s = r * 0.9; return polyBody([[-s, -s], [s, -s], [s, s], [-s, s]]); },
+  rounded: (r) => {
+    const s = r * 0.92, k = s * 0.44, m = 2 * (s - k);
+    return `m${n1(-s + k)},${n1(-s)}l${n1(m)},0a${n1(k)},${n1(k)} 0 0,1 ${n1(k)},${n1(k)}`
+         + `l0,${n1(m)}a${n1(k)},${n1(k)} 0 0,1 ${n1(-k)},${n1(k)}`
+         + `l${n1(-m)},0a${n1(k)},${n1(k)} 0 0,1 ${n1(-k)},${n1(-k)}`
+         + `l0,${n1(-m)}a${n1(k)},${n1(k)} 0 0,1 ${n1(k)},${n1(-k)}z`;
+  },
+  triangle: (r) => polyBody(spokes(3, r * 1.12)),
+  diamond: (r) => polyBody(spokes(4, r * 1.08)),
+  hexagon: (r) => polyBody(spokes(6, r * 1.02)),
+  star: (r) => {
+    const out = spokes(5, r * 1.15), inn = spokes(5, r * 0.5, -Math.PI / 2 + Math.PI / 5);
+    const pts = [];
+    for (let i = 0; i < 5; i++) { pts.push(out[i]); pts.push(inn[i]); }
+    return polyBody(pts);
+  },
+  /* A cross, which is the one shape here that is not convex — it keeps the
+     confetti from reading as all one family of blobs. */
+  plus: (r) => {
+    const s = r * 0.98, a = r * 0.34;
+    return polyBody([
+      [-a, -s], [a, -s], [a, -a], [s, -a], [s, a], [a, a],
+      [a, s], [-a, s], [-a, a], [-s, a], [-s, -a], [-a, -a],
+    ]);
+  },
+};
+export const PRIM_NAMES = Object.keys(PRIMS);
+
+/* ---------- Collection 05, card one: the dot-matrix letter in shapes ---------- */
+
+/* Collection 02's Dots, taken two steps on. The letter is still read off
+   the 5 x 7 bitmap and still drawn as instances rather than as an outline,
+   but the stroke is three instances across instead of one, and the
+   instance is no longer always a circle: every cell takes one of the
+   primitives, picked off the seeded stream.
+
+   Nothing moves yet. This is the structure — what the letters are made of
+   and how they sit — with the house wobble on top so it is not dead.
+
+   Every cell of every letter is one path, and the paths are handed over
+   grouped by colour: three or four long strings for a card, rather than a
+   thousand elements. That is what keeps it cheap in the DOM and identical
+   on the export canvas, which takes the same strings through Path2D. */
+function dotsPiece({
+  word = "", palette, seed = 0,
+  margin = MARGIN, thick = 3, wide = 1, track = 1, lead = 1.4,
+  size = 0.82, prims = PRIM_NAMES, colour = "letter",
+  jitter = JITTER, round = ROUND, lines: linesOpt = 0,
+} = {}) {
+  const pal = dealPalette("dots", palette || p[0]);
+  const rand = rng(seed);
+  const bag = (Array.isArray(prims) ? prims : String(prims).split(","))
+    .map((k) => String(k).trim()).filter((k) => PRIMS[k]);
+  const pool = bag.length ? bag : ["circle"];
+
+  const words = String(word).toUpperCase().replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  const empty = !words.length;
+
+  const t = Math.max(1, Math.round(thick));
+  const sx = Math.max(1, Math.round(t * wide)), sy = t;
+  const trackCells = Math.max(0, Math.round(track * sx));
+  const spaceCells = SPACE_COLS * sx;
+  const glyphH = GLYPH_ROWS * sy;
+  const gapCells = Math.max(0, Math.round(lead * sy));
+
+  const pad = STAGE * (margin / 100);
+  const room = STAGE - pad * 2;
+
+  /* How wide a run of text sits, in fine cells. */
+  const runWidth = (text) => {
+    const cs = [...text];
+    let w = 0;
+    cs.forEach((ch, i) => {
+      w += ch === " " ? spaceCells : matrix(ch, t, wide).w;
+      if (i < cs.length - 1) w += trackCells;
+    });
+    return w;
+  };
+  /* Split the words into n lines, as evenly as their lengths allow. */
+  const split = (n) => {
+    if (n <= 1) return [words.join(" ")];
+    /* One word has nowhere to break, and a single line of it is always
+       wider than it is tall — so in a square frame it sets small and the
+       instances go to specks, which is the one thing this card cannot
+       afford. A matrix display breaks a word across its rows, so this one
+       does too, by letter. */
+    if (words.length === 1) {
+      const cs = [...words[0]];
+      const per = Math.ceil(cs.length / n);
+      const out = [];
+      for (let i = 0; i < cs.length; i += per) out.push(cs.slice(i, i + per).join(""));
+      return out;
+    }
+    const out = Array.from({ length: n }, () => []);
+    const total = words.reduce((a, w) => a + w.length + 1, 0);
+    let i = 0, acc = 0;
+    for (const w of words) {
+      out[i].push(w);
+      acc += w.length + 1;
+      if (i < n - 1 && acc >= (total * (i + 1)) / n) i++;
+    }
+    return out.filter((g) => g.length).map((g) => g.join(" "));
+  };
+
+  /* Try every number of lines the word could take and keep whichever fills
+     the frame best — a long word laid across one line sets tiny, and the
+     same word over three lines sets large. The card decides; the margin
+     says how much room it is deciding inside. */
+  let lines = [], cell = 0;
+  if (!empty) {
+    /* How many lines are even on the table: one per word, or — for a
+       single word — one per letter. */
+    const most = Math.min(6, words.length > 1 ? words.length : [...words[0]].length);
+    let bestU = 0, best = [];
+    for (let n = 1; n <= most; n++) {
+      const set = split(n);
+      if (!set.length) continue;
+      const W = Math.max(...set.map(runWidth));
+      const H = set.length * glyphH + (set.length - 1) * gapCells;
+      if (!W || !H) continue;
+      const u = Math.min(room / W, room / H);
+      if (u > bestU) { bestU = u; best = set; }
+      if (linesOpt && set.length === linesOpt) { lines = set; cell = u; }
+    }
+    /* A line count can be asked for that the text cannot make — four
+       letters will not sit on five rows. Rather than draw nothing, the
+       card falls back to the arrangement that fills the frame best. */
+    if (!lines.length) { lines = best; cell = bestU; }
+  }
+
+  /* Place every cell of every letter. The shape it takes and the colour it
+     wears are settled here, once, off the seeded stream — so the confetti
+     is the same every time the card is drawn, and a new seed reshuffles it
+     without touching the letters. */
+  const spots = [];
+  if (!empty) {
+    const W = Math.max(...lines.map(runWidth));
+    const H = lines.length * glyphH + (lines.length - 1) * gapCells;
+    const x0 = STAGE / 2 - (W * cell) / 2;
+    const y0 = STAGE / 2 - (H * cell) / 2;
+    const stops = [pal.card, pal.ink, pal.anchor];
+    let letterN = 0, wordN = 0;
+    const inkLetters = lines.join("").replace(/ /g, "").length;
+
+    lines.forEach((text, li) => {
+      const cs = [...text];
+      const lineW = runWidth(text);
+      let cx = x0 + ((W - lineW) * cell) / 2;      // each line centred in the block
+      const cy = y0 + li * (glyphH + gapCells) * cell;
+      cs.forEach((ch, i) => {
+        if (ch === " ") { cx += (spaceCells + trackCells) * cell; wordN++; return; }
+        const m = matrix(ch, t, wide);
+        const tone = colour === "ramp" ? ramp(stops, inkLetters > 1 ? letterN / (inkLetters - 1) : 0)
+                   : colour === "word" ? stops[wordN % stops.length]
+                   : colour === "flat" ? stops[0]
+                   : stops[letterN % stops.length];                // "letter", and the default
+        for (const [gx, gy] of m.cells) {
+          spots.push({
+            x: cx + (gx + 0.5) * cell,
+            y: cy + (gy + 0.5) * cell,
+            prim: pool[(rand() * pool.length) | 0],
+            tone: colour === "mix" ? stops[(rand() * stops.length) | 0] : tone,
+          });
+        }
+        letterN++;
+        cx += (m.w + trackCells) * cell;
+      });
+    });
+  }
+
+  /* One body per primitive, worked out once: a cell is then a move plus
+     that body, which is the whole of the per-frame cost. */
+  const r = (cell * size) / 2;
+  const bodies = {};
+  for (const k of pool) bodies[k] = PRIMS[k](r);
+
+  let now = 0;
+  function stepClock(dt) { now += dt * 1000; }
+
+  function snapshot(frame) {
+    const byTone = new Map();
+    spots.forEach((s, i) => {
+      const x = s.x + wobble(i, frame, 0) * jitter;
+      const y = s.y + wobble(i, frame, 1) * jitter;
+      let d = byTone.get(s.tone);
+      if (!d) { d = []; byTone.set(s.tone, d); }
+      d.push(`M${x.toFixed(1)},${y.toFixed(1)}${bodies[s.prim]}`);
+    });
+    const tiles = [];
+    for (const [tone, parts] of byTone) {
+      tiles.push({ kind: "paths", id: `p${tone}`, d: parts.join(""), colour: tone, alpha: 1 });
+    }
+    return { bg: pal.frame, tiles };
+  }
+
+  return {
+    step: stepClock, snapshot, pal, empty,
+    loopPeriod: round,
+    get now() { return now; },
+    measure: { lines: lines.length, rowH: cell, letters: spots.length },
+  };
+}
+
 /* ---------- the engine ---------- */
 
 /* What a card ships with before the page asks for anything. There is one
@@ -328,9 +711,14 @@ export const shapeOf = (c) => (typeof c === "function" ? c : CURVES[c] || CURVES
    The next card gets added here. */
 const CARD = {
   still: {},
+  /* Three instances across, and every primitive in the bag. */
+  dots: { thick: 3, wide: 1, track: 1, lead: 1.4, size: 0.82, margin: 10, colour: "letter" },
 };
 
-function engine(mode, o = {}) { return piece(mode, { ...CARD[mode], ...o }); }
+function engine(mode, o = {}) {
+  const opts = { ...CARD[mode], ...o };
+  return mode === "dots" ? dotsPiece(opts) : piece(mode, opts);
+}
 
 /* Runs the piece on a virtual clock. step(dt) advances it; snapshot(frame)
    describes what to paint for stop-motion frame `frame`. */
@@ -551,16 +939,25 @@ function mount(stage, mode, opts = {}) {
 
   const els = new Map();
   const SVG_NS = "http://www.w3.org/2000/svg";
-  function paintThread(t, depth) {
+  /* Two kinds of vector reach here: a "thread" is one stroked line through
+     a run of letters, and "paths" is every instance of one colour on a
+     dot-matrix card, concatenated into a single filled path. Both are one
+     SVG with one <path> in it — which is the point, since the second kind
+     would otherwise be a thousand elements. */
+  function paintVector(t, depth) {
     let el = els.get(t.id);
     if (!el) {
       el = document.createElementNS(SVG_NS, "svg");
       el.setAttribute("viewBox", `0 0 ${STAGE} ${STAGE}`);
       el.style.cssText = "position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;";
       const line = document.createElementNS(SVG_NS, "path");
-      line.setAttribute("fill", "none");
-      line.setAttribute("stroke-linecap", "round");
-      line.setAttribute("stroke-linejoin", "round");
+      if (t.kind === "thread") {
+        line.setAttribute("fill", "none");
+        line.setAttribute("stroke-linecap", "round");
+        line.setAttribute("stroke-linejoin", "round");
+      } else {
+        line.setAttribute("stroke", "none");
+      }
       el.appendChild(line);
       layer.appendChild(el);
       els.set(t.id, el);
@@ -568,8 +965,12 @@ function mount(stage, mode, opts = {}) {
     el.style.zIndex = depth;
     const line = el.firstChild;
     line.setAttribute("d", t.d);
-    line.setAttribute("stroke", t.colour);
-    line.setAttribute("stroke-width", t.width.toFixed(1));
+    if (t.kind === "thread") {
+      line.setAttribute("stroke", t.colour);
+      line.setAttribute("stroke-width", t.width.toFixed(1));
+    } else {
+      line.setAttribute("fill", t.colour);
+    }
     line.setAttribute("opacity", t.alpha.toFixed(3));
   }
 
@@ -582,7 +983,7 @@ function mount(stage, mode, opts = {}) {
     let depth = 0;
     for (const t of s.tiles) {
       seen.add(t.id);
-      if (t.kind === "thread") { paintThread(t, depth++); continue; }
+      if (t.kind === "thread" || t.kind === "paths") { paintVector(t, depth++); continue; }
       let el = els.get(t.id);
       if (!el) {
         el = document.createElement("div");
@@ -650,14 +1051,19 @@ export function paint(ctx, s, size) {
   ctx.textBaseline = "middle";
   for (const t of s.tiles) {
     ctx.globalAlpha = t.alpha;
-    if (t.kind === "thread") {
+    if (t.kind === "thread" || t.kind === "paths") {
       ctx.save();
       ctx.scale(k, k);
-      ctx.strokeStyle = t.colour;
-      ctx.lineWidth = t.width;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.stroke(new Path2D(t.d));
+      if (t.kind === "thread") {
+        ctx.strokeStyle = t.colour;
+        ctx.lineWidth = t.width;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.stroke(new Path2D(t.d));
+      } else {
+        ctx.fillStyle = t.colour;
+        ctx.fill(new Path2D(t.d));
+      }
       ctx.restore();
       continue;
     }
@@ -727,8 +1133,9 @@ function scene(mode, { word = "", palette, seed, grain = true, grainOpacity, gra
 
 export const x = {
   "five-still": (o) => scene("still", o),
+  "five-dots": (o) => scene("dots", o),
 };
 
 /* Exposed so a page can sample the real simulation rather than
    re-implementing it. */
-export { engine, mount, STAGE, FPS, CARD };
+export { engine, mount, matrix, STAGE, FPS, CARD };
