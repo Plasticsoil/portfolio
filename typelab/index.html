@@ -65,6 +65,11 @@
   #heroWrap{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:14px; }
   #heroWrap svg{ width:100%; height:100%; }
   .hit{ fill:transparent; cursor:pointer; }
+  .cnr{ cursor:pointer; }
+  .cnr.r{ fill:var(--accent); fill-opacity:.9; stroke:#fff; stroke-width:1.5; }
+  .cnr.sq{ fill:var(--surface); fill-opacity:.9; stroke:var(--gridkey); stroke-width:2.5; }
+  #dragLayer *{ pointer-events:none; }
+  #dragLayer .dh, #dragLayer .dh *{ pointer-events:auto; }
   #strip{ flex:none; border-top:1px solid var(--line); padding:12px 22px 16px; }
   #strip input{ width:100%; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink);
     padding:8px 11px; font:inherit; font-size:14px; letter-spacing:.1em; text-transform:uppercase; outline:none; margin-bottom:8px; }
@@ -76,10 +81,10 @@
 <div id="app">
   <aside class="side">
     <h1>The&nbsp;<em>Skeleton</em></h1>
-    <p class="sub">One skeleton for every capital — the O's height and width
-      strokes with rounded corners, always underneath. Pick a letter and
-      <b>click the surfaces</b> to paint them. We add more strokes slowly
-      (a middle bar for E, …). The O is the whole frame painted.</p>
+    <p class="sub">One grid for every capital. Pick a letter and
+      <b>click cells</b> to paint them — their union is one surface, and any
+      space you close around becomes a real hole. <b>Click a corner dot</b>
+      to round or square that corner (pink = round, ringed = square).</p>
 
     <div class="grp">The grid · shared</div>
     <div class="sec"><div class="lbl">Cell width <input class="num" id="WN" type="number" min="300" max="1000" step="2"></div><input id="W" type="range" min="300" max="1000" step="2"></div>
@@ -122,12 +127,13 @@
 
 <script>
 /* ============================================================
-   THE SKELETON — one shared frame every capital dresses on.
-   The frame is the O: two side strokes (thick), a top and bottom
-   stroke (thin), rounded corners — rendered as a real ring so the
-   counter is a true hole. A letter is just the set of surfaces
-   painted on that skeleton. More strokes get added slowly.
-   Surfaces so far:  L R T B  (frame sides)  ·  M (middle bar)
+   THE SKELETON — one shared grid every capital is cut and painted on.
+   Six vertical × six horizontal guides make a 5×5 grid of cells. A
+   letter is the set of painted cells; their union is one surface. Any
+   empty area fully enclosed by paint is a TRUE hole (the O's counter,
+   a P's bowl). Every corner of the outline is roundable on its own —
+   click its handle to flip round↔square. Diagonals paint into the
+   same surface. The O is the border cells with an open middle.
    ============================================================ */
 const R = n => Math.round(n*10)/10;
 const GRID = { W:600, Hh:800, sv:140, sh:70, sd:120, corner:0.5, cornerIn:1, sb:24, joint:0, skel:true, theme:'light' };
@@ -137,7 +143,6 @@ const GRID = { W:600, Hh:800, sv:140, sh:70, sd:120, corner:0.5, cornerIn:1, sb:
    painted cells, so every cell is a precise 0/1 face. The O is the border
    cells (its whole frame). */
 function borderCells(){ const a=[]; for(let i=0;i<5;i++)for(let j=0;j<5;j++) if(i===0||i===4||j===0||j===4) a.push('c'+i+j); return a; }
-function hasMat(i,j){ return i===0||i===4||j===0||j===4||i===2||j===2; }  // cells the material can fill
 const GLYPHS = { O: borderCells() };
 const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 let cur='O', dbNS=null, saved={}, userTouched=false;
@@ -184,26 +189,95 @@ function M(){
   return {W,cap,sb,sv,sh,cx,cy,xC,yM,rO,iw,ih,rI,Xs,Ys, adv:W+2*sb};
 }
 
-/* paint the active surfaces of one letter → svg string (font coords, y-up) */
-/* The material — exact O ring + middle bar + centre stem — clipped to a set
-   of cells. Each cell is a precise face of the shape-builder grid. */
+/* ------------------------------------------------------------------
+   ONE SURFACE. A letter is the set of painted cells (ids "cIJ"). Their
+   union is traced into closed outlines; any empty area fully enclosed
+   by painted cells becomes a TRUE hole (a P's bowl, the O's counter).
+   Every corner of that outline is roundable on its own — outer corners
+   use the "corner" radius, inner (hole) corners use "cornerIn". Click a
+   corner handle to flip it round↔square. Diagonals paint into the same
+   surface at the same opacity, so nothing ever doubles up.
+   ------------------------------------------------------------------ */
 let UID=0;
 function cellsOf(segs){ return segs.filter(c=>/^c\d\d$/.test(c)); }
-function materialClipped(cells, fill, op, segs){
-  if(!cells.length) return '';
-  const m=M(), Xs=m.Xs, Ys=m.Ys, id='cl'+(UID++); segs=segs||[];
-  const q=k=>segs.includes(k)?0:m.rO;     // painted outer corner = square
-  const qi=k=>segs.includes(k)?0:m.rI;    // painted inner corner = square
-  let clip='';
-  for(const c of cells){ const i=+c[1], j=+c[2];
-    clip+=`<rect x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}"/>`; }
-  const ring=`${rrect4(m.cx,m.cy,m.W,m.cap, q('sqTL'),q('sqTR'),q('sqBR'),q('sqBL'))} ${rrect4(m.cx,m.cy,m.iw,m.ih, qi('iTL'),qi('iTR'),qi('iBR'),qi('iBL'))}`;
-  return `<clipPath id="${id}">${clip}</clipPath>`
-    +`<g clip-path="url(#${id})" fill="${fill}" opacity="${op}">`
-    +`<path d="${ring}" fill-rule="evenodd"/>`
-    +`<rect x="${R(m.sb)}" y="${R(Ys[2])}" width="${R(m.W)}" height="${R(Ys[3]-Ys[2])}"/>`
-    +`<rect x="${R(Xs[2])}" y="0" width="${R(Xs[3]-Xs[2])}" height="${R(m.cap)}"/>`
-    +`</g>`;
+function cornersOf(segs){ return segs.filter(c=>/^k\d\d$/.test(c)); }
+function grid5(segs){ const g=Array.from({length:5},()=>Array(5).fill(false));
+  for(const c of cellsOf(segs)) g[+c[1]][+c[2]]=true; return g; }
+
+/* trace the union of painted cells into ordered closed loops of grid
+   vertices. Each boundary half-edge is oriented so the painted region is
+   on its left; outer loops come out CCW, holes CW. */
+function traceLoops(g){
+  const edges=[];
+  const add=(ai,aj,bi,bj)=>edges.push({ai,aj,bi,bj});
+  for(let i=0;i<5;i++)for(let j=0;j<5;j++){ if(!g[i][j])continue;
+    if(j===0||!g[i][j-1]) add(i,j,i+1,j);        // bottom  +x
+    if(i===4||!g[i+1][j]) add(i+1,j,i+1,j+1);     // right   +y
+    if(j===4||!g[i][j+1]) add(i+1,j+1,i,j+1);     // top     -x
+    if(i===0||!g[i-1][j]) add(i,j+1,i,j);         // left    -y
+  }
+  const from={}; edges.forEach((e,k)=>{ const key=e.ai+','+e.aj; (from[key]=from[key]||[]).push(k); });
+  const used=new Array(edges.length).fill(false), loops=[];
+  for(let s=0;s<edges.length;s++){ if(used[s])continue;
+    const loop=[]; let cur=s;
+    while(cur!=null && !used[cur]){ used[cur]=true; const e=edges[cur];
+      loop.push({vi:e.ai,vj:e.aj});
+      const cand=(from[e.bi+','+e.bj]||[]).filter(k=>!used[k]);
+      cur = cand.length ? pickNext(edges,e,cand) : null;
+    }
+    if(loop.length>=4) loops.push(loop);
+  }
+  return loops;
+}
+/* at a junction keep the region on the left → take the most counter-clockwise turn */
+function pickNext(edges,e,cand){
+  const dx=e.bi-e.ai, dy=e.bj-e.aj; let best=cand[0], bestScore=-Infinity;
+  for(const k of cand){ const f=edges[k], nx=f.bi-f.ai, ny=f.bj-f.aj;
+    const cross=dx*ny-dy*nx, dot=dx*nx+dy*ny, ang=Math.atan2(cross,dot);
+    if(Math.abs(ang)>3.0) continue;          // never reverse straight back
+    if(ang>bestScore){ bestScore=ang; best=k; } }
+  return best;
+}
+/* drop vertices that sit on a straight run (keep only real turns) */
+function simplify(loop){ const n=loop.length, out=[];
+  for(let k=0;k<n;k++){ const p=loop[(k-1+n)%n],c=loop[k],q=loop[(k+1)%n];
+    const ax=c.vi-p.vi,ay=c.vj-p.vj,bx=q.vi-c.vi,by=q.vj-c.vj;
+    if(ax*by-ay*bx!==0) out.push(c); }
+  return out;
+}
+/* the letter outline as one path (evenodd → real holes) + its corner list */
+function outlinePath(segs){
+  const m=M(), Xs=m.Xs, Ys=m.Ys, co=GRID.corner, ci=GRID.cornerIn;
+  let loops=traceLoops(grid5(segs)).map(simplify).filter(l=>l.length>=3);
+  if(!loops.length) return {d:'', corners:[]};
+  const areaOf=l=>{ let A=0; for(let k=0;k<l.length;k++){ const a=l[k],b=l[(k+1)%l.length];
+    A+=Xs[a.vi]*Ys[b.vj]-Xs[b.vi]*Ys[a.vj]; } return A/2; };
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;   // bbox of the solid (outer loops)
+  loops.forEach(l=>{ if(areaOf(l)>0) l.forEach(p=>{ const x=Xs[p.vi],y=Ys[p.vj];
+    minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y); }); });
+  const ov=new Set(cornersOf(segs)); let d=''; const corners=[];
+  for(const l of loops){ const hole=areaOf(l)<0, n=l.length,
+      V=l.map(p=>({x:Xs[p.vi],y:Ys[p.vj],vi:p.vi,vj:p.vj})), seg=[];
+    for(let k=0;k<n;k++){ const P=V[(k-1+n)%n],C=V[k],N=V[(k+1)%n];
+      const ix=C.x-P.x,iy=C.y-P.y,il=Math.hypot(ix,iy)||1,
+            ox=N.x-C.x,oy=N.y-C.y,ol=Math.hypot(ox,oy)||1,
+            ux=ix/il,uy=iy/il,wx=ox/ol,wy=oy/ol, cross=ux*wy-uy*wx, turnLeft=cross>0;
+      const ext=(C.x<=minX+0.5||C.x>=maxX-0.5)&&(C.y<=minY+0.5||C.y>=maxY-0.5);
+      const def = hole ? true : (turnLeft && ext);      // sensible default rounding
+      const id='k'+C.vi+C.vj, round = def !== ov.has(id);
+      const frac = turnLeft?co:ci, r = round ? frac*0.5*Math.min(il,ol) : 0;
+      seg.push({C,ux,uy,wx,wy,r,turnLeft});
+      corners.push({x:C.x,y:C.y,id,round});
+    }
+    const A=k=>({x:seg[k].C.x-seg[k].ux*seg[k].r, y:seg[k].C.y-seg[k].uy*seg[k].r});
+    const B=k=>({x:seg[k].C.x+seg[k].wx*seg[k].r, y:seg[k].C.y+seg[k].wy*seg[k].r});
+    let dd='M '+R(B(0).x)+' '+R(B(0).y)+' ';
+    for(let k=1;k<=n;k++){ const kk=k%n, s=seg[kk], a=A(kk), b=B(kk);
+      dd+='L '+R(a.x)+' '+R(a.y)+' ';
+      if(s.r>0.01){ const sweep=s.turnLeft?1:0;
+        dd+='A '+R(s.r)+' '+R(s.r)+' 0 0 '+sweep+' '+R(b.x)+' '+R(b.y)+' '; } }
+    d+=dd+'Z '; }
+  return {d, corners};
 }
 /* a straight diagonal stroke of thickness t from A to B (square ends) */
 function diagPath(ax,ay,bx,by,t){
@@ -213,15 +287,31 @@ function diagPath(ax,ay,bx,by,t){
 /* the four half-diagonals: each corner to the centre */
 function diagEnds(){ const m=M(); return {
   dTL:[m.sb,m.cap], dTR:[m.sb+m.W,m.cap], dBL:[m.sb,0], dBR:[m.sb+m.W,0] }; }
+/* cell helpers for face-to-face diagonals */
+function cellBox(i,j){ const m=M(); return {x0:m.Xs[i],x1:m.Xs[i+1],y0:m.Ys[j],y1:m.Ys[j+1]}; }
+function cellCenter(i,j){ const b=cellBox(i,j); return {x:(b.x0+b.x1)/2, y:(b.y0+b.y1)/2}; }
+function cellSize(i,j){ const b=cellBox(i,j); return {w:b.x1-b.x0, h:b.y1-b.y0}; }
+function sameSize(a,b){ const p=cellSize(+a[0],+a[1]), q=cellSize(+b[0],+b[1]);
+  return Math.abs(p.w-q.w)<0.5 && Math.abs(p.h-q.h)<0.5; }
+function diagId(a,b){ return a<b ? 'x'+a+b : 'x'+b+a; }   // normalised so A-B == B-A
+/* one surface: outline + diagonals, all fully opaque inside a single group so
+   overlaps composite once — the group opacity is applied to the whole letter */
 function paint(segs, ink, op){
-  const o=op==null?1:op;
-  let s = materialClipped(cellsOf(segs), ink, o, segs);
-  const m=M(), E=diagEnds(); let d='';
-  for(const k in E) if(segs.includes(k)) d+=`<path d="${diagPath(E[k][0],E[k][1],m.xC,m.yM,GRID.sd)}"/>`;
-  if(d){ const cid='dc'+(UID++);   // clip diagonals to the frame so they stop at the edges
+  const o=op==null?1:op, m=M(), E=diagEnds();
+  const {d}=outlinePath(segs);
+  let s=`<g fill="${ink}" opacity="${o}">`;
+  if(d) s+=`<path d="${d}" fill-rule="evenodd"/>`;
+  // face-to-face diagonals: a stroke between the centres of two equal cells
+  for(const seg of segs) if(/^x\d{4}$/.test(seg)){
+    const a=seg.slice(1,3), b=seg.slice(3,5), ca=cellCenter(+a[0],+a[1]), cb=cellCenter(+b[0],+b[1]);
+    s+=`<path d="${diagPath(ca.x,ca.y,cb.x,cb.y,GRID.sd)}"/>`;
+  }
+  // legacy corner→centre half-diagonals, clipped to the frame
+  let dg=''; for(const k in E) if(segs.includes(k)) dg+=`<path d="${diagPath(E[k][0],E[k][1],m.xC,m.yM,GRID.sd)}"/>`;
+  if(dg){ const cid='dc'+(UID++);
     s+=`<clipPath id="${cid}"><rect x="${R(m.sb)}" y="0" width="${R(m.W)}" height="${R(m.cap)}"/></clipPath>`;
-    s+=`<g fill="${ink}" opacity="${o}" clip-path="url(#${cid})">${d}</g>`; }
-  return s;
+    s+=`<g clip-path="url(#${cid})">${dg}</g>`; }
+  return s+`</g>`;
 }
 /* proportional metrics: the ink hugs the painted columns, not the O */
 function inkX(segs){
@@ -262,25 +352,16 @@ function skeleton(){
 /* clickable hit areas for the surfaces */
 function hits(){
   const m=M(), Xs=m.Xs, Ys=m.Ys; let s='';
-  // diagonal faces first (drawn under the cells, so cells win where they overlap;
-  // the diagonals stay clickable across the open counter)
+  // every cell is paintable (0/1)
+  for(let i=0;i<5;i++)for(let j=0;j<5;j++)
+    s+=`<rect class="hit" x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}" data-seg="c${i}${j}"/>`;
+  // diagonal bands on top — click the band to add/remove that diagonal
   const E=diagEnds(), dt=Math.max(GRID.sd, 70);
   for(const k in E) s+=`<path class="hit" d="${diagPath(E[k][0],E[k][1],m.xC,m.yM,dt)}" data-seg="${k}"/>`;
-  for(let i=0;i<5;i++)for(let j=0;j<5;j++){
-    if(!hasMat(i,j)) continue;   // only cells the material can fill are clickable
-    s+=`<rect class="hit" x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}" data-seg="c${i}${j}"/>`;
-  }
-  // outer corner nooks — click the outer corner to square it
-  const sb=m.sb,W=m.W,cap=m.cap, n=m.rO*0.6;
-  const nk=(x,y,seg)=>`<rect class="hit" x="${R(x)}" y="${R(y)}" width="${R(n)}" height="${R(n)}" data-seg="${seg}"/>`;
-  s+=nk(sb,cap-n,'sqTL')+nk(sb+W-n,cap-n,'sqTR')+nk(sb,0,'sqBL')+nk(sb+W-n,0,'sqBR');
-  // inner corners — only when a counter exists. Click the counter's rounded
-  // top or bottom to square that end (both its corners at once).
-  const cs=cellsOf(segsOf(cur)), hasL=cs.some(c=>c[1]==='0'), hasR=cs.some(c=>c[1]==='4');
-  if(hasL&&hasR){
-    s+=`<rect class="hit" x="${R(Xs[1])}" y="${R(Ys[3])}" width="${R(Xs[4]-Xs[1])}" height="${R(Ys[4]-Ys[3])}" data-seg="iTop"/>`;
-    s+=`<rect class="hit" x="${R(Xs[1])}" y="${R(Ys[1])}" width="${R(Xs[4]-Xs[1])}" height="${R(Ys[2]-Ys[1])}" data-seg="iBot"/>`;
-  }
+  // a handle on every corner of the current outline — click to round ↔ square
+  const {corners}=outlinePath(segsOf(cur)), rr=Math.max(14,Math.min(m.sv,m.sh)*0.42);
+  for(const c of corners)
+    s+=`<circle class="cnr ${c.round?'r':'sq'}" cx="${R(c.x)}" cy="${R(c.y)}" r="${R(rr)}" data-seg="${c.id}"/>`;
   return s;
 }
 
@@ -305,20 +386,37 @@ function heroSVG(){
     +`<g id="hoverLayer"></g>`              /* hover preview — the exact piece you will toggle */
     +(GRID.skel?skeleton():'')              /* guides always drawn on top, never hidden */
     +hits()
+    +`<g id="dragLayer"></g>`               /* drag handle + face-to-face diagonal preview */
     +`</g></svg>`;
 }
 function updateHover(){
   const el=document.getElementById('hoverLayer'); if(!el) return;
-  if(!hoverCell||!hoverEl){ el.innerHTML=''; return; }
-  const acc=getVar('--accent');
-  if(/^c\d\d$/.test(hoverCell)){                 // a grid cell → preview the exact ink piece
-    el.innerHTML = materialClipped([hoverCell], acc, .55, segsOf(cur));
-  } else if(hoverEl.tagName.toLowerCase()==='path'){   // a diagonal face → highlight its stroke
-    el.innerHTML = `<path d="${hoverEl.getAttribute('d')}" fill="${acc}" opacity=".4"/>`;
-  } else {                                             // a corner face → highlight its zone
-    const g=hoverEl;
-    el.innerHTML = `<rect x="${g.getAttribute('x')}" y="${g.getAttribute('y')}" width="${g.getAttribute('width')}" height="${g.getAttribute('height')}" rx="6" fill="${acc}" opacity=".4"/>`;
+  if(!hoverEl){ el.innerHTML=''; return; }
+  const acc=getVar('--accent'), t=hoverEl.tagName.toLowerCase(), g=hoverEl;
+  if(t==='rect')        el.innerHTML=`<rect x="${g.getAttribute('x')}" y="${g.getAttribute('y')}" width="${g.getAttribute('width')}" height="${g.getAttribute('height')}" fill="${acc}" opacity=".22"/>`;
+  else if(t==='path')   el.innerHTML=`<path d="${g.getAttribute('d')}" fill="${acc}" opacity=".28"/>`;
+  else if(t==='circle') el.innerHTML=`<circle cx="${g.getAttribute('cx')}" cy="${g.getAttribute('cy')}" r="${g.getAttribute('r')}" fill="${acc}" opacity=".5"/>`;
+}
+/* drag handle (on cell hover) + live face-to-face diagonal preview */
+function renderDrag(){
+  const el=document.getElementById('dragLayer'); if(!el) return;
+  const acc=getVar('--accent'), key=getVar('--gridkey');
+  if(drag){
+    const c=cellCenter(+drag.src[0],+drag.src[1]), t=drag.target,
+          end=t?cellCenter(+t[0],+t[1]):c, ok=t&&t!==drag.src&&sameSize(drag.src,t);
+    let out=`<line x1="${R(c.x)}" y1="${R(c.y)}" x2="${R(end.x)}" y2="${R(end.y)}" stroke="${ok?acc:key}" stroke-width="10" stroke-linecap="round" opacity=".85"${ok?'':' stroke-dasharray="16 12"'}/>`;
+    if(t){ const b=cellBox(+t[0],+t[1]);
+      out+=`<rect x="${R(b.x0)}" y="${R(b.y0)}" width="${R(b.x1-b.x0)}" height="${R(b.y1-b.y0)}" fill="none" stroke="${ok?acc:key}" stroke-width="6" opacity=".75"/>`; }
+    out+=`<circle cx="${R(c.x)}" cy="${R(c.y)}" r="15" fill="${acc}"/>`;
+    el.innerHTML=out; return;
   }
+  if(hoverCell && /^c\d\d$/.test(hoverCell)){
+    const i=+hoverCell[1], j=+hoverCell[2], c=cellCenter(i,j), sz=cellSize(i,j),
+          r=Math.max(13,Math.min(sz.w,sz.h)*0.24), q=r*0.45;
+    el.innerHTML=`<g class="dh" data-cell="${i}${j}" style="cursor:grab">`
+      +`<circle cx="${R(c.x)}" cy="${R(c.y)}" r="${R(r)}" fill="${acc}" opacity=".92"/>`
+      +`<line x1="${R(c.x-q)}" y1="${R(c.y-q)}" x2="${R(c.x+q)}" y2="${R(c.y+q)}" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/></g>`;
+  } else el.innerHTML='';
 }
 
 function renderLine(){
@@ -327,23 +425,41 @@ function renderLine(){
   const paper = GRID.theme==='light'?getVar('--paper'):getVar('--draw');
   const gc=getVar('--grid'), muted=getVar('--muted');
   const text=($('#line').value||'').toUpperCase();
-  let x=0, body='';
+  // measure every glyph's advance and how to draw it, then wrap into rows
+  const items=[];
   for(const ch of text){
-    if(ch===' '){ x+=m.W*0.5; continue; }
+    if(ch===' '){ items.push({sp:true, adv:m.W*0.5}); continue; }
     if(GLYPHS[ch] && cellsOf(GLYPHS[ch]).length){
-      const ix=inkX(GLYPHS[ch]), shift=m.sb-ix.x0;        // hug this letter's own ink
-      body+=`<g transform="translate(${R(x+shift)},0)">${paint(GLYPHS[ch],ink,1)}</g>`;
-      x += (ix.x1-ix.x0) + 2*m.sb;
-    } else { body+=`<rect x="${R(x+m.sb)}" y="8" width="${R(m.W)}" height="${R(m.cap-16)}" rx="14" fill="none" stroke="${muted}" stroke-width="5" stroke-dasharray="11 11"/>`; x+=m.adv; }
+      const ix=inkX(GLYPHS[ch]), shift=m.sb-ix.x0;
+      items.push({adv:(ix.x1-ix.x0)+2*m.sb, draw:x=>`<g transform="translate(${R(x+shift)},0)">${paint(GLYPHS[ch],ink,1)}</g>`});
+    } else items.push({adv:m.adv, draw:x=>`<rect x="${R(x+m.sb)}" y="8" width="${R(m.W)}" height="${R(m.cap-16)}" rx="14" fill="none" stroke="${muted}" stroke-width="5" stroke-dasharray="11 11"/>`});
   }
-  const maxX=Math.max(x,10), pad=40, vbH=m.cap+2*pad, jt=GRID.joint;
+  const total=items.reduce((a,it)=>a+it.adv,0);
+  const rowCap=8*m.adv, nRows=Math.max(1,Math.ceil(total/rowCap)), target=total/nRows;
+  const rows=[[]]; let x=0;
+  for(const it of items){
+    if(x>0 && x+it.adv>target*1.08 && rows.length<nRows){ rows.push([]); x=0; }
+    if(it.sp && x===0) continue;                 // no leading space on a new row
+    it.x=x; rows[rows.length-1].push(it); x+=it.adv;
+  }
+  const pad=30, rowGap=m.cap*0.38, cap=m.cap;
+  const rowW=rows.map(r=>r.reduce((a,it)=>a+it.adv,0)), maxX=Math.max(10,...rowW);
+  const jt=GRID.joint;
   const defs = jt>0 ? `<defs><filter id="rj2" x="-15%" y="-15%" width="130%" height="130%"><feGaussianBlur stdDeviation="${jt}"/><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 18 -8"/></filter></defs>` : '';
-  const bodyW = jt>0 ? `<g filter="url(#rj2)">${body}</g>` : body;
+  let g='';
+  rows.forEach((r,ri)=>{
+    const top=pad+ri*(cap+rowGap);            // screen-y of this row's cap line
+    let body=''; for(const it of r) if(it.draw) body+=it.draw(it.x);
+    const bw = jt>0 ? `<g filter="url(#rj2)">${body}</g>` : body;
+    g+=`<g transform="translate(0,${R(top+cap)}) scale(1,-1)">`
+      +`<line x1="0" y1="0" x2="${R(maxX)}" y2="0" stroke="${gc}" stroke-width="3"/>`
+      +`<line x1="0" y1="${R(cap)}" x2="${R(maxX)}" y2="${R(cap)}" stroke="${gc}" stroke-width="3"/>${bw}</g>`;
+  });
+  const vbH=pad*2+rows.length*cap+(rows.length-1)*rowGap;
   const el=$('#lineSvg');
   el.setAttribute('viewBox',`0 0 ${R(maxX)} ${R(vbH)}`); el.style.background=paper;
-  el.innerHTML=defs+`<g transform="translate(0,${R(m.cap+pad)}) scale(1,-1)">`
-    +`<line x1="0" y1="0" x2="${R(maxX)}" y2="0" stroke="${gc}" stroke-width="3"/>`
-    +`<line x1="0" y1="${R(m.cap)}" x2="${R(maxX)}" y2="${R(m.cap)}" stroke="${gc}" stroke-width="3"/>${bodyW}</g>`;
+  el.style.height=(rows.length*78+(rows.length-1)*22+22)+'px';
+  el.innerHTML=defs+g;
 }
 
 function renderPicker(){
@@ -356,24 +472,32 @@ function renderNote(){
   $('#curName').textContent=cur; $('#saveL').textContent=cur;
   const n=segsOf(cur).length;
   $('#segNote').textContent = n
-    ? n+' cells painted. Click a cell to add or remove it; hover shows the exact piece.'
+    ? n+' cells painted. Click a cell to add or cut it; click a corner dot to round or square it.'
     : 'Empty. Click cells on the grid to build '+cur+' — or Fill O and cut pieces away.';
 }
-function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"'); updateHover(); renderNote(); renderLine(); persistLocal(); }
+function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"'); updateHover(); renderDrag(); renderNote(); renderLine(); persistLocal(); }
 
-/* toggle a surface on the current letter */
-const PAIR={iTop:['iTL','iTR'], iBot:['iBL','iBR']};
-function toggle(seg){
-  const s=segsOf(cur);
-  if(PAIR[seg]){ const on=PAIR[seg].every(q=>s.includes(q));
-    for(const q of PAIR[seg]){ const i=s.indexOf(q); if(on){ if(i>=0)s.splice(i,1); } else if(i<0)s.push(q); } }
-  else { const i=s.indexOf(seg); if(i<0)s.push(seg); else s.splice(i,1); }
+/* toggle a surface (cell / diagonal / corner) on the current letter */
+function toggle(seg){ const s=segsOf(cur), i=s.indexOf(seg);
+  if(i<0) s.push(seg); else s.splice(i,1);
   GLYPHS[cur]=s; render(); renderPicker();
 }
-let hoverCell=null, hoverEl=null;
-document.addEventListener('click',e=>{ const h=e.target.closest && e.target.closest('.hit'); if(h) toggle(h.dataset.seg); });
-document.addEventListener('mouseover',e=>{ const h=e.target.closest && e.target.closest('.hit'); if(!h)return; hoverEl=h; if(h.dataset.seg!==hoverCell){ hoverCell=h.dataset.seg; updateHover(); } });
-document.addEventListener('mouseout',e=>{ const h=e.target.closest && e.target.closest('.hit'); if(!h)return; hoverCell=null; hoverEl=null; updateHover(); });
+let hoverCell=null, hoverEl=null, drag=null, suppressClick=false;
+const pick=e=>e.target.closest && e.target.closest('.hit,.cnr');
+const cellUnder=e=>{ const c=e.target.closest && e.target.closest('.hit'); return (c&&/^c\d\d$/.test(c.dataset.seg))?c.dataset.seg.slice(1):null; };
+document.addEventListener('click',e=>{ if(suppressClick){ suppressClick=false; return; } const h=pick(e); if(h) toggle(h.dataset.seg); });
+document.addEventListener('mouseover',e=>{
+  if(drag){ const t=cellUnder(e); if(t&&t!==drag.target){ drag.target=t; renderDrag(); } return; }
+  const h=pick(e); if(!h)return; hoverEl=h; if(h.dataset.seg!==hoverCell){ hoverCell=h.dataset.seg; updateHover(); renderDrag(); } });
+document.addEventListener('mouseout',e=>{ if(drag)return; const h=pick(e); if(!h)return; hoverCell=null; hoverEl=null; updateHover(); renderDrag(); });
+/* drag a diagonal from a face's handle onto another equal face */
+document.addEventListener('pointerdown',e=>{ const dh=e.target.closest && e.target.closest('.dh'); if(!dh)return;
+  e.preventDefault(); drag={src:dh.dataset.cell, target:null}; renderDrag(); });
+document.addEventListener('pointerup',()=>{ if(!drag)return; const d=drag; drag=null; suppressClick=true;
+  setTimeout(()=>{ suppressClick=false; },0);
+  if(d.target && d.target!==d.src && sameSize(d.src,d.target)) toggle(diagId(d.src,d.target));
+  else toggle('c'+d.src);   // pressed the handle without dragging → paint/cut that cell
+});
 $('#fillO').addEventListener('click',()=>{ GLYPHS[cur]=borderCells(); render(); renderPicker(); });
 $('#clearL').addEventListener('click',()=>{ GLYPHS[cur]=[]; render(); renderPicker(); });
 
