@@ -89,6 +89,7 @@
     <div class="sec"><div class="lbl">Diagonal stroke <input class="num" id="sdN" type="number" min="16" max="320" step="1"></div><input id="sd" type="range" min="16" max="320" step="1"></div>
     <div class="sec"><div class="lbl">Outer corner <input class="num" id="coN" type="number" min="0.06" max="1" step="0.01"></div><input id="co" type="range" min="0.06" max="1" step="0.01"></div>
     <div class="sec"><div class="lbl">Inner corner <input class="num" id="ciN" type="number" min="0.06" max="1" step="0.01"></div><input id="ci" type="range" min="0.06" max="1" step="0.01"></div>
+    <div class="sec"><div class="lbl">Joint round <input class="num" id="jtN" type="number" min="0" max="60" step="1"></div><input id="jt" type="range" min="0" max="60" step="1"></div>
     <div class="sec"><div class="lbl">Side bearing <input class="num" id="sbN" type="number" min="0" max="180" step="2"></div><input id="sb" type="range" min="0" max="180" step="2"></div>
 
     <div class="grp">Letter · <span id="curName">O</span></div>
@@ -129,7 +130,7 @@
    Surfaces so far:  L R T B  (frame sides)  ·  M (middle bar)
    ============================================================ */
 const R = n => Math.round(n*10)/10;
-const GRID = { W:600, Hh:800, sv:140, sh:70, sd:120, corner:0.5, cornerIn:1, sb:24, skel:true, theme:'light' };
+const GRID = { W:600, Hh:800, sv:140, sh:70, sd:120, corner:0.5, cornerIn:1, sb:24, joint:0, skel:true, theme:'light' };
 /* Shape-builder model. Six vertical guides × six horizontal guides cut a
    5×5 grid of cells (ids "cIJ", column i / row j, 0..4). The material —
    the exact O ring plus a middle bar and a centre stem — is clipped to the
@@ -263,9 +264,13 @@ function hits(){
   const sb=m.sb,W=m.W,cap=m.cap, n=m.rO*0.6;
   const nk=(x,y,seg)=>`<rect class="hit" x="${R(x)}" y="${R(y)}" width="${R(n)}" height="${R(n)}" data-seg="${seg}"/>`;
   s+=nk(sb,cap-n,'sqTL')+nk(sb+W-n,cap-n,'sqTR')+nk(sb,0,'sqBL')+nk(sb+W-n,0,'sqBR');
-  // inner corner faces — click inside the counter's corner to square it
-  const cell=(i,j,seg)=>`<rect class="hit" x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}" data-seg="${seg}"/>`;
-  s+=cell(1,3,'iTL')+cell(3,3,'iTR')+cell(1,1,'iBL')+cell(3,1,'iBR');
+  // inner corners — only when a counter exists. Click the counter's rounded
+  // top or bottom to square that end (both its corners at once).
+  const cs=cellsOf(segsOf(cur)), hasL=cs.some(c=>c[1]==='0'), hasR=cs.some(c=>c[1]==='4');
+  if(hasL&&hasR){
+    s+=`<rect class="hit" x="${R(Xs[1])}" y="${R(Ys[3])}" width="${R(Xs[4]-Xs[1])}" height="${R(Ys[4]-Ys[3])}" data-seg="iTop"/>`;
+    s+=`<rect class="hit" x="${R(Xs[1])}" y="${R(Ys[1])}" width="${R(Xs[4]-Xs[1])}" height="${R(Ys[2]-Ys[1])}" data-seg="iBot"/>`;
+  }
   return s;
 }
 
@@ -280,9 +285,13 @@ function heroSVG(){
   const PADX=150, PADY=70, fontTop=m.cap+50, fontBot=-50;
   const vbW=m.adv+2*PADX, vbH=(fontTop-fontBot)+2*PADY;
   const flip=`translate(${PADX},${PADY+fontTop}) scale(1,-1)`;
+  const jt=GRID.joint;
+  const defs = jt>0 ? `<defs><filter id="rj" x="-15%" y="-15%" width="130%" height="130%"><feGaussianBlur stdDeviation="${jt}"/><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 18 -8"/></filter></defs>` : '';
+  const inkLayer = jt>0 ? `<g opacity=".6" filter="url(#rj)">${paint(segsOf(cur),ink,1)}</g>` : paint(segsOf(cur),ink,.6);
   return `<svg viewBox="0 0 ${R(vbW)} ${R(vbH)}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="background:${paper}">`
+    +defs
     +`<g transform="${flip}">`
-    +paint(segsOf(cur), ink, .6)            /* the ink at 60% so the grid always shows through */
+    +inkLayer                               /* the ink at 60% so the grid always shows through */
     +`<g id="hoverLayer"></g>`              /* hover preview — the exact piece you will toggle */
     +(GRID.skel?skeleton():'')              /* guides always drawn on top, never hidden */
     +hits()
@@ -317,12 +326,14 @@ function renderLine(){
       x += (ix.x1-ix.x0) + 2*m.sb;
     } else { body+=`<rect x="${R(x+m.sb)}" y="8" width="${R(m.W)}" height="${R(m.cap-16)}" rx="14" fill="none" stroke="${muted}" stroke-width="5" stroke-dasharray="11 11"/>`; x+=m.adv; }
   }
-  const maxX=Math.max(x,10), pad=40, vbH=m.cap+2*pad;
+  const maxX=Math.max(x,10), pad=40, vbH=m.cap+2*pad, jt=GRID.joint;
+  const defs = jt>0 ? `<defs><filter id="rj2" x="-15%" y="-15%" width="130%" height="130%"><feGaussianBlur stdDeviation="${jt}"/><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 18 -8"/></filter></defs>` : '';
+  const bodyW = jt>0 ? `<g filter="url(#rj2)">${body}</g>` : body;
   const el=$('#lineSvg');
   el.setAttribute('viewBox',`0 0 ${R(maxX)} ${R(vbH)}`); el.style.background=paper;
-  el.innerHTML=`<g transform="translate(0,${R(m.cap+pad)}) scale(1,-1)">`
+  el.innerHTML=defs+`<g transform="translate(0,${R(m.cap+pad)}) scale(1,-1)">`
     +`<line x1="0" y1="0" x2="${R(maxX)}" y2="0" stroke="${gc}" stroke-width="3"/>`
-    +`<line x1="0" y1="${R(m.cap)}" x2="${R(maxX)}" y2="${R(m.cap)}" stroke="${gc}" stroke-width="3"/>${body}</g>`;
+    +`<line x1="0" y1="${R(m.cap)}" x2="${R(maxX)}" y2="${R(m.cap)}" stroke="${gc}" stroke-width="3"/>${bodyW}</g>`;
 }
 
 function renderPicker(){
@@ -338,12 +349,15 @@ function renderNote(){
     ? n+' cells painted. Click a cell to add or remove it; hover shows the exact piece.'
     : 'Empty. Click cells on the grid to build '+cur+' — or Fill O and cut pieces away.';
 }
-function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"'); updateHover(); renderNote(); renderLine(); }
+function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"'); updateHover(); renderNote(); renderLine(); persistLocal(); }
 
 /* toggle a surface on the current letter */
+const PAIR={iTop:['iTL','iTR'], iBot:['iBL','iBR']};
 function toggle(seg){
-  const s=segsOf(cur); const i=s.indexOf(seg);
-  if(i<0) s.push(seg); else s.splice(i,1);
+  const s=segsOf(cur);
+  if(PAIR[seg]){ const on=PAIR[seg].every(q=>s.includes(q));
+    for(const q of PAIR[seg]){ const i=s.indexOf(q); if(on){ if(i>=0)s.splice(i,1); } else if(i<0)s.push(q); } }
+  else { const i=s.indexOf(seg); if(i<0)s.push(seg); else s.splice(i,1); }
   GLYPHS[cur]=s; render(); renderPicker();
 }
 let hoverCell=null, hoverEl=null;
@@ -355,7 +369,7 @@ $('#clearL').addEventListener('click',()=>{ GLYPHS[cur]=[]; render(); renderPick
 
 /* grid controls */
 function syncGrid(){
-  const map={W:'W',Hh:'Hh',sv:'sv',sh:'sh',sd:'sd',co:'corner',ci:'cornerIn',sb:'sb'};
+  const map={W:'W',Hh:'Hh',sv:'sv',sh:'sh',sd:'sd',co:'corner',ci:'cornerIn',jt:'joint',sb:'sb'};
   for(const rid in map){ const key=map[rid], rng=$('#'+rid), num=$('#'+rid+'N'); if(!rng)continue;
     rng.value=Math.min(parseFloat(rng.max),Math.max(parseFloat(rng.min),GRID[key])); num.value=GRID[key]; }
 }
@@ -367,10 +381,10 @@ function bindGrid(rid,key){
   num.addEventListener('input',fn); num.addEventListener('change',fn);
 }
 bindGrid('W','W'); bindGrid('Hh','Hh'); bindGrid('sv','sv'); bindGrid('sh','sh'); bindGrid('sd','sd');
-bindGrid('co','corner'); bindGrid('ci','cornerIn'); bindGrid('sb','sb');
+bindGrid('co','corner'); bindGrid('ci','cornerIn'); bindGrid('jt','joint'); bindGrid('sb','sb');
 
 $('#picker').addEventListener('click',e=>{ const b=e.target.closest('.pk'); if(!b)return; cur=b.dataset.l; renderPicker(); render(); });
-$('#line').addEventListener('input',renderLine);
+$('#line').addEventListener('input',()=>{ renderLine(); persistLocal(); });
 $('#skelSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
   [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); GRID.skel=b.dataset.s==='on'; render(); });
 $('#themeSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
@@ -378,14 +392,17 @@ $('#themeSeg').addEventListener('click',e=>{ const b=e.target.closest('button');
   GRID.theme=b.dataset.t; document.documentElement.setAttribute('data-theme',GRID.theme); render(); });
 
 /* bank (db + localStorage) */
-const GKEYS=['W','Hh','sv','sh','sd','corner','cornerIn','sb'];
+const GKEYS=['W','Hh','sv','sh','sd','corner','cornerIn','joint','sb'];
 const LS='typelab-skel-v1';
+let localGridLoaded=false;
 function gridObj(){ const o={}; GKEYS.forEach(k=>o[k]=GRID[k]); return o; }
-function persistLocal(){ try{ localStorage.setItem(LS,JSON.stringify({grid:gridObj(),glyphs:GLYPHS,saved})); }catch(e){} }
+function persistLocal(){ try{ const L=$('#line'); localStorage.setItem(LS,JSON.stringify({grid:gridObj(),glyphs:GLYPHS,saved,line:L?L.value:'',cur})); }catch(e){} }
 function loadLocal(){ try{ const j=JSON.parse(localStorage.getItem(LS)||'{}');
-  if(j.grid) Object.assign(GRID,j.grid);
+  if(j.grid){ Object.assign(GRID,j.grid); localGridLoaded=true; }
   if(j.glyphs) Object.assign(GLYPHS,j.glyphs);
-  if(j.saved) saved=j.saved; }catch(e){} }
+  if(j.saved) saved=j.saved;
+  if(j.cur) cur=j.cur;
+  const L=$('#line'); if(L && j.line!=null) L.value=j.line; }catch(e){} }
 
 async function saveCur(){
   saved[cur]=true; persistLocal(); renderPicker();
@@ -404,7 +421,7 @@ async function initBank(){
   try{ dbNS=await claude.use('db'); }catch(e){ dbNS=null; }
   if(!dbNS) return;
   try{ const gd=await dbNS.doc('project/grid').get();
-    if(gd.exists && !userTouched){ Object.assign(GRID,gd.data()); if(GRID.W==null)GRID.W=600; syncGrid(); render(); } }catch(e){}
+    if(gd.exists && !userTouched && !localGridLoaded){ Object.assign(GRID,gd.data()); if(GRID.W==null)GRID.W=600; syncGrid(); render(); } }catch(e){}
   try{ dbNS.collection('glyphs').onSnapshot(snap=>{
     const s={}; snap.docs.forEach(doc=>{ const d=doc.data()||{}; const L=d.letter||doc.id;
       if(Array.isArray(d.segs)){ GLYPHS[L]=d.segs; s[L]=true; } });
