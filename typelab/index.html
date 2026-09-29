@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Type Lab — parametric skeleton · Yam Liv</title>
-<meta name="description" content="A parametric type prototype. Every glyph is one centerline skeleton; weight is stroke thickness; width stretches the skeleton. Drag the axes." />
+<title>Type Lab — capsule construction · Yam Liv</title>
+<meta name="description" content="A parametric type prototype. The O is a rounded-rectangle ring — wide, with thick sides and thin top and bottom. Weight, contrast, width and corner are live axes." />
 <meta name="robots" content="noindex" />
 <link rel="icon" href="/favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -25,9 +25,8 @@
   }
   #app{ display:flex; height:100vh; }
 
-  /* ---------- side panel ---------- */
   .side{
-    width:300px; flex:none; height:100%; overflow-y:auto;
+    width:308px; flex:none; height:100%; overflow-y:auto;
     padding:22px 20px 40px; background:var(--bg); border-right:1px solid var(--line);
   }
   .side::-webkit-scrollbar{ width:0; }
@@ -37,7 +36,7 @@
     letter-spacing:-0.01em;
   }
   h1 em{ font-style:italic; color:var(--ink); }
-  .sub{ color:var(--muted); font-size:11px; margin:0 0 20px; line-height:1.5; }
+  .sub{ color:var(--muted); font-size:11px; margin:0 0 20px; line-height:1.55; }
   .sec{ margin-bottom:16px; }
   .lbl{
     display:flex; justify-content:space-between; align-items:baseline;
@@ -46,7 +45,7 @@
   }
   .lbl b{ font-weight:400; color:var(--ink); font-variant-numeric:tabular-nums; }
   textarea{
-    width:100%; resize:vertical; min-height:52px; border:1px solid var(--line); border-radius:8px;
+    width:100%; resize:vertical; min-height:54px; border:1px solid var(--line); border-radius:8px;
     background:var(--surface); color:var(--ink); padding:10px 11px;
     font:inherit; font-size:14px; line-height:1.35; letter-spacing:0.02em; outline:none;
   }
@@ -69,32 +68,24 @@
   .pill{ display:inline-block; font-size:10px; letter-spacing:.08em; text-transform:uppercase;
     color:var(--muted); border:1px solid var(--line); border-radius:20px; padding:2px 9px; }
 
-  /* ---------- stage ---------- */
-  #stage{ flex:1; height:100%; overflow-y:auto; padding:0; }
+  #stage{ flex:1; height:100%; overflow-y:auto; }
   #stage::-webkit-scrollbar{ width:0; }
-  .word{
-    padding:44px 40px 30px; border-bottom:1px solid var(--line);
-    background:var(--paper); position:sticky; top:0; z-index:2;
-  }
+  .word{ padding:44px 40px 30px; border-bottom:1px solid var(--line); background:var(--paper); }
   .word svg{ display:block; width:100%; height:auto; max-height:46vh; }
-  .gridwrap{ padding:24px 30px 80px; }
+  .gridwrap{ padding:24px 30px 90px; }
   .gridhead{ display:flex; justify-content:space-between; align-items:center; margin:0 0 14px; }
   .gridhead .t{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
-  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(88px,1fr)); gap:10px; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(90px,1fr)); gap:10px; }
   .cell{
     background:var(--surface); border:1px solid var(--line); border-radius:10px;
-    aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; position:relative;
-    overflow:hidden;
+    aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;
   }
-  .cell svg{ width:74%; height:74%; }
-  .cell .cap{ position:absolute; bottom:5px; right:7px; font-size:9px; color:var(--muted);
-    font-variant-numeric:tabular-nums; }
+  .cell svg{ width:76%; height:76%; }
+  .cell .cap{ position:absolute; bottom:5px; right:7px; font-size:9px; color:var(--muted); font-variant-numeric:tabular-nums; }
   .miss{ outline:1px dashed var(--accent); }
   @media (max-width:720px){
-    #app{ flex-direction:column; }
-    .side{ width:100%; height:auto; border-right:0; border-bottom:1px solid var(--line); }
+    #app{ flex-direction:column; } .side{ width:100%; height:auto; border-right:0; border-bottom:1px solid var(--line); }
     #stage{ height:auto; }
-    .word{ position:static; }
   }
 </style>
 </head>
@@ -102,26 +93,39 @@
 <div id="app">
   <aside class="side">
     <h1>Type&nbsp;<em>Lab</em></h1>
-    <p class="sub">Parametric skeleton · draft 002<br>
-      Every glyph is one centerline. <b>Weight</b> = stroke thickness,
-      <b>Width</b> stretches the skeleton, <b>Tracking</b> lets heavy weights fuse.</p>
+    <p class="sub"><b>Capsule</b> · draft 001<br>
+      The <b>O</b> is a rounded-rectangle ring — wider than it is tall, with
+      thick sides and a thin top and bottom. Every letter is built from the
+      same capsule parts, so the axes below reshape the whole set at once.</p>
 
     <div class="sec">
       <div class="lbl">Preview</div>
-      <textarea id="txt" spellcheck="false">Dürüm
-casse
-Handgloves 012</textarea>
+      <textarea id="txt" spellcheck="false">Capsule
+Handglove
+012</textarea>
     </div>
 
     <div class="sec">
-      <div class="lbl">Weight <b><span id="wV">96</span></b></div>
-      <input id="w" type="range" min="18" max="300" step="1" value="96">
-      <div class="note">Past ~200 counters close and neighbours melt together — the display extreme.</div>
+      <div class="lbl">Weight <b><span id="shV">64</span></b></div>
+      <input id="sh" type="range" min="10" max="180" step="1" value="64">
+      <div class="note">Thickness of the thin (top/bottom) strokes. Everything scales from here.</div>
     </div>
 
     <div class="sec">
-      <div class="lbl">Width <b><span id="wdV">0.86</span></b></div>
-      <input id="wd" type="range" min="0.62" max="1.20" step="0.01" value="0.86">
+      <div class="lbl">Contrast <b><span id="ctV">1.7</span>×</b></div>
+      <input id="ct" type="range" min="1" max="2.8" step="0.05" value="1.7">
+      <div class="note">How much thicker the sides are than the top/bottom. 1× = monolinear.</div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Width <b><span id="wdV">1.00</span></b></div>
+      <input id="wd" type="range" min="0.68" max="1.30" step="0.01" value="1.00">
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Corner <b><span id="coV">1.00</span></b></div>
+      <input id="co" type="range" min="0.12" max="1" step="0.01" value="1.00">
+      <div class="note">1 = full capsule (stadium ends) · low = boxy rounded-rect.</div>
     </div>
 
     <div class="sec">
@@ -138,39 +142,25 @@ Handgloves 012</textarea>
     </div>
 
     <div class="sec">
-      <div class="lbl">Skeleton</div>
-      <div class="seg" id="guideSeg">
-        <button data-g="off" class="on">Hide guides</button>
-        <button data-g="on">Show skeleton</button>
-      </div>
-    </div>
-
-    <div class="sec">
       <div class="lbl">Presets</div>
       <div class="btnrow">
-        <button class="btn" data-p="light">Light</button>
+        <button class="btn" data-p="fine">Fine</button>
         <button class="btn" data-p="reg">Regular</button>
-        <button class="btn" data-p="black">Black</button>
+        <button class="btn" data-p="fat">Fat</button>
       </div>
     </div>
 
     <div class="sec">
-      <div class="btnrow">
-        <button class="btn" id="dl">Download SVG</button>
-      </div>
-      <div class="note">Inspired by the soft-geometric, extreme-weight display language
-        (Casse-croûte / _orasei). Forms, proportions and axes are our own — the
-        skeleton method is the takeaway, not the shapes.</div>
+      <div class="btnrow"><button class="btn" id="dl">Download SVG</button></div>
+      <div class="note">A no-build prototype: original construction, no external references.
+        Holes are painted in the paper colour for preview; real outlines come at font-export.</div>
     </div>
   </aside>
 
   <main id="stage">
     <div class="word"><svg id="line" preserveAspectRatio="xMidYMid meet"></svg></div>
     <div class="gridwrap">
-      <div class="gridhead">
-        <span class="t">Character set</span>
-        <span class="pill" id="count">—</span>
-      </div>
+      <div class="gridhead"><span class="t">Character set</span><span class="pill" id="count">—</span></div>
       <div class="grid" id="grid"></div>
     </div>
   </main>
@@ -178,239 +168,328 @@ Handgloves 012</textarea>
 
 <script>
 /* ============================================================
-   PARAMETRIC TYPE ENGINE — centerline skeletons
+   CAPSULE TYPE ENGINE
    ------------------------------------------------------------
-   A glyph is a set of centerlines (font units, y-up).
-   The renderer strokes them:  weight = stroke-width,
-   round caps + round joins.  Width scales the x-axis of the
-   skeleton (stroke stays round). This is the whole model:
-   define the skeleton once, "dress" it by stroking, and the
-   axes fall out of the two transforms.
-
-   Metrics (UPM 1000):
-     baseline 0 · x-height 560 · cap 720 · asc/desc caps→720 / -210
-   Ascenders reach cap height for a geometric, even colour.
+   Contrast model: two thicknesses.
+     sh = thin strokes (top / bottom / horizontals)
+     sv = thick strokes (sides / verticals) = sh * contrast
+   Every glyph is filled capsule parts:
+     · stem / bar  = a rounded-rect with stadium ends
+     · O / bowl    = an outer rounded-rect minus an inner one
+                     (inset sv on the sides, sh top & bottom)
+     · diagonals   = a rotated bar, thickness eased by its angle
+   Rendering: solids paint in ink, holes paint back in paper —
+   so overlaps union for free and counters carve cleanly.
+   Metrics (UPM 1000): base 0 · x-height 560 · cap 720.
    ============================================================ */
-const M = { base:0, xh:560, cap:720, TOP:900, BOT:-300 };
-const H = M.TOP - M.BOT;                 // vertical drawing box
-
+const MET = { base:0, xh:560, cap:720, asc:720, desc:-210, TOP:900, BOT:-300 };
+const H = MET.TOP - MET.BOT;
 const R = n => Math.round(n*10)/10;
 
-/* --- arc → cubic bezier ops (degrees, y-up, 0°=east 90°=north) --- */
-function arcData(cx,cy,rx,ry,a0,a1){
+/* arc → cubic path piece (degrees, y-up) */
+function arcCubic(cx,cy,rx,ry,a0,a1){
   const d=Math.PI/180; a0*=d; a1*=d;
-  const sx=cx+rx*Math.cos(a0), sy=cy+ry*Math.sin(a0);
   let n=Math.max(1,Math.ceil(Math.abs(a1-a0)/(Math.PI/2)));
   const da=(a1-a0)/n, k=4/3*Math.tan(da/4);
-  const cs=[]; let a=a0, px=sx, py=sy;
+  let s='', a=a0, px=cx+rx*Math.cos(a0), py=cy+ry*Math.sin(a0);
   for(let i=0;i<n;i++){
     const b=a+da;
-    const c1x=px-k*rx*Math.sin(a), c1y=py+k*ry*Math.cos(a);
-    const ex=cx+rx*Math.cos(b),   ey=cy+ry*Math.sin(b);
-    const c2x=ex+k*rx*Math.sin(b), c2y=ey-k*ry*Math.cos(b);
-    cs.push(['C',c1x,c1y,c2x,c2y,ex,ey]);
+    const c1x=px-k*rx*Math.sin(a),  c1y=py+k*ry*Math.cos(a);
+    const ex=cx+rx*Math.cos(b),     ey=cy+ry*Math.sin(b);
+    const c2x=ex+k*rx*Math.sin(b),  c2y=ey-k*ry*Math.cos(b);
+    s+=`C ${R(c1x)} ${R(c1y)} ${R(c2x)} ${R(c2y)} ${R(ex)} ${R(ey)} `;
     a=b; px=ex; py=ey;
   }
-  return {sx,sy,ex:px,ey:py,cs};
+  return {s, sx:cx+rx*Math.cos(a0), sy:cy+ry*Math.sin(a0)};
 }
 
-/* --- pen: accumulates structured ops so width can scale x later --- */
-function pen(){
-  return {
-    ops:[], dots:[], _cur:null,
-    m(x,y){ this.ops.push(['M',x,y]); this._cur=[x,y]; return this; },
-    L(x,y){ this.ops.push(['L',x,y]); this._cur=[x,y]; return this; },
-    l(x0,y0,x1,y1){ return this.m(x0,y0).L(x1,y1); },
-    a(cx,cy,rx,ry,a0,a1){
-      const A=arcData(cx,cy,rx,ry,a0,a1);
-      if(!this._cur||Math.hypot(this._cur[0]-A.sx,this._cur[1]-A.sy)>0.6)
-        this.ops.push(['M',A.sx,A.sy]);
-      for(const c of A.cs) this.ops.push(c);
-      this._cur=[A.ex,A.ey]; return this;
-    },
-    ell(cx,cy,rx,ry){ return this.a(cx,cy,rx,ry,0,360); },
-    dot(x,y){ this.dots.push([x,y]); return this; },
-    raw(str){                                   // absolute M/L/C only
-      const t=str.match(/[MLC][^MLC]*/g)||[];
-      for(const seg of t){
-        const c=seg[0], nums=(seg.slice(1).trim().match(/-?[\d.]+/g)||[]).map(Number);
-        this.ops.push([c,...nums]);
-        if(c==='M'||c==='L') this._cur=[nums[0],nums[1]];
-        else this._cur=[nums[4],nums[5]];
-      }
-      return this;
-    }
-  };
+/* ---- primitive contour builders (return path 'd' strings) ---- */
+function rrect(cx,cy,w,h,r){
+  r=Math.max(0,Math.min(r,w/2,h/2));
+  const x0=cx-w/2,x1=cx+w/2,y0=cy-h/2,y1=cy+h/2;
+  let d=`M ${R(x1)} ${R(y0+r)} L ${R(x1)} ${R(y1-r)} `;
+  d+=arcCubic(x1-r,y1-r,r,r,0,90).s;   d+=`L ${R(x0+r)} ${R(y1)} `;
+  d+=arcCubic(x0+r,y1-r,r,r,90,180).s; d+=`L ${R(x0)} ${R(y0+r)} `;
+  d+=arcCubic(x0+r,y0+r,r,r,180,270).s;d+=`L ${R(x1-r)} ${R(y0)} `;
+  d+=arcCubic(x1-r,y0+r,r,r,270,360).s;d+=`Z`;
+  return d;
+}
+/* rounded only on top (arch), flat bottom */
+function rrectTop(x0,x1,y0,y1,r){
+  r=Math.max(0,Math.min(r,(x1-x0)/2,(y1-y0)));
+  let d=`M ${R(x1)} ${R(y0)} L ${R(x1)} ${R(y1-r)} `;
+  d+=arcCubic(x1-r,y1-r,r,r,0,90).s;   d+=`L ${R(x0+r)} ${R(y1)} `;
+  d+=arcCubic(x0+r,y1-r,r,r,90,180).s; d+=`L ${R(x0)} ${R(y0)} Z`;
+  return d;
+}
+/* rounded only on bottom (u), flat top */
+function rrectBot(x0,x1,y0,y1,r){
+  r=Math.max(0,Math.min(r,(x1-x0)/2,(y1-y0)));
+  let d=`M ${R(x0)} ${R(y1)} L ${R(x0)} ${R(y0+r)} `;
+  d+=arcCubic(x0+r,y0+r,r,r,180,270).s;d+=`L ${R(x1-r)} ${R(y0)} `;
+  d+=arcCubic(x1-r,y0+r,r,r,270,360).s;d+=`L ${R(x1)} ${R(y1)} Z`;
+  return d;
+}
+function disc(cx,cy,r){ return rrect(cx,cy,2*r,2*r,r); }
+function quad(ax,ay,bx,by,cx,cy,dx,dy){
+  return `M ${R(ax)} ${R(ay)} L ${R(bx)} ${R(by)} L ${R(cx)} ${R(cy)} L ${R(dx)} ${R(dy)} Z`;
 }
 
 /* ============================================================
-   GLYPH SET — each entry draws into pen p and returns advance.
+   GLYPHS — build(ch, ctx) → {solids, holes, adv}
+   ctx: sv, sh, corner, width
    ============================================================ */
-const S=72;                       // side bearing
-const cx=S+166, cyx=280;          // lc round centre (x-height band)
-const DRAW={};
+const SB=42;                 // side bearing
+function build(ch, ctx){
+  const {sv,sh,corner} = ctx, W = ctx.width;
+  const OPS=[];                            // ordered: {d, k} k=1 ink, k=0 paper
+  const ink=d=>OPS.push({d,k:1});
+  const pap=d=>OPS.push({d,k:0});
+  const xh=MET.xh, cap=MET.cap, desc=MET.desc;
 
-/* ---- lowercase (x-height 560) ---- */
-DRAW['o']=p=>{ p.ell(238,280,166,280); return 476; };
-DRAW['c']=p=>{ p.a(238,280,166,280,58,302); return 470; };
-DRAW['e']=p=>{ p.l(72,300,404,300); p.a(238,300,166,260,180,0); p.a(238,300,166,300,180,325); return 476; };
-DRAW['a']=p=>{ p.ell(238,280,166,280); p.l(404,0,404,560); return 476; };
-DRAW['n']=p=>{ p.l(72,0,72,560); p.a(238,400,166,160,180,0); p.l(404,0,404,400); return 476; };
-DRAW['m']=p=>{ p.l(72,0,72,560); p.a(206,400,134,160,180,0); p.l(340,0,340,400);
-               p.a(474,400,134,160,180,0); p.l(608,0,608,400); return 680; };
-DRAW['h']=p=>{ p.l(72,0,72,720); p.a(238,400,166,160,180,0); p.l(404,0,404,400); return 476; };
-DRAW['u']=p=>{ p.l(72,560,72,160); p.a(238,160,166,160,180,360); p.l(404,0,404,560); return 476; };
-DRAW['r']=p=>{ p.l(72,0,72,560); p.a(238,400,166,160,180,58); return 402; };
-DRAW['b']=p=>{ p.l(72,0,72,720); p.ell(238,280,166,280); return 476; };
-DRAW['d']=p=>{ p.l(404,0,404,720); p.ell(238,280,166,280); return 476; };
-DRAW['p']=p=>{ p.l(72,-210,72,560); p.ell(238,280,166,280); return 476; };
-DRAW['q']=p=>{ p.l(404,-210,404,560); p.ell(238,280,166,280); return 476; };
-DRAW['g']=p=>{ p.ell(238,280,166,280); p.l(404,560,404,-150); p.a(300,-150,104,90,0,182); return 476; };
-DRAW['i']=p=>{ p.l(120,0,120,560); p.dot(120,672); return 264; };
-DRAW['j']=p=>{ p.l(280,560,280,-120); p.a(190,-120,90,90,0,182); p.dot(280,672); return 356; };
-DRAW['k']=p=>{ p.l(72,0,72,720); p.l(360,560,72,300); p.l(72,300,360,0); return 420; };
-DRAW['l']=p=>{ p.l(120,0,120,720); return 264; };
-DRAW['t']=p=>{ p.l(150,660,150,100); p.a(240,100,90,100,180,300); p.l(56,560,300,560); return 336; };
-DRAW['f']=p=>{ p.l(150,0,150,600); p.a(240,600,90,120,180,90); p.l(56,560,300,560); return 316; };
-DRAW['v']=p=>{ p.l(72,560,236,0); p.l(236,0,400,560); return 472; };
-DRAW['w']=p=>{ p.l(72,560,190,0); p.l(190,0,308,470); p.l(308,470,426,0); p.l(426,0,544,560); return 616; };
-DRAW['x']=p=>{ p.l(72,560,400,0); p.l(72,0,400,560); return 472; };
-DRAW['y']=p=>{ p.l(72,560,240,150); p.l(400,560,150,-210); return 472; };
-DRAW['z']=p=>{ p.l(72,560,400,560); p.l(400,560,72,0); p.l(72,0,400,0); return 472; };
-DRAW['s']=p=>{ p.raw("M 392 470 C 392 565 262 565 186 528 C 108 490 122 392 214 356 C 320 314 372 262 300 200 C 236 146 128 168 116 250"); return 452; };
+  const rOf=(w,h)=>Math.min(w,h)/2*corner;
+  const vstem=(x,y0,y1)=>ink(rrect(x,(y0+y1)/2,sv,y1-y0,sv/2));
+  const hbar =(x0,x1,y)=>ink(rrect((x0+x1)/2,y,x1-x0,sh,sh/2));
+  const diag =(ax,ay,bx,by)=>{
+    const dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy)||1, nx=-dy/L,ny=dx/L;
+    const t=2*Math.hypot(sv/2*nx, sh/2*ny), h=t/2;
+    ink(quad(ax+nx*h,ay+ny*h, bx+nx*h,by+ny*h, bx-nx*h,by-ny*h, ax-nx*h,ay-ny*h));
+    ink(disc(ax,ay,h)); ink(disc(bx,by,h));
+  };
+  const ring=(cx,cy,w,h)=>{
+    ink(rrect(cx,cy,w,h,rOf(w,h)));
+    const iw=w-2*sv, ih=h-2*sh;
+    if(iw>2&&ih>2) pap(rrect(cx,cy,iw,ih,rOf(iw,ih)));
+  };
+  const pRect=(cx,cy,w,h)=>pap(rrect(cx,cy,w,h,Math.min(w,h)/2*0.25));
+  const feet=(x,y)=>ink(disc(x,y,sv/2));
+  const archT=(x0,x1,y0,y1,round)=>{      // ⊓ : two side walls + rounded top, open bottom
+    const r=Math.min((x1-x0)/2, (y1-y0))*corner;
+    ink(rrectTop(x0,x1,y0,y1,r));
+    const ix0=x0+sv, ix1=x1-sv, iy1=y1-sh;
+    if(ix1-ix0>2&&iy1-y0>2) pap(rrectTop(ix0,ix1,y0,iy1,Math.max(r-sv,0)));
+    if(round){ feet(x0+sv/2,y0); feet(x1-sv/2,y0); }
+  };
+  const archB=(x0,x1,y0,y1,round)=>{      // ⊔ : two side walls + rounded bottom, open top
+    const r=Math.min((x1-x0)/2,(y1-y0))*corner;
+    ink(rrectBot(x0,x1,y0,y1,r));
+    const ix0=x0+sv, ix1=x1-sv, iy0=y0+sh;
+    if(ix1-ix0>2&&y1-iy0>2) pap(rrectBot(ix0,ix1,iy0,y1,Math.max(r-sv,0)));
+    if(round){ feet(x0+sv/2,y1); feet(x1-sv/2,y1); }
+  };
 
-/* ---- uppercase (cap 720) ---- */
-DRAW['O']=p=>{ p.ell(262,360,190,360); return 524; };
-DRAW['C']=p=>{ p.a(262,360,190,360,55,305); return 520; };
-DRAW['Q']=p=>{ p.ell(262,360,190,360); p.l(300,150,470,-40); return 524; };
-DRAW['G']=p=>{ p.a(262,360,190,360,55,305); p.l(462,340,462,150); p.l(360,340,462,340); return 524; };
-DRAW['D']=p=>{ p.l(72,0,72,720); p.a(72,360,300,360,90,-90); return 476; };
-DRAW['B']=p=>{ p.l(72,0,72,720); p.a(72,540,230,180,90,-90); p.a(72,180,250,180,90,-90); return 430; };
-DRAW['P']=p=>{ p.l(72,0,72,720); p.a(72,540,230,180,90,-90); return 400; };
-DRAW['R']=p=>{ p.l(72,0,72,720); p.a(72,540,230,180,90,-90); p.l(200,360,432,0); return 480; };
-DRAW['E']=p=>{ p.l(72,0,72,720); p.l(72,720,400,720); p.l(72,360,360,360); p.l(72,0,400,0); return 460; };
-DRAW['F']=p=>{ p.l(72,0,72,720); p.l(72,720,400,720); p.l(72,360,360,360); return 440; };
-DRAW['H']=p=>{ p.l(72,0,72,720); p.l(430,0,430,720); p.l(72,360,430,360); return 502; };
-DRAW['I']=p=>{ p.l(180,0,180,720); return 360; };
-DRAW['J']=p=>{ p.l(360,720,360,120); p.a(220,120,140,140,0,200); return 452; };
-DRAW['L']=p=>{ p.l(72,0,72,720); p.l(72,0,400,0); return 452; };
-DRAW['T']=p=>{ p.l(56,720,476,720); p.l(266,720,266,0); return 532; };
-DRAW['A']=p=>{ p.l(72,0,266,720); p.l(266,720,460,0); p.l(150,270,382,270); return 532; };
-DRAW['V']=p=>{ p.l(72,720,266,0); p.l(266,0,460,720); return 532; };
-DRAW['W']=p=>{ p.l(72,720,190,0); p.l(190,0,308,600); p.l(308,600,426,0); p.l(426,0,544,720); return 616; };
-DRAW['X']=p=>{ p.l(72,720,460,0); p.l(72,0,460,720); return 532; };
-DRAW['Y']=p=>{ p.l(72,720,266,380); p.l(460,720,266,380); p.l(266,380,266,0); return 532; };
-DRAW['Z']=p=>{ p.l(72,720,460,720); p.l(460,720,72,0); p.l(72,0,460,0); return 532; };
-DRAW['K']=p=>{ p.l(72,0,72,720); p.l(440,720,72,360); p.l(72,360,440,0); return 500; };
-DRAW['M']=p=>{ p.l(72,0,72,720); p.l(72,720,300,120); p.l(300,120,528,720); p.l(528,720,528,0); return 600; };
-DRAW['N']=p=>{ p.l(72,0,72,720); p.l(72,720,460,0); p.l(460,0,460,720); return 532; };
-DRAW['U']=p=>{ p.l(72,720,72,200); p.a(262,200,190,200,180,360); p.l(452,200,452,720); return 524; };
-DRAW['S']=p=>{ p.raw("M 452 560 C 452 668 298 668 200 622 C 108 578 120 456 224 424 C 360 382 464 330 464 200 C 464 78 300 66 182 116 C 120 142 98 196 98 236"); return 524; };
+  const RW=600, LW=430, MW=760;           // nominal round / narrow / wide widths (lc)
+  const CW=680, CLW=470, CMW=840;         // caps
+  const g=DEF[ch]||DEF[ch.toLowerCase()]||DEF[ch.toUpperCase()];
+  if(!g) return {ops:OPS,adv:320*W,missing:true};
 
-/* ---- diacritic: ü / ö (umlaut) built from base + dots ---- */
-DRAW['ü']=p=>{ const a=DRAW['u'](p); p.dot(150,672); p.dot(326,672); return a; };
-DRAW['ö']=p=>{ const a=DRAW['o'](p); p.dot(150,672); p.dot(326,672); return a; };
-DRAW['ï']=p=>{ p.l(120,0,120,560); p.dot(46,672); p.dot(194,672); return 264; };
-DRAW['Ä']=p=>{ const a=DRAW['A'](p); p.dot(190,822); p.dot(342,822); return a; };
-DRAW['É']=p=>{ const a=DRAW['E'](p); p.raw("M 300 852 L 180 792"); return a; };
-
-/* ---- digits (cap band) ---- */
-DRAW['0']=p=>{ p.ell(262,360,180,360); return 524; };
-DRAW['1']=p=>{ p.l(230,0,230,720); p.l(110,590,230,720); p.l(120,0,340,0); return 420; };
-DRAW['2']=p=>{ p.a(240,510,168,210,200,-20); p.l(398,447,90,0); p.l(72,0,410,0); return 482; };
-DRAW['3']=p=>{ p.a(238,540,150,180,150,-95); p.a(238,175,168,175,110,-150); return 476; };
-DRAW['4']=p=>{ p.l(340,0,340,720); p.l(340,720,72,240); p.l(72,240,440,240); return 512; };
-DRAW['5']=p=>{ p.l(360,720,90,720); p.l(90,720,90,430); p.a(216,250,190,215,120,-118); return 490; };
-DRAW['6']=p=>{ p.a(238,360,190,360,35,255); p.ell(238,185,178,185); return 524; };
-DRAW['7']=p=>{ p.l(72,720,430,720); p.l(430,720,160,0); return 500; };
-DRAW['8']=p=>{ p.ell(238,545,150,175); p.ell(238,175,175,175); return 500; };
-DRAW['9']=p=>{ p.a(238,360,190,360,215,435); p.ell(238,535,178,185); return 524; };
-
-/* ---- punctuation ---- */
-DRAW['.']=p=>{ p.dot(140,58); return 280; };
-DRAW[',']=p=>{ p.dot(150,58); p.raw("M 150 40 C 150 -40 130 -90 96 -140"); return 280; };
-DRAW[':']=p=>{ p.dot(140,58); p.dot(140,400); return 280; };
-DRAW[';']=p=>{ p.dot(150,400); p.dot(150,58); p.raw("M 150 40 C 150 -40 130 -90 96 -140"); return 280; };
-DRAW['!']=p=>{ p.l(150,720,150,190); p.dot(150,58); return 300; };
-DRAW['?']=p=>{ p.a(240,540,155,155,175,10); p.raw("M 372 585 C 372 470 240 470 240 330 L 240 210"); p.dot(240,58); return 500; };
-DRAW['-']=p=>{ p.l(70,300,330,300); return 400; };
-DRAW['–']=p=>{ p.l(60,300,400,300); return 460; };
-DRAW['_']=p=>{ p.l(40,-120,440,-120); return 480; };
-DRAW['/']=p=>{ p.l(70,-60,360,720); return 430; };
-DRAW["'"]=p=>{ p.raw("M 150 720 C 150 660 140 620 120 578"); return 240; };
-DRAW['"']=p=>{ p.raw("M 120 720 C 120 660 110 620 90 578 M 216 720 C 216 660 206 620 186 578"); return 336; };
-DRAW['(']=p=>{ p.a(360,360,210,400,150,210); return 300; };
-DRAW[')']=p=>{ p.a(-20,360,210,400,30,-30); return 300; };
-DRAW['&']=p=>{ p.raw("M 430 120 C 300 -40 90 20 120 210 C 150 400 380 400 360 560 C 350 660 210 660 210 560 C 210 460 470 220 470 80 C 470 20 440 20 430 60"); return 540; };
-DRAW['@']=p=>{ p.ell(300,360,90,90); p.a(300,360,240,240,20,340); p.l(486,205,486,470); return 640; };
-DRAW['+']=p=>{ p.l(70,300,370,300); p.l(220,150,220,450); return 440; };
-DRAW['=']=p=>{ p.l(70,360,370,360); p.l(70,240,370,240); return 440; };
-DRAW['*']=p=>{ p.l(200,720,200,500); p.l(105,665,295,555); p.l(295,665,105,555); return 400; };
-DRAW['#']=p=>{ p.l(150,0,210,720); p.l(300,0,360,720); p.l(70,220,440,220); p.l(70,500,440,500); return 500; };
-DRAW[' ']=()=>300;
-
-/* build one glyph geometry */
-function glyph(ch){
-  const p=pen();
-  const fn=DRAW[ch]||DRAW[ch.toLowerCase()]||DRAW[ch.toUpperCase()];
-  const adv = fn ? fn(p) : 300;
-  return { adv, ops:p.ops, dots:p.dots, missing:!fn };
+  const api={ink,pap,sv,sh,corner,xh,cap,desc,rOf,vstem,hbar,diag,ring,pRect,feet,archT,archB,
+             disc:(x,y,r)=>ink(disc(x,y,r)),
+             rrect:(cx,cy,w,h,r)=>ink(rrect(cx,cy,w,h,r)),
+             RW,LW,MW,CW,CLW,CMW,SB};
+  const adv=g(api);
+  return {ops:OPS, adv:adv*W};
 }
 
-/* serialize ops → path d, scaling x by wd */
-function toPath(ops,wd){
-  let d='';
-  for(const op of ops){
-    d+=op[0];
-    for(let i=1;i<op.length;i+=2) d+=` ${R(op[i]*wd)} ${R(op[i+1])}`;
-    d+=' ';
-  }
-  return d;
-}
+/* Each definition uses the api and returns the advance (before width scale). */
+const DEF={};
+const P=(fn)=>fn;
+
+/* ---------- lowercase ---------- */
+DEF['o']=a=>{ const w=a.RW; a.ring(a.SB+w/2, a.xh/2, w, a.xh); return w+2*a.SB; };
+DEF['c']=a=>{ const w=a.RW; const cx=a.SB+w/2; a.ring(cx,a.xh/2,w,a.xh);
+              a.pRect(a.SB+w+ a.sv*0.1, a.xh/2, a.sv*2.6, a.xh*0.40); return w+2*a.SB; };
+DEF['e']=a=>{ const w=a.RW; const cx=a.SB+w/2; a.ring(cx,a.xh/2,w,a.xh);
+              a.hbar(a.SB+a.sv*0.6, a.SB+w-a.sv*0.6, a.xh/2);
+              a.pRect(a.SB+w, a.xh*0.26, a.sv*2.6, a.xh*0.34); return w+2*a.SB; };
+DEF['i']=a=>{ a.vstem(a.SB+a.sv/2,0,a.xh); a.disc(a.SB+a.sv/2, a.xh+a.sv*1.05, a.sv*0.62); return a.sv+2*a.SB; };
+DEF['l']=a=>{ a.vstem(a.SB+a.sv/2,0,a.cap); return a.sv+2*a.SB; };
+DEF['n']=a=>{ const w=a.LW; a.archT(a.SB,a.SB+w,0,a.xh,true); return w+2*a.SB; };
+DEF['m']=a=>{ const u=a.LW; a.archT(a.SB,a.SB+u,0,a.xh,true);
+              a.archT(a.SB+u-a.sv,a.SB+2*u-a.sv,0,a.xh,true); return 2*u-a.sv+2*a.SB; };
+DEF['h']=a=>{ const w=a.LW; a.vstem(a.SB+a.sv/2,0,a.cap); a.archT(a.SB,a.SB+w,0,a.xh,true); return w+2*a.SB; };
+DEF['u']=a=>{ const w=a.LW; a.archB(a.SB,a.SB+w,0,a.xh,true); a.vstem(a.SB+w-a.sv/2,0,a.xh); return w+2*a.SB; };
+DEF['r']=a=>{ const w=a.LW*0.82; a.vstem(a.SB+a.sv/2,0,a.xh);
+              a.archT(a.SB,a.SB+w,a.xh*0.42,a.xh,false);
+              a.pRect(a.SB+w-a.sv/2, a.xh*0.12, a.sv*2.2, a.xh*0.62);   /* erase the right leg → shoulder only */
+              return w*0.9+2*a.SB; };
+DEF['b']=a=>{ const w=a.RW; a.vstem(a.SB+a.sv/2,0,a.cap); a.ring(a.SB+w/2,a.xh/2,w,a.xh); return w+2*a.SB; };
+DEF['d']=a=>{ const w=a.RW; a.ring(a.SB+w/2,a.xh/2,w,a.xh); a.vstem(a.SB+w-a.sv/2,0,a.cap); return w+2*a.SB; };
+DEF['p']=a=>{ const w=a.RW; a.vstem(a.SB+a.sv/2,a.desc,a.xh); a.ring(a.SB+w/2,a.xh/2,w,a.xh); return w+2*a.SB; };
+DEF['q']=a=>{ const w=a.RW; a.ring(a.SB+w/2,a.xh/2,w,a.xh); a.vstem(a.SB+w-a.sv/2,a.desc,a.xh); return w+2*a.SB; };
+DEF['a']=a=>{ const w=a.RW; a.ring(a.SB+w/2,a.xh/2,w,a.xh); a.vstem(a.SB+w-a.sv/2,0,a.xh); return w+2*a.SB; };
+DEF['g']=a=>{ const w=a.RW; a.ring(a.SB+w/2,a.xh/2,w,a.xh);
+              a.vstem(a.SB+w-a.sv/2, a.desc*0.2, a.xh);
+              a.archB(a.SB+w*0.14, a.SB+w-a.sv/2+a.sv/2, a.desc, a.desc+a.xh*0.55, true);
+              return w+2*a.SB; };
+DEF['t']=a=>{ a.vstem(a.SB+a.sv/2,0,a.xh*1.15); a.hbar(a.SB-a.sh*0.3, a.SB+a.sv+a.LW*0.5, a.xh*0.78);
+              a.archB(a.SB, a.SB+a.LW*0.55, 0, a.xh*0.34, true); return a.LW*0.6+2*a.SB; };
+DEF['f']=a=>{ a.vstem(a.SB+a.LW*0.4-a.sv/2, 0, a.cap*0.86);
+              a.archT(a.SB+a.LW*0.4-a.sv, a.SB+a.LW*0.4-a.sv + a.RW*0.55, a.cap*0.5, a.cap*0.9, false);
+              a.hbar(a.SB-a.sh*0.2, a.SB+a.LW*0.4-a.sv/2 + a.RW*0.28, a.xh*0.78); return a.LW*0.7+2*a.SB; };
+DEF['j']=a=>{ const x=a.SB+a.RW*0.5; a.vstem(x, a.desc+a.RW*0.24, a.xh);
+              a.archB(a.SB, x+a.sv/2, a.desc, a.desc+a.xh*0.5, true); a.disc(x,a.xh+a.sv*1.05,a.sv*0.62);
+              return a.RW*0.66+2*a.SB; };
+DEF['k']=a=>{ a.vstem(a.SB+a.sv/2,0,a.cap); const j=a.SB+a.sv/2;
+              a.diag(a.SB+a.LW*0.9, a.xh, j, a.xh*0.42);
+              a.diag(j, a.xh*0.42, a.SB+a.LW*0.95, 0); return a.LW+2*a.SB; };
+DEF['v']=a=>{ const w=a.LW*1.02; a.diag(a.SB,a.xh, a.SB+w/2,0); a.diag(a.SB+w/2,0,a.SB+w,a.xh); return w+2*a.SB; };
+DEF['w']=a=>{ const w=a.MW; const q=w/4; a.diag(a.SB,a.xh,a.SB+q,0); a.diag(a.SB+q,0,a.SB+2*q,a.xh*0.72);
+              a.diag(a.SB+2*q,a.xh*0.72,a.SB+3*q,0); a.diag(a.SB+3*q,0,a.SB+w,a.xh); return w+2*a.SB; };
+DEF['x']=a=>{ const w=a.LW; a.diag(a.SB,a.xh,a.SB+w,0); a.diag(a.SB,0,a.SB+w,a.xh); return w+2*a.SB; };
+DEF['y']=a=>{ const w=a.LW*1.02; a.diag(a.SB,a.xh,a.SB+w*0.52,a.xh*0.34);
+              a.diag(a.SB+w,a.xh,a.SB+w*0.30,a.desc); return w+2*a.SB; };
+DEF['z']=a=>{ const w=a.LW; a.hbar(a.SB,a.SB+w,a.xh-a.sh/2); a.diag(a.SB+w,a.xh,a.SB,0); a.hbar(a.SB,a.SB+w,a.sh/2); return w+2*a.SB; };
+DEF['s']=a=>{ const w=a.RW*0.92, cx=a.SB+w/2;
+              a.ring(cx,a.xh*0.72,w,a.xh*0.56); a.ring(cx,a.xh*0.28,w,a.xh*0.56);
+              a.pRect(a.SB+w, a.xh*0.72, a.sv*2.6, a.xh*0.26);
+              a.pRect(a.SB, a.xh*0.28, a.sv*2.6, a.xh*0.26); return w+2*a.SB; };
+
+/* ---------- uppercase ---------- */
+DEF['O']=a=>{ const w=a.CW; a.ring(a.SB+w/2,a.cap/2,w,a.cap); return w+2*a.SB; };
+DEF['Q']=a=>{ const w=a.CW,cx=a.SB+w/2; a.ring(cx,a.cap/2,w,a.cap);
+              a.diag(cx+w*0.08,a.cap*0.34,cx+w*0.42,-a.cap*0.02); return w+2*a.SB; };
+DEF['C']=a=>{ const w=a.CW,cx=a.SB+w/2; a.ring(cx,a.cap/2,w,a.cap);
+              a.pRect(a.SB+w, a.cap/2, a.sv*2.8, a.cap*0.40); return w+2*a.SB; };
+DEF['G']=a=>{ const w=a.CW,cx=a.SB+w/2; a.ring(cx,a.cap/2,w,a.cap);
+              a.pRect(a.SB+w, a.cap*0.62, a.sv*2.8, a.cap*0.30);
+              a.hbar(cx+w*0.10, a.SB+w-a.sv*0.4, a.cap*0.44); a.vstem(a.SB+w-a.sv/2, a.cap*0.12, a.cap*0.46); return w+2*a.SB; };
+DEF['0']=a=>{ const w=a.CW*0.92; a.ring(a.SB+w/2,a.cap/2,w,a.cap); return w+2*a.SB; };
+DEF['I']=a=>{ a.vstem(a.SB+a.sv/2,0,a.cap); return a.sv+2*a.SB; };
+DEF['H']=a=>{ const w=a.CLW*1.05; a.vstem(a.SB+a.sv/2,0,a.cap); a.vstem(a.SB+w-a.sv/2,0,a.cap);
+              a.hbar(a.SB,a.SB+w,a.cap/2); return w+2*a.SB; };
+DEF['L']=a=>{ const w=a.CLW; a.vstem(a.SB+a.sv/2,0,a.cap); a.hbar(a.SB,a.SB+w,a.sh/2); return w+2*a.SB; };
+DEF['T']=a=>{ const w=a.CLW*1.15; a.hbar(a.SB,a.SB+w,a.cap-a.sh/2); a.vstem(a.SB+w/2,0,a.cap); return w+2*a.SB; };
+DEF['E']=a=>{ const w=a.CLW; a.vstem(a.SB+a.sv/2,0,a.cap); a.hbar(a.SB,a.SB+w,a.cap-a.sh/2);
+              a.hbar(a.SB,a.SB+w*0.86,a.cap/2); a.hbar(a.SB,a.SB+w,a.sh/2); return w+2*a.SB; };
+DEF['F']=a=>{ const w=a.CLW; a.vstem(a.SB+a.sv/2,0,a.cap); a.hbar(a.SB,a.SB+w,a.cap-a.sh/2);
+              a.hbar(a.SB,a.SB+w*0.86,a.cap/2); return w+2*a.SB; };
+DEF['D']=a=>{ const w=a.CW; a.vstem(a.SB+a.sv/2,0,a.cap);
+              a.ring(a.SB+w/2,a.cap/2,w,a.cap); return w+2*a.SB; };
+DEF['B']=a=>{ const w=a.CW*0.9; a.vstem(a.SB+a.sv/2,0,a.cap);
+              a.ring(a.SB+w/2,a.cap*0.735,w,a.cap*0.53); a.ring(a.SB+w/2,a.cap*0.265,w,a.cap*0.53); return w+2*a.SB; };
+DEF['P']=a=>{ const w=a.CW*0.9; a.vstem(a.SB+a.sv/2,0,a.cap);
+              a.ring(a.SB+w/2,a.cap*0.735,w,a.cap*0.53); return w+2*a.SB; };
+DEF['R']=a=>{ const w=a.CW*0.9; a.vstem(a.SB+a.sv/2,0,a.cap);
+              a.ring(a.SB+w/2,a.cap*0.735,w,a.cap*0.53);
+              a.diag(a.SB+a.sv/2, a.cap*0.47, a.SB+w, 0); return w+2*a.SB; };
+DEF['U']=a=>{ const w=a.CLW*1.05; a.archB(a.SB,a.SB+w,0,a.cap,true); a.vstem(a.SB+w-a.sv/2,a.cap*0.30,a.cap);
+              a.vstem(a.SB+a.sv/2,a.cap*0.30,a.cap); return w+2*a.SB; };
+DEF['J']=a=>{ const w=a.CLW; const x=a.SB+w-a.sv/2; a.vstem(x, a.cap*0.26, a.cap);
+              a.archB(a.SB, x+a.sv/2, 0, a.cap*0.5, true); return w+2*a.SB; };
+DEF['N']=a=>{ const w=a.CLW*1.1; a.vstem(a.SB+a.sv/2,0,a.cap); a.vstem(a.SB+w-a.sv/2,0,a.cap);
+              a.diag(a.SB+a.sv/2,a.cap,a.SB+w-a.sv/2,0); return w+2*a.SB; };
+DEF['M']=a=>{ const w=a.CMW; a.vstem(a.SB+a.sv/2,0,a.cap); a.vstem(a.SB+w-a.sv/2,0,a.cap);
+              a.diag(a.SB+a.sv/2,a.cap,a.SB+w/2,a.cap*0.28); a.diag(a.SB+w/2,a.cap*0.28,a.SB+w-a.sv/2,a.cap); return w+2*a.SB; };
+DEF['A']=a=>{ const w=a.CLW*1.12; a.diag(a.SB,0,a.SB+w/2,a.cap); a.diag(a.SB+w/2,a.cap,a.SB+w,0);
+              a.hbar(a.SB+w*0.18,a.SB+w*0.82,a.cap*0.32); return w+2*a.SB; };
+DEF['V']=a=>{ const w=a.CLW*1.12; a.diag(a.SB,a.cap,a.SB+w/2,0); a.diag(a.SB+w/2,0,a.SB+w,a.cap); return w+2*a.SB; };
+DEF['W']=a=>{ const w=a.CMW; const q=w/4; a.diag(a.SB,a.cap,a.SB+q,0); a.diag(a.SB+q,0,a.SB+2*q,a.cap*0.72);
+              a.diag(a.SB+2*q,a.cap*0.72,a.SB+3*q,0); a.diag(a.SB+3*q,0,a.SB+w,a.cap); return w+2*a.SB; };
+DEF['X']=a=>{ const w=a.CLW*1.06; a.diag(a.SB,a.cap,a.SB+w,0); a.diag(a.SB,0,a.SB+w,a.cap); return w+2*a.SB; };
+DEF['Y']=a=>{ const w=a.CLW*1.1; a.diag(a.SB,a.cap,a.SB+w/2,a.cap*0.46); a.diag(a.SB+w,a.cap,a.SB+w/2,a.cap*0.46);
+              a.vstem(a.SB+w/2,0,a.cap*0.5); return w+2*a.SB; };
+DEF['Z']=a=>{ const w=a.CLW*1.06; a.hbar(a.SB,a.SB+w,a.cap-a.sh/2); a.diag(a.SB+w,a.cap,a.SB,0); a.hbar(a.SB,a.SB+w,a.sh/2); return w+2*a.SB; };
+DEF['K']=a=>{ const w=a.CLW*1.02; a.vstem(a.SB+a.sv/2,0,a.cap); const j=a.SB+a.sv/2;
+              a.diag(a.SB+w,a.cap,j,a.cap*0.44); a.diag(j,a.cap*0.44,a.SB+w,0); return w+2*a.SB; };
+DEF['S']=a=>{ const w=a.CW*0.9, cx=a.SB+w/2;
+              a.ring(cx,a.cap*0.72,w,a.cap*0.56); a.ring(cx,a.cap*0.28,w,a.cap*0.56);
+              a.pRect(a.SB+w, a.cap*0.72, a.sv*2.8, a.cap*0.26);
+              a.pRect(a.SB, a.cap*0.28, a.sv*2.8, a.cap*0.26); return w+2*a.SB; };
+
+/* ---------- accents (base + marks) ---------- */
+DEF['ü']=a=>{ const w=DEF['u'](a); a.disc(a.SB+a.LW*0.30,a.xh+a.sv*1.05,a.sv*0.6); a.disc(a.SB+a.LW*0.70,a.xh+a.sv*1.05,a.sv*0.6); return w; };
+DEF['ö']=a=>{ const w=DEF['o'](a); a.disc(a.SB+a.RW*0.32,a.xh+a.sv*1.05,a.sv*0.6); a.disc(a.SB+a.RW*0.68,a.xh+a.sv*1.05,a.sv*0.6); return w; };
+DEF['ï']=a=>{ const w=DEF['i'](a); a.disc(a.SB-a.sv*0.15,a.xh+a.sv*1.05,a.sv*0.6); a.disc(a.SB+a.sv*1.15,a.xh+a.sv*1.05,a.sv*0.6); return w; };
+DEF['Ä']=a=>{ const w=DEF['A'](a); a.disc(a.SB+a.CLW*0.42,a.cap+a.sv*1.0,a.sv*0.6); a.disc(a.SB+a.CLW*0.7,a.cap+a.sv*1.0,a.sv*0.6); return w; };
+DEF['É']=a=>{ const w=DEF['E'](a); a.diag(a.SB+a.CLW*0.36,a.cap+a.sv*0.5,a.SB+a.CLW*0.66,a.cap+a.sv*1.5); return w; };
+
+/* ---------- digits ---------- */
+DEF['1']=a=>{ const x=a.SB+a.CLW*0.5; a.vstem(x,0,a.cap); a.diag(x-a.sv*1.4,a.cap-a.sh*1.3,x,a.cap); a.hbar(a.SB,a.SB+a.CLW,a.sh/2); return a.CLW+2*a.SB; };
+DEF['2']=a=>{ const w=a.CW*0.86,cx=a.SB+w/2; a.ring(cx,a.cap*0.72,w,a.cap*0.56);
+              a.pRect(cx-w/2, a.cap*0.72, a.sv*2.8, a.cap*0.3);
+              a.diag(a.SB+w,a.cap*0.62,a.SB,0); a.hbar(a.SB,a.SB+w,a.sh/2); return w+2*a.SB; };
+DEF['3']=a=>{ const w=a.CW*0.86,cx=a.SB+w/2; a.ring(cx,a.cap*0.72,w,a.cap*0.56); a.ring(cx,a.cap*0.28,w,a.cap*0.56);
+              a.pRect(a.SB, a.cap*0.72, a.sv*2.8, a.cap*0.3); a.pRect(a.SB, a.cap*0.28, a.sv*2.8, a.cap*0.3); return w+2*a.SB; };
+DEF['4']=a=>{ const w=a.CLW*1.1; a.vstem(a.SB+w-a.sv*1.2,0,a.cap); a.diag(a.SB+w-a.sv*1.2,a.cap,a.SB,a.cap*0.34);
+              a.hbar(a.SB,a.SB+w,a.cap*0.34); return w+2*a.SB; };
+DEF['5']=a=>{ const w=a.CW*0.86,cx=a.SB+w/2; a.ring(cx,a.cap*0.3,w,a.cap*0.6);
+              a.pRect(a.SB, a.cap*0.3, a.sv*2.8, a.cap*0.34);
+              a.vstem(a.SB+a.sv/2,a.cap*0.5,a.cap); a.hbar(a.SB,a.SB+w,a.cap-a.sh/2); return w+2*a.SB; };
+DEF['6']=a=>{ const w=a.CW*0.86,cx=a.SB+w/2; a.ring(cx,a.cap*0.28,w,a.cap*0.56);
+              a.archT(a.SB,a.SB+w,a.cap*0.28,a.cap,false); return w+2*a.SB; };
+DEF['7']=a=>{ const w=a.CLW*1.06; a.hbar(a.SB,a.SB+w,a.cap-a.sh/2); a.diag(a.SB+w,a.cap,a.SB+w*0.28,0); return w+2*a.SB; };
+DEF['8']=a=>{ const w=a.CW*0.82,cx=a.SB+w/2; a.ring(cx,a.cap*0.72,w,a.cap*0.56); a.ring(cx,a.cap*0.28,w,a.cap*0.56); return w+2*a.SB; };
+DEF['9']=a=>{ const w=a.CW*0.86,cx=a.SB+w/2; a.ring(cx,a.cap*0.72,w,a.cap*0.56);
+              a.archB(a.SB,a.SB+w,0,a.cap*0.72,false); return w+2*a.SB; };
+
+/* ---------- punctuation ---------- */
+DEF['.']=a=>{ a.disc(a.SB+a.sv*0.6, a.sh*0.7, a.sv*0.6); return a.sv*1.2+2*a.SB; };
+DEF[',']=a=>{ a.disc(a.SB+a.sv*0.6, a.sh*0.7, a.sv*0.6); a.diag(a.SB+a.sv*0.6,a.sh*0.4,a.SB+a.sv*0.1,a.desc*0.5); return a.sv*1.2+2*a.SB; };
+DEF[':']=a=>{ a.disc(a.SB+a.sv*0.6,a.sh*0.7,a.sv*0.6); a.disc(a.SB+a.sv*0.6,a.xh*0.62,a.sv*0.6); return a.sv*1.2+2*a.SB; };
+DEF[';']=a=>{ a.disc(a.SB+a.sv*0.6,a.xh*0.62,a.sv*0.6); a.disc(a.SB+a.sv*0.6,a.sh*0.7,a.sv*0.6); a.diag(a.SB+a.sv*0.6,a.sh*0.4,a.SB+a.sv*0.1,a.desc*0.5); return a.sv*1.2+2*a.SB; };
+DEF['!']=a=>{ a.vstem(a.SB+a.sv/2,a.xh*0.34,a.cap); a.disc(a.SB+a.sv/2,a.sh*0.7,a.sv*0.6); return a.sv+2*a.SB; };
+DEF['?']=a=>{ const w=a.RW*0.78,cx=a.SB+w/2; a.archT(a.SB,a.SB+w,a.xh*0.55,a.cap,false);
+              a.vstem(cx, a.xh*0.30, a.xh*0.6); a.disc(cx,a.sh*0.7,a.sv*0.6); return w+2*a.SB; };
+DEF['-']=a=>{ a.hbar(a.SB,a.SB+a.RW*0.6,a.xh*0.5); return a.RW*0.6+2*a.SB; };
+DEF['–']=a=>{ a.hbar(a.SB,a.SB+a.RW*0.85,a.xh*0.5); return a.RW*0.85+2*a.SB; };
+DEF['_']=a=>{ a.hbar(a.SB,a.SB+a.RW,a.desc*0.55); return a.RW+2*a.SB; };
+DEF['/']=a=>{ a.diag(a.SB,a.desc*0.3,a.SB+a.RW*0.55,a.cap); return a.RW*0.55+2*a.SB; };
+DEF["'"]=a=>{ a.diag(a.SB+a.sv*0.6,a.cap,a.SB+a.sv*0.2,a.cap-a.xh*0.28); return a.sv*1.2+2*a.SB; };
+DEF['"']=a=>{ a.diag(a.SB+a.sv*0.6,a.cap,a.SB+a.sv*0.2,a.cap-a.xh*0.28); a.diag(a.SB+a.sv*2.0,a.cap,a.SB+a.sv*1.6,a.cap-a.xh*0.28); return a.sv*2.6+2*a.SB; };
+DEF['(']=a=>{ a.archT(a.SB,a.SB+a.RW*0.9,a.cap*0.5,a.cap,false); a.archB(a.SB,a.SB+a.RW*0.9,0,a.cap*0.5,false);
+              a.pRect(a.SB+a.RW*0.9, a.cap*0.5, a.sv*3, a.cap); return a.RW*0.5+2*a.SB; };
+DEF[')']=a=>{ a.archT(a.SB-a.RW*0.4,a.SB+a.RW*0.5,a.cap*0.5,a.cap,false); a.archB(a.SB-a.RW*0.4,a.SB+a.RW*0.5,0,a.cap*0.5,false);
+              a.pRect(a.SB-a.RW*0.4, a.cap*0.5, a.sv*3, a.cap); return a.RW*0.5+2*a.SB; };
+DEF['+']=a=>{ a.hbar(a.SB,a.SB+a.RW*0.6,a.xh*0.5); a.vstem(a.SB+a.RW*0.3,a.xh*0.2,a.xh*0.8); return a.RW*0.6+2*a.SB; };
+DEF['=']=a=>{ a.hbar(a.SB,a.SB+a.RW*0.6,a.xh*0.62); a.hbar(a.SB,a.SB+a.RW*0.6,a.xh*0.38); return a.RW*0.6+2*a.SB; };
+DEF['&']=a=>{ const w=a.RW; a.ring(a.SB+w*0.36,a.cap*0.74,w*0.6,a.cap*0.44); a.ring(a.SB+w*0.42,a.cap*0.28,w*0.7,a.cap*0.5);
+              a.diag(a.SB+w*0.2,a.cap*0.28,a.SB+w,0); return w+2*a.SB; };
+DEF['@']=a=>{ const w=a.CW; a.ring(a.SB+w/2,a.cap/2,w,a.cap); a.ring(a.SB+w/2,a.cap/2,w*0.4,a.cap*0.4); return w+2*a.SB; };
+DEF['#']=a=>{ const w=a.RW*0.9; a.diag(a.SB+w*0.28,0,a.SB+w*0.38,a.cap); a.diag(a.SB+w*0.62,0,a.SB+w*0.72,a.cap);
+              a.hbar(a.SB,a.SB+w,a.cap*0.62); a.hbar(a.SB,a.SB+w,a.cap*0.34); return w+2*a.SB; };
+DEF['*']=a=>{ const cx=a.SB+a.sv*1.2, cy=a.cap*0.78, r=a.xh*0.2;
+              a.vstem(cx,cy-r,cy+r); a.diag(cx-r,cy-r*0.6,cx+r,cy+r*0.6); a.diag(cx-r,cy+r*0.6,cx+r,cy-r*0.6); return a.sv*2.4+2*a.SB; };
+DEF[' ']=a=>320;
 
 /* ============================================================
    RENDER
    ============================================================ */
-const state={ w:96, wd:0.86, tr:0, theme:'light', guides:false };
+const state={ sh:64, ct:1.7, wd:1.0, co:1.0, tr:0, theme:'light' };
 const $=s=>document.querySelector(s);
+const getVar=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const ctx=()=>({ sh:state.sh, sv:state.sh*state.ct, corner:state.co, width:state.wd });
 
-function svgOpen(w,h){ return `<svg viewBox="0 0 ${R(w)} ${R(h)}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`; }
-
-function glyphMarkup(ch, xoff, ink){
-  const g=glyph(ch);
-  const wd=state.wd, w=state.w, dr=w*0.60;
-  const d=toPath(g.ops,wd);
-  let s=`<g transform="translate(${R(xoff)},0)"><g transform="translate(0,${M.TOP}) scale(1,-1)">`;
-  if(state.guides){
-    s+=`<path d="${d}" fill="none" stroke="${ink}" stroke-opacity="0.25" stroke-width="3"
-         stroke-linecap="round" stroke-linejoin="round"/>`;
-    for(const [dx,dy] of g.dots) s+=`<circle cx="${R(dx*wd)}" cy="${R(dy)}" r="3" fill="${ink}" fill-opacity="0.35"/>`;
-  }
-  if(d.trim()) s+=`<path d="${d}" fill="none" stroke="${ink}" stroke-width="${R(w)}"
-       stroke-linecap="round" stroke-linejoin="round"/>`;
-  for(const [dx,dy] of g.dots) s+=`<circle cx="${R(dx*wd)}" cy="${R(dy)}" r="${R(dr)}" fill="${ink}"/>`;
+function glyphMarkup(ch, xoff, ink, paper){
+  const g=build(ch, ctx()), wd=state.wd;
+  let s=`<g transform="translate(${R(xoff)},0)"><g transform="translate(0,${MET.TOP}) scale(1,-1)">`;
+  for(const op of g.ops) s+=`<path d="${scaleX(op.d,wd)}" fill="${op.k? ink : paper}"/>`;
   s+=`</g></g>`;
-  return { s, adv:g.adv*wd };
+  return { s, adv:g.adv, missing:g.missing };
+}
+/* scale only x-coords in a path 'd' string */
+function scaleX(d,wd){
+  return d.replace(/-?\d+(\.\d+)?/g,(m,_,i)=>m).replace(/([MLC]) ([^A-Z]*)/g,(seg,cmd,nums)=>{
+    const v=nums.trim().split(/\s+/).map(Number);
+    for(let k=0;k<v.length;k+=2) v[k]=R(v[k]*wd);
+    return cmd+' '+v.join(' ')+' ';
+  });
 }
 
 function renderLine(){
   const ink = state.theme==='light' ? getVar('--draw') : getVar('--paper');
   const paper = state.theme==='light' ? getVar('--paper') : getVar('--draw');
-  const lines = ($('#txt').value||' ').split('\n');
-  // measure
+  const lines=($('#txt').value||' ').split('\n');
   let maxW=0; const laid=lines.map(line=>{
     let x=0; const parts=[];
-    for(const ch of line){ const gm=glyphMarkup(ch,x,ink); parts.push(gm.s); x+=gm.adv+state.tr; }
-    x-=state.tr; maxW=Math.max(maxW, x); return {parts, w:x};
+    for(const ch of line){ const gm=glyphMarkup(ch,x,ink,paper); parts.push(gm.s); x+=gm.adv+state.tr; }
+    x-=state.tr; maxW=Math.max(maxW,x); return {parts,w:x};
   });
   const lh=1180, totalH=lh*lines.length;
-  let body='';
-  laid.forEach((L,i)=>{ body+=`<g transform="translate(0,${i*lh})">${L.parts.join('')}</g>`; });
+  let body=''; laid.forEach((L,i)=>{ body+=`<g transform="translate(0,${i*lh})">${L.parts.join('')}</g>`; });
   const el=$('#line');
   el.setAttribute('viewBox',`0 0 ${R(Math.max(maxW,10))} ${R(totalH)}`);
-  el.style.background=paper;
-  el.innerHTML=body;
-  el.closest('.word').style.background=paper;
+  el.style.background=paper; el.innerHTML=body; el.closest('.word').style.background=paper;
 }
 
 const SETS=[
@@ -421,63 +500,43 @@ const SETS=[
   ['üöïÄÉ','Accents']
 ];
 function renderGrid(){
-  const ink = getVar('--draw');
-  const grid=$('#grid'); let html=''; let n=0;
+  const ink=getVar('--draw'), paper=getVar('--surface');
+  let html='', n=0;
   for(const [set] of SETS){
     for(const ch of set){
-      const g=glyph(ch);
-      const w=g.adv, boxW=Math.max(w,300);
-      const gm=glyphMarkup(ch,(boxW-w)/2, ink);
-      html+=`<div class="cell${g.missing?' miss':''}">
-        ${svgOpen(boxW,H)}<g>${gm.s}</g></svg>
-        <span class="cap">${ch===' '?'␣':escapeHTML(ch)}</span></div>`;
+      const gm0=build(ch,ctx()); const w=gm0.adv, boxW=Math.max(w,320);
+      const gm=glyphMarkup(ch,(boxW-w)/2,ink,paper);
+      html+=`<div class="cell${gm.missing?' miss':''}">
+        <svg viewBox="0 0 ${R(boxW)} ${R(H)}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${gm.s}</svg>
+        <span class="cap">${ch===' '?'␣':esc(ch)}</span></div>`;
       n++;
     }
   }
-  grid.innerHTML=html;
-  $('#count').textContent=n+' glyphs';
+  $('#grid').innerHTML=html; $('#count').textContent=n+' glyphs';
 }
-function escapeHTML(c){ return c.replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
-function getVar(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
-
+function esc(c){ return c.replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
 function renderAll(){ renderLine(); renderGrid(); }
 
-/* ---------- controls ---------- */
-function bindRange(id, key, out, fmt){
-  const el=$('#'+id);
-  el.addEventListener('input',()=>{ state[key]=parseFloat(el.value); $(out).textContent=fmt(state[key]); renderAll(); });
-}
-bindRange('w','w','#wV',v=>v.toFixed(0));
+/* controls */
+function bindRange(id,key,out,fmt){ const el=$('#'+id);
+  el.addEventListener('input',()=>{ state[key]=parseFloat(el.value); $(out).textContent=fmt(state[key]); renderAll(); }); }
+bindRange('sh','sh','#shV',v=>v.toFixed(0));
+bindRange('ct','ct','#ctV',v=>v.toFixed(2));
 bindRange('wd','wd','#wdV',v=>v.toFixed(2));
+bindRange('co','co','#coV',v=>v.toFixed(2));
 bindRange('tr','tr','#trV',v=>v.toFixed(0));
-
 $('#txt').addEventListener('input',renderLine);
-
-$('#themeSeg').addEventListener('click',e=>{
-  const b=e.target.closest('button'); if(!b)return;
+$('#themeSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
   [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
-  state.theme=b.dataset.t;
-  document.documentElement.setAttribute('data-theme',state.theme);
-  renderAll();
-});
-$('#guideSeg').addEventListener('click',e=>{
-  const b=e.target.closest('button'); if(!b)return;
-  [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
-  state.guides=b.dataset.g==='on'; renderAll();
-});
+  state.theme=b.dataset.t; document.documentElement.setAttribute('data-theme',state.theme); renderAll(); });
 document.querySelectorAll('[data-p]').forEach(b=>b.addEventListener('click',()=>{
-  const P={light:{w:34,wd:0.86},reg:{w:96,wd:0.86},black:{w:232,wd:0.94}}[b.dataset.p];
-  state.w=P.w; state.wd=P.wd;
-  $('#w').value=P.w; $('#wV').textContent=P.w;
-  $('#wd').value=P.wd; $('#wdV').textContent=P.wd.toFixed(2);
-  renderAll();
-}));
+  const P={fine:{sh:26,ct:1.5},reg:{sh:64,ct:1.7},fat:{sh:132,ct:1.9}}[b.dataset.p];
+  state.sh=P.sh; state.ct=P.ct;
+  $('#sh').value=P.sh; $('#shV').textContent=P.sh;
+  $('#ct').value=P.ct; $('#ctV').textContent=P.ct.toFixed(2); renderAll(); }));
 $('#dl').addEventListener('click',()=>{
-  const svg=$('#line').outerHTML;
-  const blob=new Blob([`<?xml version="1.0"?>\n`+svg],{type:'image/svg+xml'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='typelab.svg'; a.click(); URL.revokeObjectURL(a.href);
-});
+  const blob=new Blob([`<?xml version="1.0"?>\n`+$('#line').outerHTML],{type:'image/svg+xml'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='capsule.svg'; a.click(); URL.revokeObjectURL(a.href); });
 
 renderAll();
 </script>
