@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Type Lab — capsule construction · Yam Liv</title>
-<meta name="description" content="A parametric type prototype. The O is a rounded-rectangle ring — wide, with thick sides and thin top and bottom. Weight, contrast, width and corner are live axes." />
+<title>Type Lab — the grid · Yam Liv</title>
+<meta name="description" content="Building an uppercase skeleton one letter at a time. It starts with the O: a rounded-rectangle ring, wider than tall, thick sides, thin top and bottom. The O sets the grid; every new letter is checked against it." />
 <meta name="robots" content="noindex" />
 <link rel="icon" href="/favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,7 +13,7 @@
 <style>
   :root{
     --bg:#F8F6F3; --surface:#FFFFFF; --line:#E7E4DE;
-    --ink:#26251E; --muted:#A3A09B; --accent:#FF8FF4;
+    --ink:#26251E; --muted:#A3A09B; --accent:#FF8FF4; --grid:#C9B7F5; --gridkey:#8E7BD8;
     --paper:#F8F6F3; --draw:#26251E;
   }
   *,*::before,*::after{ box-sizing:border-box; }
@@ -26,113 +26,95 @@
   #app{ display:flex; height:100vh; }
 
   .side{
-    width:308px; flex:none; height:100%; overflow-y:auto;
-    padding:22px 20px 40px; background:var(--bg); border-right:1px solid var(--line);
+    width:320px; flex:none; height:100%; overflow-y:auto;
+    padding:22px 20px 44px; background:var(--bg); border-right:1px solid var(--line);
   }
   .side::-webkit-scrollbar{ width:0; }
-  h1{
-    font-family:"Instrument Serif",serif; font-weight:400;
-    font-size:40px; line-height:0.95; margin:0 0 2px; color:var(--muted);
-    letter-spacing:-0.01em;
-  }
+  h1{ font-family:"Instrument Serif",serif; font-weight:400; font-size:40px; line-height:0.95;
+      margin:0 0 2px; color:var(--muted); letter-spacing:-0.01em; }
   h1 em{ font-style:italic; color:var(--ink); }
-  .sub{ color:var(--muted); font-size:11px; margin:0 0 20px; line-height:1.55; }
-  .sec{ margin-bottom:16px; }
-  .lbl{
-    display:flex; justify-content:space-between; align-items:baseline;
-    font-size:10px; letter-spacing:0.14em; text-transform:uppercase;
-    color:var(--muted); margin-bottom:6px;
-  }
+  .sub{ color:var(--muted); font-size:11px; margin:0 0 18px; line-height:1.55; }
+  .sec{ margin-bottom:15px; }
+  .lbl{ display:flex; justify-content:space-between; align-items:baseline;
+    font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
   .lbl b{ font-weight:400; color:var(--ink); font-variant-numeric:tabular-nums; }
-  textarea{
-    width:100%; resize:vertical; min-height:54px; border:1px solid var(--line); border-radius:8px;
-    background:var(--surface); color:var(--ink); padding:10px 11px;
-    font:inherit; font-size:14px; line-height:1.35; letter-spacing:0.02em; outline:none;
-  }
-  textarea:focus{ border-color:var(--ink); }
   input[type=range]{ width:100%; accent-color:var(--accent); height:22px; margin:0; cursor:pointer; }
+  input[type=text]{ width:100%; border:1px solid var(--line); border-radius:8px; background:var(--surface);
+    color:var(--ink); padding:9px 11px; font:inherit; font-size:14px; letter-spacing:.1em; text-transform:uppercase; outline:none; }
+  input[type=text]:focus{ border-color:var(--ink); }
   .seg{ display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--surface); }
-  .seg button{
-    flex:1; border:0; background:transparent; padding:8px 4px; font:inherit; font-size:11px;
-    color:var(--muted); cursor:pointer; white-space:nowrap;
-  }
+  .seg button{ flex:1; border:0; background:transparent; padding:8px 4px; font:inherit; font-size:11px;
+    color:var(--muted); cursor:pointer; white-space:nowrap; }
   .seg button.on{ background:var(--ink); color:#fff; }
-  .seg button:not(.on):hover{ color:var(--ink); }
-  .btnrow{ display:flex; gap:8px; }
-  .btn{
-    flex:1; border:1px solid var(--line); background:var(--surface); color:var(--ink);
-    border-radius:8px; padding:8px 10px; font:inherit; font-size:12px; cursor:pointer;
-  }
-  .btn:hover{ border-color:var(--ink); }
   .note{ font-size:10.5px; color:var(--muted); line-height:1.6; margin-top:4px; }
-  .pill{ display:inline-block; font-size:10px; letter-spacing:.08em; text-transform:uppercase;
-    color:var(--muted); border:1px solid var(--line); border-radius:20px; padding:2px 9px; }
+
+  .rules{ list-style:none; margin:0; padding:0; }
+  .rules li{ display:flex; gap:8px; padding:8px 0; border-top:1px solid var(--line); font-size:11.5px; line-height:1.45; }
+  .rules li .k{ color:var(--gridkey); font-weight:600; font-variant-numeric:tabular-nums; flex:none; width:26px; }
+  .rules li .v b{ font-variant-numeric:tabular-nums; }
+  .rules li .v span{ color:var(--muted); }
 
   #stage{ flex:1; height:100%; overflow-y:auto; }
   #stage::-webkit-scrollbar{ width:0; }
-  .word{ padding:44px 40px 30px; border-bottom:1px solid var(--line); background:var(--paper); }
-  .word svg{ display:block; width:100%; height:auto; max-height:46vh; }
-  .gridwrap{ padding:24px 30px 90px; }
-  .gridhead{ display:flex; justify-content:space-between; align-items:center; margin:0 0 14px; }
-  .gridhead .t{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
-  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(90px,1fr)); gap:10px; }
-  .cell{
-    background:var(--surface); border:1px solid var(--line); border-radius:10px;
-    aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;
-  }
-  .cell svg{ width:76%; height:76%; }
-  .cell .cap{ position:absolute; bottom:5px; right:7px; font-size:9px; color:var(--muted); font-variant-numeric:tabular-nums; }
-  .miss{ outline:1px dashed var(--accent); }
-  @media (max-width:720px){
-    #app{ flex-direction:column; } .side{ width:100%; height:auto; border-right:0; border-bottom:1px solid var(--line); }
-    #stage{ height:auto; }
-  }
+  .hero{ padding:34px 44px 26px; border-bottom:1px solid var(--line); }
+  .hero svg{ display:block; width:100%; height:auto; max-height:58vh; }
+  .rowwrap{ padding:22px 34px 90px; }
+  .rowhead{ display:flex; justify-content:space-between; align-items:center; margin:0 0 14px; }
+  .rowhead .t{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .pill{ display:inline-block; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
+    border:1px solid var(--line); border-radius:20px; padding:2px 9px; }
+  .row{ display:flex; flex-wrap:wrap; gap:14px; }
+  .cell{ background:var(--surface); border:1px solid var(--line); border-radius:12px; width:190px; height:210px;
+    display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+  .cell svg{ width:88%; height:88%; }
+  .cell .cap{ position:absolute; bottom:6px; right:9px; font-size:10px; color:var(--muted); }
+  .cell.test{ outline:2px solid var(--accent); outline-offset:-2px; }
+  @media (max-width:720px){ #app{ flex-direction:column; } .side{ width:100%; height:auto; border-right:0; border-bottom:1px solid var(--line);} #stage{height:auto;} }
 </style>
 </head>
 <body>
 <div id="app">
   <aside class="side">
-    <h1>Type&nbsp;<em>Lab</em></h1>
-    <p class="sub"><b>Capsule</b> · draft 001<br>
-      The <b>O</b> is a rounded-rectangle ring — wider than it is tall, with
-      thick sides and a thin top and bottom. Every letter is built from the
-      same capsule parts, so the axes below reshape the whole set at once.</p>
+    <h1>The&nbsp;<em>Grid</em></h1>
+    <p class="sub">Uppercase, built one letter at a time.<br>
+      It starts with the <b>O</b>. The O sets the grid and the rules; every
+      new capital is dropped on the same grid and kept only if it obeys them —
+      otherwise we add a rule.</p>
 
     <div class="sec">
-      <div class="lbl">Preview</div>
-      <textarea id="txt" spellcheck="false">Capsule
-Handglove
-012</textarea>
+      <div class="lbl">O proportion <b><span id="owV">820</span> <span style="color:var(--muted)">/ 744 = <span id="owR">1.10</span>×</span></b></div>
+      <input id="ow" type="range" min="620" max="1040" step="2" value="820">
+      <div class="note">Outer width of the O. Wider than tall is the whole idea.</div>
     </div>
-
     <div class="sec">
-      <div class="lbl">Weight <b><span id="shV">64</span></b></div>
-      <input id="sh" type="range" min="10" max="180" step="1" value="64">
-      <div class="note">Thickness of the thin (top/bottom) strokes. Everything scales from here.</div>
+      <div class="lbl">Weight — thin stroke <b><span id="shV">64</span></b></div>
+      <input id="sh" type="range" min="16" max="180" step="1" value="64">
     </div>
-
     <div class="sec">
-      <div class="lbl">Contrast <b><span id="ctV">1.7</span>×</b></div>
+      <div class="lbl">Contrast — sides ÷ top <b><span id="ctV">1.7</span>×</b></div>
       <input id="ct" type="range" min="1" max="2.8" step="0.05" value="1.7">
-      <div class="note">How much thicker the sides are than the top/bottom. 1× = monolinear.</div>
     </div>
-
-    <div class="sec">
-      <div class="lbl">Width <b><span id="wdV">1.00</span></b></div>
-      <input id="wd" type="range" min="0.68" max="1.30" step="0.01" value="1.00">
-    </div>
-
     <div class="sec">
       <div class="lbl">Corner <b><span id="coV">1.00</span></b></div>
-      <input id="co" type="range" min="0.12" max="1" step="0.01" value="1.00">
-      <div class="note">1 = full capsule (stadium ends) · low = boxy rounded-rect.</div>
+      <input id="co" type="range" min="0.12" max="1" step="0.01" value="1">
+      <div class="note">1 = full capsule (stadium ends) · low = boxy.</div>
+    </div>
+    <div class="sec">
+      <div class="lbl">Overshoot <b><span id="osV">12</span></b></div>
+      <input id="os" type="range" min="0" max="30" step="1" value="12">
+    </div>
+    <div class="sec">
+      <div class="lbl">Side bearing <b><span id="sbV">60</span></b></div>
+      <input id="sb" type="range" min="0" max="160" step="2" value="60">
     </div>
 
     <div class="sec">
-      <div class="lbl">Tracking <b><span id="trV">0</span></b></div>
-      <input id="tr" type="range" min="-160" max="160" step="1" value="0">
+      <div class="lbl">Guides</div>
+      <div class="seg" id="guideSeg">
+        <button data-g="on" class="on">Show grid</button>
+        <button data-g="off">Hide grid</button>
+      </div>
     </div>
-
     <div class="sec">
       <div class="lbl">Theme</div>
       <div class="seg" id="themeSeg">
@@ -141,404 +123,177 @@ Handglove
       </div>
     </div>
 
-    <div class="sec">
-      <div class="lbl">Presets</div>
-      <div class="btnrow">
-        <button class="btn" data-p="fine">Fine</button>
-        <button class="btn" data-p="reg">Regular</button>
-        <button class="btn" data-p="fat">Fat</button>
-      </div>
-    </div>
-
-    <div class="sec">
-      <div class="btnrow"><button class="btn" id="dl">Download SVG</button></div>
-      <div class="note">A no-build prototype: original construction, no external references.
-        Holes are painted in the paper colour for preview; real outlines come at font-export.</div>
+    <div class="sec" style="margin-top:22px;">
+      <div class="lbl">The rules so far</div>
+      <ul class="rules" id="rules"></ul>
     </div>
   </aside>
 
   <main id="stage">
-    <div class="word"><svg id="line" preserveAspectRatio="xMidYMid meet"></svg></div>
-    <div class="gridwrap">
-      <div class="gridhead"><span class="t">Character set</span><span class="pill" id="count">—</span></div>
-      <div class="grid" id="grid"></div>
+    <div class="hero"><svg id="hero" preserveAspectRatio="xMidYMid meet"></svg></div>
+    <div class="rowwrap">
+      <div class="rowhead"><span class="t">On the grid</span><span class="pill" id="count">1 letter</span></div>
+      <div class="sec" style="max-width:340px;margin-bottom:16px;">
+        <div class="lbl">Try a capital against the grid</div>
+        <input id="test" type="text" maxlength="1" placeholder="type A–Z to test">
+        <div class="note">A scratch slot — it doesn't join the set until we agree it fits.</div>
+      </div>
+      <div class="row" id="row"></div>
     </div>
   </main>
 </div>
 
 <script>
 /* ============================================================
-   CAPSULE TYPE ENGINE
+   THE GRID — an uppercase skeleton, grown from the O.
    ------------------------------------------------------------
-   Contrast model: two thicknesses.
-     sh = thin strokes (top / bottom / horizontals)
-     sv = thick strokes (sides / verticals) = sh * contrast
-   Every glyph is filled capsule parts:
-     · stem / bar  = a rounded-rect with stadium ends
-     · O / bowl    = an outer rounded-rect minus an inner one
-                     (inset sv on the sides, sh top & bottom)
-     · diagonals   = a rotated bar, thickness eased by its angle
-   Rendering: solids paint in ink, holes paint back in paper —
-   so overlaps union for free and counters carve cleanly.
-   Metrics (UPM 1000): base 0 · x-height 560 · cap 720.
+   The O is a rounded-rectangle RING:
+     outer  = rounded rect, width Ow, height cap + 2·overshoot
+     inner  = outer inset by sv on the sides and sh top/bottom
+   Two thicknesses give contrast:
+     sh = thin stroke (top / bottom)     sv = thick stroke (sides) = sh · contrast
+   Everything else we add must sit on this grid or earn a new rule.
+   Metrics (UPM 1000): baseline 0 · cap 720.
    ============================================================ */
-const MET = { base:0, xh:560, cap:720, asc:720, desc:-210, TOP:900, BOT:-300 };
-const H = MET.TOP - MET.BOT;
+const MET = { base:0, cap:720, TOP:820, BOT:-100 };
 const R = n => Math.round(n*10)/10;
 
-/* arc → cubic path piece (degrees, y-up) */
+const GRID = { Ow:820, sh:64, contrast:1.7, corner:1.0, os:12, sb:60, guides:true, theme:'light' };
+const sv = () => GRID.sh*GRID.contrast;
+
+/* --- geometry --- */
 function arcCubic(cx,cy,rx,ry,a0,a1){
   const d=Math.PI/180; a0*=d; a1*=d;
   let n=Math.max(1,Math.ceil(Math.abs(a1-a0)/(Math.PI/2)));
   const da=(a1-a0)/n, k=4/3*Math.tan(da/4);
   let s='', a=a0, px=cx+rx*Math.cos(a0), py=cy+ry*Math.sin(a0);
-  for(let i=0;i<n;i++){
-    const b=a+da;
-    const c1x=px-k*rx*Math.sin(a),  c1y=py+k*ry*Math.cos(a);
-    const ex=cx+rx*Math.cos(b),     ey=cy+ry*Math.sin(b);
-    const c2x=ex+k*rx*Math.sin(b),  c2y=ey-k*ry*Math.cos(b);
-    s+=`C ${R(c1x)} ${R(c1y)} ${R(c2x)} ${R(c2y)} ${R(ex)} ${R(ey)} `;
-    a=b; px=ex; py=ey;
-  }
-  return {s, sx:cx+rx*Math.cos(a0), sy:cy+ry*Math.sin(a0)};
+  for(let i=0;i<n;i++){ const b=a+da;
+    const c1x=px-k*rx*Math.sin(a), c1y=py+k*ry*Math.cos(a);
+    const ex=cx+rx*Math.cos(b),    ey=cy+ry*Math.sin(b);
+    const c2x=ex+k*rx*Math.sin(b), c2y=ey-k*ry*Math.cos(b);
+    s+=`C ${R(c1x)} ${R(c1y)} ${R(c2x)} ${R(c2y)} ${R(ex)} ${R(ey)} `; a=b; px=ex; py=ey; }
+  return s;
 }
-
-/* ---- primitive contour builders (return path 'd' strings) ---- */
 function rrect(cx,cy,w,h,r){
   r=Math.max(0,Math.min(r,w/2,h/2));
   const x0=cx-w/2,x1=cx+w/2,y0=cy-h/2,y1=cy+h/2;
   let d=`M ${R(x1)} ${R(y0+r)} L ${R(x1)} ${R(y1-r)} `;
-  d+=arcCubic(x1-r,y1-r,r,r,0,90).s;   d+=`L ${R(x0+r)} ${R(y1)} `;
-  d+=arcCubic(x0+r,y1-r,r,r,90,180).s; d+=`L ${R(x0)} ${R(y0+r)} `;
-  d+=arcCubic(x0+r,y0+r,r,r,180,270).s;d+=`L ${R(x1-r)} ${R(y0)} `;
-  d+=arcCubic(x1-r,y0+r,r,r,270,360).s;d+=`Z`;
-  return d;
-}
-/* rounded only on top (arch), flat bottom */
-function rrectTop(x0,x1,y0,y1,r){
-  r=Math.max(0,Math.min(r,(x1-x0)/2,(y1-y0)));
-  let d=`M ${R(x1)} ${R(y0)} L ${R(x1)} ${R(y1-r)} `;
-  d+=arcCubic(x1-r,y1-r,r,r,0,90).s;   d+=`L ${R(x0+r)} ${R(y1)} `;
-  d+=arcCubic(x0+r,y1-r,r,r,90,180).s; d+=`L ${R(x0)} ${R(y0)} Z`;
-  return d;
-}
-/* rounded only on bottom (u), flat top */
-function rrectBot(x0,x1,y0,y1,r){
-  r=Math.max(0,Math.min(r,(x1-x0)/2,(y1-y0)));
-  let d=`M ${R(x0)} ${R(y1)} L ${R(x0)} ${R(y0+r)} `;
-  d+=arcCubic(x0+r,y0+r,r,r,180,270).s;d+=`L ${R(x1-r)} ${R(y0)} `;
-  d+=arcCubic(x1-r,y0+r,r,r,270,360).s;d+=`L ${R(x1)} ${R(y1)} Z`;
-  return d;
+  d+=arcCubic(x1-r,y1-r,r,r,0,90);   d+=`L ${R(x0+r)} ${R(y1)} `;
+  d+=arcCubic(x0+r,y1-r,r,r,90,180); d+=`L ${R(x0)} ${R(y0+r)} `;
+  d+=arcCubic(x0+r,y0+r,r,r,180,270);d+=`L ${R(x1-r)} ${R(y0)} `;
+  d+=arcCubic(x1-r,y0+r,r,r,270,360);d+=`Z`; return d;
 }
 function disc(cx,cy,r){ return rrect(cx,cy,2*r,2*r,r); }
-function quad(ax,ay,bx,by,cx,cy,dx,dy){
-  return `M ${R(ax)} ${R(ay)} L ${R(bx)} ${R(by)} L ${R(cx)} ${R(cy)} L ${R(dx)} ${R(dy)} Z`;
-}
 
-/* ============================================================
-   GLYPHS — build(ch, ctx) → {solids, holes, adv}
-   ctx: sv, sh, corner, width
-   ============================================================ */
-const SB=42;                 // side bearing
-function build(ch, ctx){
-  const {sv,sh,corner} = ctx, W = ctx.width;
-  const OPS=[];                            // ordered: {d, k} k=1 ink, k=0 paper
-  const ink=d=>OPS.push({d,k:1});
-  const pap=d=>OPS.push({d,k:0});
-  const xh=MET.xh, cap=MET.cap, desc=MET.desc;
+/* --- the letters we have agreed on. Start with O only. --- */
+const DEF = {};
+DEF['O'] = ()=>{
+  const ops=[], sV=sv(), sH=GRID.sh, os=GRID.os;
+  const w=GRID.Ow, h=MET.cap+2*os, cx=GRID.sb+w/2, cy=MET.cap/2;
+  const rOut=Math.min(w,h)/2*GRID.corner;
+  ops.push({d:rrect(cx,cy,w,h,rOut),k:1});
+  const iw=w-2*sV, ih=h-2*sH, rIn=Math.min(iw,ih)/2*GRID.corner;
+  ops.push({d:rrect(cx,cy,iw,ih,rIn),k:0});
+  return {ops, adv:w+2*GRID.sb, box:{w,h,cx,cy,rOut,iw,ih}};
+};
 
-  const rOf=(w,h)=>Math.min(w,h)/2*corner;
-  const vstem=(x,y0,y1)=>ink(rrect(x,(y0+y1)/2,sv,y1-y0,sv/2));
-  const hbar =(x0,x1,y)=>ink(rrect((x0+x1)/2,y,x1-x0,sh,sh/2));
-  const diag =(ax,ay,bx,by)=>{
-    const dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy)||1, nx=-dy/L,ny=dx/L;
-    const t=2*Math.hypot(sv/2*nx, sh/2*ny), h=t/2;
-    ink(quad(ax+nx*h,ay+ny*h, bx+nx*h,by+ny*h, bx-nx*h,by-ny*h, ax-nx*h,ay-ny*h));
-    ink(disc(ax,ay,h)); ink(disc(bx,by,h));
-  };
-  const ring=(cx,cy,w,h)=>{
-    ink(rrect(cx,cy,w,h,rOf(w,h)));
-    const iw=w-2*sv, ih=h-2*sh;
-    if(iw>2&&ih>2) pap(rrect(cx,cy,iw,ih,rOf(iw,ih)));
-  };
-  const pRect=(cx,cy,w,h)=>pap(rrect(cx,cy,w,h,Math.min(w,h)/2*0.25));
-  const feet=(x,y)=>ink(disc(x,y,sv/2));
-  const archT=(x0,x1,y0,y1,round)=>{      // ⊓ : two side walls + rounded top, open bottom
-    const r=Math.min((x1-x0)/2, (y1-y0))*corner;
-    ink(rrectTop(x0,x1,y0,y1,r));
-    const ix0=x0+sv, ix1=x1-sv, iy1=y1-sh;
-    if(ix1-ix0>2&&iy1-y0>2) pap(rrectTop(ix0,ix1,y0,iy1,Math.max(r-sv,0)));
-    if(round){ feet(x0+sv/2,y0); feet(x1-sv/2,y0); }
-  };
-  const archB=(x0,x1,y0,y1,round)=>{      // ⊔ : two side walls + rounded bottom, open top
-    const r=Math.min((x1-x0)/2,(y1-y0))*corner;
-    ink(rrectBot(x0,x1,y0,y1,r));
-    const ix0=x0+sv, ix1=x1-sv, iy0=y0+sh;
-    if(ix1-ix0>2&&y1-iy0>2) pap(rrectBot(ix0,ix1,iy0,y1,Math.max(r-sv,0)));
-    if(round){ feet(x0+sv/2,y1); feet(x1-sv/2,y1); }
-  };
-
-  const RW=600, LW=430, MW=760;           // nominal round / narrow / wide widths (lc)
-  const CW=680, CLW=470, CMW=840;         // caps
-  const g=DEF[ch]||DEF[ch.toLowerCase()]||DEF[ch.toUpperCase()];
-  if(!g) return {ops:OPS,adv:320*W,missing:true};
-
-  const api={ink,pap,sv,sh,corner,xh,cap,desc,rOf,vstem,hbar,diag,ring,pRect,feet,archT,archB,
-             disc:(x,y,r)=>ink(disc(x,y,r)),
-             rrect:(cx,cy,w,h,r)=>ink(rrect(cx,cy,w,h,r)),
-             RW,LW,MW,CW,CLW,CMW,SB};
-  const adv=g(api);
-  return {ops:OPS, adv:adv*W};
-}
-
-/* Each definition uses the api and returns the advance (before width scale). */
-const DEF={};
-const P=(fn)=>fn;
-
-/* ---------- lowercase ---------- */
-DEF['o']=a=>{ const w=a.RW; a.ring(a.SB+w/2, a.xh/2, w, a.xh); return w+2*a.SB; };
-DEF['c']=a=>{ const w=a.RW; const cx=a.SB+w/2; a.ring(cx,a.xh/2,w,a.xh);
-              a.pRect(a.SB+w+ a.sv*0.1, a.xh/2, a.sv*2.6, a.xh*0.40); return w+2*a.SB; };
-DEF['e']=a=>{ const w=a.RW; const cx=a.SB+w/2; a.ring(cx,a.xh/2,w,a.xh);
-              a.hbar(a.SB+a.sv*0.6, a.SB+w-a.sv*0.6, a.xh/2);
-              a.pRect(a.SB+w, a.xh*0.26, a.sv*2.6, a.xh*0.34); return w+2*a.SB; };
-DEF['i']=a=>{ a.vstem(a.SB+a.sv/2,0,a.xh); a.disc(a.SB+a.sv/2, a.xh+a.sv*1.05, a.sv*0.62); return a.sv+2*a.SB; };
-DEF['l']=a=>{ a.vstem(a.SB+a.sv/2,0,a.cap); return a.sv+2*a.SB; };
-DEF['n']=a=>{ const w=a.LW; a.archT(a.SB,a.SB+w,0,a.xh,true); return w+2*a.SB; };
-DEF['m']=a=>{ const u=a.LW; a.archT(a.SB,a.SB+u,0,a.xh,true);
-              a.archT(a.SB+u-a.sv,a.SB+2*u-a.sv,0,a.xh,true); return 2*u-a.sv+2*a.SB; };
-DEF['h']=a=>{ const w=a.LW; a.vstem(a.SB+a.sv/2,0,a.cap); a.archT(a.SB,a.SB+w,0,a.xh,true); return w+2*a.SB; };
-DEF['u']=a=>{ const w=a.LW; a.archB(a.SB,a.SB+w,0,a.xh,true); a.vstem(a.SB+w-a.sv/2,0,a.xh); return w+2*a.SB; };
-DEF['r']=a=>{ const w=a.LW*0.82; a.vstem(a.SB+a.sv/2,0,a.xh);
-              a.archT(a.SB,a.SB+w,a.xh*0.42,a.xh,false);
-              a.pRect(a.SB+w-a.sv/2, a.xh*0.12, a.sv*2.2, a.xh*0.62);   /* erase the right leg → shoulder only */
-              return w*0.9+2*a.SB; };
-DEF['b']=a=>{ const w=a.RW; a.vstem(a.SB+a.sv/2,0,a.cap); a.ring(a.SB+w/2,a.xh/2,w,a.xh); return w+2*a.SB; };
-DEF['d']=a=>{ const w=a.RW; a.ring(a.SB+w/2,a.xh/2,w,a.xh); a.vstem(a.SB+w-a.sv/2,0,a.cap); return w+2*a.SB; };
-DEF['p']=a=>{ const w=a.RW; a.vstem(a.SB+a.sv/2,a.desc,a.xh); a.ring(a.SB+w/2,a.xh/2,w,a.xh); return w+2*a.SB; };
-DEF['q']=a=>{ const w=a.RW; a.ring(a.SB+w/2,a.xh/2,w,a.xh); a.vstem(a.SB+w-a.sv/2,a.desc,a.xh); return w+2*a.SB; };
-DEF['a']=a=>{ const w=a.RW; a.ring(a.SB+w/2,a.xh/2,w,a.xh); a.vstem(a.SB+w-a.sv/2,0,a.xh); return w+2*a.SB; };
-DEF['g']=a=>{ const w=a.RW; a.ring(a.SB+w/2,a.xh/2,w,a.xh);
-              a.vstem(a.SB+w-a.sv/2, a.desc*0.2, a.xh);
-              a.archB(a.SB+w*0.14, a.SB+w-a.sv/2+a.sv/2, a.desc, a.desc+a.xh*0.55, true);
-              return w+2*a.SB; };
-DEF['t']=a=>{ a.vstem(a.SB+a.sv/2,0,a.xh*1.15); a.hbar(a.SB-a.sh*0.3, a.SB+a.sv+a.LW*0.5, a.xh*0.78);
-              a.archB(a.SB, a.SB+a.LW*0.55, 0, a.xh*0.34, true); return a.LW*0.6+2*a.SB; };
-DEF['f']=a=>{ a.vstem(a.SB+a.LW*0.4-a.sv/2, 0, a.cap*0.86);
-              a.archT(a.SB+a.LW*0.4-a.sv, a.SB+a.LW*0.4-a.sv + a.RW*0.55, a.cap*0.5, a.cap*0.9, false);
-              a.hbar(a.SB-a.sh*0.2, a.SB+a.LW*0.4-a.sv/2 + a.RW*0.28, a.xh*0.78); return a.LW*0.7+2*a.SB; };
-DEF['j']=a=>{ const x=a.SB+a.RW*0.5; a.vstem(x, a.desc+a.RW*0.24, a.xh);
-              a.archB(a.SB, x+a.sv/2, a.desc, a.desc+a.xh*0.5, true); a.disc(x,a.xh+a.sv*1.05,a.sv*0.62);
-              return a.RW*0.66+2*a.SB; };
-DEF['k']=a=>{ a.vstem(a.SB+a.sv/2,0,a.cap); const j=a.SB+a.sv/2;
-              a.diag(a.SB+a.LW*0.9, a.xh, j, a.xh*0.42);
-              a.diag(j, a.xh*0.42, a.SB+a.LW*0.95, 0); return a.LW+2*a.SB; };
-DEF['v']=a=>{ const w=a.LW*1.02; a.diag(a.SB,a.xh, a.SB+w/2,0); a.diag(a.SB+w/2,0,a.SB+w,a.xh); return w+2*a.SB; };
-DEF['w']=a=>{ const w=a.MW; const q=w/4; a.diag(a.SB,a.xh,a.SB+q,0); a.diag(a.SB+q,0,a.SB+2*q,a.xh*0.72);
-              a.diag(a.SB+2*q,a.xh*0.72,a.SB+3*q,0); a.diag(a.SB+3*q,0,a.SB+w,a.xh); return w+2*a.SB; };
-DEF['x']=a=>{ const w=a.LW; a.diag(a.SB,a.xh,a.SB+w,0); a.diag(a.SB,0,a.SB+w,a.xh); return w+2*a.SB; };
-DEF['y']=a=>{ const w=a.LW*1.02; a.diag(a.SB,a.xh,a.SB+w*0.52,a.xh*0.34);
-              a.diag(a.SB+w,a.xh,a.SB+w*0.30,a.desc); return w+2*a.SB; };
-DEF['z']=a=>{ const w=a.LW; a.hbar(a.SB,a.SB+w,a.xh-a.sh/2); a.diag(a.SB+w,a.xh,a.SB,0); a.hbar(a.SB,a.SB+w,a.sh/2); return w+2*a.SB; };
-DEF['s']=a=>{ const w=a.RW*0.92, cx=a.SB+w/2;
-              a.ring(cx,a.xh*0.72,w,a.xh*0.56); a.ring(cx,a.xh*0.28,w,a.xh*0.56);
-              a.pRect(a.SB+w, a.xh*0.72, a.sv*2.6, a.xh*0.26);
-              a.pRect(a.SB, a.xh*0.28, a.sv*2.6, a.xh*0.26); return w+2*a.SB; };
-
-/* ---------- uppercase ---------- */
-DEF['O']=a=>{ const w=a.CW; a.ring(a.SB+w/2,a.cap/2,w,a.cap); return w+2*a.SB; };
-DEF['Q']=a=>{ const w=a.CW,cx=a.SB+w/2; a.ring(cx,a.cap/2,w,a.cap);
-              a.diag(cx+w*0.08,a.cap*0.34,cx+w*0.42,-a.cap*0.02); return w+2*a.SB; };
-DEF['C']=a=>{ const w=a.CW,cx=a.SB+w/2; a.ring(cx,a.cap/2,w,a.cap);
-              a.pRect(a.SB+w, a.cap/2, a.sv*2.8, a.cap*0.40); return w+2*a.SB; };
-DEF['G']=a=>{ const w=a.CW,cx=a.SB+w/2; a.ring(cx,a.cap/2,w,a.cap);
-              a.pRect(a.SB+w, a.cap*0.62, a.sv*2.8, a.cap*0.30);
-              a.hbar(cx+w*0.10, a.SB+w-a.sv*0.4, a.cap*0.44); a.vstem(a.SB+w-a.sv/2, a.cap*0.12, a.cap*0.46); return w+2*a.SB; };
-DEF['0']=a=>{ const w=a.CW*0.92; a.ring(a.SB+w/2,a.cap/2,w,a.cap); return w+2*a.SB; };
-DEF['I']=a=>{ a.vstem(a.SB+a.sv/2,0,a.cap); return a.sv+2*a.SB; };
-DEF['H']=a=>{ const w=a.CLW*1.05; a.vstem(a.SB+a.sv/2,0,a.cap); a.vstem(a.SB+w-a.sv/2,0,a.cap);
-              a.hbar(a.SB,a.SB+w,a.cap/2); return w+2*a.SB; };
-DEF['L']=a=>{ const w=a.CLW; a.vstem(a.SB+a.sv/2,0,a.cap); a.hbar(a.SB,a.SB+w,a.sh/2); return w+2*a.SB; };
-DEF['T']=a=>{ const w=a.CLW*1.15; a.hbar(a.SB,a.SB+w,a.cap-a.sh/2); a.vstem(a.SB+w/2,0,a.cap); return w+2*a.SB; };
-DEF['E']=a=>{ const w=a.CLW; a.vstem(a.SB+a.sv/2,0,a.cap); a.hbar(a.SB,a.SB+w,a.cap-a.sh/2);
-              a.hbar(a.SB,a.SB+w*0.86,a.cap/2); a.hbar(a.SB,a.SB+w,a.sh/2); return w+2*a.SB; };
-DEF['F']=a=>{ const w=a.CLW; a.vstem(a.SB+a.sv/2,0,a.cap); a.hbar(a.SB,a.SB+w,a.cap-a.sh/2);
-              a.hbar(a.SB,a.SB+w*0.86,a.cap/2); return w+2*a.SB; };
-DEF['D']=a=>{ const w=a.CW; a.vstem(a.SB+a.sv/2,0,a.cap);
-              a.ring(a.SB+w/2,a.cap/2,w,a.cap); return w+2*a.SB; };
-DEF['B']=a=>{ const w=a.CW*0.9; a.vstem(a.SB+a.sv/2,0,a.cap);
-              a.ring(a.SB+w/2,a.cap*0.735,w,a.cap*0.53); a.ring(a.SB+w/2,a.cap*0.265,w,a.cap*0.53); return w+2*a.SB; };
-DEF['P']=a=>{ const w=a.CW*0.9; a.vstem(a.SB+a.sv/2,0,a.cap);
-              a.ring(a.SB+w/2,a.cap*0.735,w,a.cap*0.53); return w+2*a.SB; };
-DEF['R']=a=>{ const w=a.CW*0.9; a.vstem(a.SB+a.sv/2,0,a.cap);
-              a.ring(a.SB+w/2,a.cap*0.735,w,a.cap*0.53);
-              a.diag(a.SB+a.sv/2, a.cap*0.47, a.SB+w, 0); return w+2*a.SB; };
-DEF['U']=a=>{ const w=a.CLW*1.05; a.archB(a.SB,a.SB+w,0,a.cap,true); a.vstem(a.SB+w-a.sv/2,a.cap*0.30,a.cap);
-              a.vstem(a.SB+a.sv/2,a.cap*0.30,a.cap); return w+2*a.SB; };
-DEF['J']=a=>{ const w=a.CLW; const x=a.SB+w-a.sv/2; a.vstem(x, a.cap*0.26, a.cap);
-              a.archB(a.SB, x+a.sv/2, 0, a.cap*0.5, true); return w+2*a.SB; };
-DEF['N']=a=>{ const w=a.CLW*1.1; a.vstem(a.SB+a.sv/2,0,a.cap); a.vstem(a.SB+w-a.sv/2,0,a.cap);
-              a.diag(a.SB+a.sv/2,a.cap,a.SB+w-a.sv/2,0); return w+2*a.SB; };
-DEF['M']=a=>{ const w=a.CMW; a.vstem(a.SB+a.sv/2,0,a.cap); a.vstem(a.SB+w-a.sv/2,0,a.cap);
-              a.diag(a.SB+a.sv/2,a.cap,a.SB+w/2,a.cap*0.28); a.diag(a.SB+w/2,a.cap*0.28,a.SB+w-a.sv/2,a.cap); return w+2*a.SB; };
-DEF['A']=a=>{ const w=a.CLW*1.12; a.diag(a.SB,0,a.SB+w/2,a.cap); a.diag(a.SB+w/2,a.cap,a.SB+w,0);
-              a.hbar(a.SB+w*0.18,a.SB+w*0.82,a.cap*0.32); return w+2*a.SB; };
-DEF['V']=a=>{ const w=a.CLW*1.12; a.diag(a.SB,a.cap,a.SB+w/2,0); a.diag(a.SB+w/2,0,a.SB+w,a.cap); return w+2*a.SB; };
-DEF['W']=a=>{ const w=a.CMW; const q=w/4; a.diag(a.SB,a.cap,a.SB+q,0); a.diag(a.SB+q,0,a.SB+2*q,a.cap*0.72);
-              a.diag(a.SB+2*q,a.cap*0.72,a.SB+3*q,0); a.diag(a.SB+3*q,0,a.SB+w,a.cap); return w+2*a.SB; };
-DEF['X']=a=>{ const w=a.CLW*1.06; a.diag(a.SB,a.cap,a.SB+w,0); a.diag(a.SB,0,a.SB+w,a.cap); return w+2*a.SB; };
-DEF['Y']=a=>{ const w=a.CLW*1.1; a.diag(a.SB,a.cap,a.SB+w/2,a.cap*0.46); a.diag(a.SB+w,a.cap,a.SB+w/2,a.cap*0.46);
-              a.vstem(a.SB+w/2,0,a.cap*0.5); return w+2*a.SB; };
-DEF['Z']=a=>{ const w=a.CLW*1.06; a.hbar(a.SB,a.SB+w,a.cap-a.sh/2); a.diag(a.SB+w,a.cap,a.SB,0); a.hbar(a.SB,a.SB+w,a.sh/2); return w+2*a.SB; };
-DEF['K']=a=>{ const w=a.CLW*1.02; a.vstem(a.SB+a.sv/2,0,a.cap); const j=a.SB+a.sv/2;
-              a.diag(a.SB+w,a.cap,j,a.cap*0.44); a.diag(j,a.cap*0.44,a.SB+w,0); return w+2*a.SB; };
-DEF['S']=a=>{ const w=a.CW*0.9, cx=a.SB+w/2;
-              a.ring(cx,a.cap*0.72,w,a.cap*0.56); a.ring(cx,a.cap*0.28,w,a.cap*0.56);
-              a.pRect(a.SB+w, a.cap*0.72, a.sv*2.8, a.cap*0.26);
-              a.pRect(a.SB, a.cap*0.28, a.sv*2.8, a.cap*0.26); return w+2*a.SB; };
-
-/* ---------- accents (base + marks) ---------- */
-DEF['ü']=a=>{ const w=DEF['u'](a); a.disc(a.SB+a.LW*0.30,a.xh+a.sv*1.05,a.sv*0.6); a.disc(a.SB+a.LW*0.70,a.xh+a.sv*1.05,a.sv*0.6); return w; };
-DEF['ö']=a=>{ const w=DEF['o'](a); a.disc(a.SB+a.RW*0.32,a.xh+a.sv*1.05,a.sv*0.6); a.disc(a.SB+a.RW*0.68,a.xh+a.sv*1.05,a.sv*0.6); return w; };
-DEF['ï']=a=>{ const w=DEF['i'](a); a.disc(a.SB-a.sv*0.15,a.xh+a.sv*1.05,a.sv*0.6); a.disc(a.SB+a.sv*1.15,a.xh+a.sv*1.05,a.sv*0.6); return w; };
-DEF['Ä']=a=>{ const w=DEF['A'](a); a.disc(a.SB+a.CLW*0.42,a.cap+a.sv*1.0,a.sv*0.6); a.disc(a.SB+a.CLW*0.7,a.cap+a.sv*1.0,a.sv*0.6); return w; };
-DEF['É']=a=>{ const w=DEF['E'](a); a.diag(a.SB+a.CLW*0.36,a.cap+a.sv*0.5,a.SB+a.CLW*0.66,a.cap+a.sv*1.5); return w; };
-
-/* ---------- digits ---------- */
-DEF['1']=a=>{ const x=a.SB+a.CLW*0.5; a.vstem(x,0,a.cap); a.diag(x-a.sv*1.4,a.cap-a.sh*1.3,x,a.cap); a.hbar(a.SB,a.SB+a.CLW,a.sh/2); return a.CLW+2*a.SB; };
-DEF['2']=a=>{ const w=a.CW*0.86,cx=a.SB+w/2; a.ring(cx,a.cap*0.72,w,a.cap*0.56);
-              a.pRect(cx-w/2, a.cap*0.72, a.sv*2.8, a.cap*0.3);
-              a.diag(a.SB+w,a.cap*0.62,a.SB,0); a.hbar(a.SB,a.SB+w,a.sh/2); return w+2*a.SB; };
-DEF['3']=a=>{ const w=a.CW*0.86,cx=a.SB+w/2; a.ring(cx,a.cap*0.72,w,a.cap*0.56); a.ring(cx,a.cap*0.28,w,a.cap*0.56);
-              a.pRect(a.SB, a.cap*0.72, a.sv*2.8, a.cap*0.3); a.pRect(a.SB, a.cap*0.28, a.sv*2.8, a.cap*0.3); return w+2*a.SB; };
-DEF['4']=a=>{ const w=a.CLW*1.1; a.vstem(a.SB+w-a.sv*1.2,0,a.cap); a.diag(a.SB+w-a.sv*1.2,a.cap,a.SB,a.cap*0.34);
-              a.hbar(a.SB,a.SB+w,a.cap*0.34); return w+2*a.SB; };
-DEF['5']=a=>{ const w=a.CW*0.86,cx=a.SB+w/2; a.ring(cx,a.cap*0.3,w,a.cap*0.6);
-              a.pRect(a.SB, a.cap*0.3, a.sv*2.8, a.cap*0.34);
-              a.vstem(a.SB+a.sv/2,a.cap*0.5,a.cap); a.hbar(a.SB,a.SB+w,a.cap-a.sh/2); return w+2*a.SB; };
-DEF['6']=a=>{ const w=a.CW*0.86,cx=a.SB+w/2; a.ring(cx,a.cap*0.28,w,a.cap*0.56);
-              a.archT(a.SB,a.SB+w,a.cap*0.28,a.cap,false); return w+2*a.SB; };
-DEF['7']=a=>{ const w=a.CLW*1.06; a.hbar(a.SB,a.SB+w,a.cap-a.sh/2); a.diag(a.SB+w,a.cap,a.SB+w*0.28,0); return w+2*a.SB; };
-DEF['8']=a=>{ const w=a.CW*0.82,cx=a.SB+w/2; a.ring(cx,a.cap*0.72,w,a.cap*0.56); a.ring(cx,a.cap*0.28,w,a.cap*0.56); return w+2*a.SB; };
-DEF['9']=a=>{ const w=a.CW*0.86,cx=a.SB+w/2; a.ring(cx,a.cap*0.72,w,a.cap*0.56);
-              a.archB(a.SB,a.SB+w,0,a.cap*0.72,false); return w+2*a.SB; };
-
-/* ---------- punctuation ---------- */
-DEF['.']=a=>{ a.disc(a.SB+a.sv*0.6, a.sh*0.7, a.sv*0.6); return a.sv*1.2+2*a.SB; };
-DEF[',']=a=>{ a.disc(a.SB+a.sv*0.6, a.sh*0.7, a.sv*0.6); a.diag(a.SB+a.sv*0.6,a.sh*0.4,a.SB+a.sv*0.1,a.desc*0.5); return a.sv*1.2+2*a.SB; };
-DEF[':']=a=>{ a.disc(a.SB+a.sv*0.6,a.sh*0.7,a.sv*0.6); a.disc(a.SB+a.sv*0.6,a.xh*0.62,a.sv*0.6); return a.sv*1.2+2*a.SB; };
-DEF[';']=a=>{ a.disc(a.SB+a.sv*0.6,a.xh*0.62,a.sv*0.6); a.disc(a.SB+a.sv*0.6,a.sh*0.7,a.sv*0.6); a.diag(a.SB+a.sv*0.6,a.sh*0.4,a.SB+a.sv*0.1,a.desc*0.5); return a.sv*1.2+2*a.SB; };
-DEF['!']=a=>{ a.vstem(a.SB+a.sv/2,a.xh*0.34,a.cap); a.disc(a.SB+a.sv/2,a.sh*0.7,a.sv*0.6); return a.sv+2*a.SB; };
-DEF['?']=a=>{ const w=a.RW*0.78,cx=a.SB+w/2; a.archT(a.SB,a.SB+w,a.xh*0.55,a.cap,false);
-              a.vstem(cx, a.xh*0.30, a.xh*0.6); a.disc(cx,a.sh*0.7,a.sv*0.6); return w+2*a.SB; };
-DEF['-']=a=>{ a.hbar(a.SB,a.SB+a.RW*0.6,a.xh*0.5); return a.RW*0.6+2*a.SB; };
-DEF['–']=a=>{ a.hbar(a.SB,a.SB+a.RW*0.85,a.xh*0.5); return a.RW*0.85+2*a.SB; };
-DEF['_']=a=>{ a.hbar(a.SB,a.SB+a.RW,a.desc*0.55); return a.RW+2*a.SB; };
-DEF['/']=a=>{ a.diag(a.SB,a.desc*0.3,a.SB+a.RW*0.55,a.cap); return a.RW*0.55+2*a.SB; };
-DEF["'"]=a=>{ a.diag(a.SB+a.sv*0.6,a.cap,a.SB+a.sv*0.2,a.cap-a.xh*0.28); return a.sv*1.2+2*a.SB; };
-DEF['"']=a=>{ a.diag(a.SB+a.sv*0.6,a.cap,a.SB+a.sv*0.2,a.cap-a.xh*0.28); a.diag(a.SB+a.sv*2.0,a.cap,a.SB+a.sv*1.6,a.cap-a.xh*0.28); return a.sv*2.6+2*a.SB; };
-DEF['(']=a=>{ a.archT(a.SB,a.SB+a.RW*0.9,a.cap*0.5,a.cap,false); a.archB(a.SB,a.SB+a.RW*0.9,0,a.cap*0.5,false);
-              a.pRect(a.SB+a.RW*0.9, a.cap*0.5, a.sv*3, a.cap); return a.RW*0.5+2*a.SB; };
-DEF[')']=a=>{ a.archT(a.SB-a.RW*0.4,a.SB+a.RW*0.5,a.cap*0.5,a.cap,false); a.archB(a.SB-a.RW*0.4,a.SB+a.RW*0.5,0,a.cap*0.5,false);
-              a.pRect(a.SB-a.RW*0.4, a.cap*0.5, a.sv*3, a.cap); return a.RW*0.5+2*a.SB; };
-DEF['+']=a=>{ a.hbar(a.SB,a.SB+a.RW*0.6,a.xh*0.5); a.vstem(a.SB+a.RW*0.3,a.xh*0.2,a.xh*0.8); return a.RW*0.6+2*a.SB; };
-DEF['=']=a=>{ a.hbar(a.SB,a.SB+a.RW*0.6,a.xh*0.62); a.hbar(a.SB,a.SB+a.RW*0.6,a.xh*0.38); return a.RW*0.6+2*a.SB; };
-DEF['&']=a=>{ const w=a.RW; a.ring(a.SB+w*0.36,a.cap*0.74,w*0.6,a.cap*0.44); a.ring(a.SB+w*0.42,a.cap*0.28,w*0.7,a.cap*0.5);
-              a.diag(a.SB+w*0.2,a.cap*0.28,a.SB+w,0); return w+2*a.SB; };
-DEF['@']=a=>{ const w=a.CW; a.ring(a.SB+w/2,a.cap/2,w,a.cap); a.ring(a.SB+w/2,a.cap/2,w*0.4,a.cap*0.4); return w+2*a.SB; };
-DEF['#']=a=>{ const w=a.RW*0.9; a.diag(a.SB+w*0.28,0,a.SB+w*0.38,a.cap); a.diag(a.SB+w*0.62,0,a.SB+w*0.72,a.cap);
-              a.hbar(a.SB,a.SB+w,a.cap*0.62); a.hbar(a.SB,a.SB+w,a.cap*0.34); return w+2*a.SB; };
-DEF['*']=a=>{ const cx=a.SB+a.sv*1.2, cy=a.cap*0.78, r=a.xh*0.2;
-              a.vstem(cx,cy-r,cy+r); a.diag(cx-r,cy-r*0.6,cx+r,cy+r*0.6); a.diag(cx-r,cy+r*0.6,cx+r,cy-r*0.6); return a.sv*2.4+2*a.SB; };
-DEF[' ']=a=>320;
+const ADDED = ['O'];          // grows as we validate letters together
 
 /* ============================================================
    RENDER
    ============================================================ */
-const state={ sh:64, ct:1.7, wd:1.0, co:1.0, tr:0, theme:'light' };
 const $=s=>document.querySelector(s);
 const getVar=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const ctx=()=>({ sh:state.sh, sv:state.sh*state.ct, corner:state.co, width:state.wd });
 
-function glyphMarkup(ch, xoff, ink, paper){
-  const g=build(ch, ctx()), wd=state.wd;
-  let s=`<g transform="translate(${R(xoff)},0)"><g transform="translate(0,${MET.TOP}) scale(1,-1)">`;
-  for(const op of g.ops) s+=`<path d="${scaleX(op.d,wd)}" fill="${op.k? ink : paper}"/>`;
-  s+=`</g></g>`;
-  return { s, adv:g.adv, missing:g.missing };
-}
-/* scale only x-coords in a path 'd' string */
-function scaleX(d,wd){
-  return d.replace(/-?\d+(\.\d+)?/g,(m,_,i)=>m).replace(/([MLC]) ([^A-Z]*)/g,(seg,cmd,nums)=>{
-    const v=nums.trim().split(/\s+/).map(Number);
-    for(let k=0;k<v.length;k+=2) v[k]=R(v[k]*wd);
-    return cmd+' '+v.join(' ')+' ';
-  });
+function glyphPaths(ch, ink, paper){
+  const g=DEF[ch]; if(!g) return {inner:'', adv:320, missing:true};
+  const r=g(); let s='';
+  for(const op of r.ops) s+=`<path d="${op.d}" fill="${op.k? ink : paper}"/>`;
+  return {inner:s, adv:r.adv, box:r.box};
 }
 
-function renderLine(){
-  const ink = state.theme==='light' ? getVar('--draw') : getVar('--paper');
-  const paper = state.theme==='light' ? getVar('--paper') : getVar('--draw');
-  const lines=($('#txt').value||' ').split('\n');
-  let maxW=0; const laid=lines.map(line=>{
-    let x=0; const parts=[];
-    for(const ch of line){ const gm=glyphMarkup(ch,x,ink,paper); parts.push(gm.s); x+=gm.adv+state.tr; }
-    x-=state.tr; maxW=Math.max(maxW,x); return {parts,w:x};
-  });
-  const lh=1180, totalH=lh*lines.length;
-  let body=''; laid.forEach((L,i)=>{ body+=`<g transform="translate(0,${i*lh})">${L.parts.join('')}</g>`; });
-  const el=$('#line');
-  el.setAttribute('viewBox',`0 0 ${R(Math.max(maxW,10))} ${R(totalH)}`);
-  el.style.background=paper; el.innerHTML=body; el.closest('.word').style.background=paper;
+/* grid guides for a glyph of advance `adv` */
+function guides(adv){
+  if(!GRID.guides) return '';
+  const g=getVar('--grid'), key=getVar('--gridkey'), os=GRID.os, sbx=GRID.sb;
+  const line=(y,c,dash)=>`<line x1="0" y1="${R(y)}" x2="${R(adv)}" y2="${R(y)}" stroke="${c}" stroke-width="2.4" ${dash?`stroke-dasharray="6 9"`:''}/>`;
+  const vline=(x,c,dash)=>`<line x1="${R(x)}" y1="${R(MET.BOT)}" x2="${R(x)}" y2="${R(MET.TOP)}" stroke="${c}" stroke-width="2.4" ${dash?`stroke-dasharray="6 9"`:''}/>`;
+  let s='';
+  s+=line(0,key,false);            // baseline
+  s+=line(MET.cap,key,false);      // cap
+  s+=line(-os,g,true); s+=line(MET.cap+os,g,true);  // overshoot
+  s+=line(MET.cap/2,g,true);       // half
+  s+=vline(sbx,g,true); s+=vline(adv-sbx,g,true);   // O extents / side bearings
+  s+=vline(adv/2,g,true);          // centre
+  return s;
 }
 
-const SETS=[
-  ['abcdefghijklmnopqrstuvwxyz','Lowercase'],
-  ['ABCDEFGHIJKLMNOPQRSTUVWXYZ','Uppercase'],
-  ['0123456789','Figures'],
-  ['.,:;!?\'"()-–_/&@#+=*','Punctuation'],
-  ['üöïÄÉ','Accents']
-];
-function renderGrid(){
-  const ink=getVar('--draw'), paper=getVar('--surface');
-  let html='', n=0;
-  for(const [set] of SETS){
-    for(const ch of set){
-      const gm0=build(ch,ctx()); const w=gm0.adv, boxW=Math.max(w,320);
-      const gm=glyphMarkup(ch,(boxW-w)/2,ink,paper);
-      html+=`<div class="cell${gm.missing?' miss':''}">
-        <svg viewBox="0 0 ${R(boxW)} ${R(H)}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${gm.s}</svg>
-        <span class="cap">${ch===' '?'␣':esc(ch)}</span></div>`;
-      n++;
-    }
+function svgFor(ch, w, h, ink, paper, withGuides){
+  const gp=glyphPaths(ch, ink, paper);
+  const adv=gp.adv;
+  const pad=90;                              // breathing room around the cell
+  const vbW=adv+pad*2, vbH=(MET.TOP-MET.BOT)+pad*2;
+  let inner=`<g transform="translate(${pad},${pad})">`;
+  if(withGuides) inner+=`<g transform="translate(0,${MET.TOP}) scale(1,-1)">${guides(adv)}</g>`;
+  inner+=`<g transform="translate(0,${MET.TOP}) scale(1,-1)">${gp.inner}</g></g>`;
+  return `<svg ${w?`width="${w}"`:''} viewBox="0 0 ${R(vbW)} ${R(vbH)}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="background:${paper}">${inner}</svg>`;
+}
+
+function render(){
+  const ink   = GRID.theme==='light' ? getVar('--draw') : getVar('--paper');
+  const paper = GRID.theme==='light' ? getVar('--paper') : getVar('--draw');
+  // hero: the O
+  $('#hero').outerHTML = svgFor('O', 0, 0, ink, paper, GRID.guides).replace('<svg','<svg id="hero"');
+  $('#hero').closest('.hero').style.background = paper;
+
+  // row: added letters + optional test slot
+  const cellPaper = GRID.theme==='light' ? getVar('--surface') : getVar('--draw');
+  let html='';
+  for(const ch of ADDED)
+    html+=`<div class="cell">${svgFor(ch,0,0,ink,cellPaper,GRID.guides)}<span class="cap">${ch}</span></div>`;
+  const t=($('#test').value||'').toUpperCase().slice(0,1);
+  if(t && /[A-Z]/.test(t)){
+    const miss = !DEF[t];
+    html+=`<div class="cell test">${miss?tofu(cellPaper):svgFor(t,0,0,ink,cellPaper,GRID.guides)}<span class="cap">${t}${miss?' · not defined yet':''}</span></div>`;
   }
-  $('#grid').innerHTML=html; $('#count').textContent=n+' glyphs';
+  $('#row').innerHTML=html;
+  $('#count').textContent = ADDED.length+(ADDED.length===1?' letter':' letters');
+  renderRules();
 }
-function esc(c){ return c.replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
-function renderAll(){ renderLine(); renderGrid(); }
+function tofu(paper){ return `<svg viewBox="0 0 100 100"><rect x="26" y="18" width="48" height="64" fill="none" stroke="var(--muted)" stroke-width="3" stroke-dasharray="5 5"/></svg>`; }
 
-/* controls */
-function bindRange(id,key,out,fmt){ const el=$('#'+id);
-  el.addEventListener('input',()=>{ state[key]=parseFloat(el.value); $(out).textContent=fmt(state[key]); renderAll(); }); }
-bindRange('sh','sh','#shV',v=>v.toFixed(0));
-bindRange('ct','ct','#ctV',v=>v.toFixed(2));
-bindRange('wd','wd','#wdV',v=>v.toFixed(2));
-bindRange('co','co','#coV',v=>v.toFixed(2));
-bindRange('tr','tr','#trV',v=>v.toFixed(0));
-$('#txt').addEventListener('input',renderLine);
+function renderRules(){
+  const sV=Math.round(sv()), ratio=((MET.cap+2*GRID.os)>0?(GRID.Ow/(MET.cap+2*GRID.os)):0).toFixed(2);
+  const rules=[
+    ['R1', `<b>Cap height 720</b>, baseline 0. <span>Uppercase only for now.</span>`],
+    ['R2', `<b>Round overshoot ±${GRID.os}</b>. <span>Round forms cross the cap/baseline so they look aligned.</span>`],
+    ['R3', `<b>O is wider than tall</b> — ${GRID.Ow} × ${MET.cap+2*GRID.os} = <b>${ratio}×</b>.`],
+    ['R4', `<b>Contrast ${GRID.contrast.toFixed(2)}×</b> — sides <b>${sV}</b>, top/bottom <b>${GRID.sh}</b>.`],
+    ['R5', `<b>Corner ${GRID.corner.toFixed(2)}</b> — ${GRID.corner>0.92?'full capsule (stadium ends)':GRID.corner<0.3?'boxy rounded-rect':'rounded rect'}.`],
+    ['R6', `<b>Side bearing ${GRID.sb}</b> each side.`],
+  ];
+  $('#rules').innerHTML = rules.map(([k,v])=>`<li><span class="k">${k}</span><span class="v">${v}</span></li>`).join('');
+}
+
+/* ---- controls ---- */
+function bind(id,key,out,fmt,after){
+  const el=$('#'+id);
+  el.addEventListener('input',()=>{ GRID[key]=parseFloat(el.value); if(out)$(out).textContent=fmt(GRID[key]); after&&after(); render(); });
+}
+bind('ow','Ow','#owV',v=>v.toFixed(0),()=>{ $('#owR').textContent=(GRID.Ow/(MET.cap+2*GRID.os)).toFixed(2); });
+bind('sh','sh','#shV',v=>v.toFixed(0));
+bind('ct','contrast','#ctV',v=>v.toFixed(2));
+bind('co','corner','#coV',v=>v.toFixed(2));
+bind('os','os','#osV',v=>v.toFixed(0),()=>{ $('#owR').textContent=(GRID.Ow/(MET.cap+2*GRID.os)).toFixed(2); });
+bind('sb','sb','#sbV',v=>v.toFixed(0));
+$('#test').addEventListener('input',render);
+$('#guideSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
+  [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); GRID.guides=b.dataset.g==='on'; render(); });
 $('#themeSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
   [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
-  state.theme=b.dataset.t; document.documentElement.setAttribute('data-theme',state.theme); renderAll(); });
-document.querySelectorAll('[data-p]').forEach(b=>b.addEventListener('click',()=>{
-  const P={fine:{sh:26,ct:1.5},reg:{sh:64,ct:1.7},fat:{sh:132,ct:1.9}}[b.dataset.p];
-  state.sh=P.sh; state.ct=P.ct;
-  $('#sh').value=P.sh; $('#shV').textContent=P.sh;
-  $('#ct').value=P.ct; $('#ctV').textContent=P.ct.toFixed(2); renderAll(); }));
-$('#dl').addEventListener('click',()=>{
-  const blob=new Blob([`<?xml version="1.0"?>\n`+$('#line').outerHTML],{type:'image/svg+xml'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='capsule.svg'; a.click(); URL.revokeObjectURL(a.href); });
+  GRID.theme=b.dataset.t; document.documentElement.setAttribute('data-theme',GRID.theme); render(); });
 
-renderAll();
+render();
 </script>
 </body>
 </html>
