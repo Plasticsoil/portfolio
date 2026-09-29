@@ -262,15 +262,16 @@ function outlinePath(segs){
             ox=N.x-C.x,oy=N.y-C.y,ol=Math.hypot(ox,oy)||1,
             ux=ix/il,uy=iy/il,wx=ox/ol,wy=oy/ol, cross=ux*wy-uy*wx, turnLeft=cross>0;
       const ext=(C.x<=minX+0.5||C.x>=maxX-0.5)&&(C.y<=minY+0.5||C.y>=maxY-0.5);
-      // an outer notch (concave corner on the silhouette) only ever rounds
-      // inward into the ink — an "inverse" scoop — so keep those square, no handle.
-      const outerConcave = !hole && !turnLeft;
-      const def = hole ? true : (turnLeft && ext);      // sensible default rounding
-      const id='k'+C.vi+C.vj, round = outerConcave ? false : (def !== ov.has(id));
+      // every corner has a handle. Convex corners round by cutting outward;
+      // concave corners (a silhouette notch, or a counter) round inward — the
+      // "inverse" scoop toward the empty space. Default: holes and the outer
+      // extreme corners are round, everything else square; click to flip.
+      const def = hole ? true : (turnLeft && ext);
+      const id='k'+C.vi+C.vj, round = def !== ov.has(id);
       // same radius reference as the skeleton guide: rO outside, rI inside (clamped to the edges)
       const base = turnLeft?m.rO:m.rI, r = round ? Math.min(base,0.5*il,0.5*ol) : 0;
       seg.push({C,ux,uy,wx,wy,r,turnLeft});
-      if(!outerConcave) corners.push({x:C.x,y:C.y,id,round});
+      corners.push({x:C.x,y:C.y,id,round});
     }
     const A=k=>({x:seg[k].C.x-seg[k].ux*seg[k].r, y:seg[k].C.y-seg[k].uy*seg[k].r});
     const B=k=>({x:seg[k].C.x+seg[k].wx*seg[k].r, y:seg[k].C.y+seg[k].wy*seg[k].r});
