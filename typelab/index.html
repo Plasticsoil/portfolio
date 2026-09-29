@@ -65,9 +65,9 @@
   #heroWrap{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:14px; }
   #heroWrap svg{ width:100%; height:100%; }
   .hit{ fill:transparent; cursor:pointer; }
-  .cnr{ cursor:pointer; }
-  .cnr.r{ fill:var(--accent); fill-opacity:.9; stroke:#fff; stroke-width:1.5; }
-  .cnr.sq{ fill:var(--surface); fill-opacity:.9; stroke:var(--gridkey); stroke-width:2.5; }
+  .cnr{ cursor:pointer; fill:none; pointer-events:all; }
+  .cnr.r{ stroke:var(--accent); stroke-width:2.5; }
+  .cnr.sq{ stroke:var(--gridkey); stroke-width:2.5; stroke-dasharray:3 4; }
   #dragLayer *{ pointer-events:none; }
   #dragLayer .dh, #dragLayer .dh *{ pointer-events:auto; }
   #strip{ flex:none; border-top:1px solid var(--line); padding:12px 22px 16px; }
@@ -84,7 +84,7 @@
     <p class="sub">One grid for every capital. Pick a letter and
       <b>click cells</b> to paint them — their union is one surface, and any
       space you close around becomes a real hole. <b>Click a corner dot</b>
-      to round or square that corner (pink = round, ringed = square).</p>
+      to round or square that corner (pink ring = round, dashed = square).</p>
 
     <div class="grp">The grid · shared</div>
     <div class="sec"><div class="lbl">Cell width <input class="num" id="WN" type="number" min="300" max="1000" step="2"></div><input id="W" type="range" min="300" max="1000" step="2"></div>
@@ -359,7 +359,7 @@ function hits(){
   const E=diagEnds(), dt=Math.max(GRID.sd, 70);
   for(const k in E) s+=`<path class="hit" d="${diagPath(E[k][0],E[k][1],m.xC,m.yM,dt)}" data-seg="${k}"/>`;
   // a handle on every corner of the current outline — click to round ↔ square
-  const {corners}=outlinePath(segsOf(cur)), rr=Math.max(14,Math.min(m.sv,m.sh)*0.42);
+  const {corners}=outlinePath(segsOf(cur)), rr=Math.max(9,Math.min(m.sv,m.sh)*0.26);
   for(const c of corners)
     s+=`<circle class="cnr ${c.round?'r':'sq'}" cx="${R(c.x)}" cy="${R(c.y)}" r="${R(rr)}" data-seg="${c.id}"/>`;
   return s;
