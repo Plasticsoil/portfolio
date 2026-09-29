@@ -204,7 +204,22 @@ function materialClipped(cells, fill, op, segs){
     +`<rect x="${R(Xs[2])}" y="0" width="${R(Xs[3]-Xs[2])}" height="${R(m.cap)}"/>`
     +`</g>`;
 }
-function paint(segs, ink, op){ return materialClipped(cellsOf(segs), ink, op==null?1:op, segs); }
+/* a straight diagonal stroke of thickness t from A to B (square ends) */
+function diagPath(ax,ay,bx,by,t){
+  const dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy)||1, nx=-dy/L*t/2, ny=dx/L*t/2;
+  return `M ${R(ax+nx)} ${R(ay+ny)} L ${R(bx+nx)} ${R(by+ny)} L ${R(bx-nx)} ${R(by-ny)} L ${R(ax-nx)} ${R(ay-ny)} Z`;
+}
+/* the four half-diagonals: each corner to the centre */
+function diagEnds(){ const m=M(); return {
+  dTL:[m.sb,m.cap], dTR:[m.sb+m.W,m.cap], dBL:[m.sb,0], dBR:[m.sb+m.W,0] }; }
+function paint(segs, ink, op){
+  const o=op==null?1:op;
+  let s = materialClipped(cellsOf(segs), ink, o, segs);
+  const m=M(), E=diagEnds(); let d='';
+  for(const k in E) if(segs.includes(k)) d+=`<path d="${diagPath(E[k][0],E[k][1],m.xC,m.yM,GRID.sd)}"/>`;
+  if(d) s+=`<g fill="${ink}" opacity="${o}">${d}</g>`;   // one group → no overlap doubling
+  return s;
+}
 /* proportional metrics: the ink hugs the painted columns, not the O */
 function inkX(segs){
   const m=M(), Xs=m.Xs; let lo=99, hi=-1;
@@ -236,6 +251,10 @@ function skeleton(){
 /* clickable hit areas for the surfaces */
 function hits(){
   const m=M(), Xs=m.Xs, Ys=m.Ys; let s='';
+  // diagonal faces first (drawn under the cells, so cells win where they overlap;
+  // the diagonals stay clickable across the open counter)
+  const E=diagEnds(), dt=Math.max(GRID.sd, 70);
+  for(const k in E) s+=`<path class="hit" d="${diagPath(E[k][0],E[k][1],m.xC,m.yM,dt)}" data-seg="${k}"/>`;
   for(let i=0;i<5;i++)for(let j=0;j<5;j++){
     if(!hasMat(i,j)) continue;   // only cells the material can fill are clickable
     s+=`<rect class="hit" x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}" data-seg="c${i}${j}"/>`;
@@ -271,7 +290,16 @@ function heroSVG(){
 }
 function updateHover(){
   const el=document.getElementById('hoverLayer'); if(!el) return;
-  el.innerHTML = (hoverCell && /^c\d\d$/.test(hoverCell)) ? materialClipped([hoverCell], getVar('--accent'), .55, segsOf(cur)) : '';
+  if(!hoverCell||!hoverEl){ el.innerHTML=''; return; }
+  const acc=getVar('--accent');
+  if(/^c\d\d$/.test(hoverCell)){                 // a grid cell → preview the exact ink piece
+    el.innerHTML = materialClipped([hoverCell], acc, .55, segsOf(cur));
+  } else if(hoverEl.tagName.toLowerCase()==='path'){   // a diagonal face → highlight its stroke
+    el.innerHTML = `<path d="${hoverEl.getAttribute('d')}" fill="${acc}" opacity=".4"/>`;
+  } else {                                             // a corner face → highlight its zone
+    const g=hoverEl;
+    el.innerHTML = `<rect x="${g.getAttribute('x')}" y="${g.getAttribute('y')}" width="${g.getAttribute('width')}" height="${g.getAttribute('height')}" rx="6" fill="${acc}" opacity=".4"/>`;
+  }
 }
 
 function renderLine(){
@@ -318,10 +346,10 @@ function toggle(seg){
   if(i<0) s.push(seg); else s.splice(i,1);
   GLYPHS[cur]=s; render(); renderPicker();
 }
-let hoverCell=null;
+let hoverCell=null, hoverEl=null;
 document.addEventListener('click',e=>{ const h=e.target.closest && e.target.closest('.hit'); if(h) toggle(h.dataset.seg); });
-document.addEventListener('mouseover',e=>{ const h=e.target.closest && e.target.closest('.hit'); if(!h)return; if(h.dataset.seg!==hoverCell){ hoverCell=h.dataset.seg; updateHover(); } });
-document.addEventListener('mouseout',e=>{ const h=e.target.closest && e.target.closest('.hit'); if(!h)return; hoverCell=null; updateHover(); });
+document.addEventListener('mouseover',e=>{ const h=e.target.closest && e.target.closest('.hit'); if(!h)return; hoverEl=h; if(h.dataset.seg!==hoverCell){ hoverCell=h.dataset.seg; updateHover(); } });
+document.addEventListener('mouseout',e=>{ const h=e.target.closest && e.target.closest('.hit'); if(!h)return; hoverCell=null; hoverEl=null; updateHover(); });
 $('#fillO').addEventListener('click',()=>{ GLYPHS[cur]=borderCells(); render(); renderPicker(); });
 $('#clearL').addEventListener('click',()=>{ GLYPHS[cur]=[]; render(); renderPicker(); });
 
