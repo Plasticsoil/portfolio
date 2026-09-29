@@ -65,7 +65,7 @@
   #heroWrap{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:14px; }
   #heroWrap svg{ width:100%; height:100%; }
   .hit{ fill:transparent; cursor:pointer; }
-  .cnr{ cursor:pointer; fill:none; pointer-events:all; stroke:var(--accent); stroke-width:2; }
+  .cnr{ cursor:pointer; fill:none; pointer-events:all; stroke-width:2; }
   #dragLayer *{ pointer-events:none; }
   #dragLayer .dh, #dragLayer .dh *{ pointer-events:auto; }
   #strip{ flex:none; border-top:1px solid var(--line); padding:12px 22px 16px; }
@@ -92,6 +92,8 @@
     <div class="sec"><div class="lbl">Diagonal stroke <input class="num" id="sdN" type="number" min="16" max="320" step="1"></div><input id="sd" type="range" min="16" max="320" step="1"></div>
     <div class="sec"><div class="lbl">Outer corner <input class="num" id="coN" type="number" min="0.06" max="1" step="0.01"></div><input id="co" type="range" min="0.06" max="1" step="0.01"></div>
     <div class="sec"><div class="lbl">Inner corner <input class="num" id="ciN" type="number" min="0.06" max="1" step="0.01"></div><input id="ci" type="range" min="0.06" max="1" step="0.01"></div>
+    <div class="sec"><div class="lbl"><span style="color:#12B5A6">● </span>Extra radius 1 <input class="num" id="r4N" type="number" min="0" max="1" step="0.01"></div><input id="r4" type="range" min="0" max="1" step="0.01"></div>
+    <div class="sec"><div class="lbl"><span style="color:#F4A400">● </span>Extra radius 2 <input class="num" id="r5N" type="number" min="0" max="1" step="0.01"></div><input id="r5" type="range" min="0" max="1" step="0.01"></div>
     <div class="sec"><div class="lbl">Joint round <input class="num" id="jtN" type="number" min="0" max="60" step="1"></div><input id="jt" type="range" min="0" max="60" step="1"></div>
     <div class="sec"><div class="lbl">Side bearing <input class="num" id="sbN" type="number" min="0" max="180" step="2"></div><input id="sb" type="range" min="0" max="180" step="2"></div>
 
@@ -101,6 +103,13 @@
       <button class="mini" id="clearL">Clear</button>
     </div>
     <div class="note" id="segNote"></div>
+    <div class="note" style="display:flex; flex-wrap:wrap; gap:4px 10px; margin-top:8px;">
+      <span><b style="color:#A3A09B">●</b> Straight</span>
+      <span><b style="color:#FF2D9B">●</b> Outer</span>
+      <span><b style="color:#E0157F">●</b> Inner</span>
+      <span><b style="color:#12B5A6">●</b> Extra 1</span>
+      <span><b style="color:#F4A400">●</b> Extra 2</span>
+    </div>
 
     <div class="grp">View</div>
     <div class="sec"><div class="seg" id="skelSeg"><button data-s="on" class="on">Skeleton</button><button data-s="off">Clean</button></div></div>
@@ -135,7 +144,11 @@
    same surface. The O is the border cells with an open middle.
    ============================================================ */
 const R = n => Math.round(n*10)/10;
-const GRID = { W:600, Hh:800, sv:140, sh:70, sd:120, corner:0.5, cornerIn:1, sb:24, joint:0, skel:true, theme:'light' };
+const GRID = { W:600, Hh:800, sv:140, sh:70, sd:120, corner:0.5, cornerIn:1, r4:0.25, r5:0.85, sb:24, joint:0, skel:true, theme:'light' };
+/* the radius presets a corner can cycle through, in order (index 0..4):
+   0 Straight · 1 Outer · 2 Inner · 3 Extra-1 · 4 Extra-2 */
+const RADNAMES=['Straight','Outer','Inner','Extra 1','Extra 2'];
+const RADCOL=['#A3A09B','#FF2D9B','#E0157F','#12B5A6','#F4A400'];
 /* Shape-builder model. Six vertical guides × six horizontal guides cut a
    5×5 grid of cells (ids "cIJ", column i / row j, 0..4). The material —
    the exact O ring plus a middle bar and a centre stem — is clipped to the
@@ -199,7 +212,8 @@ function M(){
    ------------------------------------------------------------------ */
 let UID=0;
 function cellsOf(segs){ return segs.filter(c=>/^c\d\d$/.test(c)); }
-function cornersOf(segs){ return segs.filter(c=>/^k\d\d$/.test(c)); }
+/* corner overrides are stored as "k"+vi+vj+idx (e.g. "k323" = vertex 3,2 uses preset 3) */
+function cornerOverrides(segs){ const o={}; for(const s of segs){ const m=/^k(\d\d)(\d)$/.exec(s); if(m) o['k'+m[1]]=+m[2]; } return o; }
 function grid5(segs){ const g=Array.from({length:5},()=>Array(5).fill(false));
   for(const c of cellsOf(segs)) g[+c[1]][+c[2]]=true; return g; }
 
@@ -254,7 +268,9 @@ function outlinePath(segs){
   let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;   // bbox of the solid (outer loops)
   loops.forEach(l=>{ if(areaOf(l)>0) l.forEach(p=>{ const x=Xs[p.vi],y=Ys[p.vj];
     minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y); }); });
-  const ov=new Set(cornersOf(segs)); let d=''; const corners=[];
+  const ov=cornerOverrides(segs); let d=''; const corners=[];
+  const half=Math.min(m.W,m.cap)/2;   // radius presets by index (0..4)
+  const RAD=[0, m.rO, m.rI, half*GRID.r4, half*GRID.r5];
   for(const l of loops){ const hole=areaOf(l)<0, n=l.length,
       V=l.map(p=>({x:Xs[p.vi],y:Ys[p.vj],vi:p.vi,vj:p.vj})), seg=[];
     for(let k=0;k<n;k++){ const P=V[(k-1+n)%n],C=V[k],N=V[(k+1)%n];
@@ -262,21 +278,19 @@ function outlinePath(segs){
             ox=N.x-C.x,oy=N.y-C.y,ol=Math.hypot(ox,oy)||1,
             ux=ix/il,uy=iy/il,wx=ox/ol,wy=oy/ol, cross=ux*wy-uy*wx, turnLeft=cross>0;
       const ext=(C.x<=minX+0.5||C.x>=maxX-0.5)&&(C.y<=minY+0.5||C.y>=maxY-0.5);
-      // every corner has a handle. Convex corners round by cutting outward;
-      // concave corners (a silhouette notch, or a counter) round inward — the
-      // "inverse" scoop toward the empty space. Default: holes and the outer
-      // extreme corners are round, everything else square; click to flip.
-      const def = hole ? true : (turnLeft && ext);
-      const id='k'+C.vi+C.vj, round = def !== ov.has(id);
-      // same radius reference as the skeleton guide: rO outside, rI inside (clamped to the edges)
-      const base = turnLeft?m.rO:m.rI, r = round ? Math.min(base,0.5*il,0.5*ol) : 0;
+      // Each corner cycles through the radius presets. Default preset: a hole
+      // corner starts on Inner, an outer extreme corner on Outer, the rest
+      // Straight. Click the handle to step to the next preset.
+      const id='k'+C.vi+C.vj, def = hole ? 2 : ((turnLeft&&ext) ? 1 : 0);
+      const idx = (id in ov) ? ov[id] : def;
+      const r = Math.min(RAD[idx]||0, 0.5*il, 0.5*ol);
       seg.push({C,ux,uy,wx,wy,r,turnLeft});
       // the handle sits just off the corner on the PAPER side (outside an outer
       // corner, inside the hole for a counter) — clearer on white, and it still
       // shows which corner it belongs to when neighbours share a vertex
       const nx=-uy-wy, ny=ux+wx, nl=Math.hypot(nx,ny)||1, sgn=hole?1:-1,
             off=Math.min(0.4*Math.min(il,ol), Math.min(m.sv,m.sh)*0.4);
-      corners.push({x:C.x+sgn*nx/nl*off, y:C.y+sgn*ny/nl*off, id, round});
+      corners.push({x:C.x+sgn*nx/nl*off, y:C.y+sgn*ny/nl*off, id, idx, def});
     }
     const A=k=>({x:seg[k].C.x-seg[k].ux*seg[k].r, y:seg[k].C.y-seg[k].uy*seg[k].r});
     const B=k=>({x:seg[k].C.x+seg[k].wx*seg[k].r, y:seg[k].C.y+seg[k].wy*seg[k].r});
@@ -367,10 +381,10 @@ function hits(){
   // diagonal bands on top — click the band to add/remove that diagonal
   const E=diagEnds(), dt=Math.max(GRID.sd, 70);
   for(const k in E) s+=`<path class="hit" d="${diagPath(E[k][0],E[k][1],m.xC,m.yM,dt)}" data-seg="${k}"/>`;
-  // a handle on every corner of the current outline — click to round ↔ square
+  // a handle on every corner of the current outline — click to cycle the radius preset
   const {corners}=outlinePath(segsOf(cur)), rr=Math.max(6,Math.min(m.sv,m.sh)*0.15);
   for(const c of corners)
-    s+=`<circle class="cnr ${c.round?'r':'sq'}" cx="${R(c.x)}" cy="${R(c.y)}" r="${R(rr)}" data-seg="${c.id}"/>`;
+    s+=`<circle class="cnr" cx="${R(c.x)}" cy="${R(c.y)}" r="${R(rr)}" style="stroke:${RADCOL[c.idx]||RADCOL[0]};fill:${c.idx?RADCOL[c.idx]:'none'};fill-opacity:.25" data-seg="${c.id}"/>`;
   return s;
 }
 
@@ -481,7 +495,7 @@ function renderNote(){
   $('#curName').textContent=cur; $('#saveL').textContent=cur;
   const n=segsOf(cur).length;
   $('#segNote').textContent = n
-    ? n+' cells painted. Click a cell to add or cut it; click a corner dot to round or square it.'
+    ? n+' cells painted. Click a cell to add or cut it; click a corner dot to cycle its radius.'
     : 'Empty. Click cells on the grid to build '+cur+' — or Fill O and cut pieces away.';
 }
 function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"'); updateHover(); renderDrag(); renderNote(); renderLine(); persistLocal(); }
@@ -494,7 +508,17 @@ function toggle(seg){ const s=segsOf(cur), i=s.indexOf(seg);
 let hoverCell=null, hoverEl=null, drag=null, suppressClick=false;
 const pick=e=>e.target.closest && e.target.closest('.hit,.cnr');
 const cellUnder=e=>{ const c=e.target.closest && e.target.closest('.hit'); return (c&&/^c\d\d$/.test(c.dataset.seg))?c.dataset.seg.slice(1):null; };
-document.addEventListener('click',e=>{ if(suppressClick){ suppressClick=false; return; } const h=pick(e); if(h) toggle(h.dataset.seg); });
+/* click a corner handle → step to the next radius preset (Straight→Outer→Inner→Extra1→Extra2→…) */
+function cycleCorner(id){
+  const c=outlinePath(segsOf(cur)).corners.find(x=>x.id===id); if(!c) return;
+  const next=(c.idx+1)%RADNAMES.length;
+  const s=segsOf(cur).filter(x=>!(x.length===4 && x.slice(0,3)===id));  // drop old override
+  if(next!==c.def) s.push(id+next);
+  GLYPHS[cur]=s; render(); renderPicker();
+}
+document.addEventListener('click',e=>{ if(suppressClick){ suppressClick=false; return; }
+  const cn=e.target.closest && e.target.closest('.cnr'); if(cn){ cycleCorner(cn.dataset.seg); return; }
+  const h=pick(e); if(h) toggle(h.dataset.seg); });
 document.addEventListener('mouseover',e=>{
   if(drag){ const t=cellUnder(e); if(t&&t!==drag.target){ drag.target=t; renderDrag(); } return; }
   const h=pick(e); if(!h)return; hoverEl=h; if(h.dataset.seg!==hoverCell){ hoverCell=h.dataset.seg; updateHover(); renderDrag(); } });
@@ -512,7 +536,7 @@ $('#clearL').addEventListener('click',()=>{ GLYPHS[cur]=[]; render(); renderPick
 
 /* grid controls */
 function syncGrid(){
-  const map={W:'W',Hh:'Hh',sv:'sv',sh:'sh',sd:'sd',co:'corner',ci:'cornerIn',jt:'joint',sb:'sb'};
+  const map={W:'W',Hh:'Hh',sv:'sv',sh:'sh',sd:'sd',co:'corner',ci:'cornerIn',r4:'r4',r5:'r5',jt:'joint',sb:'sb'};
   for(const rid in map){ const key=map[rid], rng=$('#'+rid), num=$('#'+rid+'N'); if(!rng)continue;
     rng.value=Math.min(parseFloat(rng.max),Math.max(parseFloat(rng.min),GRID[key])); num.value=GRID[key]; }
 }
@@ -524,7 +548,7 @@ function bindGrid(rid,key){
   num.addEventListener('input',fn); num.addEventListener('change',fn);
 }
 bindGrid('W','W'); bindGrid('Hh','Hh'); bindGrid('sv','sv'); bindGrid('sh','sh'); bindGrid('sd','sd');
-bindGrid('co','corner'); bindGrid('ci','cornerIn'); bindGrid('jt','joint'); bindGrid('sb','sb');
+bindGrid('co','corner'); bindGrid('ci','cornerIn'); bindGrid('r4','r4'); bindGrid('r5','r5'); bindGrid('jt','joint'); bindGrid('sb','sb');
 
 $('#picker').addEventListener('click',e=>{ const b=e.target.closest('.pk'); if(!b)return; cur=b.dataset.l; renderPicker(); render(); });
 $('#line').addEventListener('input',()=>{ renderLine(); persistLocal(); });
@@ -535,7 +559,7 @@ $('#themeSeg').addEventListener('click',e=>{ const b=e.target.closest('button');
   GRID.theme=b.dataset.t; document.documentElement.setAttribute('data-theme',GRID.theme); render(); });
 
 /* bank (db + localStorage) */
-const GKEYS=['W','Hh','sv','sh','sd','corner','cornerIn','joint','sb'];
+const GKEYS=['W','Hh','sv','sh','sd','corner','cornerIn','r4','r5','joint','sb'];
 const LS='typelab-skel-v1';
 let localGridLoaded=false;
 function gridObj(){ const o={}; GKEYS.forEach(k=>o[k]=GRID[k]); return o; }
