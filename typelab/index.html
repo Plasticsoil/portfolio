@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Type Lab — parametric skeleton · Yam Liv</title>
+<meta name="description" content="A parametric type prototype. Every glyph is one centerline skeleton; weight is stroke thickness; width stretches the skeleton. Drag the axes." />
+<meta name="robots" content="noindex" />
+<link rel="icon" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" />
+<style>
+  :root{
+    --bg:#F8F6F3; --surface:#FFFFFF; --line:#E7E4DE;
+    --ink:#26251E; --muted:#A3A09B; --accent:#FF8FF4;
+    --paper:#F8F6F3; --draw:#26251E;
+  }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; height:100%; }
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"Nimbus Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size:13px; -webkit-font-smoothing:antialiased; overflow:hidden;
+  }
+  #app{ display:flex; height:100vh; }
+
+  /* ---------- side panel ---------- */
+  .side{
+    width:300px; flex:none; height:100%; overflow-y:auto;
+    padding:22px 20px 40px; background:var(--bg); border-right:1px solid var(--line);
+  }
+  .side::-webkit-scrollbar{ width:0; }
+  h1{
+    font-family:"Instrument Serif",serif; font-weight:400;
+    font-size:40px; line-height:0.95; margin:0 0 2px; color:var(--muted);
+    letter-spacing:-0.01em;
+  }
+  h1 em{ font-style:italic; color:var(--ink); }
+  .sub{ color:var(--muted); font-size:11px; margin:0 0 20px; line-height:1.5; }
+  .sec{ margin-bottom:16px; }
+  .lbl{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:10px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--muted); margin-bottom:6px;
+  }
+  .lbl b{ font-weight:400; color:var(--ink); font-variant-numeric:tabular-nums; }
+  textarea{
+    width:100%; resize:vertical; min-height:52px; border:1px solid var(--line); border-radius:8px;
+    background:var(--surface); color:var(--ink); padding:10px 11px;
+    font:inherit; font-size:14px; line-height:1.35; letter-spacing:0.02em; outline:none;
+  }
+  textarea:focus{ border-color:var(--ink); }
+  input[type=range]{ width:100%; accent-color:var(--accent); height:22px; margin:0; cursor:pointer; }
+  .seg{ display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--surface); }
+  .seg button{
+    flex:1; border:0; background:transparent; padding:8px 4px; font:inherit; font-size:11px;
+    color:var(--muted); cursor:pointer; white-space:nowrap;
+  }
+  .seg button.on{ background:var(--ink); color:#fff; }
+  .seg button:not(.on):hover{ color:var(--ink); }
+  .btnrow{ display:flex; gap:8px; }
+  .btn{
+    flex:1; border:1px solid var(--line); background:var(--surface); color:var(--ink);
+    border-radius:8px; padding:8px 10px; font:inherit; font-size:12px; cursor:pointer;
+  }
+  .btn:hover{ border-color:var(--ink); }
+  .note{ font-size:10.5px; color:var(--muted); line-height:1.6; margin-top:4px; }
+  .pill{ display:inline-block; font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--muted); border:1px solid var(--line); border-radius:20px; padding:2px 9px; }
+
+  /* ---------- stage ---------- */
+  #stage{ flex:1; height:100%; overflow-y:auto; padding:0; }
+  #stage::-webkit-scrollbar{ width:0; }
+  .word{
+    padding:44px 40px 30px; border-bottom:1px solid var(--line);
+    background:var(--paper); position:sticky; top:0; z-index:2;
+  }
+  .word svg{ display:block; width:100%; height:auto; max-height:46vh; }
+  .gridwrap{ padding:24px 30px 80px; }
+  .gridhead{ display:flex; justify-content:space-between; align-items:center; margin:0 0 14px; }
+  .gridhead .t{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(88px,1fr)); gap:10px; }
+  .cell{
+    background:var(--surface); border:1px solid var(--line); border-radius:10px;
+    aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; position:relative;
+    overflow:hidden;
+  }
+  .cell svg{ width:74%; height:74%; }
+  .cell .cap{ position:absolute; bottom:5px; right:7px; font-size:9px; color:var(--muted);
+    font-variant-numeric:tabular-nums; }
+  .miss{ outline:1px dashed var(--accent); }
+  @media (max-width:720px){
+    #app{ flex-direction:column; }
+    .side{ width:100%; height:auto; border-right:0; border-bottom:1px solid var(--line); }
+    #stage{ height:auto; }
+    .word{ position:static; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside class="side">
+    <h1>Type&nbsp;<em>Lab</em></h1>
+    <p class="sub">Parametric skeleton · draft 002<br>
+      Every glyph is one centerline. <b>Weight</b> = stroke thickness,
+      <b>Width</b> stretches the skeleton, <b>Tracking</b> lets heavy weights fuse.</p>
+
+    <div class="sec">
+      <div class="lbl">Preview</div>
+      <textarea id="txt" spellcheck="false">Dürüm
+casse
+Handgloves 012</textarea>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Weight <b><span id="wV">96</span></b></div>
+      <input id="w" type="range" min="18" max="300" step="1" value="96">
+      <div class="note">Past ~200 counters close and neighbours melt together — the display extreme.</div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Width <b><span id="wdV">0.86</span></b></div>
+      <input id="wd" type="range" min="0.62" max="1.20" step="0.01" value="0.86">
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Tracking <b><span id="trV">0</span></b></div>
+      <input id="tr" type="range" min="-160" max="160" step="1" value="0">
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Theme</div>
+      <div class="seg" id="themeSeg">
+        <button data-t="light" class="on">Ink on paper</button>
+        <button data-t="dark">Paper on ink</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Skeleton</div>
+      <div class="seg" id="guideSeg">
+        <button data-g="off" class="on">Hide guides</button>
+        <button data-g="on">Show skeleton</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="lbl">Presets</div>
+      <div class="btnrow">
+        <button class="btn" data-p="light">Light</button>
+        <button class="btn" data-p="reg">Regular</button>
+        <button class="btn" data-p="black">Black</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="btnrow">
+        <button class="btn" id="dl">Download SVG</button>
+      </div>
+      <div class="note">Inspired by the soft-geometric, extreme-weight display language
+        (Casse-croûte / _orasei). Forms, proportions and axes are our own — the
+        skeleton method is the takeaway, not the shapes.</div>
+    </div>
+  </aside>
+
+  <main id="stage">
+    <div class="word"><svg id="line" preserveAspectRatio="xMidYMid meet"></svg></div>
+    <div class="gridwrap">
+      <div class="gridhead">
+        <span class="t">Character set</span>
+        <span class="pill" id="count">—</span>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   PARAMETRIC TYPE ENGINE — centerline skeletons
+   ------------------------------------------------------------
+   A glyph is a set of centerlines (font units, y-up).
+   The renderer strokes them:  weight = stroke-width,
+   round caps + round joins.  Width scales the x-axis of the
+   skeleton (stroke stays round). This is the whole model:
+   define the skeleton once, "dress" it by stroking, and the
+   axes fall out of the two transforms.
+
+   Metrics (UPM 1000):
+     baseline 0 · x-height 560 · cap 720 · asc/desc caps→720 / -210
+   Ascenders reach cap height for a geometric, even colour.
+   ============================================================ */
+const M = { base:0, xh:560, cap:720, TOP:900, BOT:-300 };
+const H = M.TOP - M.BOT;                 // vertical drawing box
+
+const R = n => Math.round(n*10)/10;
+
+/* --- arc → cubic bezier ops (degrees, y-up, 0°=east 90°=north) --- */
+function arcData(cx,cy,rx,ry,a0,a1){
+  const d=Math.PI/180; a0*=d; a1*=d;
+  const sx=cx+rx*Math.cos(a0), sy=cy+ry*Math.sin(a0);
+  let n=Math.max(1,Math.ceil(Math.abs(a1-a0)/(Math.PI/2)));
+  const da=(a1-a0)/n, k=4/3*Math.tan(da/4);
+  const cs=[]; let a=a0, px=sx, py=sy;
+  for(let i=0;i<n;i++){
+    const b=a+da;
+    const c1x=px-k*rx*Math.sin(a), c1y=py+k*ry*Math.cos(a);
+    const ex=cx+rx*Math.cos(b),   ey=cy+ry*Math.sin(b);
+    const c2x=ex+k*rx*Math.sin(b), c2y=ey-k*ry*Math.cos(b);
+    cs.push(['C',c1x,c1y,c2x,c2y,ex,ey]);
+    a=b; px=ex; py=ey;
+  }
+  return {sx,sy,ex:px,ey:py,cs};
+}
+
+/* --- pen: accumulates structured ops so width can scale x later --- */
+function pen(){
+  return {
+    ops:[], dots:[], _cur:null,
+    m(x,y){ this.ops.push(['M',x,y]); this._cur=[x,y]; return this; },
+    L(x,y){ this.ops.push(['L',x,y]); this._cur=[x,y]; return this; },
+    l(x0,y0,x1,y1){ return this.m(x0,y0).L(x1,y1); },
+    a(cx,cy,rx,ry,a0,a1){
+      const A=arcData(cx,cy,rx,ry,a0,a1);
+      if(!this._cur||Math.hypot(this._cur[0]-A.sx,this._cur[1]-A.sy)>0.6)
+        this.ops.push(['M',A.sx,A.sy]);
+      for(const c of A.cs) this.ops.push(c);
+      this._cur=[A.ex,A.ey]; return this;
+    },
+    ell(cx,cy,rx,ry){ return this.a(cx,cy,rx,ry,0,360); },
+    dot(x,y){ this.dots.push([x,y]); return this; },
+    raw(str){                                   // absolute M/L/C only
+      const t=str.match(/[MLC][^MLC]*/g)||[];
+      for(const seg of t){
+        const c=seg[0], nums=(seg.slice(1).trim().match(/-?[\d.]+/g)||[]).map(Number);
+        this.ops.push([c,...nums]);
+        if(c==='M'||c==='L') this._cur=[nums[0],nums[1]];
+        else this._cur=[nums[4],nums[5]];
+      }
+      return this;
+    }
+  };
+}
+
+/* ============================================================
+   GLYPH SET — each entry draws into pen p and returns advance.
+   ============================================================ */
+const S=72;                       // side bearing
+const cx=S+166, cyx=280;          // lc round centre (x-height band)
+const DRAW={};
+
+/* ---- lowercase (x-height 560) ---- */
+DRAW['o']=p=>{ p.ell(238,280,166,280); return 476; };
+DRAW['c']=p=>{ p.a(238,280,166,280,58,302); return 470; };
+DRAW['e']=p=>{ p.l(72,300,404,300); p.a(238,300,166,260,180,0); p.a(238,300,166,300,180,325); return 476; };
+DRAW['a']=p=>{ p.ell(238,280,166,280); p.l(404,0,404,560); return 476; };
+DRAW['n']=p=>{ p.l(72,0,72,560); p.a(238,400,166,160,180,0); p.l(404,0,404,400); return 476; };
+DRAW['m']=p=>{ p.l(72,0,72,560); p.a(206,400,134,160,180,0); p.l(340,0,340,400);
+               p.a(474,400,134,160,180,0); p.l(608,0,608,400); return 680; };
+DRAW['h']=p=>{ p.l(72,0,72,720); p.a(238,400,166,160,180,0); p.l(404,0,404,400); return 476; };
+DRAW['u']=p=>{ p.l(72,560,72,160); p.a(238,160,166,160,180,360); p.l(404,0,404,560); return 476; };
+DRAW['r']=p=>{ p.l(72,0,72,560); p.a(238,400,166,160,180,58); return 402; };
+DRAW['b']=p=>{ p.l(72,0,72,720); p.ell(238,280,166,280); return 476; };
+DRAW['d']=p=>{ p.l(404,0,404,720); p.ell(238,280,166,280); return 476; };
+DRAW['p']=p=>{ p.l(72,-210,72,560); p.ell(238,280,166,280); return 476; };
+DRAW['q']=p=>{ p.l(404,-210,404,560); p.ell(238,280,166,280); return 476; };
+DRAW['g']=p=>{ p.ell(238,280,166,280); p.l(404,560,404,-150); p.a(300,-150,104,90,0,182); return 476; };
+DRAW['i']=p=>{ p.l(120,0,120,560); p.dot(120,672); return 264; };
+DRAW['j']=p=>{ p.l(280,560,280,-120); p.a(190,-120,90,90,0,182); p.dot(280,672); return 356; };
+DRAW['k']=p=>{ p.l(72,0,72,720); p.l(360,560,72,300); p.l(72,300,360,0); return 420; };
+DRAW['l']=p=>{ p.l(120,0,120,720); return 264; };
+DRAW['t']=p=>{ p.l(150,660,150,100); p.a(240,100,90,100,180,300); p.l(56,560,300,560); return 336; };
+DRAW['f']=p=>{ p.l(150,0,150,600); p.a(240,600,90,120,180,90); p.l(56,560,300,560); return 316; };
+DRAW['v']=p=>{ p.l(72,560,236,0); p.l(236,0,400,560); return 472; };
+DRAW['w']=p=>{ p.l(72,560,190,0); p.l(190,0,308,470); p.l(308,470,426,0); p.l(426,0,544,560); return 616; };
+DRAW['x']=p=>{ p.l(72,560,400,0); p.l(72,0,400,560); return 472; };
+DRAW['y']=p=>{ p.l(72,560,240,150); p.l(400,560,150,-210); return 472; };
+DRAW['z']=p=>{ p.l(72,560,400,560); p.l(400,560,72,0); p.l(72,0,400,0); return 472; };
+DRAW['s']=p=>{ p.raw("M 392 470 C 392 565 262 565 186 528 C 108 490 122 392 214 356 C 320 314 372 262 300 200 C 236 146 128 168 116 250"); return 452; };
+
+/* ---- uppercase (cap 720) ---- */
+DRAW['O']=p=>{ p.ell(262,360,190,360); return 524; };
+DRAW['C']=p=>{ p.a(262,360,190,360,55,305); return 520; };
+DRAW['Q']=p=>{ p.ell(262,360,190,360); p.l(300,150,470,-40); return 524; };
+DRAW['G']=p=>{ p.a(262,360,190,360,55,305); p.l(462,340,462,150); p.l(360,340,462,340); return 524; };
+DRAW['D']=p=>{ p.l(72,0,72,720); p.a(72,360,300,360,90,-90); return 476; };
+DRAW['B']=p=>{ p.l(72,0,72,720); p.a(72,540,230,180,90,-90); p.a(72,180,250,180,90,-90); return 430; };
+DRAW['P']=p=>{ p.l(72,0,72,720); p.a(72,540,230,180,90,-90); return 400; };
+DRAW['R']=p=>{ p.l(72,0,72,720); p.a(72,540,230,180,90,-90); p.l(200,360,432,0); return 480; };
+DRAW['E']=p=>{ p.l(72,0,72,720); p.l(72,720,400,720); p.l(72,360,360,360); p.l(72,0,400,0); return 460; };
+DRAW['F']=p=>{ p.l(72,0,72,720); p.l(72,720,400,720); p.l(72,360,360,360); return 440; };
+DRAW['H']=p=>{ p.l(72,0,72,720); p.l(430,0,430,720); p.l(72,360,430,360); return 502; };
+DRAW['I']=p=>{ p.l(180,0,180,720); return 360; };
+DRAW['J']=p=>{ p.l(360,720,360,120); p.a(220,120,140,140,0,200); return 452; };
+DRAW['L']=p=>{ p.l(72,0,72,720); p.l(72,0,400,0); return 452; };
+DRAW['T']=p=>{ p.l(56,720,476,720); p.l(266,720,266,0); return 532; };
+DRAW['A']=p=>{ p.l(72,0,266,720); p.l(266,720,460,0); p.l(150,270,382,270); return 532; };
+DRAW['V']=p=>{ p.l(72,720,266,0); p.l(266,0,460,720); return 532; };
+DRAW['W']=p=>{ p.l(72,720,190,0); p.l(190,0,308,600); p.l(308,600,426,0); p.l(426,0,544,720); return 616; };
+DRAW['X']=p=>{ p.l(72,720,460,0); p.l(72,0,460,720); return 532; };
+DRAW['Y']=p=>{ p.l(72,720,266,380); p.l(460,720,266,380); p.l(266,380,266,0); return 532; };
+DRAW['Z']=p=>{ p.l(72,720,460,720); p.l(460,720,72,0); p.l(72,0,460,0); return 532; };
+DRAW['K']=p=>{ p.l(72,0,72,720); p.l(440,720,72,360); p.l(72,360,440,0); return 500; };
+DRAW['M']=p=>{ p.l(72,0,72,720); p.l(72,720,300,120); p.l(300,120,528,720); p.l(528,720,528,0); return 600; };
+DRAW['N']=p=>{ p.l(72,0,72,720); p.l(72,720,460,0); p.l(460,0,460,720); return 532; };
+DRAW['U']=p=>{ p.l(72,720,72,200); p.a(262,200,190,200,180,360); p.l(452,200,452,720); return 524; };
+DRAW['S']=p=>{ p.raw("M 452 560 C 452 668 298 668 200 622 C 108 578 120 456 224 424 C 360 382 464 330 464 200 C 464 78 300 66 182 116 C 120 142 98 196 98 236"); return 524; };
+
+/* ---- diacritic: ü / ö (umlaut) built from base + dots ---- */
+DRAW['ü']=p=>{ const a=DRAW['u'](p); p.dot(150,672); p.dot(326,672); return a; };
+DRAW['ö']=p=>{ const a=DRAW['o'](p); p.dot(150,672); p.dot(326,672); return a; };
+DRAW['ï']=p=>{ p.l(120,0,120,560); p.dot(46,672); p.dot(194,672); return 264; };
+DRAW['Ä']=p=>{ const a=DRAW['A'](p); p.dot(190,822); p.dot(342,822); return a; };
+DRAW['É']=p=>{ const a=DRAW['E'](p); p.raw("M 300 852 L 180 792"); return a; };
+
+/* ---- digits (cap band) ---- */
+DRAW['0']=p=>{ p.ell(262,360,180,360); return 524; };
+DRAW['1']=p=>{ p.l(230,0,230,720); p.l(110,590,230,720); p.l(120,0,340,0); return 420; };
+DRAW['2']=p=>{ p.a(240,510,168,210,200,-20); p.l(398,447,90,0); p.l(72,0,410,0); return 482; };
+DRAW['3']=p=>{ p.a(238,540,150,180,150,-95); p.a(238,175,168,175,110,-150); return 476; };
+DRAW['4']=p=>{ p.l(340,0,340,720); p.l(340,720,72,240); p.l(72,240,440,240); return 512; };
+DRAW['5']=p=>{ p.l(360,720,90,720); p.l(90,720,90,430); p.a(216,250,190,215,120,-118); return 490; };
+DRAW['6']=p=>{ p.a(238,360,190,360,35,255); p.ell(238,185,178,185); return 524; };
+DRAW['7']=p=>{ p.l(72,720,430,720); p.l(430,720,160,0); return 500; };
+DRAW['8']=p=>{ p.ell(238,545,150,175); p.ell(238,175,175,175); return 500; };
+DRAW['9']=p=>{ p.a(238,360,190,360,215,435); p.ell(238,535,178,185); return 524; };
+
+/* ---- punctuation ---- */
+DRAW['.']=p=>{ p.dot(140,58); return 280; };
+DRAW[',']=p=>{ p.dot(150,58); p.raw("M 150 40 C 150 -40 130 -90 96 -140"); return 280; };
+DRAW[':']=p=>{ p.dot(140,58); p.dot(140,400); return 280; };
+DRAW[';']=p=>{ p.dot(150,400); p.dot(150,58); p.raw("M 150 40 C 150 -40 130 -90 96 -140"); return 280; };
+DRAW['!']=p=>{ p.l(150,720,150,190); p.dot(150,58); return 300; };
+DRAW['?']=p=>{ p.a(240,540,155,155,175,10); p.raw("M 372 585 C 372 470 240 470 240 330 L 240 210"); p.dot(240,58); return 500; };
+DRAW['-']=p=>{ p.l(70,300,330,300); return 400; };
+DRAW['–']=p=>{ p.l(60,300,400,300); return 460; };
+DRAW['_']=p=>{ p.l(40,-120,440,-120); return 480; };
+DRAW['/']=p=>{ p.l(70,-60,360,720); return 430; };
+DRAW["'"]=p=>{ p.raw("M 150 720 C 150 660 140 620 120 578"); return 240; };
+DRAW['"']=p=>{ p.raw("M 120 720 C 120 660 110 620 90 578 M 216 720 C 216 660 206 620 186 578"); return 336; };
+DRAW['(']=p=>{ p.a(360,360,210,400,150,210); return 300; };
+DRAW[')']=p=>{ p.a(-20,360,210,400,30,-30); return 300; };
+DRAW['&']=p=>{ p.raw("M 430 120 C 300 -40 90 20 120 210 C 150 400 380 400 360 560 C 350 660 210 660 210 560 C 210 460 470 220 470 80 C 470 20 440 20 430 60"); return 540; };
+DRAW['@']=p=>{ p.ell(300,360,90,90); p.a(300,360,240,240,20,340); p.l(486,205,486,470); return 640; };
+DRAW['+']=p=>{ p.l(70,300,370,300); p.l(220,150,220,450); return 440; };
+DRAW['=']=p=>{ p.l(70,360,370,360); p.l(70,240,370,240); return 440; };
+DRAW['*']=p=>{ p.l(200,720,200,500); p.l(105,665,295,555); p.l(295,665,105,555); return 400; };
+DRAW['#']=p=>{ p.l(150,0,210,720); p.l(300,0,360,720); p.l(70,220,440,220); p.l(70,500,440,500); return 500; };
+DRAW[' ']=()=>300;
+
+/* build one glyph geometry */
+function glyph(ch){
+  const p=pen();
+  const fn=DRAW[ch]||DRAW[ch.toLowerCase()]||DRAW[ch.toUpperCase()];
+  const adv = fn ? fn(p) : 300;
+  return { adv, ops:p.ops, dots:p.dots, missing:!fn };
+}
+
+/* serialize ops → path d, scaling x by wd */
+function toPath(ops,wd){
+  let d='';
+  for(const op of ops){
+    d+=op[0];
+    for(let i=1;i<op.length;i+=2) d+=` ${R(op[i]*wd)} ${R(op[i+1])}`;
+    d+=' ';
+  }
+  return d;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const state={ w:96, wd:0.86, tr:0, theme:'light', guides:false };
+const $=s=>document.querySelector(s);
+
+function svgOpen(w,h){ return `<svg viewBox="0 0 ${R(w)} ${R(h)}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`; }
+
+function glyphMarkup(ch, xoff, ink){
+  const g=glyph(ch);
+  const wd=state.wd, w=state.w, dr=w*0.60;
+  const d=toPath(g.ops,wd);
+  let s=`<g transform="translate(${R(xoff)},0)"><g transform="translate(0,${M.TOP}) scale(1,-1)">`;
+  if(state.guides){
+    s+=`<path d="${d}" fill="none" stroke="${ink}" stroke-opacity="0.25" stroke-width="3"
+         stroke-linecap="round" stroke-linejoin="round"/>`;
+    for(const [dx,dy] of g.dots) s+=`<circle cx="${R(dx*wd)}" cy="${R(dy)}" r="3" fill="${ink}" fill-opacity="0.35"/>`;
+  }
+  if(d.trim()) s+=`<path d="${d}" fill="none" stroke="${ink}" stroke-width="${R(w)}"
+       stroke-linecap="round" stroke-linejoin="round"/>`;
+  for(const [dx,dy] of g.dots) s+=`<circle cx="${R(dx*wd)}" cy="${R(dy)}" r="${R(dr)}" fill="${ink}"/>`;
+  s+=`</g></g>`;
+  return { s, adv:g.adv*wd };
+}
+
+function renderLine(){
+  const ink = state.theme==='light' ? getVar('--draw') : getVar('--paper');
+  const paper = state.theme==='light' ? getVar('--paper') : getVar('--draw');
+  const lines = ($('#txt').value||' ').split('\n');
+  // measure
+  let maxW=0; const laid=lines.map(line=>{
+    let x=0; const parts=[];
+    for(const ch of line){ const gm=glyphMarkup(ch,x,ink); parts.push(gm.s); x+=gm.adv+state.tr; }
+    x-=state.tr; maxW=Math.max(maxW, x); return {parts, w:x};
+  });
+  const lh=1180, totalH=lh*lines.length;
+  let body='';
+  laid.forEach((L,i)=>{ body+=`<g transform="translate(0,${i*lh})">${L.parts.join('')}</g>`; });
+  const el=$('#line');
+  el.setAttribute('viewBox',`0 0 ${R(Math.max(maxW,10))} ${R(totalH)}`);
+  el.style.background=paper;
+  el.innerHTML=body;
+  el.closest('.word').style.background=paper;
+}
+
+const SETS=[
+  ['abcdefghijklmnopqrstuvwxyz','Lowercase'],
+  ['ABCDEFGHIJKLMNOPQRSTUVWXYZ','Uppercase'],
+  ['0123456789','Figures'],
+  ['.,:;!?\'"()-–_/&@#+=*','Punctuation'],
+  ['üöïÄÉ','Accents']
+];
+function renderGrid(){
+  const ink = getVar('--draw');
+  const grid=$('#grid'); let html=''; let n=0;
+  for(const [set] of SETS){
+    for(const ch of set){
+      const g=glyph(ch);
+      const w=g.adv, boxW=Math.max(w,300);
+      const gm=glyphMarkup(ch,(boxW-w)/2, ink);
+      html+=`<div class="cell${g.missing?' miss':''}">
+        ${svgOpen(boxW,H)}<g>${gm.s}</g></svg>
+        <span class="cap">${ch===' '?'␣':escapeHTML(ch)}</span></div>`;
+      n++;
+    }
+  }
+  grid.innerHTML=html;
+  $('#count').textContent=n+' glyphs';
+}
+function escapeHTML(c){ return c.replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function getVar(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+function renderAll(){ renderLine(); renderGrid(); }
+
+/* ---------- controls ---------- */
+function bindRange(id, key, out, fmt){
+  const el=$('#'+id);
+  el.addEventListener('input',()=>{ state[key]=parseFloat(el.value); $(out).textContent=fmt(state[key]); renderAll(); });
+}
+bindRange('w','w','#wV',v=>v.toFixed(0));
+bindRange('wd','wd','#wdV',v=>v.toFixed(2));
+bindRange('tr','tr','#trV',v=>v.toFixed(0));
+
+$('#txt').addEventListener('input',renderLine);
+
+$('#themeSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  state.theme=b.dataset.t;
+  document.documentElement.setAttribute('data-theme',state.theme);
+  renderAll();
+});
+$('#guideSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  state.guides=b.dataset.g==='on'; renderAll();
+});
+document.querySelectorAll('[data-p]').forEach(b=>b.addEventListener('click',()=>{
+  const P={light:{w:34,wd:0.86},reg:{w:96,wd:0.86},black:{w:232,wd:0.94}}[b.dataset.p];
+  state.w=P.w; state.wd=P.wd;
+  $('#w').value=P.w; $('#wV').textContent=P.w;
+  $('#wd').value=P.wd; $('#wdV').textContent=P.wd.toFixed(2);
+  renderAll();
+}));
+$('#dl').addEventListener('click',()=>{
+  const svg=$('#line').outerHTML;
+  const blob=new Blob([`<?xml version="1.0"?>\n`+svg],{type:'image/svg+xml'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='typelab.svg'; a.click(); URL.revokeObjectURL(a.href);
+});
+
+renderAll();
+</script>
+</body>
+</html>
