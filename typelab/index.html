@@ -89,6 +89,7 @@
     <div class="sec"><div class="lbl">Cap height <input class="num" id="HhN" type="number" min="400" max="1000" step="2"></div><input id="Hh" type="range" min="400" max="1000" step="2"></div>
     <div class="sec"><div class="lbl">Side stroke <input class="num" id="svN" type="number" min="16" max="320" step="1"></div><input id="sv" type="range" min="16" max="320" step="1"></div>
     <div class="sec"><div class="lbl">Top / bottom stroke <input class="num" id="shN" type="number" min="10" max="240" step="1"></div><input id="sh" type="range" min="10" max="240" step="1"></div>
+    <div class="sec"><div class="lbl">Centre stroke · small <input class="num" id="scN" type="number" min="8" max="160" step="1"></div><input id="sc" type="range" min="8" max="160" step="1"></div>
     <div class="sec"><div class="lbl">Diagonal stroke <input class="num" id="sdN" type="number" min="16" max="320" step="1"></div><input id="sd" type="range" min="16" max="320" step="1"></div>
     <div class="sec"><div class="lbl">Outer corner <input class="num" id="coN" type="number" min="0.06" max="1" step="0.01"></div><input id="co" type="range" min="0.06" max="1" step="0.01"></div>
     <div class="sec"><div class="lbl">Inner corner <input class="num" id="ciN" type="number" min="0.06" max="1" step="0.01"></div><input id="ci" type="range" min="0.06" max="1" step="0.01"></div>
@@ -144,7 +145,7 @@
    same surface. The O is the border cells with an open middle.
    ============================================================ */
 const R = n => Math.round(n*10)/10;
-const GRID = { W:600, Hh:800, sv:140, sh:70, sd:120, corner:0.5, cornerIn:1, r4:0.25, r5:0.85, sb:24, joint:0, skel:true, theme:'light' };
+const GRID = { W:600, Hh:800, sv:140, sh:70, sc:44, sd:120, corner:0.5, cornerIn:1, r4:0.25, r5:0.85, sb:24, joint:0, skel:true, theme:'light' };
 /* the radius presets a corner can cycle through, in order (index 0..4):
    0 Straight · 1 Outer · 2 Inner · 3 Extra-1 · 4 Extra-2 */
 const RADNAMES=['Straight','Outer','Inner','Extra 1','Extra 2'];
@@ -154,7 +155,9 @@ const RADCOL=['#A3A09B','#FF2D9B','#E0157F','#12B5A6','#F4A400'];
    the exact O ring plus a middle bar and a centre stem — is clipped to the
    painted cells, so every cell is a precise 0/1 face. The O is the border
    cells (its whole frame). */
-function borderCells(){ const a=[]; for(let i=0;i<5;i++)for(let j=0;j<5;j++) if(i===0||i===4||j===0||j===4) a.push('c'+i+j); return a; }
+function gdims(){ const m=M(); return {NI:m.Xs.length-1, NJ:m.Ys.length-1}; }
+function borderCells(){ const {NI,NJ}=gdims(), a=[];
+  for(let i=0;i<NI;i++)for(let j=0;j<NJ;j++) if(i===0||i===NI-1||j===0||j===NJ-1) a.push('c'+i+j); return a; }
 const GLYPHS = {};   // seeded with a demo O on first ever visit; otherwise only the SAVED bank loads
 const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 let cur='O', dbNS=null, saved={}, userTouched=false;
@@ -196,9 +199,13 @@ function M(){
   const rO=Math.min(W,cap)/2*G.corner;
   const iw=Math.max(W-2*sv,2), ih=Math.max(cap-2*sh,2);
   const rI=Math.min(iw,ih)/2*G.cornerIn;
-  const Xs=[sb, sb+sv, xC-sv/2, xC+sv/2, sb+W-sv, sb+W];   // 6 vertical guides
-  const Ys=[0, sh, yM-sh/2, yM+sh/2, cap-sh, cap];         // 6 horizontal guides
-  return {W,cap,sb,sv,sh,cx,cy,xC,yM,rO,iw,ih,rI,Xs,Ys, adv:W+2*sb};
+  const sc=Math.max(4,Math.min(G.sc, (yM-sh)*2/3-1));      // centre stroke (small); big = 3×
+  const Xs=[sb, sb+sv, xC-sv/2, xC+sv/2, sb+W-sv, sb+W];   // 6 vertical guides → 5 columns
+  // 8 horizontal guides → 7 rows. The middle splits into three equal bands
+  // (lower flank · inner · upper flank): paint the inner alone for the small
+  // centre stroke, or all three for the big one (3×).
+  const Ys=[0, sh, yM-3*sc/2, yM-sc/2, yM+sc/2, yM+3*sc/2, cap-sh, cap];
+  return {W,cap,sb,sv,sh,sc,cx,cy,xC,yM,rO,iw,ih,rI,Xs,Ys, adv:W+2*sb};
 }
 
 /* ------------------------------------------------------------------
@@ -217,20 +224,20 @@ function cellsOf(segs){ return segs.filter(c=>/^c\d\d$/.test(c)); }
 function cornerOverrides(segs){ const o={}; for(const s of segs){
   let m=/^k(\d\d)c(\d+)$/.exec(s); if(m){ o['k'+m[1]]={type:'c', val:+m[2]}; continue; }
   m=/^k(\d\d)(\d)$/.exec(s); if(m) o['k'+m[1]]={type:'i', val:+m[2]}; } return o; }
-function grid5(segs){ const g=Array.from({length:5},()=>Array(5).fill(false));
-  for(const c of cellsOf(segs)) g[+c[1]][+c[2]]=true; return g; }
+function grid5(segs){ const {NI,NJ}=gdims(), g=Array.from({length:NI},()=>Array(NJ).fill(false));
+  for(const c of cellsOf(segs)){ const i=+c[1], j=+c[2]; if(i<NI&&j<NJ) g[i][j]=true; } return g; }
 
 /* trace the union of painted cells into ordered closed loops of grid
    vertices. Each boundary half-edge is oriented so the painted region is
    on its left; outer loops come out CCW, holes CW. */
 function traceLoops(g){
-  const edges=[];
+  const NI=g.length, NJ=g[0].length, edges=[];
   const add=(ai,aj,bi,bj)=>edges.push({ai,aj,bi,bj});
-  for(let i=0;i<5;i++)for(let j=0;j<5;j++){ if(!g[i][j])continue;
-    if(j===0||!g[i][j-1]) add(i,j,i+1,j);        // bottom  +x
-    if(i===4||!g[i+1][j]) add(i+1,j,i+1,j+1);     // right   +y
-    if(j===4||!g[i][j+1]) add(i+1,j+1,i,j+1);     // top     -x
-    if(i===0||!g[i-1][j]) add(i,j+1,i,j);         // left    -y
+  for(let i=0;i<NI;i++)for(let j=0;j<NJ;j++){ if(!g[i][j])continue;
+    if(j===0||!g[i][j-1]) add(i,j,i+1,j);          // bottom  +x
+    if(i===NI-1||!g[i+1][j]) add(i+1,j,i+1,j+1);   // right   +y
+    if(j===NJ-1||!g[i][j+1]) add(i+1,j+1,i,j+1);   // top     -x
+    if(i===0||!g[i-1][j]) add(i,j+1,i,j);          // left    -y
   }
   const from={}; edges.forEach((e,k)=>{ const key=e.ai+','+e.aj; (from[key]=from[key]||[]).push(k); });
   const used=new Array(edges.length).fill(false), loops=[];
@@ -353,10 +360,8 @@ function inkX(segs){
 function skeleton(){
   const m=M(), g=getVar('--grid'), k=getVar('--gridkey'), sb=m.sb,W=m.W,cap=m.cap,sv=m.sv,sh=m.sh,xC=m.xC,yM=m.yM; let s='';
   // every stroke EDGE is a guide line (so every surface between them is visible)
-  const vx=[sb, sb+sv, xC-sv/2, xC+sv/2, sb+W-sv, sb+W];
-  const hy=[0, sh, yM-sh/2, yM+sh/2, cap-sh, cap];
-  for(const x of vx) s+=`<line x1="${R(x)}" y1="-28" x2="${R(x)}" y2="${R(cap+28)}" stroke="${g}" stroke-width="1.4" stroke-opacity=".5"/>`;
-  for(const y of hy) s+=`<line x1="-10" y1="${R(y)}" x2="${R(m.adv+10)}" y2="${R(y)}" stroke="${g}" stroke-width="1.4" stroke-opacity=".5"/>`;
+  for(const x of m.Xs) s+=`<line x1="${R(x)}" y1="-28" x2="${R(x)}" y2="${R(cap+28)}" stroke="${g}" stroke-width="1.4" stroke-opacity=".5"/>`;
+  for(const y of m.Ys) s+=`<line x1="-10" y1="${R(y)}" x2="${R(m.adv+10)}" y2="${R(y)}" stroke="${g}" stroke-width="1.4" stroke-opacity=".5"/>`;
   // baseline & cap emphasised
   s+=`<line x1="0" y1="0" x2="${R(m.adv)}" y2="0" stroke="${k}" stroke-width="2" stroke-opacity=".5"/>`;
   s+=`<line x1="0" y1="${R(cap)}" x2="${R(m.adv)}" y2="${R(cap)}" stroke="${k}" stroke-width="2" stroke-opacity=".5"/>`;
@@ -382,7 +387,8 @@ function hits(){
   const m=M(), Xs=m.Xs, Ys=m.Ys; let s='';
   // every cell is paintable (0/1). New diagonals are made by dragging a face
   // handle onto another; there is no band overlay, so no empty cell is blocked.
-  for(let i=0;i<5;i++)for(let j=0;j<5;j++)
+  const NI=Xs.length-1, NJ=Ys.length-1;
+  for(let i=0;i<NI;i++)for(let j=0;j<NJ;j++)
     s+=`<rect class="hit" x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}" data-seg="c${i}${j}"/>`;
   // existing diagonals get a thin hit along their stroke so you can click one to remove it
   const E=diagEnds(), dt=Math.max(GRID.sd,44);
@@ -578,7 +584,7 @@ $('#clearL').addEventListener('click',()=>{ GLYPHS[cur]=[]; render(); renderPick
 
 /* grid controls */
 function syncGrid(){
-  const map={W:'W',Hh:'Hh',sv:'sv',sh:'sh',sd:'sd',co:'corner',ci:'cornerIn',r4:'r4',r5:'r5',jt:'joint',sb:'sb'};
+  const map={W:'W',Hh:'Hh',sv:'sv',sh:'sh',sc:'sc',sd:'sd',co:'corner',ci:'cornerIn',r4:'r4',r5:'r5',jt:'joint',sb:'sb'};
   for(const rid in map){ const key=map[rid], rng=$('#'+rid), num=$('#'+rid+'N'); if(!rng)continue;
     rng.value=Math.min(parseFloat(rng.max),Math.max(parseFloat(rng.min),GRID[key])); num.value=GRID[key]; }
 }
@@ -589,7 +595,7 @@ function bindGrid(rid,key){
   const fn=()=>{ userTouched=true; const v=parseFloat(num.value); if(isNaN(v))return; GRID[key]=v; rng.value=clamp(v); render(); };
   num.addEventListener('input',fn); num.addEventListener('change',fn);
 }
-bindGrid('W','W'); bindGrid('Hh','Hh'); bindGrid('sv','sv'); bindGrid('sh','sh'); bindGrid('sd','sd');
+bindGrid('W','W'); bindGrid('Hh','Hh'); bindGrid('sv','sv'); bindGrid('sh','sh'); bindGrid('sc','sc'); bindGrid('sd','sd');
 bindGrid('co','corner'); bindGrid('ci','cornerIn'); bindGrid('r4','r4'); bindGrid('r5','r5'); bindGrid('jt','joint'); bindGrid('sb','sb');
 
 $('#picker').addEventListener('click',e=>{ const b=e.target.closest('.pk'); if(!b)return; cur=b.dataset.l; renderPicker(); render(); });
@@ -601,7 +607,7 @@ $('#themeSeg').addEventListener('click',e=>{ const b=e.target.closest('button');
   GRID.theme=b.dataset.t; document.documentElement.setAttribute('data-theme',GRID.theme); render(); });
 
 /* bank (db + localStorage) */
-const GKEYS=['W','Hh','sv','sh','sd','corner','cornerIn','r4','r5','joint','sb'];
+const GKEYS=['W','Hh','sv','sh','sc','sd','corner','cornerIn','r4','r5','joint','sb'];
 const LS='typelab-skel-v1';
 let localGridLoaded=false;
 function gridObj(){ const o={}; GKEYS.forEach(k=>o[k]=GRID[k]); return o; }
