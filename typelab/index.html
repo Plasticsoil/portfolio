@@ -65,7 +65,6 @@
   #heroWrap{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:14px; }
   #heroWrap svg{ width:100%; height:100%; }
   .hit{ fill:transparent; cursor:pointer; }
-  .hit:hover{ fill:var(--grid); fill-opacity:.18; }
   #strip{ flex:none; border-top:1px solid var(--line); padding:12px 22px 16px; }
   #strip input{ width:100%; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink);
     padding:8px 11px; font:inherit; font-size:14px; letter-spacing:.1em; text-transform:uppercase; outline:none; margin-bottom:8px; }
@@ -130,13 +129,14 @@
    ============================================================ */
 const R = n => Math.round(n*10)/10;
 const GRID = { W:600, Hh:800, sv:140, sh:70, corner:0.5, cornerIn:1, sb:24, skel:true, theme:'light' };
-/* Every segment the guides mark is a 0/1 surface:
-   frame edges  tL tR bL bR (top/bottom halves) · lU lD rU rD (side halves)
-   corners      sTL sTR sBL sBR  (painted = square)
-   interior     mL mR (middle bar halves) · cU cD (centre stem halves)
-   The O is the whole frame. */
-const FRAME=['tL','tR','bL','bR','lU','lD','rU','rD'];
-const GLYPHS = { O:FRAME.slice() };
+/* Shape-builder model. Six vertical guides × six horizontal guides cut a
+   5×5 grid of cells (ids "cIJ", column i / row j, 0..4). The material —
+   the exact O ring plus a middle bar and a centre stem — is clipped to the
+   painted cells, so every cell is a precise 0/1 face. The O is the border
+   cells (its whole frame). */
+function borderCells(){ const a=[]; for(let i=0;i<5;i++)for(let j=0;j<5;j++) if(i===0||i===4||j===0||j===4) a.push('c'+i+j); return a; }
+function hasMat(i,j){ return i===0||i===4||j===0||j===4||i===2||j===2; }  // cells the material can fill
+const GLYPHS = { O: borderCells() };
 const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 let cur='O', dbNS=null, saved={}, userTouched=false;
 
@@ -173,41 +173,34 @@ function rrect4(cx,cy,w,h,rTL,rTR,rBR,rBL){
 /* shared metrics */
 function M(){
   const G=GRID, W=G.W, cap=G.Hh, sb=G.sb, sv=G.sv, sh=G.sh;
-  const cx=sb+W/2, cy=cap/2;
+  const cx=sb+W/2, cy=cap/2, xC=cx, yM=cap/2;
   const rO=Math.min(W,cap)/2*G.corner;
   const iw=Math.max(W-2*sv,2), ih=Math.max(cap-2*sh,2);
   const rI=Math.min(iw,ih)/2*G.cornerIn;
-  return {W,cap,sb,sv,sh,cx,cy,rO,iw,ih,rI, xL:sb+sv/2, xR:sb+W-sv/2, xC:cx, yT:cap-sh/2, yB:sh/2, yM:cap/2, adv:W+2*sb};
+  const Xs=[sb, sb+sv, xC-sv/2, xC+sv/2, sb+W-sv, sb+W];   // 6 vertical guides
+  const Ys=[0, sh, yM-sh/2, yM+sh/2, cap-sh, cap];         // 6 horizontal guides
+  return {W,cap,sb,sv,sh,cx,cy,xC,yM,rO,iw,ih,rI,Xs,Ys, adv:W+2*sb};
 }
 
 /* paint the active surfaces of one letter → svg string (font coords, y-up) */
-function paint(segs, ink, paper){
-  const m=M(), sb=m.sb,W=m.W,cap=m.cap,sv=m.sv,sh=m.sh,rO=m.rO,xC=m.xC,yM=m.yM;
-  const has=k=>segs.includes(k); let s='';
-  if(FRAME.some(has)){
-    const q=k=>has(k)?0:rO;               // a painted corner = square (radius 0)
-    s+=`<path d="${rrect4(m.cx,m.cy,W,cap, q('sTL'),q('sTR'),q('sBR'),q('sBL'))} ${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}" fill-rule="evenodd" fill="${ink}"/>`;
-    const carve=(x,y,w,h)=>{ s+=`<rect x="${R(x)}" y="${R(y)}" width="${R(w)}" height="${R(h)}" fill="${paper}"/>`; };
-    if(!has('tL')) carve(sb+rO, cap-sh-6, xC-(sb+rO), sh+12);
-    if(!has('tR')) carve(xC, cap-sh-6, (sb+W-rO)-xC, sh+12);
-    if(!has('bL')) carve(sb+rO, -6, xC-(sb+rO), sh+12);
-    if(!has('bR')) carve(xC, -6, (sb+W-rO)-xC, sh+12);
-    if(!has('lU')) carve(sb-6, yM, sv+12, (cap-rO)-yM);
-    if(!has('lD')) carve(sb-6, rO, sv+12, yM-rO);
-    if(!has('rU')) carve(sb+W-sv-6, yM, sv+12, (cap-rO)-yM);
-    if(!has('rD')) carve(sb+W-sv-6, rO, sv+12, yM-rO);
-    if(!has('tL')&&!has('lU')) carve(sb-6, cap-rO, rO+6, rO+6);
-    if(!has('tR')&&!has('rU')) carve(sb+W-rO, cap-rO, rO+6, rO+6);
-    if(!has('bL')&&!has('lD')) carve(sb-6, -6, rO+6, rO+6);
-    if(!has('bR')&&!has('rD')) carve(sb+W-rO, -6, rO+6, rO+6);
-  }
-  const rect=(x,y,w,h)=>{ s+=`<rect x="${R(x)}" y="${R(y)}" width="${R(w)}" height="${R(h)}" fill="${ink}"/>`; };
-  if(has('mL')) rect(sb, yM-sh/2, xC-sb, sh);      // middle bar — straight ends
-  if(has('mR')) rect(xC, yM-sh/2, (sb+W)-xC, sh);
-  if(has('cD')) rect(xC-sv/2, 0, sv, yM);          // centre stem — straight ends
-  if(has('cU')) rect(xC-sv/2, yM, sv, cap-yM);
-  return s;
+/* The material — exact O ring + middle bar + centre stem — clipped to a set
+   of cells. Each cell is a precise face of the shape-builder grid. */
+let UID=0;
+function materialClipped(cells, fill, op){
+  if(!cells.length) return '';
+  const m=M(), Xs=m.Xs, Ys=m.Ys, id='cl'+(UID++);
+  let clip='';
+  for(const c of cells){ const i=+c[1], j=+c[2];
+    clip+=`<rect x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}"/>`; }
+  const ring=`${rrect(m.cx,m.cy,m.W,m.cap,m.rO)} ${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}`;
+  return `<clipPath id="${id}">${clip}</clipPath>`
+    +`<g clip-path="url(#${id})" fill="${fill}" opacity="${op}">`
+    +`<path d="${ring}" fill-rule="evenodd"/>`
+    +`<rect x="${R(m.sb)}" y="${R(Ys[2])}" width="${R(m.W)}" height="${R(Ys[3]-Ys[2])}"/>`
+    +`<rect x="${R(Xs[2])}" y="0" width="${R(Xs[3]-Xs[2])}" height="${R(m.cap)}"/>`
+    +`</g>`;
 }
+function paint(segs, ink, op){ return materialClipped(segs.filter(c=>/^c\d\d$/.test(c)), ink, op==null?1:op); }
 
 /* faint skeleton — the whole potential frame + grid lines, always visible */
 function skeleton(){
@@ -220,6 +213,9 @@ function skeleton(){
   // baseline & cap emphasised
   s+=`<line x1="0" y1="0" x2="${R(m.adv)}" y2="0" stroke="${k}" stroke-width="2" stroke-opacity=".5"/>`;
   s+=`<line x1="0" y1="${R(cap)}" x2="${R(m.adv)}" y2="${R(cap)}" stroke="${k}" stroke-width="2" stroke-opacity=".5"/>`;
+  // diagonal guides (for X, Z, K, V …)
+  s+=`<line x1="${R(sb)}" y1="0" x2="${R(sb+W)}" y2="${R(cap)}" stroke="${g}" stroke-width="1.4" stroke-dasharray="4 9"/>`;
+  s+=`<line x1="${R(sb)}" y1="${R(cap)}" x2="${R(sb+W)}" y2="0" stroke="${g}" stroke-width="1.4" stroke-dasharray="4 9"/>`;
   // the frame's rounded outline (outer + inner) faint — always visible
   s+=`<path d="${rrect(m.cx,m.cy,W,cap,m.rO)}" fill="none" stroke="${k}" stroke-width="2.4" stroke-opacity=".45"/>`;
   s+=`<path d="${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}" fill="none" stroke="${k}" stroke-width="1.8" stroke-opacity=".3"/>`;
@@ -228,19 +224,11 @@ function skeleton(){
 
 /* clickable hit areas for the surfaces */
 function hits(){
-  const m=M(), sb=m.sb,W=m.W,cap=m.cap,sv=m.sv,sh=m.sh,rO=m.rO,xC=m.xC,yM=m.yM;
-  const r=(x,y,w,h,seg)=>`<rect class="hit" x="${R(x)}" y="${R(y)}" width="${R(w)}" height="${R(h)}" data-seg="${seg}"/>`;
-  let s='';
-  // corners (round ↔ square)
-  s+=r(sb,cap-rO,rO,rO,'sTL')+r(sb+W-rO,cap-rO,rO,rO,'sTR')+r(sb,0,rO,rO,'sBL')+r(sb+W-rO,0,rO,rO,'sBR');
-  // frame edges (each half its own surface)
-  s+=r(sb+rO, cap-sh-8, xC-(sb+rO), sh+8, 'tL')+r(xC, cap-sh-8, (sb+W-rO)-xC, sh+8, 'tR');
-  s+=r(sb+rO, 0, xC-(sb+rO), sh+8, 'bL')+r(xC, 0, (sb+W-rO)-xC, sh+8, 'bR');
-  s+=r(sb, yM, sv+8, (cap-rO)-yM, 'lU')+r(sb, rO, sv+8, yM-rO, 'lD');
-  s+=r(sb+W-sv-8, yM, sv+8, (cap-rO)-yM, 'rU')+r(sb+W-sv-8, rO, sv+8, yM-rO, 'rD');
-  // interior — middle bar halves, centre stem halves
-  s+=r(sb+sv, yM-70, xC-(sb+sv), 140, 'mL')+r(xC, yM-70, (sb+W-sv)-xC, 140, 'mR');
-  s+=r(xC-sv/2-10, yM+80, sv+20, (cap-sh)-(yM+80), 'cU')+r(xC-sv/2-10, sh, sv+20, (yM-80)-sh, 'cD');
+  const m=M(), Xs=m.Xs, Ys=m.Ys; let s='';
+  for(let i=0;i<5;i++)for(let j=0;j<5;j++){
+    if(!hasMat(i,j)) continue;   // only cells the material can fill are clickable
+    s+=`<rect class="hit" x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}" data-seg="c${i}${j}"/>`;
+  }
   return s;
 }
 
@@ -257,10 +245,15 @@ function heroSVG(){
   const flip=`translate(${PADX},${PADY+fontTop}) scale(1,-1)`;
   return `<svg viewBox="0 0 ${R(vbW)} ${R(vbH)}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="background:${paper}">`
     +`<g transform="${flip}">`
-    +(GRID.skel?skeleton():'')
-    +paint(segsOf(cur), ink, paper)
+    +paint(segsOf(cur), ink, .6)            /* the ink at 60% so the grid always shows through */
+    +`<g id="hoverLayer"></g>`              /* hover preview — the exact piece you will toggle */
+    +(GRID.skel?skeleton():'')              /* guides always drawn on top, never hidden */
     +hits()
     +`</g></svg>`;
+}
+function updateHover(){
+  const el=document.getElementById('hoverLayer'); if(!el) return;
+  el.innerHTML = hoverCell ? materialClipped([hoverCell], getVar('--accent'), .55) : '';
 }
 
 function renderLine(){
@@ -272,7 +265,7 @@ function renderLine(){
   let x=0, body='';
   for(const ch of text){
     if(ch===' '){ x+=m.W*0.4; continue; }
-    if(GLYPHS[ch]) body+=`<g transform="translate(${R(x)},0)">${paint(GLYPHS[ch],ink,paper)}</g>`;
+    if(GLYPHS[ch]) body+=`<g transform="translate(${R(x)},0)">${paint(GLYPHS[ch],ink,1)}</g>`;
     else body+=`<rect x="${R(x+m.sb)}" y="8" width="${R(m.W)}" height="${R(m.cap-16)}" rx="14" fill="none" stroke="${muted}" stroke-width="5" stroke-dasharray="11 11"/>`;
     x+=m.adv;
   }
@@ -292,12 +285,12 @@ function renderPicker(){
 }
 function renderNote(){
   $('#curName').textContent=cur; $('#saveL').textContent=cur;
-  const s=segsOf(cur);
-  $('#segNote').textContent = s.length
-    ? 'Painted: '+s.join(' ')+'. Click a surface on the skeleton to toggle it.'
-    : 'Empty. Click surfaces on the skeleton to paint '+cur+'.';
+  const n=segsOf(cur).length;
+  $('#segNote').textContent = n
+    ? n+' cells painted. Click a cell to add or remove it; hover shows the exact piece.'
+    : 'Empty. Click cells on the grid to build '+cur+' — or Fill O and cut pieces away.';
 }
-function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"'); renderNote(); renderLine(); }
+function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"'); updateHover(); renderNote(); renderLine(); }
 
 /* toggle a surface on the current letter */
 function toggle(seg){
@@ -305,8 +298,11 @@ function toggle(seg){
   if(i<0) s.push(seg); else s.splice(i,1);
   GLYPHS[cur]=s; render(); renderPicker();
 }
+let hoverCell=null;
 document.addEventListener('click',e=>{ const h=e.target.closest && e.target.closest('.hit'); if(h) toggle(h.dataset.seg); });
-$('#fillO').addEventListener('click',()=>{ GLYPHS[cur]=FRAME.slice(); render(); renderPicker(); });
+document.addEventListener('mouseover',e=>{ const h=e.target.closest && e.target.closest('.hit'); if(!h)return; if(h.dataset.seg!==hoverCell){ hoverCell=h.dataset.seg; updateHover(); } });
+document.addEventListener('mouseout',e=>{ const h=e.target.closest && e.target.closest('.hit'); if(!h)return; hoverCell=null; updateHover(); });
+$('#fillO').addEventListener('click',()=>{ GLYPHS[cur]=borderCells(); render(); renderPicker(); });
 $('#clearL').addEventListener('click',()=>{ GLYPHS[cur]=[]; render(); renderPicker(); });
 
 /* grid controls */
