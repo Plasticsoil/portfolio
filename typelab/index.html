@@ -86,6 +86,7 @@
     <div class="sec"><div class="lbl">Cap height <input class="num" id="HhN" type="number" min="400" max="1000" step="2"></div><input id="Hh" type="range" min="400" max="1000" step="2"></div>
     <div class="sec"><div class="lbl">Side stroke <input class="num" id="svN" type="number" min="16" max="320" step="1"></div><input id="sv" type="range" min="16" max="320" step="1"></div>
     <div class="sec"><div class="lbl">Top / bottom stroke <input class="num" id="shN" type="number" min="10" max="240" step="1"></div><input id="sh" type="range" min="10" max="240" step="1"></div>
+    <div class="sec"><div class="lbl">Diagonal stroke <input class="num" id="sdN" type="number" min="16" max="320" step="1"></div><input id="sd" type="range" min="16" max="320" step="1"></div>
     <div class="sec"><div class="lbl">Outer corner <input class="num" id="coN" type="number" min="0.06" max="1" step="0.01"></div><input id="co" type="range" min="0.06" max="1" step="0.01"></div>
     <div class="sec"><div class="lbl">Inner corner <input class="num" id="ciN" type="number" min="0.06" max="1" step="0.01"></div><input id="ci" type="range" min="0.06" max="1" step="0.01"></div>
     <div class="sec"><div class="lbl">Side bearing <input class="num" id="sbN" type="number" min="0" max="180" step="2"></div><input id="sb" type="range" min="0" max="180" step="2"></div>
@@ -128,7 +129,7 @@
    Surfaces so far:  L R T B  (frame sides)  ·  M (middle bar)
    ============================================================ */
 const R = n => Math.round(n*10)/10;
-const GRID = { W:600, Hh:800, sv:140, sh:70, corner:0.5, cornerIn:1, sb:24, skel:true, theme:'light' };
+const GRID = { W:600, Hh:800, sv:140, sh:70, sd:120, corner:0.5, cornerIn:1, sb:24, skel:true, theme:'light' };
 /* Shape-builder model. Six vertical guides × six horizontal guides cut a
    5×5 grid of cells (ids "cIJ", column i / row j, 0..4). The material —
    the exact O ring plus a middle bar and a centre stem — is clipped to the
@@ -186,13 +187,15 @@ function M(){
 /* The material — exact O ring + middle bar + centre stem — clipped to a set
    of cells. Each cell is a precise face of the shape-builder grid. */
 let UID=0;
-function materialClipped(cells, fill, op){
+function cellsOf(segs){ return segs.filter(c=>/^c\d\d$/.test(c)); }
+function materialClipped(cells, fill, op, segs){
   if(!cells.length) return '';
-  const m=M(), Xs=m.Xs, Ys=m.Ys, id='cl'+(UID++);
+  const m=M(), Xs=m.Xs, Ys=m.Ys, id='cl'+(UID++); segs=segs||[];
+  const q=k=>segs.includes(k)?0:m.rO;     // a painted corner = square (radius 0)
   let clip='';
   for(const c of cells){ const i=+c[1], j=+c[2];
     clip+=`<rect x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}"/>`; }
-  const ring=`${rrect(m.cx,m.cy,m.W,m.cap,m.rO)} ${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}`;
+  const ring=`${rrect4(m.cx,m.cy,m.W,m.cap, q('sqTL'),q('sqTR'),q('sqBR'),q('sqBL'))} ${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}`;
   return `<clipPath id="${id}">${clip}</clipPath>`
     +`<g clip-path="url(#${id})" fill="${fill}" opacity="${op}">`
     +`<path d="${ring}" fill-rule="evenodd"/>`
@@ -200,7 +203,14 @@ function materialClipped(cells, fill, op){
     +`<rect x="${R(Xs[2])}" y="0" width="${R(Xs[3]-Xs[2])}" height="${R(m.cap)}"/>`
     +`</g>`;
 }
-function paint(segs, ink, op){ return materialClipped(segs.filter(c=>/^c\d\d$/.test(c)), ink, op==null?1:op); }
+function paint(segs, ink, op){ return materialClipped(cellsOf(segs), ink, op==null?1:op, segs); }
+/* proportional metrics: the ink hugs the painted columns, not the O */
+function inkX(segs){
+  const m=M(), Xs=m.Xs; let lo=99, hi=-1;
+  for(const c of cellsOf(segs)){ const i=+c[1]; lo=Math.min(lo,i); hi=Math.max(hi,i); }
+  if(hi<0) return {x0:m.sb, x1:m.sb+m.W*0.5};
+  return {x0:Xs[lo], x1:Xs[hi+1]};
+}
 
 /* faint skeleton — the whole potential frame + grid lines, always visible */
 function skeleton(){
@@ -229,6 +239,10 @@ function hits(){
     if(!hasMat(i,j)) continue;   // only cells the material can fill are clickable
     s+=`<rect class="hit" x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}" data-seg="c${i}${j}"/>`;
   }
+  // corner nooks — click the outer corner to square it (round ↔ square)
+  const sb=m.sb,W=m.W,cap=m.cap, n=m.rO*0.6;
+  const nk=(x,y,seg)=>`<rect class="hit" x="${R(x)}" y="${R(y)}" width="${R(n)}" height="${R(n)}" data-seg="${seg}"/>`;
+  s+=nk(sb,cap-n,'sqTL')+nk(sb+W-n,cap-n,'sqTR')+nk(sb,0,'sqBL')+nk(sb+W-n,0,'sqBR');
   return s;
 }
 
@@ -253,7 +267,7 @@ function heroSVG(){
 }
 function updateHover(){
   const el=document.getElementById('hoverLayer'); if(!el) return;
-  el.innerHTML = hoverCell ? materialClipped([hoverCell], getVar('--accent'), .55) : '';
+  el.innerHTML = (hoverCell && /^c\d\d$/.test(hoverCell)) ? materialClipped([hoverCell], getVar('--accent'), .55, segsOf(cur)) : '';
 }
 
 function renderLine(){
@@ -264,10 +278,12 @@ function renderLine(){
   const text=($('#line').value||'').toUpperCase();
   let x=0, body='';
   for(const ch of text){
-    if(ch===' '){ x+=m.W*0.4; continue; }
-    if(GLYPHS[ch]) body+=`<g transform="translate(${R(x)},0)">${paint(GLYPHS[ch],ink,1)}</g>`;
-    else body+=`<rect x="${R(x+m.sb)}" y="8" width="${R(m.W)}" height="${R(m.cap-16)}" rx="14" fill="none" stroke="${muted}" stroke-width="5" stroke-dasharray="11 11"/>`;
-    x+=m.adv;
+    if(ch===' '){ x+=m.W*0.5; continue; }
+    if(GLYPHS[ch] && cellsOf(GLYPHS[ch]).length){
+      const ix=inkX(GLYPHS[ch]), shift=m.sb-ix.x0;        // hug this letter's own ink
+      body+=`<g transform="translate(${R(x+shift)},0)">${paint(GLYPHS[ch],ink,1)}</g>`;
+      x += (ix.x1-ix.x0) + 2*m.sb;
+    } else { body+=`<rect x="${R(x+m.sb)}" y="8" width="${R(m.W)}" height="${R(m.cap-16)}" rx="14" fill="none" stroke="${muted}" stroke-width="5" stroke-dasharray="11 11"/>`; x+=m.adv; }
   }
   const maxX=Math.max(x,10), pad=40, vbH=m.cap+2*pad;
   const el=$('#lineSvg');
@@ -307,7 +323,7 @@ $('#clearL').addEventListener('click',()=>{ GLYPHS[cur]=[]; render(); renderPick
 
 /* grid controls */
 function syncGrid(){
-  const map={W:'W',Hh:'Hh',sv:'sv',sh:'sh',co:'corner',ci:'cornerIn',sb:'sb'};
+  const map={W:'W',Hh:'Hh',sv:'sv',sh:'sh',sd:'sd',co:'corner',ci:'cornerIn',sb:'sb'};
   for(const rid in map){ const key=map[rid], rng=$('#'+rid), num=$('#'+rid+'N'); if(!rng)continue;
     rng.value=Math.min(parseFloat(rng.max),Math.max(parseFloat(rng.min),GRID[key])); num.value=GRID[key]; }
 }
@@ -318,7 +334,7 @@ function bindGrid(rid,key){
   const fn=()=>{ userTouched=true; const v=parseFloat(num.value); if(isNaN(v))return; GRID[key]=v; rng.value=clamp(v); render(); };
   num.addEventListener('input',fn); num.addEventListener('change',fn);
 }
-bindGrid('W','W'); bindGrid('Hh','Hh'); bindGrid('sv','sv'); bindGrid('sh','sh');
+bindGrid('W','W'); bindGrid('Hh','Hh'); bindGrid('sv','sv'); bindGrid('sh','sh'); bindGrid('sd','sd');
 bindGrid('co','corner'); bindGrid('ci','cornerIn'); bindGrid('sb','sb');
 
 $('#picker').addEventListener('click',e=>{ const b=e.target.closest('.pk'); if(!b)return; cur=b.dataset.l; renderPicker(); render(); });
@@ -330,7 +346,7 @@ $('#themeSeg').addEventListener('click',e=>{ const b=e.target.closest('button');
   GRID.theme=b.dataset.t; document.documentElement.setAttribute('data-theme',GRID.theme); render(); });
 
 /* bank (db + localStorage) */
-const GKEYS=['W','Hh','sv','sh','corner','cornerIn','sb'];
+const GKEYS=['W','Hh','sv','sh','sd','corner','cornerIn','sb'];
 const LS='typelab-skel-v1';
 function gridObj(){ const o={}; GKEYS.forEach(k=>o[k]=GRID[k]); return o; }
 function persistLocal(){ try{ localStorage.setItem(LS,JSON.stringify({grid:gridObj(),glyphs:GLYPHS,saved})); }catch(e){} }
