@@ -65,7 +65,7 @@
   #heroWrap{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:14px; }
   #heroWrap svg{ width:100%; height:100%; }
   .hit{ fill:transparent; cursor:pointer; }
-  .cnr{ cursor:pointer; fill:none; pointer-events:all; stroke:var(--accent); stroke-width:2.5; }
+  .cnr{ cursor:pointer; fill:none; pointer-events:all; stroke:var(--accent); stroke-width:2; }
   #dragLayer *{ pointer-events:none; }
   #dragLayer .dh, #dragLayer .dh *{ pointer-events:auto; }
   #strip{ flex:none; border-top:1px solid var(--line); padding:12px 22px 16px; }
@@ -274,7 +274,7 @@ function outlinePath(segs){
       // the handle sits a little INSIDE the corner (along the inward bisector),
       // so it's clear which corner it belongs to even when neighbours share a vertex
       const nx=-uy-wy, ny=ux+wx, nl=Math.hypot(nx,ny)||1, sgn=hole?-1:1,
-            off=Math.min(0.42*Math.min(il,ol), Math.min(m.sv,m.sh)*0.55);
+            off=Math.min(0.4*Math.min(il,ol), Math.min(m.sv,m.sh)*0.4);
       corners.push({x:C.x+sgn*nx/nl*off, y:C.y+sgn*ny/nl*off, id, round});
     }
     const A=k=>({x:seg[k].C.x-seg[k].ux*seg[k].r, y:seg[k].C.y-seg[k].uy*seg[k].r});
@@ -367,7 +367,7 @@ function hits(){
   const E=diagEnds(), dt=Math.max(GRID.sd, 70);
   for(const k in E) s+=`<path class="hit" d="${diagPath(E[k][0],E[k][1],m.xC,m.yM,dt)}" data-seg="${k}"/>`;
   // a handle on every corner of the current outline — click to round ↔ square
-  const {corners}=outlinePath(segsOf(cur)), rr=Math.max(9,Math.min(m.sv,m.sh)*0.26);
+  const {corners}=outlinePath(segsOf(cur)), rr=Math.max(6,Math.min(m.sv,m.sh)*0.15);
   for(const c of corners)
     s+=`<circle class="cnr ${c.round?'r':'sq'}" cx="${R(c.x)}" cy="${R(c.y)}" r="${R(rr)}" data-seg="${c.id}"/>`;
   return s;
