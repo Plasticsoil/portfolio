@@ -191,11 +191,12 @@ function cellsOf(segs){ return segs.filter(c=>/^c\d\d$/.test(c)); }
 function materialClipped(cells, fill, op, segs){
   if(!cells.length) return '';
   const m=M(), Xs=m.Xs, Ys=m.Ys, id='cl'+(UID++); segs=segs||[];
-  const q=k=>segs.includes(k)?0:m.rO;     // a painted corner = square (radius 0)
+  const q=k=>segs.includes(k)?0:m.rO;     // painted outer corner = square
+  const qi=k=>segs.includes(k)?0:m.rI;    // painted inner corner = square
   let clip='';
   for(const c of cells){ const i=+c[1], j=+c[2];
     clip+=`<rect x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}"/>`; }
-  const ring=`${rrect4(m.cx,m.cy,m.W,m.cap, q('sqTL'),q('sqTR'),q('sqBR'),q('sqBL'))} ${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}`;
+  const ring=`${rrect4(m.cx,m.cy,m.W,m.cap, q('sqTL'),q('sqTR'),q('sqBR'),q('sqBL'))} ${rrect4(m.cx,m.cy,m.iw,m.ih, qi('iTL'),qi('iTR'),qi('iBR'),qi('iBL'))}`;
   return `<clipPath id="${id}">${clip}</clipPath>`
     +`<g clip-path="url(#${id})" fill="${fill}" opacity="${op}">`
     +`<path d="${ring}" fill-rule="evenodd"/>`
@@ -239,10 +240,13 @@ function hits(){
     if(!hasMat(i,j)) continue;   // only cells the material can fill are clickable
     s+=`<rect class="hit" x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}" data-seg="c${i}${j}"/>`;
   }
-  // corner nooks — click the outer corner to square it (round ↔ square)
+  // outer corner nooks — click the outer corner to square it
   const sb=m.sb,W=m.W,cap=m.cap, n=m.rO*0.6;
   const nk=(x,y,seg)=>`<rect class="hit" x="${R(x)}" y="${R(y)}" width="${R(n)}" height="${R(n)}" data-seg="${seg}"/>`;
   s+=nk(sb,cap-n,'sqTL')+nk(sb+W-n,cap-n,'sqTR')+nk(sb,0,'sqBL')+nk(sb+W-n,0,'sqBR');
+  // inner corner faces — click inside the counter's corner to square it
+  const cell=(i,j,seg)=>`<rect class="hit" x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}" data-seg="${seg}"/>`;
+  s+=cell(1,3,'iTL')+cell(3,3,'iTR')+cell(1,1,'iBL')+cell(3,1,'iBR');
   return s;
 }
 
