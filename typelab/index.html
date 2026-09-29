@@ -53,6 +53,17 @@
   .meas li .n{ color:var(--ink); flex:1; }
   .meas li .n span{ color:var(--muted); }
   .meas li .val{ font-family:var(--mono); color:var(--ink); }
+  .save{ width:100%; border:0; border-radius:9px; background:var(--gridkey); color:#fff;
+    padding:11px; font:inherit; font-size:13px; font-weight:500; cursor:pointer; letter-spacing:.02em; }
+  .save:hover{ filter:brightness(1.07); }
+  .save.done{ background:#2FA36B; }
+  .bankrow{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .chip{ width:58px; height:58px; border:1px solid var(--line); border-radius:9px; background:var(--surface);
+    display:flex; align-items:center; justify-content:center; position:relative; }
+  .chip svg{ width:80%; height:80%; }
+  .chip span{ position:absolute; bottom:2px; right:5px; font-size:8px; color:var(--muted); font-family:var(--mono); }
+  .locked{ display:inline-block; margin-left:6px; font-size:9px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--gridkey); border:1px solid var(--gridkey); border-radius:20px; padding:1px 7px; }
   .meas li.ratio .i{ background:var(--accent); color:var(--ink); }
 
   #stage{ flex:1; height:100%; display:flex; flex-direction:column; min-width:0; }
@@ -130,6 +141,14 @@
     </div>
 
     <div class="sec" style="margin-top:20px;">
+      <div class="lbl">Letter bank <b><span id="bankCount">0</span></b></div>
+      <button class="save" id="save">Save O &amp; lock the grid</button>
+      <div class="bankrow" id="bankrow"></div>
+      <div class="note" id="banknote">Saves this O and locks the current grid as the
+        baseline every next capital is built on. Kept in the widget.</div>
+    </div>
+
+    <div class="sec" style="margin-top:20px;">
       <div class="lbl">Measurements</div>
       <ul class="meas" id="meas"></ul>
     </div>
@@ -182,13 +201,14 @@ function rrect(cx,cy,w,h,r){
 const $=s=>document.querySelector(s);
 const getVar=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
-function geom(){
-  const {W,Hh,sv,sh,corner,os,sb}=O;
+function geom(src){
+  src=src||O;
+  const {W,Hh,sv,sh,corner,os,sb}=src;
   const oh=Hh+2*os;                          // outer height incl. overshoot
   const cx=sb+W/2, cy=Hh/2;
   const rOut=Math.min(W,oh)/2*corner;
   const iw=Math.max(W-2*sv,2), ih=Math.max(oh-2*sh,2);
-  const rIn=Math.min(iw,ih)/2*O.cornerIn;
+  const rIn=Math.min(iw,ih)/2*src.cornerIn;
   return {W,Hh,oh,sv,sh,os,sb,cx,cy,rOut,iw,ih,rIn, adv:W+2*sb};
 }
 
@@ -324,8 +344,8 @@ function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"
 function bind(rangeId,numId,key){
   const rng=$('#'+rangeId), num=$('#'+numId);
   const clamp=v=>Math.min(parseFloat(rng.max),Math.max(parseFloat(rng.min),v));
-  rng.addEventListener('input',()=>{ const v=parseFloat(rng.value); O[key]=v; num.value=v; render(); });
-  const fromNum=()=>{ let v=parseFloat(num.value); if(isNaN(v))return; O[key]=v; rng.value=clamp(v); render(); };
+  rng.addEventListener('input',()=>{ userTouched=true; const v=parseFloat(rng.value); O[key]=v; num.value=v; render(); });
+  const fromNum=()=>{ userTouched=true; let v=parseFloat(num.value); if(isNaN(v))return; O[key]=v; rng.value=clamp(v); render(); };
   num.addEventListener('input',fromNum);
   num.addEventListener('change',fromNum);
 }
@@ -338,13 +358,75 @@ bind('ci','ciN','cornerIn');
 bind('os','osN','os');
 bind('sb','sbN','sb');
 $('#line').addEventListener('input',()=>{ O.line=$('#line').value; renderLine(); });
+
+/* ============================================================
+   LETTER BANK — persists this O and locks the grid as the baseline.
+   Stored in the widget's own database when published (so it is durable
+   and can be read back to build the real font); mirrored to this
+   browser so it also works offline. Only the O exists so far.
+   ============================================================ */
+const KEYS=['W','Hh','sv','sh','corner','cornerIn','os','sb'];
+const LS='typelab-bank-v1';
+let bank={}, gridLocked=null, dbNS=null, userTouched=false;
+
+function paramsNow(){ const p={}; KEYS.forEach(k=>p[k]=O[k]); return p; }
+function applyParams(p){ KEYS.forEach(k=>{ if(p[k]!=null) O[k]=p[k]; }); syncInputs(); }
+function syncInputs(){
+  const map={ow:'W',oh:'Hh',sv:'sv',sh:'sh',co:'corner',ci:'cornerIn',os:'os',sb:'sb'};
+  for(const rid in map){ const key=map[rid], rng=$('#'+rid), num=$('#'+rid+'N'); if(!rng)continue;
+    rng.value=Math.min(parseFloat(rng.max),Math.max(parseFloat(rng.min),O[key])); if(num)num.value=O[key]; }
+}
+function miniGlyph(L,p){
+  const g=geom(p), ink=getVar('--draw'), sur=getVar('--surface'), pad=30;
+  const vbW=g.adv+2*pad, vbH=g.Hh+2*g.os+2*pad;
+  const body = L==='O'
+    ? `<path d="${rrect(g.cx,g.cy,g.W,g.oh,g.rOut)} ${rrect(g.cx,g.cy,g.iw,g.ih,g.rIn)}" fill-rule="evenodd" fill="${ink}"/>`
+    : `<rect x="${R(g.sb)}" y="0" width="${R(g.W*0.6)}" height="${R(g.Hh)}" fill="none" stroke="${getVar('--muted')}" stroke-width="6" stroke-dasharray="10 10"/>`;
+  return `<svg viewBox="0 0 ${R(vbW)} ${R(vbH)}" style="background:${sur}"><g transform="translate(${pad},${R(g.Hh+g.os+pad)}) scale(1,-1)">${body}</g></svg>`;
+}
+function renderBank(){
+  const letters=Object.keys(bank);
+  $('#bankCount').innerHTML=letters.length + (gridLocked?' <span class="locked">grid locked</span>':'');
+  $('#bankrow').innerHTML = letters.length
+    ? letters.map(L=>`<div class="chip">${miniGlyph(L,bank[L])}<span>${L}</span></div>`).join('')
+    : '';
+}
+function persistLocal(){ try{ localStorage.setItem(LS,JSON.stringify({bank,grid:gridLocked})); }catch(e){} }
+function loadLocal(){ try{ const j=JSON.parse(localStorage.getItem(LS)||'{}'); if(j.bank)bank=j.bank; if(j.grid)gridLocked=j.grid; }catch(e){} }
+
+async function saveO(){
+  const p=paramsNow(); bank['O']=p; gridLocked=p;
+  persistLocal(); renderBank();
+  const btn=$('#save'), t=btn.textContent; btn.classList.add('done'); btn.textContent='Saved ✓  grid locked';
+  setTimeout(()=>{ btn.classList.remove('done'); btn.textContent=t; },1400);
+  if(dbNS){ try{
+    await dbNS.doc('project/grid').set(Object.assign({},p,{savedAt:Date.now()}));
+    await dbNS.collection('glyphs').doc('O').set({letter:'O',params:p,savedAt:Date.now()});
+  }catch(e){ $('#banknote').textContent='Saved in this browser. Sign in on claude.ai to also save it to the shared bank.'; } }
+}
+$('#save').addEventListener('click',saveO);
+
+async function initBank(){
+  loadLocal();
+  if(gridLocked){ applyParams(gridLocked); }
+  render(); renderBank();
+  if(!(window.claude&&claude.use)) return;
+  try{ dbNS=await claude.use('db'); }catch(e){ dbNS=null; }
+  if(!dbNS) return;
+  try{ const gd=await dbNS.doc('project/grid').get();
+    if(gd.exists && !userTouched){ const d=gd.data(); gridLocked=d; applyParams(d); render(); } }catch(e){}
+  try{ dbNS.collection('glyphs').onSnapshot(snap=>{
+    const nb={}; snap.docs.forEach(doc=>{ const d=doc.data()||{}; if(d.params) nb[d.letter||doc.id]=d.params; });
+    bank=nb; persistLocal(); renderBank();
+  }, ()=>{}); }catch(e){}
+}
 $('#guideSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
   [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); O.guides=b.dataset.g==='on'; render(); });
 $('#themeSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
   [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
   O.theme=b.dataset.t; document.documentElement.setAttribute('data-theme',O.theme); render(); });
 
-render();
+initBank();
 </script>
 </body>
 </html>
