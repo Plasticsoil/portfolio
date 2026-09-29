@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Type Lab — letters · Yam Liv</title>
-<meta name="description" content="An uppercase lab. Pick a letter and build it on the locked grid the O set; save each to the letter bank." />
+<title>Type Lab — the skeleton · Yam Liv</title>
+<meta name="description" content="One shared skeleton — the O's height and width strokes with rounded corners, always visible. Paint the surfaces you want to dress each capital on it." />
 <meta name="robots" content="noindex" />
 <link rel="icon" href="/favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -14,7 +14,7 @@
   :root{
     --bg:#F8F6F3; --surface:#FFFFFF; --line:#E7E4DE;
     --ink:#26251E; --muted:#A3A09B; --accent:#FF2D9B;
-    --grid:#F6A6D6; --gridkey:#E0157F; --dim:#5B5852;
+    --grid:#F6A6D6; --gridkey:#E0157F;
     --paper:#F8F6F3; --draw:#26251E;
     --mono:"DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   }
@@ -24,7 +24,6 @@
     font-family:"Nimbus Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
     font-size:13px; -webkit-font-smoothing:antialiased; overflow:hidden; }
   #app{ display:flex; height:100vh; }
-
   .side{ width:320px; flex:none; height:100%; overflow-y:auto;
     padding:22px 20px 44px; background:var(--bg); border-right:1px solid var(--line); }
   .side::-webkit-scrollbar{ width:0; }
@@ -51,53 +50,55 @@
   .save:hover{ filter:brightness(1.07); } .save.done{ background:#2FA36B; }
 
   #stage{ flex:1; height:100%; display:flex; flex-direction:column; min-width:0; }
-  .picker{ flex:none; padding:16px 22px; border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:6px; }
+  .picker{ flex:none; padding:14px 22px; border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:6px; }
   .pk{ width:34px; height:34px; border:1px solid var(--line); border-radius:8px; background:var(--surface);
     font-family:var(--mono); font-size:14px; color:var(--muted); cursor:pointer; display:flex; align-items:center;
     justify-content:center; position:relative; padding:0; }
-  .pk.built{ color:var(--ink); }
   .pk.saved{ border-color:var(--gridkey); color:var(--gridkey); }
   .pk.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
   .pk.saved.on{ background:var(--gridkey); border-color:var(--gridkey); color:#fff; }
   .pk .dot{ position:absolute; top:3px; right:3px; width:5px; height:5px; border-radius:50%; background:var(--gridkey); }
   .pk.on .dot{ background:#fff; }
-  #heroWrap{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:16px; }
+  #heroWrap{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:14px; }
   #heroWrap svg{ width:100%; height:100%; }
+  .hit{ fill:transparent; cursor:pointer; }
+  .hit:hover{ fill:var(--grid); fill-opacity:.18; }
   #strip{ flex:none; border-top:1px solid var(--line); padding:12px 22px 16px; }
   #strip input{ width:100%; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink);
     padding:8px 11px; font:inherit; font-size:14px; letter-spacing:.1em; text-transform:uppercase; outline:none; margin-bottom:8px; }
   #strip input:focus{ border-color:var(--ink); }
-  #strip svg{ width:100%; height:96px; display:block; }
+  #strip svg{ width:100%; height:92px; display:block; }
 </style>
 </head>
 <body>
 <div id="app">
   <aside class="side">
-    <h1>The&nbsp;<em>Letters</em></h1>
-    <p class="sub">Pick a capital and build it on the grid the O locked.
-      Straight letters obey the grid as-is; the rest we shape one at a time,
-      then save each to the bank.</p>
+    <h1>The&nbsp;<em>Skeleton</em></h1>
+    <p class="sub">One skeleton for every capital — the O's height and width
+      strokes with rounded corners, always underneath. Pick a letter and
+      <b>click the surfaces</b> to paint them. We add more strokes slowly
+      (a middle bar for E, …). The O is the whole frame painted.</p>
 
     <div class="grp">The grid · shared</div>
+    <div class="sec"><div class="lbl">Cell width <input class="num" id="WN" type="number" min="300" max="1000" step="2"></div><input id="W" type="range" min="300" max="1000" step="2"></div>
     <div class="sec"><div class="lbl">Cap height <input class="num" id="HhN" type="number" min="400" max="1000" step="2"></div><input id="Hh" type="range" min="400" max="1000" step="2"></div>
     <div class="sec"><div class="lbl">Side stroke <input class="num" id="svN" type="number" min="16" max="320" step="1"></div><input id="sv" type="range" min="16" max="320" step="1"></div>
     <div class="sec"><div class="lbl">Top / bottom stroke <input class="num" id="shN" type="number" min="10" max="240" step="1"></div><input id="sh" type="range" min="10" max="240" step="1"></div>
     <div class="sec"><div class="lbl">Outer corner <input class="num" id="coN" type="number" min="0.06" max="1" step="0.01"></div><input id="co" type="range" min="0.06" max="1" step="0.01"></div>
     <div class="sec"><div class="lbl">Inner corner <input class="num" id="ciN" type="number" min="0.06" max="1" step="0.01"></div><input id="ci" type="range" min="0.06" max="1" step="0.01"></div>
-    <div class="sec"><div class="lbl">Overshoot <input class="num" id="osN" type="number" min="0" max="34" step="1"></div><input id="os" type="range" min="0" max="34" step="1"></div>
     <div class="sec"><div class="lbl">Side bearing <input class="num" id="sbN" type="number" min="0" max="180" step="2"></div><input id="sb" type="range" min="0" max="180" step="2"></div>
 
     <div class="grp">Letter · <span id="curName">O</span></div>
-    <div id="letterCtl"></div>
+    <div class="note" id="segNote"></div>
 
     <div class="grp">View</div>
-    <div class="sec"><div class="seg" id="guideSeg"><button data-g="on" class="on">Grid</button><button data-g="off">Clean</button></div></div>
+    <div class="sec"><div class="seg" id="skelSeg"><button data-s="on" class="on">Skeleton</button><button data-s="off">Clean</button></div></div>
     <div class="sec"><div class="seg" id="themeSeg"><button data-t="light" class="on">Ink on paper</button><button data-t="dark">Paper on ink</button></div></div>
 
     <div class="grp">Bank</div>
     <div class="sec">
       <button class="save" id="save">Save <span id="saveL">O</span> to bank</button>
-      <div class="note" id="banknote">Saves this letter on the current grid. Kept in the widget.</div>
+      <div class="note">Saves which surfaces are painted for this letter, on the shared grid.</div>
     </div>
   </aside>
 
@@ -105,7 +106,7 @@
     <div class="picker" id="picker"></div>
     <div id="heroWrap"><svg id="hero" preserveAspectRatio="xMidYMid meet"></svg></div>
     <div id="strip">
-      <input id="line" type="text" spellcheck="false" placeholder="type a word — built letters show, the rest are dashed slots" value="OHELLO">
+      <input id="line" type="text" spellcheck="false" placeholder="type a word to preview" value="OO">
       <svg id="lineSvg" preserveAspectRatio="xMidYMid meet"></svg>
     </div>
   </main>
@@ -113,27 +114,17 @@
 
 <script>
 /* ============================================================
-   THE LETTERS — an uppercase lab on one shared grid.
-   The grid (cap, strokes, corners, overshoot, side bearing) is shared
-   and was locked by the O. Each letter adds only its own few dims.
-   Straight letters (I H L T E F) are pure grid — stems of the side
-   stroke, bars of the thin stroke — so they need no new rule. Round
-   and diagonal letters get built one at a time.
-   Units: UPM 1000, baseline 0, cap = Hh.
+   THE SKELETON — one shared frame every capital dresses on.
+   The frame is the O: two side strokes (thick), a top and bottom
+   stroke (thin), rounded corners — rendered as a real ring so the
+   counter is a true hole. A letter is just the set of surfaces
+   painted on that skeleton. More strokes get added slowly.
+   Surfaces so far:  L R T B  (frame sides)  ·  M (middle bar)
    ============================================================ */
 const R = n => Math.round(n*10)/10;
-const GRID = { Hh:800, sv:140, sh:70, corner:0.5, cornerIn:1, os:0, sb:24, guides:true, theme:'light' };
-
-/* letters we can build, with their own dims (defaults) */
-const LET = {
-  O:{round:true, dims:{W:600}},
-  I:{dims:{}},
-  H:{dims:{W:520, cb:0.5}},
-  L:{dims:{W:380}},
-  T:{dims:{W:560}},
-  E:{dims:{W:440, cb:0.52}},
-  F:{dims:{W:440, cb:0.52}},
-};
+const GRID = { W:600, Hh:800, sv:140, sh:70, corner:0.5, cornerIn:1, sb:24, skel:true, theme:'light' };
+/* painted surfaces per letter. Only the O is defined — the whole frame. */
+const GLYPHS = { O:['L','R','T','B'] };
 const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 let cur='O', dbNS=null, saved={}, userTouched=false;
 
@@ -160,123 +151,127 @@ function rrect(cx,cy,w,h,r){
   d+=arcCubic(x1-r,y0+r,r,r,270,360);d+=`Z`; return d;
 }
 
-/* build one letter → {ops:[{d,eo}], adv, unbuilt} on the current grid */
-function buildGlyph(L){
-  const G=GRID, cap=G.Hh, sb=G.sb, sv=G.sv, sh=G.sh, os=G.os;
-  const rs=(sv/2)*G.corner, rb=(sh/2)*G.corner;
-  const def=LET[L]; const d=def?def.dims:{};
-  const ops=[];
-  const stem=(x,y0,y1)=>ops.push({d:rrect(x,(y0+y1)/2,sv,y1-y0,rs)});
-  const bar =(x0,x1,y)=>ops.push({d:rrect((x0+x1)/2,y,x1-x0,sh,rb)});
-  if(!def) return {ops:[], adv:cap*0.55+2*sb, unbuilt:true};
-  let adv=0;
-  if(L==='O'){
-    const W=d.W, oh=cap+2*os, cx=sb+W/2, cy=cap/2;
-    const rO=Math.min(W,oh)/2*G.corner, iw=Math.max(W-2*sv,2), ih=Math.max(oh-2*sh,2), rI=Math.min(iw,ih)/2*G.cornerIn;
-    ops.push({d:rrect(cx,cy,W,oh,rO)+' '+rrect(cx,cy,iw,ih,rI), eo:true});
-    adv=W+2*sb;
-  } else if(L==='I'){ stem(sb+sv/2,0,cap); adv=sv+2*sb;
-  } else if(L==='H'){ const W=d.W; stem(sb+sv/2,0,cap); stem(sb+W-sv/2,0,cap); bar(sb+sv/2,sb+W-sv/2,cap*d.cb); adv=W+2*sb;
-  } else if(L==='L'){ const W=d.W; stem(sb+sv/2,0,cap); bar(sb,sb+W,sh/2); adv=W+2*sb;
-  } else if(L==='T'){ const W=d.W; bar(sb,sb+W,cap-sh/2); stem(sb+W/2,0,cap); adv=W+2*sb;
-  } else if(L==='E'){ const W=d.W; stem(sb+sv/2,0,cap); bar(sb,sb+W,cap-sh/2); bar(sb,sb+W*0.92,cap*d.cb); bar(sb,sb+W,sh/2); adv=W+2*sb;
-  } else if(L==='F'){ const W=d.W; stem(sb+sv/2,0,cap); bar(sb,sb+W,cap-sh/2); bar(sb,sb+W*0.92,cap*d.cb); adv=W+2*sb; }
-  return {ops, adv};
+/* shared metrics */
+function M(){
+  const G=GRID, W=G.W, cap=G.Hh, sb=G.sb, sv=G.sv, sh=G.sh;
+  const cx=sb+W/2, cy=cap/2;
+  const rO=Math.min(W,cap)/2*G.corner;
+  const iw=Math.max(W-2*sv,2), ih=Math.max(cap-2*sh,2);
+  const rI=Math.min(iw,ih)/2*G.cornerIn;
+  return {W,cap,sb,sv,sh,cx,cy,rO,iw,ih,rI, xL:sb+sv/2, xR:sb+W-sv/2, xC:cx, yT:cap-sh/2, yB:sh/2, yM:cap/2, adv:W+2*sb};
+}
+
+/* paint the active surfaces of one letter → svg string (font coords, y-up) */
+function paint(segs, ink, paper){
+  const m=M(); let s='';
+  const frame=['L','R','T','B'].filter(k=>segs.includes(k));
+  if(frame.length){
+    s+=`<path d="${rrect(m.cx,m.cy,m.W,m.cap,m.rO)} ${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}" fill-rule="evenodd" fill="${ink}"/>`;
+    const carve=(x,y,w,h)=>{ s+=`<rect x="${R(x)}" y="${R(y)}" width="${R(w)}" height="${R(h)}" fill="${paper}"/>`; };
+    if(!segs.includes('T')) carve(m.sb-4, m.cap-m.rO, m.W+8, m.rO+6);
+    if(!segs.includes('B')) carve(m.sb-4, -6, m.W+8, m.rO+6);
+    if(!segs.includes('L')) carve(m.sb-6, -6, m.rO+6, m.cap+12);
+    if(!segs.includes('R')) carve(m.sb+m.W-m.rO, -6, m.rO+6, m.cap+12);
+  }
+  if(segs.includes('M')){ // middle bar (thin), rounded ends
+    s+=`<path d="${rrect(m.cx, m.yM, m.W, m.sh, (m.sh/2)*GRID.corner)}" fill="${ink}"/>`;
+  }
+  return s;
+}
+
+/* faint skeleton — the whole potential frame + grid lines, always visible */
+function skeleton(){
+  const m=M(), g=getVar('--grid'), k=getVar('--gridkey'); let s='';
+  const hl=(y,dash)=>`<line x1="0" y1="${R(y)}" x2="${R(m.adv)}" y2="${R(y)}" stroke="${g}" stroke-width="2" ${dash?'stroke-dasharray="5 8"':''}/>`;
+  const vl=(x)=>`<line x1="${R(x)}" y1="-30" x2="${R(x)}" y2="${R(m.cap+30)}" stroke="${g}" stroke-width="2" stroke-dasharray="5 8"/>`;
+  s+=hl(0,false)+hl(m.cap,false)+hl(m.yM,true);
+  s+=vl(m.sb)+vl(m.sb+m.W)+vl(m.xC);
+  // the frame outline (outer + inner) faint
+  s+=`<path d="${rrect(m.cx,m.cy,m.W,m.cap,m.rO)}" fill="none" stroke="${k}" stroke-width="2.5" stroke-opacity=".5"/>`;
+  s+=`<path d="${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}" fill="none" stroke="${k}" stroke-width="2" stroke-opacity=".35"/>`;
+  s+=`<path d="${rrect(m.cx,m.yM,m.W,m.sh,(m.sh/2)*GRID.corner)}" fill="none" stroke="${k}" stroke-width="1.6" stroke-opacity=".3" stroke-dasharray="4 6"/>`;
+  return s;
+}
+
+/* clickable hit areas for the surfaces */
+function hits(){
+  const m=M(); const r=(x,y,w,h,seg)=>`<rect class="hit" x="${R(x)}" y="${R(y)}" width="${R(w)}" height="${R(h)}" data-seg="${seg}"/>`;
+  let s='';
+  s+=r(m.sb, m.rO, m.sv+8, m.cap-2*m.rO, 'L');                       // left
+  s+=r(m.sb+m.W-m.sv-8, m.rO, m.sv+8, m.cap-2*m.rO, 'R');            // right
+  s+=r(m.sb+m.rO, m.cap-m.sh-8, m.W-2*m.rO, m.sh+8, 'T');           // top
+  s+=r(m.sb+m.rO, 0, m.W-2*m.rO, m.sh+8, 'B');                      // bottom
+  s+=r(m.sb+m.rO, m.yM-m.sh/2-6, m.W-2*m.rO, m.sh+12, 'M');         // middle bar
+  return s;
 }
 
 const $=s=>document.querySelector(s);
 const getVar=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const MET={ TOP:()=>GRID.Hh+GRID.os+40, BOT:()=>-GRID.os-60 };
-
-function pathsFor(L, ink){
-  const g=buildGlyph(L); let s='';
-  for(const op of g.ops) s+=`<path d="${op.d}" fill="${ink}" ${op.eo?'fill-rule="evenodd"':''}/>`;
-  return {s, adv:g.adv, unbuilt:g.unbuilt};
-}
+function segsOf(L){ return GLYPHS[L] ? GLYPHS[L].slice() : []; }
 
 function heroSVG(){
-  const G=GRID, cap=G.Hh, os=G.os;
-  const ink   = G.theme==='light'?getVar('--draw'):getVar('--paper');
-  const paper = G.theme==='light'?getVar('--paper'):getVar('--draw');
-  const gc=getVar('--grid'), key=getVar('--gridkey'), muted=getVar('--muted');
-  const gp=pathsFor(cur, ink), adv=gp.adv;
-  const PADX=150, PADY=64, fontTop=cap+os+40, fontBot=-os-60;
-  const vbW=adv+2*PADX, vbH=(fontTop-fontBot)+2*PADY;
-  let guides='';
-  if(G.guides){
-    const hl=(y,c,dash)=>`<line x1="0" y1="${R(y)}" x2="${R(adv)}" y2="${R(y)}" stroke="${c}" stroke-width="2" ${dash?'stroke-dasharray="5 8"':''}/>`;
-    const vl=(x,c,dash)=>`<line x1="${R(x)}" y1="${R(fontBot)}" x2="${R(x)}" y2="${R(fontTop)}" stroke="${c}" stroke-width="2" ${dash?'stroke-dasharray="5 8"':''}/>`;
-    guides+=hl(0,key,false)+hl(cap,key,false);
-    if(os){ guides+=hl(-os,gc,true)+hl(cap+os,gc,true); }
-    guides+=hl(cap/2,gc,true);
-    guides+=vl(G.sb,gc,true)+vl(adv-G.sb,gc,true)+vl(adv/2,gc,true);
-  }
-  const body = gp.unbuilt
-    ? `<rect x="${R(G.sb)}" y="0" width="${R(adv-2*G.sb)}" height="${R(cap)}" rx="18" fill="none" stroke="${muted}" stroke-width="5" stroke-dasharray="14 12"/>`
-      +`<text x="${R(adv/2)}" y="${R(-cap*0.001)}" transform="scale(1,-1)" fill="${muted}" font-family="var(--mono)" font-size="34" text-anchor="middle">${cur}</text>`
-    : gp.s;
+  const m=M();
+  const ink   = GRID.theme==='light'?getVar('--draw'):getVar('--paper');
+  const paper = GRID.theme==='light'?getVar('--paper'):getVar('--draw');
+  const PADX=150, PADY=70, fontTop=m.cap+50, fontBot=-50;
+  const vbW=m.adv+2*PADX, vbH=(fontTop-fontBot)+2*PADY;
+  const flip=`translate(${PADX},${PADY+fontTop}) scale(1,-1)`;
   return `<svg viewBox="0 0 ${R(vbW)} ${R(vbH)}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="background:${paper}">`
-    +`<g transform="translate(${PADX},${PADY+fontTop}) scale(1,-1)">${guides}${body}</g></svg>`;
+    +`<g transform="${flip}">`
+    +(GRID.skel?skeleton():'')
+    +paint(segsOf(cur), ink, paper)
+    +hits()
+    +`</g></svg>`;
 }
 
 function renderLine(){
-  const G=GRID, cap=G.Hh, os=G.os;
-  const ink   = G.theme==='light'?getVar('--draw'):getVar('--paper');
-  const paper = G.theme==='light'?getVar('--paper'):getVar('--draw');
+  const m=M();
+  const ink   = GRID.theme==='light'?getVar('--draw'):getVar('--paper');
+  const paper = GRID.theme==='light'?getVar('--paper'):getVar('--draw');
   const gc=getVar('--grid'), muted=getVar('--muted');
   const text=($('#line').value||'').toUpperCase();
   let x=0, body='';
   for(const ch of text){
-    if(ch===' '){ x+=cap*0.4; continue; }
-    const gp=pathsFor(ch, ink);
-    if(gp.unbuilt){ body+=`<rect x="${R(x+G.sb)}" y="8" width="${R(gp.adv-2*G.sb)}" height="${R(cap-16)}" rx="14" fill="none" stroke="${muted}" stroke-width="5" stroke-dasharray="11 11"/>`; }
-    else body+=`<g transform="translate(${R(x)},0)">${gp.s}</g>`;
-    x+=gp.adv;
+    if(ch===' '){ x+=m.W*0.4; continue; }
+    if(GLYPHS[ch]) body+=`<g transform="translate(${R(x)},0)">${paint(GLYPHS[ch],ink,paper)}</g>`;
+    else body+=`<rect x="${R(x+m.sb)}" y="8" width="${R(m.W)}" height="${R(m.cap-16)}" rx="14" fill="none" stroke="${muted}" stroke-width="5" stroke-dasharray="11 11"/>`;
+    x+=m.adv;
   }
-  const maxX=Math.max(x,10), pad=40, vbH=cap+os+2*pad;
+  const maxX=Math.max(x,10), pad=40, vbH=m.cap+2*pad;
   const el=$('#lineSvg');
   el.setAttribute('viewBox',`0 0 ${R(maxX)} ${R(vbH)}`); el.style.background=paper;
-  el.innerHTML=`<g transform="translate(0,${R(cap+os+pad)}) scale(1,-1)">`
+  el.innerHTML=`<g transform="translate(0,${R(m.cap+pad)}) scale(1,-1)">`
     +`<line x1="0" y1="0" x2="${R(maxX)}" y2="0" stroke="${gc}" stroke-width="3"/>`
-    +`<line x1="0" y1="${R(cap)}" x2="${R(maxX)}" y2="${R(cap)}" stroke="${gc}" stroke-width="3"/>${body}</g>`;
+    +`<line x1="0" y1="${R(m.cap)}" x2="${R(maxX)}" y2="${R(m.cap)}" stroke="${gc}" stroke-width="3"/>${body}</g>`;
 }
 
 function renderPicker(){
   $('#picker').innerHTML=ALPHA.map(L=>{
-    const built=!!LET[L], on=L===cur, sav=!!saved[L];
-    return `<button class="pk${built?' built':''}${sav?' saved':''}${on?' on':''}" data-l="${L}">${L}${sav?'<span class="dot"></span>':''}</button>`;
+    const on=L===cur, sav=!!saved[L], has=!!GLYPHS[L];
+    return `<button class="pk${sav?' saved':''}${on?' on':''}" data-l="${L}">${L}${(sav||has)?'<span class="dot"></span>':''}</button>`;
   }).join('');
 }
-
-function renderLetterCtl(){
+function renderNote(){
   $('#curName').textContent=cur; $('#saveL').textContent=cur;
-  const def=LET[cur];
-  if(!def){ $('#letterCtl').innerHTML=`<div class="note">Not built yet. Tell me to add ${cur} and we'll shape it on the grid together.</div>`; return; }
-  const d=def.dims; let h='';
-  if('W' in d) h+=ctl('Width','lw', d.W, cur==='O'?400:200, cur==='O'?1000:900, 2);
-  if('cb' in d) h+=ctl('Crossbar height','lc', d.cb, 0.2, 0.8, 0.01);
-  if(!h) h=`<div class="note">${cur} takes its whole shape from the grid — no dimensions of its own.</div>`;
-  $('#letterCtl').innerHTML=h;
-  if('W' in d) bindLetter('lw','W');
-  if('cb' in d) bindLetter('lc','cb');
+  const s=segsOf(cur);
+  $('#segNote').textContent = s.length
+    ? 'Painted: '+s.join(' ')+'. Click a surface on the skeleton to toggle it.'
+    : 'Empty. Click surfaces on the skeleton to paint '+cur+'.';
 }
-function ctl(label,id,val,min,max,step){
-  return `<div class="sec"><div class="lbl">${label} <input class="num" id="${id}N" type="number" min="${min}" max="${max}" step="${step}" value="${val}"></div>`
-    +`<input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${val}"></div>`;
-}
-function bindLetter(id,key){
-  const rng=$('#'+id), num=$('#'+id+'N');
-  const set=v=>{ if(isNaN(v))return; LET[cur].dims[key]=v; render(); };
-  rng.addEventListener('input',()=>{ num.value=rng.value; set(parseFloat(rng.value)); });
-  num.addEventListener('input',()=>{ rng.value=num.value; set(parseFloat(num.value)); });
-}
+function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"'); renderNote(); renderLine(); }
 
-function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"'); renderLine(); }
+/* toggle a surface on the current letter */
+function toggle(seg){
+  const s=segsOf(cur); const i=s.indexOf(seg);
+  if(i<0) s.push(seg); else s.splice(i,1);
+  GLYPHS[cur]=s; render(); renderPicker();
+}
+document.addEventListener('click',e=>{ const h=e.target.closest && e.target.closest('.hit'); if(h) toggle(h.dataset.seg); });
 
-/* ---- grid controls ---- */
+/* grid controls */
 function syncGrid(){
-  const m={Hh:'Hh',sv:'sv',sh:'sh',co:'corner',ci:'cornerIn',os:'os',sb:'sb'};
-  for(const rid in m){ const key=m[rid], rng=$('#'+rid), num=$('#'+rid+'N'); if(!rng)continue;
+  const map={W:'W',Hh:'Hh',sv:'sv',sh:'sh',co:'corner',ci:'cornerIn',sb:'sb'};
+  for(const rid in map){ const key=map[rid], rng=$('#'+rid), num=$('#'+rid+'N'); if(!rng)continue;
     rng.value=Math.min(parseFloat(rng.max),Math.max(parseFloat(rng.min),GRID[key])); num.value=GRID[key]; }
 }
 function bindGrid(rid,key){
@@ -286,27 +281,25 @@ function bindGrid(rid,key){
   const fn=()=>{ userTouched=true; const v=parseFloat(num.value); if(isNaN(v))return; GRID[key]=v; rng.value=clamp(v); render(); };
   num.addEventListener('input',fn); num.addEventListener('change',fn);
 }
-bindGrid('Hh','Hh'); bindGrid('sv','sv'); bindGrid('sh','sh');
-bindGrid('co','corner'); bindGrid('ci','cornerIn'); bindGrid('os','os'); bindGrid('sb','sb');
+bindGrid('W','W'); bindGrid('Hh','Hh'); bindGrid('sv','sv'); bindGrid('sh','sh');
+bindGrid('co','corner'); bindGrid('ci','cornerIn'); bindGrid('sb','sb');
 
-$('#picker').addEventListener('click',e=>{ const b=e.target.closest('.pk'); if(!b)return;
-  cur=b.dataset.l; renderPicker(); renderLetterCtl(); render(); });
+$('#picker').addEventListener('click',e=>{ const b=e.target.closest('.pk'); if(!b)return; cur=b.dataset.l; renderPicker(); render(); });
 $('#line').addEventListener('input',renderLine);
-$('#guideSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
-  [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); GRID.guides=b.dataset.g==='on'; render(); });
+$('#skelSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
+  [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); GRID.skel=b.dataset.s==='on'; render(); });
 $('#themeSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
   [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
   GRID.theme=b.dataset.t; document.documentElement.setAttribute('data-theme',GRID.theme); render(); });
 
-/* ---- bank (db + localStorage) ---- */
-const GKEYS=['Hh','sv','sh','corner','cornerIn','os','sb'];
-const LS='typelab-letters-v1';
+/* bank (db + localStorage) */
+const GKEYS=['W','Hh','sv','sh','corner','cornerIn','sb'];
+const LS='typelab-skel-v1';
 function gridObj(){ const o={}; GKEYS.forEach(k=>o[k]=GRID[k]); return o; }
-function persistLocal(){ try{ const letters={}; for(const L in LET) letters[L]=LET[L].dims;
-  localStorage.setItem(LS,JSON.stringify({grid:gridObj(),letters,saved})); }catch(e){} }
+function persistLocal(){ try{ localStorage.setItem(LS,JSON.stringify({grid:gridObj(),glyphs:GLYPHS,saved})); }catch(e){} }
 function loadLocal(){ try{ const j=JSON.parse(localStorage.getItem(LS)||'{}');
   if(j.grid) Object.assign(GRID,j.grid);
-  if(j.letters) for(const L in j.letters){ if(LET[L]) LET[L].dims=Object.assign(LET[L].dims,j.letters[L]); }
+  if(j.glyphs) Object.assign(GLYPHS,j.glyphs);
   if(j.saved) saved=j.saved; }catch(e){} }
 
 async function saveCur(){
@@ -315,22 +308,22 @@ async function saveCur(){
   setTimeout(()=>{ btn.classList.remove('done'); btn.innerHTML=t; },1300);
   if(dbNS){ try{
     await dbNS.doc('project/grid').set(Object.assign(gridObj(),{savedAt:Date.now()}));
-    await dbNS.collection('glyphs').doc(cur).set({letter:cur, dims:LET[cur]?LET[cur].dims:{}, grid:gridObj(), savedAt:Date.now()});
-  }catch(e){ $('#banknote').textContent='Saved in this browser. Sign in on claude.ai for the shared bank.'; } }
+    await dbNS.collection('glyphs').doc(cur).set({letter:cur, segs:segsOf(cur), savedAt:Date.now()});
+  }catch(e){} }
 }
 $('#save').addEventListener('click',saveCur);
 
 async function initBank(){
-  loadLocal(); syncGrid(); renderPicker(); renderLetterCtl(); render();
+  loadLocal(); syncGrid(); renderPicker(); render();
   if(!(window.claude&&claude.use)) return;
   try{ dbNS=await claude.use('db'); }catch(e){ dbNS=null; }
   if(!dbNS) return;
   try{ const gd=await dbNS.doc('project/grid').get();
-    if(gd.exists && !userTouched){ Object.assign(GRID,gd.data()); syncGrid(); render(); } }catch(e){}
+    if(gd.exists && !userTouched){ Object.assign(GRID,gd.data()); if(GRID.W==null)GRID.W=600; syncGrid(); render(); } }catch(e){}
   try{ dbNS.collection('glyphs').onSnapshot(snap=>{
-    const s={}; snap.docs.forEach(doc=>{ const d=doc.data()||{}; const L=d.letter||doc.id; s[L]=true;
-      if(LET[L]&&d.dims) LET[L].dims=Object.assign(LET[L].dims,d.dims); });
-    saved=s; persistLocal(); renderPicker(); renderLetterCtl(); render();
+    const s={}; snap.docs.forEach(doc=>{ const d=doc.data()||{}; const L=d.letter||doc.id;
+      if(Array.isArray(d.segs)){ GLYPHS[L]=d.segs; s[L]=true; } });
+    saved=s; persistLocal(); renderPicker(); render();
   }, ()=>{}); }catch(e){}
 }
 initBank();
