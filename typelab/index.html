@@ -271,9 +271,10 @@ function outlinePath(segs){
       // same radius reference as the skeleton guide: rO outside, rI inside (clamped to the edges)
       const base = turnLeft?m.rO:m.rI, r = round ? Math.min(base,0.5*il,0.5*ol) : 0;
       seg.push({C,ux,uy,wx,wy,r,turnLeft});
-      // the handle sits a little INSIDE the corner (along the inward bisector),
-      // so it's clear which corner it belongs to even when neighbours share a vertex
-      const nx=-uy-wy, ny=ux+wx, nl=Math.hypot(nx,ny)||1, sgn=hole?-1:1,
+      // the handle sits just off the corner on the PAPER side (outside an outer
+      // corner, inside the hole for a counter) — clearer on white, and it still
+      // shows which corner it belongs to when neighbours share a vertex
+      const nx=-uy-wy, ny=ux+wx, nl=Math.hypot(nx,ny)||1, sgn=hole?1:-1,
             off=Math.min(0.4*Math.min(il,ol), Math.min(m.sv,m.sh)*0.4);
       corners.push({x:C.x+sgn*nx/nl*off, y:C.y+sgn*ny/nl*off, id, round});
     }
