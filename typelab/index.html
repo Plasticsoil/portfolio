@@ -218,7 +218,9 @@ function paint(segs, ink, op){
   let s = materialClipped(cellsOf(segs), ink, o, segs);
   const m=M(), E=diagEnds(); let d='';
   for(const k in E) if(segs.includes(k)) d+=`<path d="${diagPath(E[k][0],E[k][1],m.xC,m.yM,GRID.sd)}"/>`;
-  if(d) s+=`<g fill="${ink}" opacity="${o}">${d}</g>`;   // one group → no overlap doubling
+  if(d){ const cid='dc'+(UID++);   // clip diagonals to the frame so they stop at the edges
+    s+=`<clipPath id="${cid}"><rect x="${R(m.sb)}" y="0" width="${R(m.W)}" height="${R(m.cap)}"/></clipPath>`;
+    s+=`<g fill="${ink}" opacity="${o}" clip-path="url(#${cid})">${d}</g>`; }
   return s;
 }
 /* proportional metrics: the ink hugs the painted columns, not the O */
