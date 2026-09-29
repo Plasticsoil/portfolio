@@ -375,12 +375,10 @@ function skeleton(){
 /* clickable hit areas for the surfaces */
 function hits(){
   const m=M(), Xs=m.Xs, Ys=m.Ys; let s='';
-  // every cell is paintable (0/1)
+  // every cell is paintable (0/1). Diagonals are made by dragging a face's
+  // handle onto another — no band overlay here, so no cell is ever blocked.
   for(let i=0;i<5;i++)for(let j=0;j<5;j++)
     s+=`<rect class="hit" x="${R(Xs[i])}" y="${R(Ys[j])}" width="${R(Xs[i+1]-Xs[i])}" height="${R(Ys[j+1]-Ys[j])}" data-seg="c${i}${j}"/>`;
-  // diagonal bands on top — click the band to add/remove that diagonal
-  const E=diagEnds(), dt=Math.max(GRID.sd, 70);
-  for(const k in E) s+=`<path class="hit" d="${diagPath(E[k][0],E[k][1],m.xC,m.yM,dt)}" data-seg="${k}"/>`;
   // a handle on every corner of the current outline — click to cycle the radius preset
   const {corners}=outlinePath(segsOf(cur)), rr=Math.max(6,Math.min(m.sv,m.sh)*0.15);
   for(const c of corners)
