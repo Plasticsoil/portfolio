@@ -48,6 +48,9 @@
   .save{ width:100%; border:0; border-radius:9px; background:var(--gridkey); color:#fff;
     padding:11px; font:inherit; font-size:13px; font-weight:500; cursor:pointer; }
   .save:hover{ filter:brightness(1.07); } .save.done{ background:#2FA36B; }
+  .mini{ flex:1; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px;
+    padding:8px; font:inherit; font-size:12px; cursor:pointer; }
+  .mini:hover{ border-color:var(--ink); }
 
   #stage{ flex:1; height:100%; display:flex; flex-direction:column; min-width:0; }
   .picker{ flex:none; padding:14px 22px; border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:6px; }
@@ -89,6 +92,10 @@
     <div class="sec"><div class="lbl">Side bearing <input class="num" id="sbN" type="number" min="0" max="180" step="2"></div><input id="sb" type="range" min="0" max="180" step="2"></div>
 
     <div class="grp">Letter · <span id="curName">O</span></div>
+    <div class="sec" style="display:flex; gap:8px;">
+      <button class="mini" id="fillO">Fill O frame</button>
+      <button class="mini" id="clearL">Clear</button>
+    </div>
     <div class="note" id="segNote"></div>
 
     <div class="grp">View</div>
@@ -123,8 +130,13 @@
    ============================================================ */
 const R = n => Math.round(n*10)/10;
 const GRID = { W:600, Hh:800, sv:140, sh:70, corner:0.5, cornerIn:1, sb:24, skel:true, theme:'light' };
-/* painted surfaces per letter. Only the O is defined — the whole frame. */
-const GLYPHS = { O:['L','R','T','B'] };
+/* Every segment the guides mark is a 0/1 surface:
+   frame edges  tL tR bL bR (top/bottom halves) · lU lD rU rD (side halves)
+   corners      sTL sTR sBL sBR  (painted = square)
+   interior     mL mR (middle bar halves) · cU cD (centre stem halves)
+   The O is the whole frame. */
+const FRAME=['tL','tR','bL','bR','lU','lD','rU','rD'];
+const GLYPHS = { O:FRAME.slice() };
 const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 let cur='O', dbNS=null, saved={}, userTouched=false;
 
@@ -170,55 +182,65 @@ function M(){
 
 /* paint the active surfaces of one letter → svg string (font coords, y-up) */
 function paint(segs, ink, paper){
-  const m=M(); let s='';
-  const frame=['L','R','T','B'].filter(k=>segs.includes(k));
-  if(frame.length){
-    const q=k=>segs.includes(k)?0:m.rO;   // a painted corner surface = square (radius 0)
-    s+=`<path d="${rrect4(m.cx,m.cy,m.W,m.cap, q('qTL'),q('qTR'),q('qBR'),q('qBL'))} ${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}" fill-rule="evenodd" fill="${ink}"/>`;
+  const m=M(), sb=m.sb,W=m.W,cap=m.cap,sv=m.sv,sh=m.sh,rO=m.rO,xC=m.xC,yM=m.yM;
+  const has=k=>segs.includes(k); let s='';
+  if(FRAME.some(has)){
+    const q=k=>has(k)?0:rO;               // a painted corner = square (radius 0)
+    s+=`<path d="${rrect4(m.cx,m.cy,W,cap, q('sTL'),q('sTR'),q('sBR'),q('sBL'))} ${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}" fill-rule="evenodd" fill="${ink}"/>`;
     const carve=(x,y,w,h)=>{ s+=`<rect x="${R(x)}" y="${R(y)}" width="${R(w)}" height="${R(h)}" fill="${paper}"/>`; };
-    if(!segs.includes('T')) carve(m.sb-4, m.cap-m.rO, m.W+8, m.rO+6);
-    if(!segs.includes('B')) carve(m.sb-4, -6, m.W+8, m.rO+6);
-    if(!segs.includes('L')) carve(m.sb-6, -6, m.rO+6, m.cap+12);
-    if(!segs.includes('R')) carve(m.sb+m.W-m.rO, -6, m.rO+6, m.cap+12);
+    if(!has('tL')) carve(sb+rO, cap-sh-6, xC-(sb+rO), sh+12);
+    if(!has('tR')) carve(xC, cap-sh-6, (sb+W-rO)-xC, sh+12);
+    if(!has('bL')) carve(sb+rO, -6, xC-(sb+rO), sh+12);
+    if(!has('bR')) carve(xC, -6, (sb+W-rO)-xC, sh+12);
+    if(!has('lU')) carve(sb-6, yM, sv+12, (cap-rO)-yM);
+    if(!has('lD')) carve(sb-6, rO, sv+12, yM-rO);
+    if(!has('rU')) carve(sb+W-sv-6, yM, sv+12, (cap-rO)-yM);
+    if(!has('rD')) carve(sb+W-sv-6, rO, sv+12, yM-rO);
+    if(!has('tL')&&!has('lU')) carve(sb-6, cap-rO, rO+6, rO+6);
+    if(!has('tR')&&!has('rU')) carve(sb+W-rO, cap-rO, rO+6, rO+6);
+    if(!has('bL')&&!has('lD')) carve(sb-6, -6, rO+6, rO+6);
+    if(!has('bR')&&!has('rD')) carve(sb+W-rO, -6, rO+6, rO+6);
   }
-  const bc=(m.sh/2)*GRID.corner;          // middle bar, sliceable in two halves
-  if(segs.includes('ML')) s+=`<path d="${rrect4(m.cx-m.W/4, m.yM, m.W/2, m.sh, bc,0,0,bc)}" fill="${ink}"/>`;
-  if(segs.includes('MR')) s+=`<path d="${rrect4(m.cx+m.W/4, m.yM, m.W/2, m.sh, 0,bc,bc,0)}" fill="${ink}"/>`;
+  const rect=(x,y,w,h)=>{ s+=`<rect x="${R(x)}" y="${R(y)}" width="${R(w)}" height="${R(h)}" fill="${ink}"/>`; };
+  if(has('mL')) rect(sb, yM-sh/2, xC-sb, sh);      // middle bar — straight ends
+  if(has('mR')) rect(xC, yM-sh/2, (sb+W)-xC, sh);
+  if(has('cD')) rect(xC-sv/2, 0, sv, yM);          // centre stem — straight ends
+  if(has('cU')) rect(xC-sv/2, yM, sv, cap-yM);
   return s;
 }
 
 /* faint skeleton — the whole potential frame + grid lines, always visible */
 function skeleton(){
-  const m=M(), g=getVar('--grid'), k=getVar('--gridkey'); let s='';
-  const hl=(y,dash)=>`<line x1="0" y1="${R(y)}" x2="${R(m.adv)}" y2="${R(y)}" stroke="${g}" stroke-width="2" ${dash?'stroke-dasharray="5 8"':''}/>`;
-  const vl=(x)=>`<line x1="${R(x)}" y1="-30" x2="${R(x)}" y2="${R(m.cap+30)}" stroke="${g}" stroke-width="2" stroke-dasharray="5 8"/>`;
-  s+=hl(0,false)+hl(m.cap,false)+hl(m.yM,true);
-  s+=vl(m.sb)+vl(m.sb+m.W)+vl(m.xC);
-  // the frame outline (outer + inner) faint — always visible, painted or not
-  s+=`<path d="${rrect(m.cx,m.cy,m.W,m.cap,m.rO)}" fill="none" stroke="${k}" stroke-width="2.5" stroke-opacity=".5"/>`;
-  s+=`<path d="${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}" fill="none" stroke="${k}" stroke-width="2" stroke-opacity=".35"/>`;
-  s+=`<path d="${rrect(m.cx,m.yM,m.W,m.sh,(m.sh/2)*GRID.corner)}" fill="none" stroke="${k}" stroke-width="1.6" stroke-opacity=".3" stroke-dasharray="4 6"/>`;
-  // corner zones (round ↔ square surfaces)
-  const cz=(x,y)=>`<rect x="${R(x)}" y="${R(y)}" width="${R(m.rO)}" height="${R(m.rO)}" fill="none" stroke="${k}" stroke-width="1.4" stroke-opacity=".3" stroke-dasharray="4 5"/>`;
-  s+=cz(m.sb,m.cap-m.rO)+cz(m.sb+m.W-m.rO,m.cap-m.rO)+cz(m.sb,0)+cz(m.sb+m.W-m.rO,0);
+  const m=M(), g=getVar('--grid'), k=getVar('--gridkey'), sb=m.sb,W=m.W,cap=m.cap,sv=m.sv,sh=m.sh,xC=m.xC,yM=m.yM; let s='';
+  // every stroke EDGE is a guide line (so every surface between them is visible)
+  const vx=[sb, sb+sv, xC-sv/2, xC+sv/2, sb+W-sv, sb+W];
+  const hy=[0, sh, yM-sh/2, yM+sh/2, cap-sh, cap];
+  for(const x of vx) s+=`<line x1="${R(x)}" y1="-28" x2="${R(x)}" y2="${R(cap+28)}" stroke="${g}" stroke-width="1.6" stroke-dasharray="5 8"/>`;
+  for(const y of hy) s+=`<line x1="-10" y1="${R(y)}" x2="${R(m.adv+10)}" y2="${R(y)}" stroke="${g}" stroke-width="1.6" stroke-dasharray="5 8"/>`;
+  // baseline & cap emphasised
+  s+=`<line x1="0" y1="0" x2="${R(m.adv)}" y2="0" stroke="${k}" stroke-width="2" stroke-opacity=".5"/>`;
+  s+=`<line x1="0" y1="${R(cap)}" x2="${R(m.adv)}" y2="${R(cap)}" stroke="${k}" stroke-width="2" stroke-opacity=".5"/>`;
+  // the frame's rounded outline (outer + inner) faint — always visible
+  s+=`<path d="${rrect(m.cx,m.cy,W,cap,m.rO)}" fill="none" stroke="${k}" stroke-width="2.4" stroke-opacity=".45"/>`;
+  s+=`<path d="${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}" fill="none" stroke="${k}" stroke-width="1.8" stroke-opacity=".3"/>`;
   return s;
 }
 
 /* clickable hit areas for the surfaces */
 function hits(){
-  const m=M(); const r=(x,y,w,h,seg)=>`<rect class="hit" x="${R(x)}" y="${R(y)}" width="${R(w)}" height="${R(h)}" data-seg="${seg}"/>`;
+  const m=M(), sb=m.sb,W=m.W,cap=m.cap,sv=m.sv,sh=m.sh,rO=m.rO,xC=m.xC,yM=m.yM;
+  const r=(x,y,w,h,seg)=>`<rect class="hit" x="${R(x)}" y="${R(y)}" width="${R(w)}" height="${R(h)}" data-seg="${seg}"/>`;
   let s='';
-  // corners (paint = square)
-  s+=r(m.sb, m.cap-m.rO, m.rO, m.rO, 'qTL')+r(m.sb+m.W-m.rO, m.cap-m.rO, m.rO, m.rO, 'qTR');
-  s+=r(m.sb, 0, m.rO, m.rO, 'qBL')+r(m.sb+m.W-m.rO, 0, m.rO, m.rO, 'qBR');
-  // frame sides
-  s+=r(m.sb, m.rO, m.sv+8, m.cap-2*m.rO, 'L');
-  s+=r(m.sb+m.W-m.sv-8, m.rO, m.sv+8, m.cap-2*m.rO, 'R');
-  s+=r(m.sb+m.rO, m.cap-m.sh-8, m.W-2*m.rO, m.sh+8, 'T');
-  s+=r(m.sb+m.rO, 0, m.W-2*m.rO, m.sh+8, 'B');
-  // middle bar, two halves (in the counter, clear of the sides)
-  s+=r(m.sb+m.sv, m.yM-80, m.xC-(m.sb+m.sv), 160, 'ML');
-  s+=r(m.xC, m.yM-80, (m.sb+m.W-m.sv)-m.xC, 160, 'MR');
+  // corners (round ↔ square)
+  s+=r(sb,cap-rO,rO,rO,'sTL')+r(sb+W-rO,cap-rO,rO,rO,'sTR')+r(sb,0,rO,rO,'sBL')+r(sb+W-rO,0,rO,rO,'sBR');
+  // frame edges (each half its own surface)
+  s+=r(sb+rO, cap-sh-8, xC-(sb+rO), sh+8, 'tL')+r(xC, cap-sh-8, (sb+W-rO)-xC, sh+8, 'tR');
+  s+=r(sb+rO, 0, xC-(sb+rO), sh+8, 'bL')+r(xC, 0, (sb+W-rO)-xC, sh+8, 'bR');
+  s+=r(sb, yM, sv+8, (cap-rO)-yM, 'lU')+r(sb, rO, sv+8, yM-rO, 'lD');
+  s+=r(sb+W-sv-8, yM, sv+8, (cap-rO)-yM, 'rU')+r(sb+W-sv-8, rO, sv+8, yM-rO, 'rD');
+  // interior — middle bar halves, centre stem halves
+  s+=r(sb+sv, yM-70, xC-(sb+sv), 140, 'mL')+r(xC, yM-70, (sb+W-sv)-xC, 140, 'mR');
+  s+=r(xC-sv/2-10, yM+80, sv+20, (cap-sh)-(yM+80), 'cU')+r(xC-sv/2-10, sh, sv+20, (yM-80)-sh, 'cD');
   return s;
 }
 
@@ -284,6 +306,8 @@ function toggle(seg){
   GLYPHS[cur]=s; render(); renderPicker();
 }
 document.addEventListener('click',e=>{ const h=e.target.closest && e.target.closest('.hit'); if(h) toggle(h.dataset.seg); });
+$('#fillO').addEventListener('click',()=>{ GLYPHS[cur]=FRAME.slice(); render(); renderPicker(); });
+$('#clearL').addEventListener('click',()=>{ GLYPHS[cur]=[]; render(); renderPicker(); });
 
 /* grid controls */
 function syncGrid(){
