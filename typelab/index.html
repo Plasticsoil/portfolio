@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Type Lab — the grid · Yam Liv</title>
-<meta name="description" content="Building an uppercase skeleton one letter at a time. It starts with the O: a rounded-rectangle ring, wider than tall, thick sides, thin top and bottom. The O sets the grid; every new letter is checked against it." />
+<title>Type Lab — the O · Yam Liv</title>
+<meta name="description" content="Determining the O: width, height, corner radius, outer vs inner, and the ratios between them. Fully dimensioned with indexed guides. The counter is a true hole." />
 <meta name="robots" content="noindex" />
 <link rel="icon" href="/favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,106 +13,93 @@
 <style>
   :root{
     --bg:#F8F6F3; --surface:#FFFFFF; --line:#E7E4DE;
-    --ink:#26251E; --muted:#A3A09B; --accent:#FF8FF4; --grid:#C9B7F5; --gridkey:#8E7BD8;
+    --ink:#26251E; --muted:#A3A09B; --accent:#FF8FF4;
+    --grid:#CBBDF2; --gridkey:#7C67CE; --dim:#5B5852;
     --paper:#F8F6F3; --draw:#26251E;
   }
   *,*::before,*::after{ box-sizing:border-box; }
   html,body{ margin:0; padding:0; height:100%; }
-  body{
-    background:var(--bg); color:var(--ink);
+  body{ background:var(--bg); color:var(--ink);
     font-family:"Nimbus Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
-    font-size:13px; -webkit-font-smoothing:antialiased; overflow:hidden;
-  }
+    font-size:13px; -webkit-font-smoothing:antialiased; overflow:hidden; }
   #app{ display:flex; height:100vh; }
 
-  .side{
-    width:320px; flex:none; height:100%; overflow-y:auto;
-    padding:22px 20px 44px; background:var(--bg); border-right:1px solid var(--line);
-  }
+  .side{ width:328px; flex:none; height:100%; overflow-y:auto;
+    padding:22px 20px 44px; background:var(--bg); border-right:1px solid var(--line); }
   .side::-webkit-scrollbar{ width:0; }
   h1{ font-family:"Instrument Serif",serif; font-weight:400; font-size:40px; line-height:0.95;
       margin:0 0 2px; color:var(--muted); letter-spacing:-0.01em; }
   h1 em{ font-style:italic; color:var(--ink); }
   .sub{ color:var(--muted); font-size:11px; margin:0 0 18px; line-height:1.55; }
-  .sec{ margin-bottom:15px; }
+  .sec{ margin-bottom:14px; }
   .lbl{ display:flex; justify-content:space-between; align-items:baseline;
     font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
   .lbl b{ font-weight:400; color:var(--ink); font-variant-numeric:tabular-nums; }
   input[type=range]{ width:100%; accent-color:var(--accent); height:22px; margin:0; cursor:pointer; }
-  input[type=text]{ width:100%; border:1px solid var(--line); border-radius:8px; background:var(--surface);
-    color:var(--ink); padding:9px 11px; font:inherit; font-size:14px; letter-spacing:.1em; text-transform:uppercase; outline:none; }
-  input[type=text]:focus{ border-color:var(--ink); }
   .seg{ display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--surface); }
   .seg button{ flex:1; border:0; background:transparent; padding:8px 4px; font:inherit; font-size:11px;
     color:var(--muted); cursor:pointer; white-space:nowrap; }
   .seg button.on{ background:var(--ink); color:#fff; }
   .note{ font-size:10.5px; color:var(--muted); line-height:1.6; margin-top:4px; }
 
-  .rules{ list-style:none; margin:0; padding:0; }
-  .rules li{ display:flex; gap:8px; padding:8px 0; border-top:1px solid var(--line); font-size:11.5px; line-height:1.45; }
-  .rules li .k{ color:var(--gridkey); font-weight:600; font-variant-numeric:tabular-nums; flex:none; width:26px; }
-  .rules li .v b{ font-variant-numeric:tabular-nums; }
-  .rules li .v span{ color:var(--muted); }
+  .meas{ list-style:none; margin:0; padding:0; }
+  .meas li{ display:flex; gap:9px; padding:7px 0; border-top:1px solid var(--line); font-size:11.5px; line-height:1.4; align-items:baseline; }
+  .meas li .i{ flex:none; width:19px; height:19px; border-radius:50%; background:var(--gridkey); color:#fff;
+    font-size:10px; font-weight:600; display:flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums; }
+  .meas li .n{ color:var(--ink); flex:1; }
+  .meas li .n span{ color:var(--muted); }
+  .meas li .val{ font-variant-numeric:tabular-nums; color:var(--ink); font-weight:600; }
+  .meas li.ratio .i{ background:var(--accent); color:var(--ink); }
 
-  #stage{ flex:1; height:100%; overflow-y:auto; }
-  #stage::-webkit-scrollbar{ width:0; }
-  .hero{ padding:34px 44px 26px; border-bottom:1px solid var(--line); }
-  .hero svg{ display:block; width:100%; height:auto; max-height:58vh; }
-  .rowwrap{ padding:22px 34px 90px; }
-  .rowhead{ display:flex; justify-content:space-between; align-items:center; margin:0 0 14px; }
-  .rowhead .t{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
-  .pill{ display:inline-block; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
-    border:1px solid var(--line); border-radius:20px; padding:2px 9px; }
-  .row{ display:flex; flex-wrap:wrap; gap:14px; }
-  .cell{ background:var(--surface); border:1px solid var(--line); border-radius:12px; width:190px; height:210px;
-    display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
-  .cell svg{ width:88%; height:88%; }
-  .cell .cap{ position:absolute; bottom:6px; right:9px; font-size:10px; color:var(--muted); }
-  .cell.test{ outline:2px solid var(--accent); outline-offset:-2px; }
-  @media (max-width:720px){ #app{ flex-direction:column; } .side{ width:100%; height:auto; border-right:0; border-bottom:1px solid var(--line);} #stage{height:auto;} }
+  #stage{ flex:1; height:100%; display:flex; align-items:center; justify-content:center; padding:24px; }
+  #stage svg{ width:100%; height:100%; }
 </style>
 </head>
 <body>
 <div id="app">
   <aside class="side">
-    <h1>The&nbsp;<em>Grid</em></h1>
-    <p class="sub">Uppercase, built one letter at a time.<br>
-      It starts with the <b>O</b>. The O sets the grid and the rules; every
-      new capital is dropped on the same grid and kept only if it obeys them —
-      otherwise we add a rule.</p>
+    <h1>The&nbsp;<em>O</em></h1>
+    <p class="sub">Determining the O — width, height, corner radius, and the
+      outer-to-inner relationship. Every measure is numbered; the same numbers
+      label the guides. The counter is a true hole (kept a hole by fill index).</p>
 
     <div class="sec">
-      <div class="lbl">O proportion <b><span id="owV">820</span> <span style="color:var(--muted)">/ 744 = <span id="owR">1.10</span>×</span></b></div>
-      <input id="ow" type="range" min="620" max="1040" step="2" value="820">
-      <div class="note">Outer width of the O. Wider than tall is the whole idea.</div>
+      <div class="lbl">① Width <b><span id="owV">820</span></b></div>
+      <input id="ow" type="range" min="560" max="1080" step="2" value="820">
     </div>
     <div class="sec">
-      <div class="lbl">Weight — thin stroke <b><span id="shV">64</span></b></div>
-      <input id="sh" type="range" min="16" max="180" step="1" value="64">
+      <div class="lbl">② Height <b><span id="ohV">640</span></b></div>
+      <input id="oh" type="range" min="480" max="900" step="2" value="640">
+      <div class="note">Cap height. Width ÷ height = the proportion ③.</div>
     </div>
     <div class="sec">
-      <div class="lbl">Contrast — sides ÷ top <b><span id="ctV">1.7</span>×</b></div>
-      <input id="ct" type="range" min="1" max="2.8" step="0.05" value="1.7">
+      <div class="lbl">④ Side stroke <b><span id="svV">109</span></b></div>
+      <input id="sv" type="range" min="16" max="320" step="1" value="109">
     </div>
     <div class="sec">
-      <div class="lbl">Corner <b><span id="coV">1.00</span></b></div>
-      <input id="co" type="range" min="0.12" max="1" step="0.01" value="1">
-      <div class="note">1 = full capsule (stadium ends) · low = boxy.</div>
+      <div class="lbl">⑤ Top / bottom stroke <b><span id="shV">64</span></b></div>
+      <input id="sh" type="range" min="10" max="240" step="1" value="64">
+      <div class="note">④ ÷ ⑤ = contrast ⑥.</div>
     </div>
     <div class="sec">
-      <div class="lbl">Overshoot <b><span id="osV">12</span></b></div>
-      <input id="os" type="range" min="0" max="30" step="1" value="12">
+      <div class="lbl">⑦ Corner radius <b><span id="coV">0.60</span></b></div>
+      <input id="co" type="range" min="0.06" max="1" step="0.01" value="0.6">
+      <div class="note">Share of the shortest half-side. 1 = full capsule.</div>
     </div>
     <div class="sec">
-      <div class="lbl">Side bearing <b><span id="sbV">60</span></b></div>
-      <input id="sb" type="range" min="0" max="160" step="2" value="60">
+      <div class="lbl">⑩ Overshoot <b><span id="osV">12</span></b></div>
+      <input id="os" type="range" min="0" max="34" step="1" value="12">
+    </div>
+    <div class="sec">
+      <div class="lbl">Side bearing <b><span id="sbV">70</span></b></div>
+      <input id="sb" type="range" min="0" max="180" step="2" value="70">
     </div>
 
     <div class="sec">
       <div class="lbl">Guides</div>
       <div class="seg" id="guideSeg">
-        <button data-g="on" class="on">Show grid</button>
-        <button data-g="off">Hide grid</button>
+        <button data-g="on" class="on">Show</button>
+        <button data-g="off">Hide</button>
       </div>
     </div>
     <div class="sec">
@@ -123,45 +110,28 @@
       </div>
     </div>
 
-    <div class="sec" style="margin-top:22px;">
-      <div class="lbl">The rules so far</div>
-      <ul class="rules" id="rules"></ul>
+    <div class="sec" style="margin-top:20px;">
+      <div class="lbl">Measurements</div>
+      <ul class="meas" id="meas"></ul>
     </div>
   </aside>
 
-  <main id="stage">
-    <div class="hero"><svg id="hero" preserveAspectRatio="xMidYMid meet"></svg></div>
-    <div class="rowwrap">
-      <div class="rowhead"><span class="t">On the grid</span><span class="pill" id="count">1 letter</span></div>
-      <div class="sec" style="max-width:340px;margin-bottom:16px;">
-        <div class="lbl">Try a capital against the grid</div>
-        <input id="test" type="text" maxlength="1" placeholder="type A–Z to test">
-        <div class="note">A scratch slot — it doesn't join the set until we agree it fits.</div>
-      </div>
-      <div class="row" id="row"></div>
-    </div>
-  </main>
+  <main id="stage"><svg id="hero" preserveAspectRatio="xMidYMid meet"></svg></main>
 </div>
 
 <script>
 /* ============================================================
-   THE GRID — an uppercase skeleton, grown from the O.
-   ------------------------------------------------------------
-   The O is a rounded-rectangle RING:
-     outer  = rounded rect, width Ow, height cap + 2·overshoot
-     inner  = outer inset by sv on the sides and sh top/bottom
-   Two thicknesses give contrast:
-     sh = thin stroke (top / bottom)     sv = thick stroke (sides) = sh · contrast
-   Everything else we add must sit on this grid or earn a new rule.
-   Metrics (UPM 1000): baseline 0 · cap 720.
+   THE O — a rounded-rectangle ring.
+     outer = rounded rect (① width × ② height, corner ⑦)
+     inner = outer inset by ④ on the sides and ⑤ top/bottom
+   The two contours form ONE path with fill-rule:evenodd, so the
+   counter is a genuine hole — the fill index keeps what's filled
+   filled and what's hollow hollow, whatever we change.
+   Units: UPM 1000, baseline 0, cap = ② .
    ============================================================ */
-const MET = { base:0, cap:720, TOP:820, BOT:-100 };
 const R = n => Math.round(n*10)/10;
+const O = { W:820, Hh:640, sv:109, sh:64, corner:0.60, os:12, sb:70, guides:true, theme:'light' };
 
-const GRID = { Ow:820, sh:64, contrast:1.7, corner:1.0, os:12, sb:60, guides:true, theme:'light' };
-const sv = () => GRID.sh*GRID.contrast;
-
-/* --- geometry --- */
 function arcCubic(cx,cy,rx,ry,a0,a1){
   const d=Math.PI/180; a0*=d; a1*=d;
   let n=Math.max(1,Math.ceil(Math.abs(a1-a0)/(Math.PI/2)));
@@ -183,115 +153,134 @@ function rrect(cx,cy,w,h,r){
   d+=arcCubic(x0+r,y0+r,r,r,180,270);d+=`L ${R(x1-r)} ${R(y0)} `;
   d+=arcCubic(x1-r,y0+r,r,r,270,360);d+=`Z`; return d;
 }
-function disc(cx,cy,r){ return rrect(cx,cy,2*r,2*r,r); }
 
-/* --- the letters we have agreed on. Start with O only. --- */
-const DEF = {};
-DEF['O'] = ()=>{
-  const ops=[], sV=sv(), sH=GRID.sh, os=GRID.os;
-  const w=GRID.Ow, h=MET.cap+2*os, cx=GRID.sb+w/2, cy=MET.cap/2;
-  const rOut=Math.min(w,h)/2*GRID.corner;
-  ops.push({d:rrect(cx,cy,w,h,rOut),k:1});
-  const iw=w-2*sV, ih=h-2*sH, rIn=Math.min(iw,ih)/2*GRID.corner;
-  ops.push({d:rrect(cx,cy,iw,ih,rIn),k:0});
-  return {ops, adv:w+2*GRID.sb, box:{w,h,cx,cy,rOut,iw,ih}};
-};
-
-const ADDED = ['O'];          // grows as we validate letters together
-
-/* ============================================================
-   RENDER
-   ============================================================ */
 const $=s=>document.querySelector(s);
 const getVar=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
-function glyphPaths(ch, ink, paper){
-  const g=DEF[ch]; if(!g) return {inner:'', adv:320, missing:true};
-  const r=g(); let s='';
-  for(const op of r.ops) s+=`<path d="${op.d}" fill="${op.k? ink : paper}"/>`;
-  return {inner:s, adv:r.adv, box:r.box};
+function geom(){
+  const {W,Hh,sv,sh,corner,os,sb}=O;
+  const oh=Hh+2*os;                          // outer height incl. overshoot
+  const cx=sb+W/2, cy=Hh/2;
+  const rOut=Math.min(W,oh)/2*corner;
+  const iw=Math.max(W-2*sv,2), ih=Math.max(oh-2*sh,2);
+  const rIn=Math.min(iw,ih)/2*corner;
+  return {W,Hh,oh,sv,sh,os,sb,cx,cy,rOut,iw,ih,rIn, adv:W+2*sb};
 }
 
-/* grid guides for a glyph of advance `adv` */
-function guides(adv){
-  if(!GRID.guides) return '';
-  const g=getVar('--grid'), key=getVar('--gridkey'), os=GRID.os, sbx=GRID.sb;
-  const line=(y,c,dash)=>`<line x1="0" y1="${R(y)}" x2="${R(adv)}" y2="${R(y)}" stroke="${c}" stroke-width="2.4" ${dash?`stroke-dasharray="6 9"`:''}/>`;
-  const vline=(x,c,dash)=>`<line x1="${R(x)}" y1="${R(MET.BOT)}" x2="${R(x)}" y2="${R(MET.TOP)}" stroke="${c}" stroke-width="2.4" ${dash?`stroke-dasharray="6 9"`:''}/>`;
-  let s='';
-  s+=line(0,key,false);            // baseline
-  s+=line(MET.cap,key,false);      // cap
-  s+=line(-os,g,true); s+=line(MET.cap+os,g,true);  // overshoot
-  s+=line(MET.cap/2,g,true);       // half
-  s+=vline(sbx,g,true); s+=vline(adv-sbx,g,true);   // O extents / side bearings
-  s+=vline(adv/2,g,true);          // centre
-  return s;
+/* screen-space frame around the drawing */
+const PADX=210, PADY=70;
+function frame(g){
+  const fontTop=g.Hh+g.os+40, fontBot=-g.os-150;
+  return {
+    fontTop, fontBot,
+    vbW: g.adv+2*PADX, vbH:(fontTop-fontBot)+2*PADY,
+    X:x=>PADX+x, Y:y=>PADY+(fontTop-y)
+  };
 }
 
-function svgFor(ch, w, h, ink, paper, withGuides){
-  const gp=glyphPaths(ch, ink, paper);
-  const adv=gp.adv;
-  const pad=90;                              // breathing room around the cell
-  const vbW=adv+pad*2, vbH=(MET.TOP-MET.BOT)+pad*2;
-  let inner=`<g transform="translate(${pad},${pad})">`;
-  if(withGuides) inner+=`<g transform="translate(0,${MET.TOP}) scale(1,-1)">${guides(adv)}</g>`;
-  inner+=`<g transform="translate(0,${MET.TOP}) scale(1,-1)">${gp.inner}</g></g>`;
-  return `<svg ${w?`width="${w}"`:''} viewBox="0 0 ${R(vbW)} ${R(vbH)}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="background:${paper}">${inner}</svg>`;
-}
+function heroSVG(){
+  const g=geom(), f=frame(g);
+  const ink   = O.theme==='light'?getVar('--draw'):getVar('--paper');
+  const paper = O.theme==='light'?getVar('--paper'):getVar('--draw');
+  const gc=getVar('--grid'), key=getVar('--gridkey'), dimc=getVar('--dim');
 
-function render(){
-  const ink   = GRID.theme==='light' ? getVar('--draw') : getVar('--paper');
-  const paper = GRID.theme==='light' ? getVar('--paper') : getVar('--draw');
-  // hero: the O
-  $('#hero').outerHTML = svgFor('O', 0, 0, ink, paper, GRID.guides).replace('<svg','<svg id="hero"');
-  $('#hero').closest('.hero').style.background = paper;
-
-  // row: added letters + optional test slot
-  const cellPaper = GRID.theme==='light' ? getVar('--surface') : getVar('--draw');
-  let html='';
-  for(const ch of ADDED)
-    html+=`<div class="cell">${svgFor(ch,0,0,ink,cellPaper,GRID.guides)}<span class="cap">${ch}</span></div>`;
-  const t=($('#test').value||'').toUpperCase().slice(0,1);
-  if(t && /[A-Z]/.test(t)){
-    const miss = !DEF[t];
-    html+=`<div class="cell test">${miss?tofu(cellPaper):svgFor(t,0,0,ink,cellPaper,GRID.guides)}<span class="cap">${t}${miss?' · not defined yet':''}</span></div>`;
+  /* ---- geometric layer (font coords, y-up) ---- */
+  const flip=`translate(${PADX},${PADY+f.fontTop}) scale(1,-1)`;
+  let geoLayer='';
+  if(O.guides){
+    const hl=(y,c,d)=>`<line x1="0" y1="${R(y)}" x2="${R(g.adv)}" y2="${R(y)}" stroke="${c}" stroke-width="2" ${d?'stroke-dasharray="5 8"':''}/>`;
+    const vl=(x,c,d)=>`<line x1="${R(x)}" y1="${R(f.fontBot)}" x2="${R(x)}" y2="${R(f.fontTop)}" stroke="${c}" stroke-width="2" ${d?'stroke-dasharray="5 8"':''}/>`;
+    geoLayer+=hl(0,key,false)+hl(g.Hh,key,false);                 // baseline, cap
+    geoLayer+=hl(-g.os,gc,true)+hl(g.Hh+g.os,gc,true);            // overshoot
+    geoLayer+=hl(g.Hh/2,gc,true);                                 // half
+    geoLayer+=vl(g.sb,gc,true)+vl(g.sb+g.W,gc,true)+vl(g.cx,gc,true);
+    // outer & inner construction boxes
+    geoLayer+=`<rect x="${R(g.sb)}" y="${R(-g.os)}" width="${R(g.W)}" height="${R(g.oh)}" fill="none" stroke="${gc}" stroke-width="2" stroke-dasharray="4 7"/>`;
+    geoLayer+=`<rect x="${R(g.cx-g.iw/2)}" y="${R(g.cy-g.ih/2)}" width="${R(g.iw)}" height="${R(g.ih)}" fill="none" stroke="${gc}" stroke-width="2" stroke-dasharray="4 7"/>`;
+    // corner construction circles (top-left outer & inner)
+    const ocx=g.sb+g.rOut, ocy=g.Hh+g.os-g.rOut;
+    const icx=g.cx-g.iw/2+g.rIn, icy=g.cy+g.ih/2-g.rIn;
+    geoLayer+=`<circle cx="${R(ocx)}" cy="${R(ocy)}" r="${R(g.rOut)}" fill="none" stroke="${key}" stroke-width="1.6" stroke-dasharray="3 6"/>`;
+    geoLayer+=`<line x1="${R(ocx)}" y1="${R(ocy)}" x2="${R(g.sb)}" y2="${R(ocy)}" stroke="${key}" stroke-width="1.6"/>`;
+    geoLayer+=`<circle cx="${R(icx)}" cy="${R(icy)}" r="${R(g.rIn)}" fill="none" stroke="${key}" stroke-width="1.4" stroke-dasharray="3 6"/>`;
+    geoLayer+=`<line x1="${R(icx)}" y1="${R(icy)}" x2="${R(icx-g.rIn)}" y2="${R(icy)}" stroke="${key}" stroke-width="1.4"/>`;
   }
-  $('#row').innerHTML=html;
-  $('#count').textContent = ADDED.length+(ADDED.length===1?' letter':' letters');
-  renderRules();
-}
-function tofu(paper){ return `<svg viewBox="0 0 100 100"><rect x="26" y="18" width="48" height="64" fill="none" stroke="var(--muted)" stroke-width="3" stroke-dasharray="5 5"/></svg>`; }
+  // the O ring — one path, even-odd → real hole
+  const ring=`<path d="${rrect(g.cx,g.cy,g.W,g.oh,g.rOut)} ${rrect(g.cx,g.cy,g.iw,g.ih,g.rIn)}" fill-rule="evenodd" fill="${ink}"/>`;
 
-function renderRules(){
-  const sV=Math.round(sv()), ratio=((MET.cap+2*GRID.os)>0?(GRID.Ow/(MET.cap+2*GRID.os)):0).toFixed(2);
-  const rules=[
-    ['R1', `<b>Cap height 720</b>, baseline 0. <span>Uppercase only for now.</span>`],
-    ['R2', `<b>Round overshoot ±${GRID.os}</b>. <span>Round forms cross the cap/baseline so they look aligned.</span>`],
-    ['R3', `<b>O is wider than tall</b> — ${GRID.Ow} × ${MET.cap+2*GRID.os} = <b>${ratio}×</b>.`],
-    ['R4', `<b>Contrast ${GRID.contrast.toFixed(2)}×</b> — sides <b>${sV}</b>, top/bottom <b>${GRID.sh}</b>.`],
-    ['R5', `<b>Corner ${GRID.corner.toFixed(2)}</b> — ${GRID.corner>0.92?'full capsule (stadium ends)':GRID.corner<0.3?'boxy rounded-rect':'rounded rect'}.`],
-    ['R6', `<b>Side bearing ${GRID.sb}</b> each side.`],
+  /* ---- annotation layer (screen coords, upright) ---- */
+  let ann='';
+  const badge=(x,y,n)=>`<circle cx="${R(x)}" cy="${R(y)}" r="14" fill="${key}"/><text x="${R(x)}" y="${R(y)}" fill="#fff" font-size="16" font-weight="600" text-anchor="middle" dominant-baseline="central">${n}</text>`;
+  const tick=(x1,y1,x2,y2)=>`<line x1="${R(x1)}" y1="${R(y1)}" x2="${R(x2)}" y2="${R(y2)}" stroke="${dimc}" stroke-width="1.6"/>`;
+  if(O.guides){
+    // ① width — dim below
+    const yW=f.Y(-g.os)+66;
+    ann+=tick(f.X(g.sb),yW,f.X(g.sb+g.W),yW)
+        +tick(f.X(g.sb),yW-8,f.X(g.sb),yW+8)+tick(f.X(g.sb+g.W),yW-8,f.X(g.sb+g.W),yW+8)
+        +badge(f.X(g.cx),yW,'1');
+    // ② height — dim at right
+    const xH=f.X(g.sb+g.W)+72;
+    ann+=tick(xH,f.Y(0),xH,f.Y(g.Hh))
+        +tick(xH-8,f.Y(0),xH+8,f.Y(0))+tick(xH-8,f.Y(g.Hh),xH+8,f.Y(g.Hh))
+        +badge(xH,f.Y(g.Hh/2),'2');
+    // ④ side stroke — bracket on left wall at mid
+    const yS=f.Y(g.cy);
+    ann+=tick(f.X(g.sb),yS,f.X(g.sb+g.sv),yS)
+        +tick(f.X(g.sb),yS-7,f.X(g.sb),yS+7)+tick(f.X(g.sb+g.sv),yS-7,f.X(g.sb+g.sv),yS+7)
+        +badge(f.X(g.sb+g.sv)+22,yS,'4');
+    // ⑤ top stroke — bracket on top wall at centre
+    const xT=f.X(g.cx);
+    ann+=tick(xT,f.Y(g.Hh+g.os),xT,f.Y(g.Hh+g.os-g.sh))
+        +tick(xT-7,f.Y(g.Hh+g.os),xT+7,f.Y(g.Hh+g.os))+tick(xT-7,f.Y(g.Hh+g.os-g.sh),xT+7,f.Y(g.Hh+g.os-g.sh))
+        +badge(xT+150,f.Y(g.Hh+g.os-g.sh/2),'5');
+    // ⑦ / ⑧ corner-radius badges near the construction circles
+    ann+=badge(f.X(g.sb+g.rOut*0.5), f.Y(g.Hh+g.os-g.rOut*0.5)-2,'7');
+    ann+=badge(f.X(g.cx-g.iw/2+g.rIn*0.5), f.Y(g.cy+g.ih/2-g.rIn*0.5),'8');
+    // ⑩ overshoot marker at bottom-left
+    ann+=badge(f.X(g.sb)-46, f.Y(-g.os/2),'10');
+  }
+
+  return `<svg viewBox="0 0 ${R(f.vbW)} ${R(f.vbH)}" preserveAspectRatio="xMidYMid meet"
+      xmlns="http://www.w3.org/2000/svg" style="background:${paper}">
+      <g transform="${flip}">${geoLayer}${ring}</g>${ann}</svg>`;
+}
+
+function renderMeas(){
+  const g=geom();
+  const ratio=(g.W/g.Hh).toFixed(3), contrast=(g.sv/g.sh).toFixed(2);
+  const items=[
+    ['1','Width <span>outer</span>', g.W],
+    ['2','Height <span>cap</span>', g.Hh],
+    ['3','Proportion <span>①÷②</span>', ratio+'×','ratio'],
+    ['4','Side stroke <span>thick</span>', g.sv],
+    ['5','Top / bottom <span>thin</span>', g.sh],
+    ['6','Contrast <span>④÷⑤</span>', contrast+'×','ratio'],
+    ['7','Outer corner r', Math.round(g.rOut)],
+    ['8','Inner corner r', Math.round(g.rIn)],
+    ['9','Counter <span>inner ⑦÷② height</span>', (g.ih/g.oh).toFixed(2),'ratio'],
+    ['10','Overshoot', g.os],
   ];
-  $('#rules').innerHTML = rules.map(([k,v])=>`<li><span class="k">${k}</span><span class="v">${v}</span></li>`).join('');
+  $('#meas').innerHTML=items.map(([i,n,v,cls])=>
+    `<li class="${cls||''}"><span class="i">${i}</span><span class="n">${n}</span><span class="val">${v}</span></li>`).join('');
 }
 
-/* ---- controls ---- */
-function bind(id,key,out,fmt,after){
-  const el=$('#'+id);
-  el.addEventListener('input',()=>{ GRID[key]=parseFloat(el.value); if(out)$(out).textContent=fmt(GRID[key]); after&&after(); render(); });
-}
-bind('ow','Ow','#owV',v=>v.toFixed(0),()=>{ $('#owR').textContent=(GRID.Ow/(MET.cap+2*GRID.os)).toFixed(2); });
+function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"'); renderMeas(); }
+
+/* controls */
+function bind(id,key,out,fmt){ const el=$('#'+id);
+  el.addEventListener('input',()=>{ O[key]=parseFloat(el.value); if(out)$(out).textContent=fmt(O[key]); render(); }); }
+bind('ow','W','#owV',v=>v.toFixed(0));
+bind('oh','Hh','#ohV',v=>v.toFixed(0));
+bind('sv','sv','#svV',v=>v.toFixed(0));
 bind('sh','sh','#shV',v=>v.toFixed(0));
-bind('ct','contrast','#ctV',v=>v.toFixed(2));
 bind('co','corner','#coV',v=>v.toFixed(2));
-bind('os','os','#osV',v=>v.toFixed(0),()=>{ $('#owR').textContent=(GRID.Ow/(MET.cap+2*GRID.os)).toFixed(2); });
+bind('os','os','#osV',v=>v.toFixed(0));
 bind('sb','sb','#sbV',v=>v.toFixed(0));
-$('#test').addEventListener('input',render);
 $('#guideSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
-  [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); GRID.guides=b.dataset.g==='on'; render(); });
+  [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); O.guides=b.dataset.g==='on'; render(); });
 $('#themeSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
   [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
-  GRID.theme=b.dataset.t; document.documentElement.setAttribute('data-theme',GRID.theme); render(); });
+  O.theme=b.dataset.t; document.documentElement.setAttribute('data-theme',O.theme); render(); });
 
 render();
 </script>
