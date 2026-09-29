@@ -141,14 +141,21 @@ function arcCubic(cx,cy,rx,ry,a0,a1){
     s+=`C ${R(c1x)} ${R(c1y)} ${R(c2x)} ${R(c2y)} ${R(ex)} ${R(ey)} `; a=b; px=ex; py=ey; }
   return s;
 }
-function rrect(cx,cy,w,h,r){
-  r=Math.max(0,Math.min(r,w/2,h/2));
-  const x0=cx-w/2,x1=cx+w/2,y0=cy-h/2,y1=cy+h/2;
-  let d=`M ${R(x1)} ${R(y0+r)} L ${R(x1)} ${R(y1-r)} `;
-  d+=arcCubic(x1-r,y1-r,r,r,0,90);   d+=`L ${R(x0+r)} ${R(y1)} `;
-  d+=arcCubic(x0+r,y1-r,r,r,90,180); d+=`L ${R(x0)} ${R(y0+r)} `;
-  d+=arcCubic(x0+r,y0+r,r,r,180,270);d+=`L ${R(x1-r)} ${R(y0)} `;
-  d+=arcCubic(x1-r,y0+r,r,r,270,360);d+=`Z`; return d;
+function rrect(cx,cy,w,h,r){ return rrect4(cx,cy,w,h,r,r,r,r); }
+/* rounded rect with an independent radius per corner (0 = square corner) */
+function rrect4(cx,cy,w,h,rTL,rTR,rBR,rBL){
+  const mx=Math.min(w,h)/2, c=v=>Math.max(0,Math.min(v,mx));
+  rTL=c(rTL); rTR=c(rTR); rBR=c(rBR); rBL=c(rBL);
+  const x0=cx-w/2,x1=cx+w/2,y0=cy-h/2,y1=cy+h/2;   // font coords, y up (y1 = top)
+  let d=`M ${R(x1)} ${R(y0+rBR)} L ${R(x1)} ${R(y1-rTR)} `;
+  d+= rTR>0 ? arcCubic(x1-rTR,y1-rTR,rTR,rTR,0,90)   : `L ${R(x1)} ${R(y1)} `;
+  d+=`L ${R(x0+rTL)} ${R(y1)} `;
+  d+= rTL>0 ? arcCubic(x0+rTL,y1-rTL,rTL,rTL,90,180) : `L ${R(x0)} ${R(y1)} `;
+  d+=`L ${R(x0)} ${R(y0+rBL)} `;
+  d+= rBL>0 ? arcCubic(x0+rBL,y0+rBL,rBL,rBL,180,270): `L ${R(x0)} ${R(y0)} `;
+  d+=`L ${R(x1-rBR)} ${R(y0)} `;
+  d+= rBR>0 ? arcCubic(x1-rBR,y0+rBR,rBR,rBR,270,360): `L ${R(x1)} ${R(y0)} `;
+  d+=`Z`; return d;
 }
 
 /* shared metrics */
@@ -166,16 +173,17 @@ function paint(segs, ink, paper){
   const m=M(); let s='';
   const frame=['L','R','T','B'].filter(k=>segs.includes(k));
   if(frame.length){
-    s+=`<path d="${rrect(m.cx,m.cy,m.W,m.cap,m.rO)} ${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}" fill-rule="evenodd" fill="${ink}"/>`;
+    const q=k=>segs.includes(k)?0:m.rO;   // a painted corner surface = square (radius 0)
+    s+=`<path d="${rrect4(m.cx,m.cy,m.W,m.cap, q('qTL'),q('qTR'),q('qBR'),q('qBL'))} ${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}" fill-rule="evenodd" fill="${ink}"/>`;
     const carve=(x,y,w,h)=>{ s+=`<rect x="${R(x)}" y="${R(y)}" width="${R(w)}" height="${R(h)}" fill="${paper}"/>`; };
     if(!segs.includes('T')) carve(m.sb-4, m.cap-m.rO, m.W+8, m.rO+6);
     if(!segs.includes('B')) carve(m.sb-4, -6, m.W+8, m.rO+6);
     if(!segs.includes('L')) carve(m.sb-6, -6, m.rO+6, m.cap+12);
     if(!segs.includes('R')) carve(m.sb+m.W-m.rO, -6, m.rO+6, m.cap+12);
   }
-  if(segs.includes('M')){ // middle bar (thin), rounded ends
-    s+=`<path d="${rrect(m.cx, m.yM, m.W, m.sh, (m.sh/2)*GRID.corner)}" fill="${ink}"/>`;
-  }
+  const bc=(m.sh/2)*GRID.corner;          // middle bar, sliceable in two halves
+  if(segs.includes('ML')) s+=`<path d="${rrect4(m.cx-m.W/4, m.yM, m.W/2, m.sh, bc,0,0,bc)}" fill="${ink}"/>`;
+  if(segs.includes('MR')) s+=`<path d="${rrect4(m.cx+m.W/4, m.yM, m.W/2, m.sh, 0,bc,bc,0)}" fill="${ink}"/>`;
   return s;
 }
 
@@ -186,10 +194,13 @@ function skeleton(){
   const vl=(x)=>`<line x1="${R(x)}" y1="-30" x2="${R(x)}" y2="${R(m.cap+30)}" stroke="${g}" stroke-width="2" stroke-dasharray="5 8"/>`;
   s+=hl(0,false)+hl(m.cap,false)+hl(m.yM,true);
   s+=vl(m.sb)+vl(m.sb+m.W)+vl(m.xC);
-  // the frame outline (outer + inner) faint
+  // the frame outline (outer + inner) faint — always visible, painted or not
   s+=`<path d="${rrect(m.cx,m.cy,m.W,m.cap,m.rO)}" fill="none" stroke="${k}" stroke-width="2.5" stroke-opacity=".5"/>`;
   s+=`<path d="${rrect(m.cx,m.cy,m.iw,m.ih,m.rI)}" fill="none" stroke="${k}" stroke-width="2" stroke-opacity=".35"/>`;
   s+=`<path d="${rrect(m.cx,m.yM,m.W,m.sh,(m.sh/2)*GRID.corner)}" fill="none" stroke="${k}" stroke-width="1.6" stroke-opacity=".3" stroke-dasharray="4 6"/>`;
+  // corner zones (round ↔ square surfaces)
+  const cz=(x,y)=>`<rect x="${R(x)}" y="${R(y)}" width="${R(m.rO)}" height="${R(m.rO)}" fill="none" stroke="${k}" stroke-width="1.4" stroke-opacity=".3" stroke-dasharray="4 5"/>`;
+  s+=cz(m.sb,m.cap-m.rO)+cz(m.sb+m.W-m.rO,m.cap-m.rO)+cz(m.sb,0)+cz(m.sb+m.W-m.rO,0);
   return s;
 }
 
@@ -197,11 +208,17 @@ function skeleton(){
 function hits(){
   const m=M(); const r=(x,y,w,h,seg)=>`<rect class="hit" x="${R(x)}" y="${R(y)}" width="${R(w)}" height="${R(h)}" data-seg="${seg}"/>`;
   let s='';
-  s+=r(m.sb, m.rO, m.sv+8, m.cap-2*m.rO, 'L');                       // left
-  s+=r(m.sb+m.W-m.sv-8, m.rO, m.sv+8, m.cap-2*m.rO, 'R');            // right
-  s+=r(m.sb+m.rO, m.cap-m.sh-8, m.W-2*m.rO, m.sh+8, 'T');           // top
-  s+=r(m.sb+m.rO, 0, m.W-2*m.rO, m.sh+8, 'B');                      // bottom
-  s+=r(m.sb+m.rO, m.yM-m.sh/2-6, m.W-2*m.rO, m.sh+12, 'M');         // middle bar
+  // corners (paint = square)
+  s+=r(m.sb, m.cap-m.rO, m.rO, m.rO, 'qTL')+r(m.sb+m.W-m.rO, m.cap-m.rO, m.rO, m.rO, 'qTR');
+  s+=r(m.sb, 0, m.rO, m.rO, 'qBL')+r(m.sb+m.W-m.rO, 0, m.rO, m.rO, 'qBR');
+  // frame sides
+  s+=r(m.sb, m.rO, m.sv+8, m.cap-2*m.rO, 'L');
+  s+=r(m.sb+m.W-m.sv-8, m.rO, m.sv+8, m.cap-2*m.rO, 'R');
+  s+=r(m.sb+m.rO, m.cap-m.sh-8, m.W-2*m.rO, m.sh+8, 'T');
+  s+=r(m.sb+m.rO, 0, m.W-2*m.rO, m.sh+8, 'B');
+  // middle bar, two halves (in the counter, clear of the sides)
+  s+=r(m.sb+m.sv, m.yM-80, m.xC-(m.sb+m.sv), 160, 'ML');
+  s+=r(m.xC, m.yM-80, (m.sb+m.W-m.sv)-m.xC, 160, 'MR');
   return s;
 }
 
