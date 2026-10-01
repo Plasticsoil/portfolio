@@ -443,7 +443,7 @@ function renderDrag(){
   }
   if(ddrag && ddrag.src && ddrag.moved){
     const a=cellCenter(+ddrag.src[0],+ddrag.src[1]), t=ddrag.target,
-          end=t?cellCenter(+t[0],+t[1]):(ddrag.p||a), ok=t&&t!==ddrag.src&&sameSize(ddrag.src,t);
+          end=t?cellCenter(+t[0],+t[1]):(ddrag.p||a), ok=t&&t!==ddrag.src;
     let out=`<line x1="${R(a.x)}" y1="${R(a.y)}" x2="${R(end.x)}" y2="${R(end.y)}" stroke="${ok?acc:key}" stroke-width="12" stroke-linecap="round" opacity="${ok?'.9':'.45'}"/>`;
     out+=`<circle cx="${R(a.x)}" cy="${R(a.y)}" r="13" fill="${acc}"/>`;
     if(t){ const b=cellBox(+t[0],+t[1]);
@@ -601,7 +601,7 @@ document.addEventListener('pointerup',e=>{
   if(ddrag){ const d=ddrag; ddrag=null; suppressClick=true; setTimeout(()=>{suppressClick=false;},0);
     try{ $('#heroWrap').releasePointerCapture(d.pid); }catch(_){}
     if(!d.moved){ activeCorner=null; toggle(d.seg); }                       // click → paint the cell
-    else if(d.target && d.target!==d.src && sameSize(d.src,d.target)) toggle(diagId(d.src,d.target));  // drag → diagonal
+    else if(d.target && d.target!==d.src) toggle(diagId(d.src,d.target));    // drag → diagonal (any two cells)
     else renderDrag(); }
 });
 $('#cornerField').addEventListener('input',e=>{ if(!activeCorner)return; const v=parseFloat(e.target.value); if(!isNaN(v)) setCornerRadius(activeCorner,v); });
