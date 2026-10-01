@@ -312,19 +312,21 @@ function outlinePath(segs){
     d+=dd+'Z '; }
   return {d, corners};
 }
-/* a face-to-face diagonal band: its width and ends come from the two cells'
-   own footprints (projected on/across the diagonal), so the stroke "comes out
-   of" each face and its corners set the width. */
+/* a face-to-face diagonal = a parallelogram connecting the two faces' corner
+   points. For each cell take its two corners that are extreme across the
+   diagonal; the four points form the parallelogram. */
+function cellCorner(ci,cj,px,py,sign){   // the cell corner furthest along sign·perpendicular
+  const b=cellBox(ci,cj), pts=[[b.x0,b.y0],[b.x1,b.y0],[b.x1,b.y1],[b.x0,b.y1]];
+  let best=pts[0], bp=-Infinity;
+  for(const p of pts){ const pr=(p[0]*px+p[1]*py)*sign; if(pr>bp){ bp=pr; best=p; } }
+  return best;
+}
 function diagQuad(a,b){
-  const ca=cellCenter(+a[0],+a[1]), cb=cellCenter(+b[0],+b[1]),
-        sa=cellSize(+a[0],+a[1]), sb=cellSize(+b[0],+b[1]);
-  let dx=cb.x-ca.x, dy=cb.y-ca.y, L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
-  const px=-dy, py=dx;                                   // perpendicular
-  const hwA=(Math.abs(sa.w*px)+Math.abs(sa.h*py))/2, hwB=(Math.abs(sb.w*px)+Math.abs(sb.h*py))/2;  // half width
-  const haA=(Math.abs(sa.w*dx)+Math.abs(sa.h*dy))/2, haB=(Math.abs(sb.w*dx)+Math.abs(sb.h*dy))/2;  // half length
-  const ax=ca.x-dx*haA, ay=ca.y-dy*haA, bx=cb.x+dx*haB, by=cb.y+dy*haB;   // extend to each cell's far edge
-  return `M ${R(ax+px*hwA)} ${R(ay+py*hwA)} L ${R(bx+px*hwB)} ${R(by+py*hwB)} `
-       + `L ${R(bx-px*hwB)} ${R(by-py*hwB)} L ${R(ax-px*hwA)} ${R(ay-py*hwA)} Z`;
+  const ca=cellCenter(+a[0],+a[1]), cb=cellCenter(+b[0],+b[1]);
+  let dx=cb.x-ca.x, dy=cb.y-ca.y, L=Math.hypot(dx,dy)||1; const px=-dy/L, py=dx/L;  // perpendicular
+  const Alo=cellCorner(+a[0],+a[1],px,py,-1), Ahi=cellCorner(+a[0],+a[1],px,py,1),
+        Blo=cellCorner(+b[0],+b[1],px,py,-1), Bhi=cellCorner(+b[0],+b[1],px,py,1);
+  return `M ${R(Alo[0])} ${R(Alo[1])} L ${R(Blo[0])} ${R(Blo[1])} L ${R(Bhi[0])} ${R(Bhi[1])} L ${R(Ahi[0])} ${R(Ahi[1])} Z`;
 }
 /* a straight diagonal stroke of thickness t from A to B (square ends) */
 function diagPath(ax,ay,bx,by,t){
