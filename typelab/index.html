@@ -216,8 +216,8 @@ function cellsOf(segs){ return segs.filter(c=>/^c\d\d$/.test(c)); }
 /* corner overrides per vertex "k"+vi+vj:
    "…c"+units = rounded at that radius · "…z" = forced straight (keeps any c as memory) */
 function cornerOverrides(segs){ const o={}; for(const s of segs){
-  let m=/^k(\d\d)c(\d+)$/.exec(s); if(m){ (o['k'+m[1]]=o['k'+m[1]]||{}).val=+m[2]; continue; }
-  m=/^k(\d\d)z$/.exec(s); if(m){ (o['k'+m[1]]=o['k'+m[1]]||{}).straight=true; } } return o; }
+  let m=/^(k\d\d|p-?\d+_-?\d+)c(\d+)$/.exec(s); if(m){ (o[m[1]]=o[m[1]]||{}).val=+m[2]; continue; }
+  m=/^(k\d\d|p-?\d+_-?\d+)z$/.exec(s); if(m){ (o[m[1]]=o[m[1]]||{}).straight=true; } } return o; }
 function grid5(segs){ const {NI,NJ}=gdims(), g=Array.from({length:NI},()=>Array(NJ).fill(false));
   for(const c of cellsOf(segs)){ const i=+c[1], j=+c[2]; if(i<NI&&j<NJ) g[i][j]=true; } return g; }
 
@@ -262,40 +262,98 @@ function simplify(loop){ const n=loop.length, out=[];
     if(ax*by-ay*bx!==0) out.push(c); }
   return out;
 }
-/* the letter outline as one path (evenodd → real holes) + its corner list */
-function outlinePath(segs){
-  const m=M(), Xs=m.Xs, Ys=m.Ys, co=GRID.corner, ci=GRID.cornerIn;
-  let loops=traceLoops(grid5(segs)).map(simplify).filter(l=>l.length>=3);
-  if(!loops.length) return {d:'', corners:[]};
-  const areaOf=l=>{ let A=0; for(let k=0;k<l.length;k++){ const a=l[k],b=l[(k+1)%l.length];
-    A+=Xs[a.vi]*Ys[b.vj]-Xs[b.vi]*Ys[a.vj]; } return A/2; };
-  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;   // bbox of the solid (outer loops)
-  loops.forEach(l=>{ if(areaOf(l)>0) l.forEach(p=>{ const x=Xs[p.vi],y=Ys[p.vj];
-    minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y); }); });
+/* ---- polygon helpers (y-up) for the cells+diagonals union ---- */
+function polyArea(p){ let A=0; for(let i=0;i<p.length;i++){ const a=p[i],b=p[(i+1)%p.length]; A+=a[0]*b[1]-b[0]*a[1]; } return A/2; }
+function ccwPoly(p){ return polyArea(p)>=0 ? p : p.slice().reverse(); }
+function ptInPoly(x,y,poly){ let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){ const xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1];
+    if(((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/((yj-yi)||1e-9)+xi)) inside=!inside; } return inside; }
+function segCross(a,b,c,d){   // interior crossing param t along a→b, or null
+  const rx=b[0]-a[0], ry=b[1]-a[1], sx=d[0]-c[0], sy=d[1]-c[1], den=rx*sy-ry*sx;
+  if(Math.abs(den)<1e-9) return null;
+  const t=((c[0]-a[0])*sy-(c[1]-a[1])*sx)/den, u=((c[0]-a[0])*ry-(c[1]-a[1])*rx)/den;
+  return (t>1e-6&&t<1-1e-6&&u>-1e-6&&u<1+1e-6)?t:null; }
+function ptOnSegT(px,py,a,b){ const dx=b[0]-a[0],dy=b[1]-a[1],L2=dx*dx+dy*dy; if(L2<1e-9)return null;
+  const t=((px-a[0])*dx+(py-a[1])*dy)/L2; if(t<=1e-6||t>=1-1e-6)return null;
+  return (Math.hypot(px-(a[0]+t*dx),py-(a[1]+t*dy))<0.5)?t:null; }
+/* the 4 CCW corner points of a face-to-face diagonal parallelogram */
+function diagPolyPts(a,b){
+  const ca=cellCenter(+a[0],+a[1]), cb=cellCenter(+b[0],+b[1]);
+  let dx=cb.x-ca.x, dy=cb.y-ca.y, L=Math.hypot(dx,dy)||1; const px=-dy/L, py=dx/L;
+  const Alo=cellCorner(+a[0],+a[1],px,py,-1), Ahi=cellCorner(+a[0],+a[1],px,py,1),
+        Blo=cellCorner(+b[0],+b[1],px,py,-1), Bhi=cellCorner(+b[0],+b[1],px,py,1);
+  return ccwPoly([Alo,Blo,Bhi,Ahi]); }
+/* every painted face + diagonal as a CCW polygon */
+function glyphPolys(segs){ const m=M(),Xs=m.Xs,Ys=m.Ys,ps=[];
+  for(const c of cellsOf(segs)){ const i=+c[1],j=+c[2];
+    ps.push([[Xs[i],Ys[j]],[Xs[i+1],Ys[j]],[Xs[i+1],Ys[j+1]],[Xs[i],Ys[j+1]]]); }
+  for(const s of segs) if(/^x\d{4}$/.test(s)) ps.push(diagPolyPts(s.slice(1,3),s.slice(3,5)));
+  return ps; }
+/* union of the polygons → boundary loops ([{x,y}], outer CCW / holes CW) */
+function unionLoops(polys){
+  const frags=[];
+  for(let pi=0;pi<polys.length;pi++){ const poly=polys[pi], n=poly.length;
+    for(let e=0;e<n;e++){ const a=poly[e], b=poly[(e+1)%n], ts=[0,1];
+      for(let qi=0;qi<polys.length;qi++){ if(qi===pi)continue; const q=polys[qi], qn=q.length;
+        for(let f=0;f<qn;f++){ const c=q[f], d=q[(f+1)%qn];
+          const t=segCross(a,b,c,d); if(t!=null) ts.push(t);
+          const tv=ptOnSegT(c[0],c[1],a,b); if(tv!=null) ts.push(tv); } }
+      ts.sort((x,y)=>x-y);
+      const dx=b[0]-a[0], dy=b[1]-a[1], Ln=Math.hypot(dx,dy)||1, rnx=dy/Ln, rny=-dx/Ln;  // right normal
+      for(let k=0;k<ts.length-1;k++){ const t0=ts[k], t1=ts[k+1]; if(t1-t0<1e-4)continue;
+        const tm=(t0+t1)/2, mx=a[0]+dx*tm, my=a[1]+dy*tm, rx=mx+rnx*0.6, ry=my+rny*0.6;
+        let interior=false; for(const q of polys) if(ptInPoly(rx,ry,q)){ interior=true; break; }
+        if(!interior) frags.push([[a[0]+dx*t0,a[1]+dy*t0],[a[0]+dx*t1,a[1]+dy*t1]]); } } }
+  const key=p=>Math.round(p[0]*5)/5+','+Math.round(p[1]*5)/5;
+  const from={}; frags.forEach((f,i)=>{ (from[key(f[0])]=from[key(f[0])]||[]).push(i); });
+  const used=new Array(frags.length).fill(false), loops=[];
+  for(let s=0;s<frags.length;s++){ if(used[s])continue; const loop=[]; let cur=s, guard=0;
+    while(cur!=null && !used[cur] && guard++<50000){ used[cur]=true; const f=frags[cur];
+      loop.push({x:f[0][0],y:f[0][1]});
+      const cand=(from[key(f[1])]||[]).filter(k=>!used[k]); if(!cand.length){ cur=null; break; }
+      const inx=f[1][0]-f[0][0], iny=f[1][1]-f[0][1]; let best=cand[0], bestA=-Infinity;
+      for(const k of cand){ const g=frags[k], ndx=g[1][0]-g[0][0], ndy=g[1][1]-g[0][1];
+        const ang=Math.atan2(inx*ndy-iny*ndx, inx*ndx+iny*ndy); if(ang>bestA){ bestA=ang; best=k; } }
+      cur=best; }
+    if(loop.length>=3) loops.push(loop); }
+  return loops; }
+/* grid-traced loops as {x,y} (used when there are no diagonals) */
+function gridLoops(segs){ const m=M(),Xs=m.Xs,Ys=m.Ys;
+  return traceLoops(grid5(segs)).map(simplify).map(l=>l.map(p=>({x:Xs[p.vi],y:Ys[p.vj]}))).filter(l=>l.length>=3); }
+/* clean a float loop: drop duplicate points and collinear runs */
+function simplifyPts(loop){ const pts=[];
+  for(const p of loop){ const q=pts[pts.length-1]; if(!q||Math.hypot(p.x-q.x,p.y-q.y)>0.4) pts.push(p); }
+  while(pts.length>1 && Math.hypot(pts[0].x-pts[pts.length-1].x,pts[0].y-pts[pts.length-1].y)<0.4) pts.pop();
+  const n=pts.length, out=[];
+  for(let k=0;k<n;k++){ const p=pts[(k-1+n)%n],c=pts[k],q=pts[(k+1)%n];
+    const ax=c.x-p.x,ay=c.y-p.y,bx=q.x-c.x,by=q.y-c.y, den=Math.hypot(ax,ay)*Math.hypot(bx,by)||1;
+    if(Math.abs((ax*by-ay*bx)/den)>0.02) out.push(c); }
+  return out.length>=3?out:pts; }
+/* a grid vertex gets a stable id (k<vi><vj>); other points key on position */
+function vkey(x,y){ const m=M();
+  for(let i=0;i<m.Xs.length;i++) if(Math.abs(x-m.Xs[i])<1)
+    for(let j=0;j<m.Ys.length;j++) if(Math.abs(y-m.Ys[j])<1) return 'k'+i+j;
+  return 'p'+Math.round(x)+'_'+Math.round(y); }
+/* round a set of loops into one path (evenodd → holes) + a corner list */
+function roundLoops(loops, segs){
+  loops=loops.filter(l=>l.length>=3); if(!loops.length) return {d:'',corners:[]};
+  const m=M(), areaOf=l=>{ let A=0; for(let k=0;k<l.length;k++){ const a=l[k],b=l[(k+1)%l.length]; A+=a.x*b.y-b.x*a.y; } return A/2; };
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  loops.forEach(l=>{ if(areaOf(l)>0) l.forEach(p=>{ minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y); }); });
   const ov=cornerOverrides(segs); let d=''; const corners=[];
-  for(const l of loops){ const hole=areaOf(l)<0, n=l.length,
-      V=l.map(p=>({x:Xs[p.vi],y:Ys[p.vj],vi:p.vi,vj:p.vj})), seg=[];
+  for(const V of loops){ const hole=areaOf(V)<0, n=V.length, seg=[];
     for(let k=0;k<n;k++){ const P=V[(k-1+n)%n],C=V[k],N=V[(k+1)%n];
-      const ix=C.x-P.x,iy=C.y-P.y,il=Math.hypot(ix,iy)||1,
-            ox=N.x-C.x,oy=N.y-C.y,ol=Math.hypot(ox,oy)||1,
+      const ix=C.x-P.x,iy=C.y-P.y,il=Math.hypot(ix,iy)||1, ox=N.x-C.x,oy=N.y-C.y,ol=Math.hypot(ox,oy)||1,
             ux=ix/il,uy=iy/il,wx=ox/ol,wy=oy/ol, cross=ux*wy-uy*wx, turnLeft=cross>0;
       const ext=(C.x<=minX+0.5||C.x>=maxX-0.5)&&(C.y<=minY+0.5||C.y>=maxY-0.5);
-      // Each corner is round or straight. Default: a hole corner rounds at the
-      // inner radius, an outer extreme corner at the outer radius, the rest are
-      // straight. Tap toggles; drag or the field sets a custom radius. A custom
-      // value ("c") is remembered even while the corner is forced straight ("z").
-      const id='k'+C.vi+C.vj, defR = hole ? m.rI : ((turnLeft&&ext) ? m.rO : 0);
-      const o=ov[id]||{}, val = o.val!=null ? o.val : defR;
-      const round = o.straight ? false : (o.val!=null ? true : defR>0.5);
-      const maxR=Math.min(il,ol);                    // generous; pair-clamped below
-      // the handle sits just INSIDE the corner, on the ink side (inward bisector)
+      const id=vkey(C.x,C.y), defR = hole ? m.rI : ((turnLeft&&ext)?m.rO:0);
+      const o=ov[id]||{}, val=o.val!=null?o.val:defR, round=o.straight?false:(o.val!=null?true:defR>0.5);
+      const maxR=Math.min(il,ol);
       const nx=-uy-wy, ny=ux+wx, nl=Math.hypot(nx,ny)||1, sgn=hole?-1:1,
             off=Math.min(0.42*Math.min(il,ol), Math.min(m.sv,m.sh,m.sc)*0.7);
       seg.push({C,ux,uy,wx,wy, r:round?Math.min(val,maxR):0, ol, turnLeft, fixed:o.val!=null,
         hx:C.x+sgn*nx/nl*off, hy:C.y+sgn*ny/nl*off, id, round, val:Math.round(val), maxR, hole});
     }
-    // a shared edge can't give its two ends more radius than its own length.
-    // A corner you set yourself keeps its radius; the neighbour gives way first.
     for(let k=0;k<n;k++){ const a=seg[k], b=seg[(k+1)%n], L=a.ol;
       if(a.r+b.r>L){ const ex=a.r+b.r-L;
         if(a.fixed&&!b.fixed) b.r=Math.max(0,b.r-ex);
@@ -307,10 +365,16 @@ function outlinePath(segs){
     let dd='M '+R(B(0).x)+' '+R(B(0).y)+' ';
     for(let k=1;k<=n;k++){ const kk=k%n, s=seg[kk], a=A(kk), b=B(kk);
       dd+='L '+R(a.x)+' '+R(a.y)+' ';
-      if(s.r>0.01){ const sweep=s.turnLeft?1:0;
-        dd+='A '+R(s.r)+' '+R(s.r)+' 0 0 '+sweep+' '+R(b.x)+' '+R(b.y)+' '; } }
+      if(s.r>0.01){ const sweep=s.turnLeft?1:0; dd+='A '+R(s.r)+' '+R(s.r)+' 0 0 '+sweep+' '+R(b.x)+' '+R(b.y)+' '; } }
     d+=dd+'Z '; }
   return {d, corners};
+}
+/* the letter outline: cells+diagonals unioned when a diagonal is present,
+   otherwise the fast grid trace. Every vertex gets a roundable corner. */
+function outlinePath(segs){
+  const hasDiag=segs.some(s=>/^x\d{4}$/.test(s));
+  const loops = hasDiag ? unionLoops(glyphPolys(segs).map(ccwPoly)).map(simplifyPts) : gridLoops(segs);
+  return roundLoops(loops, segs);
 }
 /* a face-to-face diagonal = a parallelogram connecting the two faces' corner
    points. For each cell take its two corners that are extreme across the
@@ -343,20 +407,12 @@ function cellSize(i,j){ const b=cellBox(i,j); return {w:b.x1-b.x0, h:b.y1-b.y0};
 function sameSize(a,b){ const p=cellSize(+a[0],+a[1]), q=cellSize(+b[0],+b[1]);
   return Math.abs(p.w-q.w)<0.5 && Math.abs(p.h-q.h)<0.5; }
 function diagId(a,b){ return a<b ? 'x'+a+b : 'x'+b+a; }   // normalised so A-B == B-A
-/* one surface: outline + diagonals, all fully opaque inside a single group so
-   overlaps composite once — the group opacity is applied to the whole letter */
+/* one surface: cells and diagonals are unioned into a single rounded outline */
 function paint(segs, ink, op){
-  const o=op==null?1:op, m=M(), E=diagEnds();
+  const o=op==null?1:op;
   const {d}=outlinePath(segs);
   let s=`<g fill="${ink}" opacity="${o}">`;
   if(d) s+=`<path d="${d}" fill-rule="evenodd"/>`;
-  // face-to-face diagonals: a band whose width/ends come from the two faces
-  for(const seg of segs) if(/^x\d{4}$/.test(seg)) s+=`<path d="${diagQuad(seg.slice(1,3),seg.slice(3,5))}"/>`;
-  // legacy corner→centre half-diagonals, clipped to the frame
-  let dg=''; for(const k in E) if(segs.includes(k)) dg+=`<path d="${diagPath(E[k][0],E[k][1],m.xC,m.yM,GRID.sd)}"/>`;
-  if(dg){ const cid='dc'+(UID++);
-    s+=`<clipPath id="${cid}"><rect x="${R(m.sb)}" y="0" width="${R(m.W)}" height="${R(m.cap)}"/></clipPath>`;
-    s+=`<g clip-path="url(#${cid})">${dg}</g>`; }
   return s+`</g>`;
 }
 /* proportional metrics: the ink hugs the painted columns, not the O */
@@ -534,7 +590,7 @@ function toggle(seg){ const s=segsOf(cur), i=s.indexOf(seg);
 }
 let hoverCell=null, hoverEl=null, cdrag=null, ddrag=null, activeCorner=null, suppressClick=false;
 const pick=e=>e.target.closest && e.target.closest('.hit,.cnr');
-const dropCorner=(s,id)=>s.filter(x=>!(x.slice(0,3)===id && x.length>3));   // drop a vertex's c/z tokens
+const dropCorner=(s,id)=>s.filter(x=>!(x.startsWith(id) && (x[id.length]==='c' || x.slice(id.length)==='z')));  // drop a vertex's c/z tokens
 
 /* tap a corner → toggle round ↔ straight (remembering its last radius) */
 function toggleCorner(id){
