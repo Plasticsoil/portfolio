@@ -62,7 +62,10 @@
   .pk.saved.on{ background:var(--gridkey); border-color:var(--gridkey); color:#fff; }
   .pk .dot{ position:absolute; top:3px; right:3px; width:5px; height:5px; border-radius:50%; background:var(--gridkey); }
   .pk.on .dot{ background:#fff; }
-  #heroWrap{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:14px; }
+  #heroWrap{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:14px; position:relative; }
+  #cornerField{ position:absolute; display:none; width:58px; padding:3px 6px; font-family:var(--mono); font-size:12px;
+    text-align:center; border:1.5px solid var(--accent); border-radius:7px; background:#fff; color:var(--ink); outline:none;
+    box-shadow:0 2px 8px rgba(0,0,0,.12); z-index:5; }
   #heroWrap svg{ width:100%; height:100%; }
   .hit{ fill:transparent; cursor:pointer; }
   .cnr{ cursor:pointer; fill:none; pointer-events:all; stroke-width:2; }
@@ -93,8 +96,6 @@
     <div class="sec"><div class="lbl">Diagonal stroke <input class="num" id="sdN" type="number" min="16" max="320" step="1"></div><input id="sd" type="range" min="16" max="320" step="1"></div>
     <div class="sec"><div class="lbl">Outer corner <input class="num" id="coN" type="number" min="0.06" max="1" step="0.01"></div><input id="co" type="range" min="0.06" max="1" step="0.01"></div>
     <div class="sec"><div class="lbl">Inner corner <input class="num" id="ciN" type="number" min="0.06" max="1" step="0.01"></div><input id="ci" type="range" min="0.06" max="1" step="0.01"></div>
-    <div class="sec"><div class="lbl"><span style="color:#12B5A6">● </span>Extra radius 1 <input class="num" id="r4N" type="number" min="0" max="1" step="0.01"></div><input id="r4" type="range" min="0" max="1" step="0.01"></div>
-    <div class="sec"><div class="lbl"><span style="color:#F4A400">● </span>Extra radius 2 <input class="num" id="r5N" type="number" min="0" max="1" step="0.01"></div><input id="r5" type="range" min="0" max="1" step="0.01"></div>
     <div class="sec"><div class="lbl">Joint round <input class="num" id="jtN" type="number" min="0" max="60" step="1"></div><input id="jt" type="range" min="0" max="60" step="1"></div>
     <div class="sec"><div class="lbl">Side bearing <input class="num" id="sbN" type="number" min="0" max="180" step="2"></div><input id="sb" type="range" min="0" max="180" step="2"></div>
 
@@ -104,13 +105,6 @@
       <button class="mini" id="clearL">Clear</button>
     </div>
     <div class="note" id="segNote"></div>
-    <div class="note" style="display:flex; flex-wrap:wrap; gap:4px 10px; margin-top:8px;">
-      <span><b style="color:#A3A09B">●</b> Straight</span>
-      <span><b style="color:#FF2D9B">●</b> Outer</span>
-      <span><b style="color:#E0157F">●</b> Inner</span>
-      <span><b style="color:#12B5A6">●</b> Extra 1</span>
-      <span><b style="color:#F4A400">●</b> Extra 2</span>
-    </div>
 
     <div class="grp">View</div>
     <div class="sec"><div class="seg" id="skelSeg"><button data-s="on" class="on">Skeleton</button><button data-s="off">Clean</button></div></div>
@@ -126,7 +120,7 @@
 
   <main id="stage">
     <div class="picker" id="picker"></div>
-    <div id="heroWrap"><svg id="hero" preserveAspectRatio="xMidYMid meet"></svg></div>
+    <div id="heroWrap"><svg id="hero" preserveAspectRatio="xMidYMid meet"></svg><input id="cornerField" type="number" step="5" inputmode="numeric" /></div>
     <div id="strip">
       <input id="line" type="text" spellcheck="false" placeholder="type a word to preview" value="OO">
       <svg id="lineSvg" preserveAspectRatio="xMidYMid meet"></svg>
@@ -145,11 +139,7 @@
    same surface. The O is the border cells with an open middle.
    ============================================================ */
 const R = n => Math.round(n*10)/10;
-const GRID = { W:600, Hh:800, sv:140, sh:70, sc:44, sd:120, corner:0.5, cornerIn:1, r4:0.25, r5:0.85, sb:24, joint:0, skel:true, theme:'light' };
-/* the radius presets a corner can cycle through, in order (index 0..4):
-   0 Straight · 1 Outer · 2 Inner · 3 Extra-1 · 4 Extra-2 */
-const RADNAMES=['Straight','Outer','Inner','Extra 1','Extra 2'];
-const RADCOL=['#A3A09B','#FF2D9B','#E0157F','#12B5A6','#F4A400'];
+const GRID = { W:600, Hh:800, sv:140, sh:70, sc:44, sd:120, corner:0.5, cornerIn:1, sb:24, joint:0, skel:true, theme:'light' };
 /* Shape-builder model. Six vertical guides × six horizontal guides cut a
    5×5 grid of cells (ids "cIJ", column i / row j, 0..4). The material —
    the exact O ring plus a middle bar and a centre stem — is clipped to the
@@ -159,7 +149,7 @@ function gdims(){ const m=M(); return {NI:m.Xs.length-1, NJ:m.Ys.length-1}; }
 function borderCells(){ const {NI,NJ}=gdims(), a=[];
   for(let i=0;i<NI;i++)for(let j=0;j<NJ;j++) if(i===0||i===NI-1||j===0||j===NJ-1) a.push('c'+i+j); return a; }
 const GLYPHS = {};   // seeded with a demo O on first ever visit; otherwise only the SAVED bank loads
-const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const ALPHA=[...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', ...'0123456789'];
 let cur='O', dbNS=null, saved={}, userTouched=false;
 
 /* geometry */
@@ -219,11 +209,11 @@ function M(){
    ------------------------------------------------------------------ */
 let UID=0;
 function cellsOf(segs){ return segs.filter(c=>/^c\d\d$/.test(c)); }
-/* corner overrides: preset "k"+vi+vj+idx (e.g. "k323"), or custom radius
-   "k"+vi+vj+"c"+units (e.g. "k32c40" = vertex 3,2 at radius 40) */
+/* corner overrides per vertex "k"+vi+vj:
+   "…c"+units = rounded at that radius · "…z" = forced straight (keeps any c as memory) */
 function cornerOverrides(segs){ const o={}; for(const s of segs){
-  let m=/^k(\d\d)c(\d+)$/.exec(s); if(m){ o['k'+m[1]]={type:'c', val:+m[2]}; continue; }
-  m=/^k(\d\d)(\d)$/.exec(s); if(m) o['k'+m[1]]={type:'i', val:+m[2]}; } return o; }
+  let m=/^k(\d\d)c(\d+)$/.exec(s); if(m){ (o['k'+m[1]]=o['k'+m[1]]||{}).val=+m[2]; continue; }
+  m=/^k(\d\d)z$/.exec(s); if(m){ (o['k'+m[1]]=o['k'+m[1]]||{}).straight=true; } } return o; }
 function grid5(segs){ const {NI,NJ}=gdims(), g=Array.from({length:NI},()=>Array(NJ).fill(false));
   for(const c of cellsOf(segs)){ const i=+c[1], j=+c[2]; if(i<NI&&j<NJ) g[i][j]=true; } return g; }
 
@@ -279,8 +269,6 @@ function outlinePath(segs){
   loops.forEach(l=>{ if(areaOf(l)>0) l.forEach(p=>{ const x=Xs[p.vi],y=Ys[p.vj];
     minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y); }); });
   const ov=cornerOverrides(segs); let d=''; const corners=[];
-  const half=Math.min(m.W,m.cap)/2;   // radius presets by index (0..4)
-  const RAD=[0, m.rO, m.rI, half*GRID.r4, half*GRID.r5];
   for(const l of loops){ const hole=areaOf(l)<0, n=l.length,
       V=l.map(p=>({x:Xs[p.vi],y:Ys[p.vj],vi:p.vi,vj:p.vj})), seg=[];
     for(let k=0;k<n;k++){ const P=V[(k-1+n)%n],C=V[k],N=V[(k+1)%n];
@@ -288,22 +276,24 @@ function outlinePath(segs){
             ox=N.x-C.x,oy=N.y-C.y,ol=Math.hypot(ox,oy)||1,
             ux=ix/il,uy=iy/il,wx=ox/ol,wy=oy/ol, cross=ux*wy-uy*wx, turnLeft=cross>0;
       const ext=(C.x<=minX+0.5||C.x>=maxX-0.5)&&(C.y<=minY+0.5||C.y>=maxY-0.5);
-      // Each corner cycles through the radius presets (tap), or is dragged to a
-      // custom radius. Default preset: hole→Inner, outer extreme→Outer, else
-      // Straight.
-      const id='k'+C.vi+C.vj, def = hole ? 2 : ((turnLeft&&ext) ? 1 : 0);
-      const o=ov[id]; const maxR=Math.min(0.5*il,0.5*ol);
-      let r, idx;
-      if(o && o.type==='c'){ r=Math.min(o.val,maxR); idx=-1; }         // custom radius
-      else { idx=o?o.val:def; r=Math.min(RAD[idx]||0, maxR); }
-      seg.push({C,ux,uy,wx,wy,r,turnLeft});
-      // the handle sits just off the corner on the PAPER side (outside an outer
-      // corner, inside the hole for a counter) — clearer on white, and it still
-      // shows which corner it belongs to when neighbours share a vertex
-      const nx=-uy-wy, ny=ux+wx, nl=Math.hypot(nx,ny)||1, sgn=hole?1:-1,
-            off=Math.min(0.4*Math.min(il,ol), Math.min(m.sv,m.sh)*0.4);
-      corners.push({x:C.x+sgn*nx/nl*off, y:C.y+sgn*ny/nl*off, cx:C.x, cy:C.y, id, idx, def, r, maxR});
+      // Each corner is round or straight. Default: a hole corner rounds at the
+      // inner radius, an outer extreme corner at the outer radius, the rest are
+      // straight. Tap toggles; drag or the field sets a custom radius. A custom
+      // value ("c") is remembered even while the corner is forced straight ("z").
+      const id='k'+C.vi+C.vj, defR = hole ? m.rI : ((turnLeft&&ext) ? m.rO : 0);
+      const o=ov[id]||{}, val = o.val!=null ? o.val : defR;
+      const round = o.straight ? false : (o.val!=null ? true : defR>0.5);
+      const maxR=Math.min(il,ol);                    // generous; pair-clamped below
+      // the handle sits just INSIDE the corner, on the ink side (inward bisector)
+      const nx=-uy-wy, ny=ux+wx, nl=Math.hypot(nx,ny)||1, sgn=hole?-1:1,
+            off=Math.min(0.42*Math.min(il,ol), Math.min(m.sv,m.sh,m.sc)*0.7);
+      seg.push({C,ux,uy,wx,wy, r:round?Math.min(val,maxR):0, ol, turnLeft,
+        hx:C.x+sgn*nx/nl*off, hy:C.y+sgn*ny/nl*off, id, round, val:Math.round(val), maxR, hole});
     }
+    // a shared edge can't give its two ends more radius than its own length
+    for(let k=0;k<n;k++){ const a=seg[k], b=seg[(k+1)%n];
+      if(a.r+b.r>a.ol){ const f=a.ol/(a.r+b.r); a.r*=f; b.r*=f; } }
+    for(const s of seg) corners.push({x:s.hx,y:s.hy,cx:s.C.x,cy:s.C.y,id:s.id,round:s.round,val:s.val,maxR:s.maxR,hole:s.hole});
     const A=k=>({x:seg[k].C.x-seg[k].ux*seg[k].r, y:seg[k].C.y-seg[k].uy*seg[k].r});
     const B=k=>({x:seg[k].C.x+seg[k].wx*seg[k].r, y:seg[k].C.y+seg[k].wy*seg[k].r});
     let dd='M '+R(B(0).x)+' '+R(B(0).y)+' ';
@@ -397,10 +387,12 @@ function hits(){
       s+=`<path class="hit" d="${diagPath(ca.x,ca.y,cb.x,cb.y,dt)}" data-seg="${seg}"/>`; }
     else if(E[seg]){ s+=`<path class="hit" d="${diagPath(E[seg][0],E[seg][1],m.xC,m.yM,dt)}" data-seg="${seg}"/>`; }
   }
-  // a handle on every corner — tap to cycle the preset, drag to set a custom radius
-  const {corners}=outlinePath(segsOf(cur)), rr=Math.max(6,Math.min(m.sv,m.sh)*0.15);
-  for(const c of corners){ const col=c.idx<0?'#26251E':(RADCOL[c.idx]||RADCOL[0]);
-    s+=`<circle class="cnr" cx="${R(c.x)}" cy="${R(c.y)}" r="${R(rr)}" style="stroke:${col};fill:${c.idx===0?'none':col};fill-opacity:.25" data-seg="${c.id}"/>`; }
+  // a handle just inside every corner — tap to toggle round/straight, drag to set its radius.
+  // filled = rounded, hollow = straight; a white backing keeps it legible on the ink.
+  const {corners}=outlinePath(segsOf(cur)), rr=Math.max(6,Math.min(m.sv,m.sh)*0.14);
+  for(const c of corners){
+    s+=`<circle cx="${R(c.x)}" cy="${R(c.y)}" r="${R(rr+1.5)}" fill="#F8F6F3" opacity=".9" pointer-events="none"/>`;
+    s+=`<circle class="cnr${c.id===activeCorner?' sel':''}" cx="${R(c.x)}" cy="${R(c.y)}" r="${R(rr)}" style="stroke:var(--accent);fill:${c.round?'var(--accent)':'none'};fill-opacity:.35" data-seg="${c.id}"/>`; }
   return s;
 }
 
@@ -436,33 +428,11 @@ function updateHover(){
   else if(t==='path')   el.innerHTML=`<path d="${g.getAttribute('d')}" fill="${acc}" opacity=".28"/>`;
   else if(t==='circle') el.innerHTML=`<circle cx="${g.getAttribute('cx')}" cy="${g.getAttribute('cy')}" r="${g.getAttribute('r')}" fill="${acc}" opacity=".5"/>`;
 }
-/* drag handle (on cell hover) + live face-to-face diagonal preview */
+/* live radius line while dragging a corner (the value itself shows in the field) */
 function renderDrag(){
   const el=document.getElementById('dragLayer'); if(!el) return;
-  const acc=getVar('--accent'), key=getVar('--gridkey');
-  if(cdrag && cdrag.c){          // live radius readout while dragging a corner
-    const c=cdrag.c, t=String(Math.round(cdrag.r)), w=t.length*19+24;
-    el.innerHTML=`<line x1="${R(c.cx)}" y1="${R(c.cy)}" x2="${R(c.x)}" y2="${R(c.y)}" stroke="${acc}" stroke-width="2"/>`
-      +`<g transform="translate(${R(c.x+16)},${R(c.y)}) scale(1,-1)">`
-      +`<rect x="0" y="-23" width="${w}" height="46" rx="9" fill="#26251E"/>`
-      +`<text x="12" y="9" font-family="ui-monospace,monospace" font-size="30" fill="#fff">${t}</text></g>`;
-    return;
-  }
-  if(drag){
-    const c=cellCenter(+drag.src[0],+drag.src[1]), t=drag.target,
-          end=t?cellCenter(+t[0],+t[1]):c, ok=t&&t!==drag.src&&sameSize(drag.src,t);
-    let out=`<line x1="${R(c.x)}" y1="${R(c.y)}" x2="${R(end.x)}" y2="${R(end.y)}" stroke="${ok?acc:key}" stroke-width="10" stroke-linecap="round" opacity="${ok?'.85':'.5'}"/>`;
-    if(t){ const b=cellBox(+t[0],+t[1]);
-      out+=`<rect x="${R(b.x0)}" y="${R(b.y0)}" width="${R(b.x1-b.x0)}" height="${R(b.y1-b.y0)}" fill="none" stroke="${ok?acc:key}" stroke-width="6" opacity=".75"/>`; }
-    out+=`<circle cx="${R(c.x)}" cy="${R(c.y)}" r="15" fill="${acc}"/>`;
-    el.innerHTML=out; return;
-  }
-  if(hoverCell && /^c\d\d$/.test(hoverCell)){
-    const i=+hoverCell[1], j=+hoverCell[2], c=cellCenter(i,j), sz=cellSize(i,j),
-          r=Math.max(13,Math.min(sz.w,sz.h)*0.24), q=r*0.45;
-    el.innerHTML=`<g class="dh" data-cell="${i}${j}" style="cursor:grab">`
-      +`<circle cx="${R(c.x)}" cy="${R(c.y)}" r="${R(r)}" fill="${acc}" opacity=".92"/>`
-      +`<line x1="${R(c.x-q)}" y1="${R(c.y-q)}" x2="${R(c.x+q)}" y2="${R(c.y+q)}" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/></g>`;
+  if(cdrag && cdrag.c && cdrag.moved){ const c=cdrag.c;
+    el.innerHTML=`<line x1="${R(c.cx)}" y1="${R(c.cy)}" x2="${R(cdrag.hx!=null?cdrag.hx:c.x)}" y2="${R(cdrag.hy!=null?cdrag.hy:c.y)}" stroke="var(--accent)" stroke-width="2"/>`;
   } else el.innerHTML='';
 }
 
@@ -519,72 +489,90 @@ function renderNote(){
   $('#curName').textContent=cur; $('#saveL').textContent=cur;
   const n=segsOf(cur).length;
   $('#segNote').textContent = n
-    ? n+' cells painted. Click a cell to add or cut it. A corner dot: tap to cycle presets, drag to set its radius.'
+    ? n+' cells painted. Click a cell to add or cut it. A corner dot: tap to round/straighten, drag or type to set its radius.'
     : 'Empty. Click cells on the grid to build '+cur+' — or Fill O and cut pieces away.';
 }
-function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"'); updateHover(); renderDrag(); renderNote(); renderLine(); persistLocal(); }
+function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"'); updateHover(); renderDrag(); showField(false); renderNote(); renderLine(); persistLocal(); }
 
-/* toggle a surface (cell / diagonal / corner) on the current letter */
+/* toggle a cell (or existing diagonal) on the current letter */
 function toggle(seg){ const s=segsOf(cur), i=s.indexOf(seg);
   if(i<0) s.push(seg); else s.splice(i,1);
   GLYPHS[cur]=s; render(); renderPicker();
 }
-let hoverCell=null, hoverEl=null, drag=null, cdrag=null, suppressClick=false;
+let hoverCell=null, hoverEl=null, cdrag=null, activeCorner=null, suppressClick=false;
 const pick=e=>e.target.closest && e.target.closest('.hit,.cnr');
-const cellUnder=e=>{ const c=e.target.closest && e.target.closest('.hit'); return (c&&/^c\d\d$/.test(c.dataset.seg))?c.dataset.seg.slice(1):null; };
-/* remove any override (preset or custom) stored for a corner vertex */
-const dropCorner=(s,id)=>s.filter(x=>!(x.slice(0,3)===id && x.length>3));
-/* tap a corner handle → step to the next radius preset */
-function cycleCorner(id){
+const dropCorner=(s,id)=>s.filter(x=>!(x.slice(0,3)===id && x.length>3));   // drop a vertex's c/z tokens
+
+/* tap a corner → toggle round ↔ straight (remembering its last radius) */
+function toggleCorner(id){
   const c=outlinePath(segsOf(cur)).corners.find(x=>x.id===id); if(!c) return;
-  const cur0 = c.idx<0 ? 1 : c.idx;               // a custom corner steps back onto the presets
-  const next=(cur0+1)%RADNAMES.length;
   let s=dropCorner(segsOf(cur),id);
-  if(next!==c.def) s.push(id+next);
-  GLYPHS[cur]=s; render(); renderPicker();
+  if(c.round){ s.push(id+'c'+c.val, id+'z'); activeCorner=null; }                 // → straight (keep memory)
+  else { s.push(id+'c'+(c.val>0?c.val:Math.round(M().rO))); activeCorner=id; }    // → round
+  GLYPHS[cur]=s; render(); renderPicker(); showField(true);
 }
-/* set a custom radius (in units) on a corner */
-function setCornerRadius(id,val){ let s=dropCorner(segsOf(cur),id); s.push(id+'c'+Math.round(val)); GLYPHS[cur]=s; render(); }
-/* pointer → font-space point, using the flipped group's matrix */
+/* explicit radius from the field or a drag. 0 → straight */
+function setCornerRadius(id,val){ val=Math.max(0,Math.round(val));
+  let s=dropCorner(segsOf(cur),id); s.push(val>0 ? id+'c'+val : id+'z');
+  GLYPHS[cur]=s; render(); }
+/* pointer → font-space point via the flipped group's matrix */
 function toFont(e){ const g=document.getElementById('flipG'), svg=document.getElementById('hero'); if(!g||!svg) return null;
   const ctm=g.getScreenCTM(); if(!ctm) return null; const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY;
   return p.matrixTransform(ctm.inverse()); }
+/* floating editable field beside the active corner */
+function showField(focus){
+  const inp=$('#cornerField'); if(!inp) return;
+  const c=activeCorner && outlinePath(segsOf(cur)).corners.find(x=>x.id===activeCorner);
+  const dot=c && document.querySelector('.cnr[data-seg="'+activeCorner+'"]'), wrap=$('#heroWrap');
+  if(!c || !c.round || !dot || !wrap){ inp.style.display='none'; return; }
+  const dr=dot.getBoundingClientRect(), wr=wrap.getBoundingClientRect();
+  inp.style.display='block';
+  inp.style.left=(dr.left-wr.left+dr.width+6)+'px';
+  inp.style.top =(dr.top-wr.top+dr.height/2-13)+'px';
+  if(document.activeElement!==inp) inp.value=c.val;
+  if(focus){ inp.focus(); inp.select(); }
+}
 
 document.addEventListener('click',e=>{ if(suppressClick){ suppressClick=false; return; }
-  if(e.target.closest && e.target.closest('.cnr')) return;   // corners handled on pointerup
+  if(e.target.closest && (e.target.closest('.cnr')||e.target.id==='cornerField')) return;  // handled elsewhere
+  if(activeCorner){ activeCorner=null; showField(false); }
   const h=pick(e); if(h && h.classList.contains('hit')) toggle(h.dataset.seg); });
-document.addEventListener('mouseover',e=>{
-  if(drag){ const t=cellUnder(e); if(t&&t!==drag.target){ drag.target=t; renderDrag(); } return; }
-  if(cdrag) return;
-  const h=pick(e); if(!h)return; hoverEl=h; if(h.dataset.seg!==hoverCell){ hoverCell=h.dataset.seg; updateHover(); renderDrag(); } });
-document.addEventListener('mouseout',e=>{ if(drag||cdrag)return; const h=pick(e); if(!h)return; hoverCell=null; hoverEl=null; updateHover(); renderDrag(); });
+document.addEventListener('mouseover',e=>{ if(cdrag)return;
+  const h=pick(e); if(!h)return; hoverEl=h; if(h.dataset.seg!==hoverCell){ hoverCell=h.dataset.seg; updateHover(); } });
+document.addEventListener('mouseout',e=>{ if(cdrag)return; const h=pick(e); if(!h)return; hoverCell=null; hoverEl=null; updateHover(); });
 
 document.addEventListener('pointerdown',e=>{
-  const cn=e.target.closest && e.target.closest('.cnr');
-  if(cn){ e.preventDefault(); const id=cn.dataset.seg;
-    const c=outlinePath(segsOf(cur)).corners.find(x=>x.id===id);
-    cdrag={id, c, moved:false, r:c?c.r:0}; renderDrag(); return; }
-  const dh=e.target.closest && e.target.closest('.dh'); if(!dh)return;
-  e.preventDefault(); drag={src:dh.dataset.cell, target:null}; renderDrag(); });
-document.addEventListener('pointermove',e=>{ if(!cdrag||!cdrag.c)return;
-  const p=toFont(e); if(!p)return;
-  let r=Math.hypot(p.x-cdrag.c.cx, p.y-cdrag.c.cy);     // distance from the corner
-  r=Math.round(r/5)*5; r=Math.max(0,Math.min(cdrag.c.maxR,r));   // snap to 5, clamp
-  if(!cdrag.moved && r===cdrag.c.r){ return; }          // ignore tiny jitter before a real drag
-  cdrag.moved=true; cdrag.r=r; setCornerRadius(cdrag.id,r); });   // render() refreshes; label via renderDrag
-document.addEventListener('pointerup',()=>{
-  if(cdrag){ const d=cdrag; cdrag=null; suppressClick=true; setTimeout(()=>{suppressClick=false;},0);
-    if(!d.moved) cycleCorner(d.id); else renderDrag(); return; }
-  if(!drag)return; const d=drag; drag=null; suppressClick=true; setTimeout(()=>{ suppressClick=false; },0);
-  if(d.target && d.target!==d.src && sameSize(d.src,d.target)) toggle(diagId(d.src,d.target));
-  else toggle('c'+d.src);   // pressed the handle without dragging → paint/cut that cell
+  const cn=e.target.closest && e.target.closest('.cnr'); if(!cn)return;
+  e.preventDefault(); const id=cn.dataset.seg;
+  const c=outlinePath(segsOf(cur)).corners.find(x=>x.id===id);
+  cdrag={id, c, moved:false, pid:e.pointerId, sx:e.clientX, sy:e.clientY};
+  try{ $('#heroWrap').setPointerCapture(e.pointerId); }catch(_){}
 });
+document.addEventListener('pointermove',e=>{ if(!cdrag||!cdrag.c)return;
+  if(!cdrag.moved && Math.hypot(e.clientX-cdrag.sx, e.clientY-cdrag.sy)<4) return;   // move threshold
+  const p=toFont(e); if(!p)return; const mm=M();
+  let r=Math.hypot(p.x-cdrag.c.cx, p.y-cdrag.c.cy);
+  const guide=cdrag.c.hole?mm.rI:mm.rO;                      // snap to the pink guide radius
+  if(Math.abs(r-guide) < Math.max(12, mm.W*0.03)) r=Math.round(guide);
+  else r=Math.round(r/5)*5;
+  r=Math.max(0,Math.min(cdrag.c.maxR,r));
+  cdrag.moved=true; cdrag.r=r; cdrag.hx=p.x; cdrag.hy=p.y; activeCorner=cdrag.id;
+  setCornerRadius(cdrag.id,r); showField(false);
+});
+document.addEventListener('pointerup',e=>{
+  if(!cdrag)return; const d=cdrag; cdrag=null; suppressClick=true; setTimeout(()=>{suppressClick=false;},0);
+  try{ $('#heroWrap').releasePointerCapture(d.pid); }catch(_){}
+  if(!d.moved) toggleCorner(d.id);
+  else { activeCorner=d.id; render(); showField(false); }
+});
+$('#cornerField').addEventListener('input',e=>{ if(!activeCorner)return; const v=parseFloat(e.target.value); if(!isNaN(v)) setCornerRadius(activeCorner,v); });
+$('#cornerField').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key==='Escape'){ e.target.blur(); activeCorner=null; showField(false); } });
 $('#fillO').addEventListener('click',()=>{ GLYPHS[cur]=borderCells(); render(); renderPicker(); });
 $('#clearL').addEventListener('click',()=>{ GLYPHS[cur]=[]; render(); renderPicker(); });
 
 /* grid controls */
 function syncGrid(){
-  const map={W:'W',Hh:'Hh',sv:'sv',sh:'sh',sc:'sc',sd:'sd',co:'corner',ci:'cornerIn',r4:'r4',r5:'r5',jt:'joint',sb:'sb'};
+  const map={W:'W',Hh:'Hh',sv:'sv',sh:'sh',sc:'sc',sd:'sd',co:'corner',ci:'cornerIn',jt:'joint',sb:'sb'};
   for(const rid in map){ const key=map[rid], rng=$('#'+rid), num=$('#'+rid+'N'); if(!rng)continue;
     rng.value=Math.min(parseFloat(rng.max),Math.max(parseFloat(rng.min),GRID[key])); num.value=GRID[key]; }
 }
@@ -596,7 +584,7 @@ function bindGrid(rid,key){
   num.addEventListener('input',fn); num.addEventListener('change',fn);
 }
 bindGrid('W','W'); bindGrid('Hh','Hh'); bindGrid('sv','sv'); bindGrid('sh','sh'); bindGrid('sc','sc'); bindGrid('sd','sd');
-bindGrid('co','corner'); bindGrid('ci','cornerIn'); bindGrid('r4','r4'); bindGrid('r5','r5'); bindGrid('jt','joint'); bindGrid('sb','sb');
+bindGrid('co','corner'); bindGrid('ci','cornerIn'); bindGrid('jt','joint'); bindGrid('sb','sb');
 
 $('#picker').addEventListener('click',e=>{ const b=e.target.closest('.pk'); if(!b)return; cur=b.dataset.l; renderPicker(); render(); });
 $('#line').addEventListener('input',()=>{ renderLine(); persistLocal(); });
@@ -607,7 +595,7 @@ $('#themeSeg').addEventListener('click',e=>{ const b=e.target.closest('button');
   GRID.theme=b.dataset.t; document.documentElement.setAttribute('data-theme',GRID.theme); render(); });
 
 /* bank (db + localStorage) */
-const GKEYS=['W','Hh','sv','sh','sc','sd','corner','cornerIn','r4','r5','joint','sb'];
+const GKEYS=['W','Hh','sv','sh','sc','sd','corner','cornerIn','joint','sb'];
 const LS='typelab-skel-v1';
 let localGridLoaded=false;
 function gridObj(){ const o={}; GKEYS.forEach(k=>o[k]=GRID[k]); return o; }
