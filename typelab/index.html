@@ -291,12 +291,16 @@ function outlinePath(segs){
       // the handle sits just INSIDE the corner, on the ink side (inward bisector)
       const nx=-uy-wy, ny=ux+wx, nl=Math.hypot(nx,ny)||1, sgn=hole?-1:1,
             off=Math.min(0.42*Math.min(il,ol), Math.min(m.sv,m.sh,m.sc)*0.7);
-      seg.push({C,ux,uy,wx,wy, r:round?Math.min(val,maxR):0, ol, turnLeft,
+      seg.push({C,ux,uy,wx,wy, r:round?Math.min(val,maxR):0, ol, turnLeft, fixed:o.val!=null,
         hx:C.x+sgn*nx/nl*off, hy:C.y+sgn*ny/nl*off, id, round, val:Math.round(val), maxR, hole});
     }
-    // a shared edge can't give its two ends more radius than its own length
-    for(let k=0;k<n;k++){ const a=seg[k], b=seg[(k+1)%n];
-      if(a.r+b.r>a.ol){ const f=a.ol/(a.r+b.r); a.r*=f; b.r*=f; } }
+    // a shared edge can't give its two ends more radius than its own length.
+    // A corner you set yourself keeps its radius; the neighbour gives way first.
+    for(let k=0;k<n;k++){ const a=seg[k], b=seg[(k+1)%n], L=a.ol;
+      if(a.r+b.r>L){ const ex=a.r+b.r-L;
+        if(a.fixed&&!b.fixed) b.r=Math.max(0,b.r-ex);
+        else if(b.fixed&&!a.fixed) a.r=Math.max(0,a.r-ex);
+        else { const f=L/(a.r+b.r); a.r*=f; b.r*=f; } } }
     for(const s of seg) corners.push({x:s.hx,y:s.hy,cx:s.C.x,cy:s.C.y,id:s.id,round:s.round,val:s.val,maxR:s.maxR,hole:s.hole});
     const A=k=>({x:seg[k].C.x-seg[k].ux*seg[k].r, y:seg[k].C.y-seg[k].uy*seg[k].r});
     const B=k=>({x:seg[k].C.x+seg[k].wx*seg[k].r, y:seg[k].C.y+seg[k].wy*seg[k].r});
@@ -307,6 +311,20 @@ function outlinePath(segs){
         dd+='A '+R(s.r)+' '+R(s.r)+' 0 0 '+sweep+' '+R(b.x)+' '+R(b.y)+' '; } }
     d+=dd+'Z '; }
   return {d, corners};
+}
+/* a face-to-face diagonal band: its width and ends come from the two cells'
+   own footprints (projected on/across the diagonal), so the stroke "comes out
+   of" each face and its corners set the width. */
+function diagQuad(a,b){
+  const ca=cellCenter(+a[0],+a[1]), cb=cellCenter(+b[0],+b[1]),
+        sa=cellSize(+a[0],+a[1]), sb=cellSize(+b[0],+b[1]);
+  let dx=cb.x-ca.x, dy=cb.y-ca.y, L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
+  const px=-dy, py=dx;                                   // perpendicular
+  const hwA=(Math.abs(sa.w*px)+Math.abs(sa.h*py))/2, hwB=(Math.abs(sb.w*px)+Math.abs(sb.h*py))/2;  // half width
+  const haA=(Math.abs(sa.w*dx)+Math.abs(sa.h*dy))/2, haB=(Math.abs(sb.w*dx)+Math.abs(sb.h*dy))/2;  // half length
+  const ax=ca.x-dx*haA, ay=ca.y-dy*haA, bx=cb.x+dx*haB, by=cb.y+dy*haB;   // extend to each cell's far edge
+  return `M ${R(ax+px*hwA)} ${R(ay+py*hwA)} L ${R(bx+px*hwB)} ${R(by+py*hwB)} `
+       + `L ${R(bx-px*hwB)} ${R(by-py*hwB)} L ${R(ax-px*hwA)} ${R(ay-py*hwA)} Z`;
 }
 /* a straight diagonal stroke of thickness t from A to B (square ends) */
 function diagPath(ax,ay,bx,by,t){
@@ -330,11 +348,8 @@ function paint(segs, ink, op){
   const {d}=outlinePath(segs);
   let s=`<g fill="${ink}" opacity="${o}">`;
   if(d) s+=`<path d="${d}" fill-rule="evenodd"/>`;
-  // face-to-face diagonals: a stroke between the centres of two equal cells
-  for(const seg of segs) if(/^x\d{4}$/.test(seg)){
-    const a=seg.slice(1,3), b=seg.slice(3,5), ca=cellCenter(+a[0],+a[1]), cb=cellCenter(+b[0],+b[1]);
-    s+=`<path d="${diagPath(ca.x,ca.y,cb.x,cb.y,GRID.sd)}"/>`;
-  }
+  // face-to-face diagonals: a band whose width/ends come from the two faces
+  for(const seg of segs) if(/^x\d{4}$/.test(seg)) s+=`<path d="${diagQuad(seg.slice(1,3),seg.slice(3,5))}"/>`;
   // legacy corner→centre half-diagonals, clipped to the frame
   let dg=''; for(const k in E) if(segs.includes(k)) dg+=`<path d="${diagPath(E[k][0],E[k][1],m.xC,m.yM,GRID.sd)}"/>`;
   if(dg){ const cid='dc'+(UID++);
@@ -387,9 +402,8 @@ function hits(){
   // existing diagonals get a thin hit along their stroke so you can click one to remove it
   const E=diagEnds(), dt=Math.max(GRID.sd,44);
   for(const seg of segsOf(cur)){
-    if(/^x\d{4}$/.test(seg)){ const a=seg.slice(1,3), b=seg.slice(3,5), ca=cellCenter(+a[0],+a[1]), cb=cellCenter(+b[0],+b[1]);
-      s+=`<path class="hit" d="${diagPath(ca.x,ca.y,cb.x,cb.y,dt)}" data-seg="${seg}"/>`; }
-    else if(E[seg]){ s+=`<path class="hit" d="${diagPath(E[seg][0],E[seg][1],m.xC,m.yM,dt)}" data-seg="${seg}"/>`; }
+    if(/^x\d{4}$/.test(seg)) s+=`<path class="hit" d="${diagQuad(seg.slice(1,3),seg.slice(3,5))}" data-seg="${seg}"/>`;
+    else if(E[seg]) s+=`<path class="hit" d="${diagPath(E[seg][0],E[seg][1],m.xC,m.yM,dt)}" data-seg="${seg}"/>`;
   }
   // a handle just inside every corner — tap to toggle round/straight, drag to set its radius.
   // filled = rounded, hollow = straight; a white backing keeps it legible on the ink.
@@ -442,12 +456,14 @@ function renderDrag(){
     return;
   }
   if(ddrag && ddrag.src && ddrag.moved){
-    const a=cellCenter(+ddrag.src[0],+ddrag.src[1]), t=ddrag.target,
-          end=t?cellCenter(+t[0],+t[1]):(ddrag.p||a), ok=t&&t!==ddrag.src;
-    let out=`<line x1="${R(a.x)}" y1="${R(a.y)}" x2="${R(end.x)}" y2="${R(end.y)}" stroke="${ok?acc:key}" stroke-width="12" stroke-linecap="round" opacity="${ok?'.9':'.45'}"/>`;
-    out+=`<circle cx="${R(a.x)}" cy="${R(a.y)}" r="13" fill="${acc}"/>`;
+    const a=cellCenter(+ddrag.src[0],+ddrag.src[1]), t=ddrag.target, ok=t&&t!==ddrag.src;
+    let out='';
+    if(ok) out+=`<path d="${diagQuad(ddrag.src,t)}" fill="${acc}" opacity=".5"/>`;   // the real band
+    else { const end=ddrag.p||a; out+=`<line x1="${R(a.x)}" y1="${R(a.y)}" x2="${R(end.x)}" y2="${R(end.y)}" stroke="${key}" stroke-width="10" stroke-linecap="round" opacity=".45"/>`; }
+    const ba=cellBox(+ddrag.src[0],+ddrag.src[1]);
+    out+=`<rect x="${R(ba.x0)}" y="${R(ba.y0)}" width="${R(ba.x1-ba.x0)}" height="${R(ba.y1-ba.y0)}" fill="none" stroke="${acc}" stroke-width="5" opacity=".7"/>`;
     if(t){ const b=cellBox(+t[0],+t[1]);
-      out+=`<rect x="${R(b.x0)}" y="${R(b.y0)}" width="${R(b.x1-b.x0)}" height="${R(b.y1-b.y0)}" fill="none" stroke="${ok?acc:key}" stroke-width="6" opacity=".8"/>`; }
+      out+=`<rect x="${R(b.x0)}" y="${R(b.y0)}" width="${R(b.x1-b.x0)}" height="${R(b.y1-b.y0)}" fill="none" stroke="${acc}" stroke-width="5" opacity=".7"/>`; }
     el.innerHTML=out; return;
   }
   el.innerHTML='';
