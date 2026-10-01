@@ -191,10 +191,14 @@ function M(){
   const rI=Math.min(iw,ih)/2*G.cornerIn;
   const sc=Math.max(4,Math.min(G.sc, (yM-sh)*2/3-1));      // centre stroke (small); big = 3×
   const Xs=[sb, sb+sv, xC-sv/2, xC+sv/2, sb+W-sv, sb+W];   // 6 vertical guides → 5 columns
-  // 8 horizontal guides → 7 rows. The middle splits into three equal bands
+  // horizontal guides → rows. The middle splits into three equal bands
   // (lower flank · inner · upper flank): paint the inner alone for the small
-  // centre stroke, or all three for the big one (3×).
-  const Ys=[0, sh, yM-3*sc/2, yM-sc/2, yM+sc/2, yM+3*sc/2, cap-sh, cap];
+  // centre stroke, or all three for the big one (3×). Two extra lines sit at
+  // the counter circles' centres (serif rows for F/E-type terminals).
+  const rc=Math.min(iw,ih)/2*G.cornerIn, gp=12;
+  const serB=Math.max(sh+gp, Math.min(sh+rc, yM-3*sc/2-gp));
+  const serT=Math.min(cap-sh-gp, Math.max(cap-sh-rc, yM+3*sc/2+gp));
+  const Ys=[0, sh, serB, yM-3*sc/2, yM-sc/2, yM+sc/2, yM+3*sc/2, serT, cap-sh, cap];
   return {W,cap,sb,sv,sh,sc,cx,cy,xC,yM,rO,iw,ih,rI,Xs,Ys, adv:W+2*sb};
 }
 
@@ -428,13 +432,31 @@ function updateHover(){
   else if(t==='path')   el.innerHTML=`<path d="${g.getAttribute('d')}" fill="${acc}" opacity=".28"/>`;
   else if(t==='circle') el.innerHTML=`<circle cx="${g.getAttribute('cx')}" cy="${g.getAttribute('cy')}" r="${g.getAttribute('r')}" fill="${acc}" opacity=".5"/>`;
 }
-/* live radius line while dragging a corner (the value itself shows in the field) */
+/* live feedback: the radius line while dragging a corner, or the diagonal
+   preview while dragging face→face */
 function renderDrag(){
   const el=document.getElementById('dragLayer'); if(!el) return;
+  const acc=getVar('--accent'), key=getVar('--gridkey');
   if(cdrag && cdrag.c && cdrag.moved){ const c=cdrag.c;
-    el.innerHTML=`<line x1="${R(c.cx)}" y1="${R(c.cy)}" x2="${R(cdrag.hx!=null?cdrag.hx:c.x)}" y2="${R(cdrag.hy!=null?cdrag.hy:c.y)}" stroke="var(--accent)" stroke-width="2"/>`;
-  } else el.innerHTML='';
+    el.innerHTML=`<line x1="${R(c.cx)}" y1="${R(c.cy)}" x2="${R(cdrag.hx!=null?cdrag.hx:c.x)}" y2="${R(cdrag.hy!=null?cdrag.hy:c.y)}" stroke="${acc}" stroke-width="2"/>`;
+    return;
+  }
+  if(ddrag && ddrag.src && ddrag.moved){
+    const a=cellCenter(+ddrag.src[0],+ddrag.src[1]), t=ddrag.target,
+          end=t?cellCenter(+t[0],+t[1]):(ddrag.p||a), ok=t&&t!==ddrag.src&&sameSize(ddrag.src,t);
+    let out=`<line x1="${R(a.x)}" y1="${R(a.y)}" x2="${R(end.x)}" y2="${R(end.y)}" stroke="${ok?acc:key}" stroke-width="12" stroke-linecap="round" opacity="${ok?'.9':'.45'}"/>`;
+    out+=`<circle cx="${R(a.x)}" cy="${R(a.y)}" r="13" fill="${acc}"/>`;
+    if(t){ const b=cellBox(+t[0],+t[1]);
+      out+=`<rect x="${R(b.x0)}" y="${R(b.y0)}" width="${R(b.x1-b.x0)}" height="${R(b.y1-b.y0)}" fill="none" stroke="${ok?acc:key}" stroke-width="6" opacity=".8"/>`; }
+    el.innerHTML=out; return;
+  }
+  el.innerHTML='';
 }
+/* which cell contains a font-space point */
+function cellAtFont(p){ const m=M(), Xs=m.Xs, Ys=m.Ys;
+  let i=-1,j=-1; for(let a=0;a<Xs.length-1;a++) if(p.x>=Xs[a]&&p.x<Xs[a+1]){ i=a; break; }
+  for(let b=0;b<Ys.length-1;b++) if(p.y>=Ys[b]&&p.y<Ys[b+1]){ j=b; break; }
+  return (i<0||j<0)?null:(''+i+j); }
 
 function renderLine(){
   const m=M();
@@ -499,7 +521,7 @@ function toggle(seg){ const s=segsOf(cur), i=s.indexOf(seg);
   if(i<0) s.push(seg); else s.splice(i,1);
   GLYPHS[cur]=s; render(); renderPicker();
 }
-let hoverCell=null, hoverEl=null, cdrag=null, activeCorner=null, suppressClick=false;
+let hoverCell=null, hoverEl=null, cdrag=null, ddrag=null, activeCorner=null, suppressClick=false;
 const pick=e=>e.target.closest && e.target.closest('.hit,.cnr');
 const dropCorner=(s,id)=>s.filter(x=>!(x.slice(0,3)===id && x.length>3));   // drop a vertex's c/z tokens
 
@@ -536,34 +558,51 @@ function showField(focus){
 document.addEventListener('click',e=>{ if(suppressClick){ suppressClick=false; return; }
   if(e.target.closest && (e.target.closest('.cnr')||e.target.id==='cornerField')) return;  // handled elsewhere
   if(activeCorner){ activeCorner=null; showField(false); }
-  const h=pick(e); if(h && h.classList.contains('hit')) toggle(h.dataset.seg); });
-document.addEventListener('mouseover',e=>{ if(cdrag)return;
+  // a plain click on a diagonal (x..) still removes it; cells toggle on pointerup
+  const h=pick(e); if(h && h.classList.contains('hit') && /^x/.test(h.dataset.seg)) toggle(h.dataset.seg); });
+document.addEventListener('mouseover',e=>{ if(cdrag||ddrag)return;
   const h=pick(e); if(!h)return; hoverEl=h; if(h.dataset.seg!==hoverCell){ hoverCell=h.dataset.seg; updateHover(); } });
-document.addEventListener('mouseout',e=>{ if(cdrag)return; const h=pick(e); if(!h)return; hoverCell=null; hoverEl=null; updateHover(); });
+document.addEventListener('mouseout',e=>{ if(cdrag||ddrag)return; const h=pick(e); if(!h)return; hoverCell=null; hoverEl=null; updateHover(); });
 
 document.addEventListener('pointerdown',e=>{
-  const cn=e.target.closest && e.target.closest('.cnr'); if(!cn)return;
-  e.preventDefault(); const id=cn.dataset.seg;
-  const c=outlinePath(segsOf(cur)).corners.find(x=>x.id===id);
-  cdrag={id, c, moved:false, pid:e.pointerId, sx:e.clientX, sy:e.clientY};
-  try{ $('#heroWrap').setPointerCapture(e.pointerId); }catch(_){}
+  const cn=e.target.closest && e.target.closest('.cnr');
+  if(cn){ e.preventDefault(); const id=cn.dataset.seg;
+    const c=outlinePath(segsOf(cur)).corners.find(x=>x.id===id);
+    cdrag={id, c, moved:false, pid:e.pointerId, sx:e.clientX, sy:e.clientY};
+    try{ $('#heroWrap').setPointerCapture(e.pointerId); }catch(_){} return; }
+  const h=e.target.closest && e.target.closest('.hit'); if(!h)return;
+  const seg=h.dataset.seg;
+  if(/^c\d\d$/.test(seg)){ e.preventDefault();          // a cell → maybe paint, maybe start a diagonal
+    ddrag={src:seg.slice(1), seg, moved:false, target:null, pid:e.pointerId, sx:e.clientX, sy:e.clientY};
+    try{ $('#heroWrap').setPointerCapture(e.pointerId); }catch(_){} }
 });
-document.addEventListener('pointermove',e=>{ if(!cdrag||!cdrag.c)return;
-  if(!cdrag.moved && Math.hypot(e.clientX-cdrag.sx, e.clientY-cdrag.sy)<4) return;   // move threshold
-  const p=toFont(e); if(!p)return; const mm=M();
-  let r=Math.hypot(p.x-cdrag.c.cx, p.y-cdrag.c.cy);
-  const guide=cdrag.c.hole?mm.rI:mm.rO;                      // snap to the pink guide radius
-  if(Math.abs(r-guide) < Math.max(12, mm.W*0.03)) r=Math.round(guide);
-  else r=Math.round(r/5)*5;
-  r=Math.max(0,Math.min(cdrag.c.maxR,r));
-  cdrag.moved=true; cdrag.r=r; cdrag.hx=p.x; cdrag.hy=p.y; activeCorner=cdrag.id;
-  setCornerRadius(cdrag.id,r); showField(false);
+document.addEventListener('pointermove',e=>{
+  if(cdrag&&cdrag.c){
+    if(!cdrag.moved && Math.hypot(e.clientX-cdrag.sx, e.clientY-cdrag.sy)<4) return;
+    const p=toFont(e); if(!p)return; const mm=M();
+    let r=Math.hypot(p.x-cdrag.c.cx, p.y-cdrag.c.cy);
+    const guide=cdrag.c.hole?mm.rI:mm.rO;                      // snap to the pink guide radius
+    if(Math.abs(r-guide) < Math.max(12, mm.W*0.03)) r=Math.round(guide); else r=Math.round(r/5)*5;
+    r=Math.max(0,Math.min(cdrag.c.maxR,r));
+    cdrag.moved=true; cdrag.r=r; cdrag.hx=p.x; cdrag.hy=p.y; activeCorner=cdrag.id;
+    setCornerRadius(cdrag.id,r); showField(false); return;
+  }
+  if(ddrag){
+    if(!ddrag.moved && Math.hypot(e.clientX-ddrag.sx, e.clientY-ddrag.sy)<6) return;
+    const p=toFont(e); if(!p)return; ddrag.p=p; ddrag.moved=true;
+    const t=cellAtFont(p); ddrag.target = (t&&t!==ddrag.src)?t:null;
+    renderDrag();
+  }
 });
 document.addEventListener('pointerup',e=>{
-  if(!cdrag)return; const d=cdrag; cdrag=null; suppressClick=true; setTimeout(()=>{suppressClick=false;},0);
-  try{ $('#heroWrap').releasePointerCapture(d.pid); }catch(_){}
-  if(!d.moved) toggleCorner(d.id);
-  else { activeCorner=d.id; render(); showField(false); }
+  if(cdrag){ const d=cdrag; cdrag=null; suppressClick=true; setTimeout(()=>{suppressClick=false;},0);
+    try{ $('#heroWrap').releasePointerCapture(d.pid); }catch(_){}
+    if(!d.moved) toggleCorner(d.id); else { activeCorner=d.id; render(); showField(false); } return; }
+  if(ddrag){ const d=ddrag; ddrag=null; suppressClick=true; setTimeout(()=>{suppressClick=false;},0);
+    try{ $('#heroWrap').releasePointerCapture(d.pid); }catch(_){}
+    if(!d.moved){ activeCorner=null; toggle(d.seg); }                       // click → paint the cell
+    else if(d.target && d.target!==d.src && sameSize(d.src,d.target)) toggle(diagId(d.src,d.target));  // drag → diagonal
+    else renderDrag(); }
 });
 $('#cornerField').addEventListener('input',e=>{ if(!activeCorner)return; const v=parseFloat(e.target.value); if(!isNaN(v)) setCornerRadius(activeCorner,v); });
 $('#cornerField').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key==='Escape'){ e.target.blur(); activeCorner=null; showField(false); } });
