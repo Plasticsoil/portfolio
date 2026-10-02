@@ -645,7 +645,7 @@ document.addEventListener('pointerdown',e=>{
 });
 document.addEventListener('pointermove',e=>{
   if(cdrag&&cdrag.c){
-    if(!cdrag.moved && Math.hypot(e.clientX-cdrag.sx, e.clientY-cdrag.sy)<4) return;
+    if(!cdrag.moved && Math.hypot(e.clientX-cdrag.sx, e.clientY-cdrag.sy)<11) return;  // ignore tap jitter
     const p=toFont(e); if(!p)return; const mm=M();
     let r=Math.hypot(p.x-cdrag.c.cx, p.y-cdrag.c.cy);
     const guide=cdrag.c.hole?mm.rI:mm.rO;                      // snap to the pink guide radius
@@ -655,7 +655,7 @@ document.addEventListener('pointermove',e=>{
     setCornerRadius(cdrag.id,r); showField(false); return;
   }
   if(ddrag){
-    if(!ddrag.moved && Math.hypot(e.clientX-ddrag.sx, e.clientY-ddrag.sy)<6) return;
+    if(!ddrag.moved && Math.hypot(e.clientX-ddrag.sx, e.clientY-ddrag.sy)<11) return;  // ignore tap jitter
     const p=toFont(e); if(!p)return; ddrag.p=p; ddrag.moved=true;
     const t=cellAtFont(p); ddrag.target = (t&&t!==ddrag.src)?t:null;
     renderDrag();
