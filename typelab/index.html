@@ -593,17 +593,24 @@ function renderNote(){
   $('#curName').textContent=cur; $('#saveL').textContent=cur;
   const n=segsOf(cur).length;
   $('#segNote').textContent = n
-    ? n+' cells painted. Click a cell to add or cut it. A corner dot: tap to round/straighten, drag or type to set its radius.'
+    ? n+' cells painted. Tap a cell to add or cut it; double-tap for its whole row (Shift: column). A corner dot: tap to round/straighten, drag or type its radius.'
     : 'Empty. Click cells on the grid to build '+cur+' — or Fill O and cut pieces away.';
 }
 function render(){ $('#hero').outerHTML=heroSVG().replace('<svg','<svg id="hero"'); updateHover(); renderDrag(); showField(false); renderNote(); renderLine(); persistLocal(); }
 
+/* double-tap a cell → paint its whole row (a bar); Shift+double-tap → its whole
+   column (a stem). If the line is already fully painted, it is cleared instead. */
+function fillLine(seg, byRow){ const i=+seg[1], j=+seg[2], {NI,NJ}=gdims(), s=segsOf(cur), ids=[];
+  if(byRow) for(let a=0;a<NI;a++) ids.push('c'+a+j); else for(let b=0;b<NJ;b++) ids.push('c'+i+b);
+  const all=ids.every(x=>s.includes(x));
+  let out=s.filter(x=>!ids.includes(x)); if(!all) out=out.concat(ids);
+  GLYPHS[cur]=out; render(); renderPicker(); }
 /* toggle a cell (or existing diagonal) on the current letter */
 function toggle(seg){ const s=segsOf(cur), i=s.indexOf(seg);
   if(i<0) s.push(seg); else s.splice(i,1);
   GLYPHS[cur]=s; render(); renderPicker();
 }
-let hoverCell=null, hoverEl=null, cdrag=null, ddrag=null, activeCorner=null, suppressClick=false;
+let hoverCell=null, hoverEl=null, cdrag=null, ddrag=null, activeCorner=null, suppressClick=false, lastTap=null;
 const pick=e=>e.target.closest && e.target.closest('.hit,.cnr');
 const dropCorner=(s,id)=>s.filter(x=>!(x.startsWith(id) && (x[id.length]==='c' || x.slice(id.length)==='z')));  // drop a vertex's c/z tokens
 
@@ -682,7 +689,11 @@ document.addEventListener('pointerup',e=>{
     if(!d.moved) toggleCorner(d.id); else { activeCorner=d.id; render(); showField(false); } return; }
   if(ddrag){ const d=ddrag; ddrag=null; suppressClick=true; setTimeout(()=>{suppressClick=false;},0);
     try{ $('#heroWrap').releasePointerCapture(d.pid); }catch(_){}
-    if(!d.moved){ activeCorner=null; toggle(d.seg); }                       // click → paint the cell
+    if(!d.moved){ activeCorner=null; const now=Date.now();
+      if(lastTap && lastTap.seg===d.seg && now-lastTap.t<360){ lastTap=null;               // double-tap → row (Shift: column)
+        const s0=segsOf(cur), k=s0.indexOf(d.seg); if(k<0) s0.push(d.seg); else s0.splice(k,1);   // undo the first tap's flip
+        GLYPHS[cur]=s0; fillLine(d.seg, !e.shiftKey); }
+      else { lastTap={seg:d.seg,t:now}; toggle(d.seg); } }                  // tap → paint the cell
     else if(d.target && d.target!==d.src) toggle(diagId(d.src,d.target));    // drag → diagonal (any two cells)
     else renderDrag(); }
 });
