@@ -353,11 +353,14 @@ function roundLoops(loops, segs){
             ux=ix/il,uy=iy/il,wx=ox/ol,wy=oy/ol, cross=ux*wy-uy*wx, turnLeft=cross>0;
       const ext=(C.x<=minX+0.5||C.x>=maxX-0.5)&&(C.y<=minY+0.5||C.y>=maxY-0.5);
       const nx=-uy-wy, ny=ux+wx, nl=Math.hypot(nx,ny)||1, sgn=hole?-1:1, bx=sgn*nx/nl, by=sgn*ny/nl;
+      // right-angle corners are the grid's own (a counter, an arch, a notch);
+      // a diagonal junction is acute/obtuse and must not auto-round
+      const perp=Math.abs(ux*wx+uy*wy)<0.15;
       const s={C,ux,uy,wx,wy,il,ol,turnLeft,hole, base:vkey(C.x,C.y), q:(bx>0?1:0)+(by>0?2:0), bx, by,
-        // default: every inner (concave) corner rounds into the counter at the inner
-        // radius — like the O's counter — whether the counter is closed or open;
-        // outer extreme corners round at the outer radius; other convex corners stay square
-        defR: hole ? m.rI : (turnLeft ? (ext?m.rO:0) : m.rI)};
+        // default: a right-angle inner (concave) corner rounds into the counter at the
+        // inner radius — like the O's counter — closed or open; an outer extreme corner
+        // rounds at the outer radius; everything else (incl. diagonal junctions) stays square
+        defR: hole ? (perp?m.rI:0) : (turnLeft ? (ext?m.rO:0) : (perp?m.rI:0))};
       seg.push(s); all.push(s); }
     segsByLoop.push({seg,n}); }
   // two corners on one vertex (a pinch) get distinct ids by quadrant, so each is its own handle
