@@ -89,7 +89,7 @@ export async function onRequestGet(context) {
      page itself behind an overlay that never opens, so it goes straight back
      to the asset server, which has a real index.html waiting at that path. */
   const own = await fetch(new URL(`/projects/${slug}/project.js`, url.origin));
-  if (own.ok && /links*:s*['"]//.test(await own.text())) return next();
+  if (own.ok && /\blink\s*:\s*['"]\//.test(await own.text())) return next();
 
   const page = await fetch(new URL('/index.html', url.origin));
   if (!page.ok) return next();
