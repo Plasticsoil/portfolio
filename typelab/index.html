@@ -352,7 +352,9 @@ function roundLoops(loops, segs){
       const ix=C.x-P.x,iy=C.y-P.y,il=Math.hypot(ix,iy)||1, ox=N.x-C.x,oy=N.y-C.y,ol=Math.hypot(ox,oy)||1,
             ux=ix/il,uy=iy/il,wx=ox/ol,wy=oy/ol, cross=ux*wy-uy*wx, turnLeft=cross>0;
       const ext=(C.x<=minX+0.5||C.x>=maxX-0.5)&&(C.y<=minY+0.5||C.y>=maxY-0.5);
-      const nx=-uy-wy, ny=ux+wx, nl=Math.hypot(nx,ny)||1, sgn=hole?-1:1, bx=sgn*nx/nl, by=sgn*ny/nl;
+      // the handle sits in the corner's own 90° wedge: the ink for an outer corner, the
+      // counter for an inner one — so an inner corner's dot is visibly in the counter corner
+      const nx=-uy-wy, ny=ux+wx, nl=Math.hypot(nx,ny)||1, sgn=turnLeft?1:-1, bx=sgn*nx/nl, by=sgn*ny/nl;
       // right-angle corners are the grid's own (a counter, an arch, a notch);
       // a diagonal junction is acute/obtuse and must not auto-round
       const perp=Math.abs(ux*wx+uy*wy)<0.15;
