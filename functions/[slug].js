@@ -84,6 +84,13 @@ export async function onRequestGet(context) {
   const published = await publishedSlugs(url.origin);
   if (!published || published.indexOf(slug) < 0) return next();
 
+  /* A project that lives on a page of its own (link: '/moji/', '/sphere/',
+     '/skip/') owns its address. Serving the home page there would hide the
+     page itself behind an overlay that never opens, so it goes straight back
+     to the asset server, which has a real index.html waiting at that path. */
+  const own = await fetch(new URL(`/projects/${slug}/project.js`, url.origin));
+  if (own.ok && /link\s*:\s*['"]\//.test(await own.text())) return next();
+
   const page = await fetch(new URL('/index.html', url.origin));
   if (!page.ok) return next();
 
