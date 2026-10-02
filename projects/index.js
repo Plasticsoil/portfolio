@@ -8,12 +8,12 @@
 ════════════════════════════════════════════════════════════════ */
 
 window.PROJECTS_ORDER = [
-  'skip',
   'sphere',
   'moji',
   'shltr',
   'radiant',
   'funtype',         // 5th — soft password-gated (see projects/funtype/project.js)
+  'skip',            // last of the works, before the placeholders
   'placeholder-2',
   'placeholder-3',
   'placeholder-4',
