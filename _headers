@@ -8,3 +8,14 @@
 
 /fun/*.html
   Cache-Control: public, max-age=60, must-revalidate
+
+# Skip's scripts and baked models are edited and re-baked in place under the
+# same names, so they get the same minute of freshness.
+/skip/js/*
+  Cache-Control: public, max-age=60, must-revalidate
+
+/skip/models/*
+  Cache-Control: public, max-age=60, must-revalidate
+
+/skip/
+  Cache-Control: public, max-age=60, must-revalidate

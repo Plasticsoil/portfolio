@@ -18,3 +18,10 @@
 - Outputs of FunType are CC BY-NC 4.0, the tool is all rights reserved;
   the credit line, footer and metadata live in the export bundle and
   `fun/license.html`. Keep them when touching exports.
+- `skip/` is Skip, a page of stone sculptures rendered live with three.js
+  (from a CDN, no build step). Its source of truth is the project folder
+  `Downloads/SKIP` on Yam's machine: `02_Web/` there is copied here as
+  `skip/`. The files in `skip/models/` are baked from `.glb` models by
+  `03_Tools/bake-model.mjs` in that folder; only the models the page shows
+  are copied. Scripts and models keep their names when they change, so
+  `_headers` holds `/skip/js/*` and `/skip/models/*` to a minute.

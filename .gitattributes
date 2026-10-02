@@ -1,0 +1,2 @@
+# Baked models are raw bytes; never treat them as text or touch their line endings.
+*.bin binary

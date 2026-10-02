@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Skip</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="favicon-180.png">
+<meta name="theme-color" content="#000000">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@300&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js" } }
+</script>
+<style>
+  :root {
+    --muted: #A3A09B;
+    --ink: #F8F6F3;
+    --pink: #FF8FF4;
+    --line: #3a3935;
+    --sans: "Nimbus Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --serif: "Instrument Serif", serif;
+    --edge: clamp(16px, 2.4vw, 32px);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #000; color: var(--ink); font: 13px/1.4 var(--sans); }
+  #spacer { height: 100vh; }
+  /* Layers, back to front: the canvas, the grain over it, then everything
+     else. Text and graphics added later go above the grain (z-index 2 or
+     more), so the grain never touches them. */
+  /* The grain is printed on the page itself: grey, still, and it scrolls
+     with the content. */
+  #spacer { position: relative; z-index: 1; pointer-events: none; }
+  #grain { position: absolute; inset: 0; opacity: 0.07; background-size: 220px 220px; }
+  #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; }
+
+  /* Interface: quiet. Square corners, hairline outlines, nothing filled. */
+  button { font: inherit; color: var(--muted); background: none; border: 1px solid transparent; border-radius: 0; padding: 5px 10px; cursor: pointer; }
+  button:hover { color: var(--ink); }
+  button:focus-visible { outline: 1px solid var(--pink); outline-offset: 2px; }
+  #modes, #tip, #mix, #box, #views { z-index: 2; }
+
+  /* The story: two columns of small, light text along the very bottom edge of
+     the screen, fixed there, set as justified blocks at half strength. It is
+     blended by difference with whatever passes underneath, so it darkens over
+     the white stone and stays light over the black, and can always be read.
+     A few lines of script at the end of the page keep the two columns the
+     same height. */
+  #story { position: fixed; z-index: 3; left: 10px; right: 10px; bottom: 9px; max-height: 20vh; overflow: hidden;
+    display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; align-items: end;
+    font: 300 clamp(10px, 0.8vw, 12.5px)/1.6 "Archivo", var(--sans); color: #fff; opacity: 0.5; mix-blend-mode: difference; pointer-events: none; transition: opacity 0.4s; }
+  #story p { margin: 0; text-align: justify; hyphens: auto; text-wrap: pretty; }
+  @media (max-width: 720px) { #story { max-height: 34vh; column-gap: 10px; font-size: 9.5px; } }
+
+  /* The three views beside the Mix stage: a column of framed squares. */
+  #views { position: absolute; display: flex; flex-direction: column; }
+  #views button { flex: 1; padding: 0; border: 1px solid #1d1c1a; margin-bottom: -1px; }
+  #views button:last-child { margin-bottom: 0; }
+  #views button:hover, #views button[aria-pressed="true"] { border-color: var(--muted); position: relative; }
+  #views canvas { display: block; width: 100%; height: 100%; }
+
+  /* The transform box shown around a hovered piece in wireframe view. */
+  #box { position: fixed; left: 0; top: 0; border: 1px solid var(--muted); pointer-events: none; }
+  #box i { position: absolute; width: 7px; height: 7px; margin: -4px 0 0 -4px; background: #000; border: 1px solid var(--ink); }
+  #box i:nth-child(1) { left: 0; top: 0; }      #box i:nth-child(2) { left: 50%; top: 0; }      #box i:nth-child(3) { left: 100%; top: 0; }
+  #box i:nth-child(4) { left: 0; top: 50%; }                                                    #box i:nth-child(5) { left: 100%; top: 50%; }
+  #box i:nth-child(6) { left: 0; top: 100%; }   #box i:nth-child(7) { left: 50%; top: 100%; }   #box i:nth-child(8) { left: 100%; top: 100%; }
+
+  /* The Mix controls sit in the page, on a line under the framed stage. */
+  #mix { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 28px; color: var(--muted); white-space: nowrap; }
+  #mix-go { color: var(--ink); border-color: var(--line); padding: 6px 18px; }
+  #mix label { display: flex; align-items: center; gap: 12px; }
+  #mix input { width: clamp(90px, 14vw, 180px); height: 12px; margin: 0; background: none; -webkit-appearance: none; appearance: none; cursor: pointer; }
+  #mix input::-webkit-slider-runnable-track { height: 1px; background: var(--line); }
+  #mix input::-moz-range-track { height: 1px; background: var(--line); }
+  #mix input::-webkit-slider-thumb { -webkit-appearance: none; width: 7px; height: 7px; margin-top: -3px; background: #000; border: 1px solid var(--ink); border-radius: 0; }
+  #mix input::-moz-range-thumb { width: 6px; height: 6px; background: #000; border: 1px solid var(--ink); border-radius: 0; }
+  #mix input:focus-visible { outline: 1px solid var(--pink); outline-offset: 3px; }
+  @media (max-width: 560px) { #mix { gap: 14px; } #mix label { gap: 6px; } }
+  #tip { position: fixed; left: 0; top: 0; margin: 0; padding: 3px 8px; background: #000; border: 1px solid var(--line); color: var(--ink); pointer-events: none; white-space: nowrap; }
+
+  /* "/ portfolio": the way back to yamliv.net, top left, as on the other
+     pages of the site. */
+  #back { position: fixed; z-index: 3; top: clamp(20px, 4vw, 36px); left: clamp(20px, 4vw, 36px); display: inline-flex; align-items: baseline; gap: 6px;
+    font: 14px var(--sans); letter-spacing: 0.01em; color: rgba(248, 246, 243, 0.7); text-decoration: none; transition: color 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  #back span { color: rgba(248, 246, 243, 0.4); }
+  #back:hover { color: var(--ink); transform: translateX(-3px); }
+  #back:hover span { color: rgba(248, 246, 243, 0.7); }
+  #back:focus-visible { outline: 1px solid var(--pink); outline-offset: 4px; }
+
+  /* The loading mark: one quiet word in the top right corner while pieces are
+     still on their way. */
+  #status { position: fixed; z-index: 3; top: clamp(20px, 4vw, 36px); right: clamp(20px, 4vw, 36px); margin: 0; font: 14px var(--sans); color: rgba(248, 246, 243, 0.4); pointer-events: none; animation: breathe 1.6s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: 0.35; } }
+  @media (prefers-reduced-motion: reduce) { #status { animation: none; } }
+
+  /* View modes: one plain line just above the left column of the story, in
+     the same type, weight and tone as the story itself: "View:" and the three
+     words, the current one underlined. No frames. (A line of script at the
+     end of the page keeps it sitting right above the text.) Space steps
+     through the modes in order. Line and story fade away when the Mix section
+     comes into view. */
+  #modes { position: fixed; z-index: 3; left: 10px; bottom: 130px; display: flex; gap: 0.9em; align-items: baseline;
+    font: 300 clamp(10px, 0.8vw, 12.5px)/1.6 "Archivo", var(--sans); color: #fff; opacity: 0.5; mix-blend-mode: difference; transition: opacity 0.4s; }
+  #modes::before { content: "View:"; }
+  #modes button, #modes button:hover { font: inherit; color: inherit; border: 0; padding: 0; white-space: nowrap; }
+  #modes button[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  #modes.away, #story.away { opacity: 0; pointer-events: none; }
+
+</style>
+</head>
+<body>
+<a id="back" href="/" aria-label="Back to yamliv.net"><span aria-hidden="true">/</span>portfolio</a>
+<canvas id="stage" aria-label="Skip: stone sculptures. Drag a piece to turn it."></canvas>
+
+<div id="spacer"><div id="grain" aria-hidden="true"></div></div>
+
+<div id="modes" role="group" aria-label="View mode"></div>
+
+<p id="status">Loading</p>
+<div id="story" lang="en">
+  <p>Before the cities had names, the Oum cut stone for the Sarrath, who ruled the long valley of the Idra. They had come down from the hills as guests in a dry year, and stayed until no one remembered they had ever been free. When the Sarrath counted them and found them too many, the quarries were deepened and the days made longer, and every third child born to the Oum was given to the river. One girl, Yssa, was set afloat in a clay jar and pulled out downstream by a daughter of the governor, who raised her in the white house above the works. Grown, she struck a foreman who was beating an old cutter, and fled to the salt plain. There, years later, a stone spoke to her in the heat without cracking, and told her to go back and ask for her people.</p>
+  <p>The Sarrath laughed, and the valley was visited ten times. The Idra ran thick and red as clay. Its frogs left the water and filled the ovens. Dust turned to biting flies; beasts came down out of the hills; the herds lay down and did not rise; skin blistered; ice fell burning; a cloud of wings ate what was left; and for three days the dark could be held in the hand. Before the tenth visit Yssa told the Oum to rub white quarry dust on their doorposts. That night something walked the streets and stopped at every house, and wherever it found the white mark it skipped the door. By morning the Sarrath opened the gates themselves. The Oum left with their tools and their unbaked bread, and the salt plain parted to let them cross. They have been called the Skipped ever since.</p>
+</div>
+<p id="tip" hidden></p>
+<div id="box" hidden><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<div id="views" role="group" aria-label="Views of the mixed piece"></div>
+<div id="mix">
+  <button id="mix-go">Mix</button>
+  <label>Cut <input id="mix-cut" type="range" min="-0.2" max="0.2" step="0.01" value="0"></label>
+  <label>Melt <input id="mix-melt" type="range" min="0.1" max="1.6" step="0.01" value="0.6"></label>
+</div>
+
+<script>
+  // The grain: one small tile of random specks, repeated over the page.
+  {
+    const c = document.createElement('canvas');
+    c.width = c.height = 220;
+    const g = c.getContext('2d'), d = g.createImageData(220, 220);
+    for (let i = 0; i < d.data.length; i += 4) {
+      d.data[i] = d.data[i + 1] = d.data[i + 2] = 128;
+      d.data[i + 3] = 255 * Math.random();
+    }
+    g.putImageData(d, 0, 0);
+    document.getElementById('grain').style.backgroundImage = `url(${c.toDataURL()})`;
+  }
+</script>
+<script>
+  // The two columns of the story always end up the same height, and neither
+  // ends on a stub of a line. Each column is tried at a range of very slightly
+  // tighter and looser word spacings; of all the pairings where both columns
+  // take the same number of lines, the one whose last lines are fullest wins.
+  {
+    const story = document.getElementById('story'), cols = [...story.children];
+    const lastLine = (p) => {
+      const r = document.createRange();
+      r.selectNodeContents(p);
+      const rects = [...r.getClientRects()], bottom = Math.max(...rects.map((x) => x.bottom));
+      const last = rects.filter((x) => Math.abs(x.bottom - bottom) < 2);
+      return (Math.max(...last.map((x) => x.right)) - Math.min(...last.map((x) => x.left))) / p.clientWidth;
+    };
+    let width = 0;
+    const even = () => {
+      if (story.clientWidth === width) return;
+      width = story.clientWidth;
+      const tries = cols.map((p) => {
+        const out = [];
+        for (let n = -6; n <= 24; n++) {
+          p.style.wordSpacing = `${n * 0.06}px`;
+          out.push({ ws: p.style.wordSpacing, h: p.offsetHeight, fill: lastLine(p), cost: Math.abs(n) });
+        }
+        return out;
+      });
+      let best = null;
+      for (const a of tries[0]) for (const b of tries[1]) {
+        if (Math.abs(a.h - b.h) > 2) continue;
+        const score = Math.min(a.fill, b.fill) - (a.cost + b.cost) * 0.004;
+        if (!best || score > best.score) best = { a, b, score };
+      }
+      cols[0].style.wordSpacing = best ? best.a.ws : '';
+      cols[1].style.wordSpacing = best ? best.b.ws : '';
+      // the view-mode tags sit right above the text
+      document.getElementById('modes').style.bottom = `${9 + story.offsetHeight + 6}px`;
+    };
+    document.fonts.ready.then(() => { even(); new ResizeObserver(even).observe(story); addEventListener('resize', even); });
+  }
+</script>
+<script type="module" src="js/05_main.js"></script>
+</body>
+</html>
