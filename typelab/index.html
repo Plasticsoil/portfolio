@@ -277,12 +277,16 @@ function ptOnSegT(px,py,a,b){ const dx=b[0]-a[0],dy=b[1]-a[1],L2=dx*dx+dy*dy; if
   const t=((px-a[0])*dx+(py-a[1])*dy)/L2; if(t<=1e-6||t>=1-1e-6)return null;
   return (Math.hypot(px-(a[0]+t*dx),py-(a[1]+t*dy))<0.5)?t:null; }
 /* the 4 CCW corner points of a face-to-face diagonal parallelogram */
-function diagPolyPts(a,b){
-  const ca=cellCenter(+a[0],+a[1]), cb=cellCenter(+b[0],+b[1]);
-  let dx=cb.x-ca.x, dy=cb.y-ca.y, L=Math.hypot(dx,dy)||1; const px=-dy/L, py=dx/L;
-  const Alo=cellCorner(+a[0],+a[1],px,py,-1), Ahi=cellCorner(+a[0],+a[1],px,py,1),
-        Blo=cellCorner(+b[0],+b[1],px,py,-1), Bhi=cellCorner(+b[0],+b[1],px,py,1);
-  return ccwPoly([Alo,Blo,Bhi,Ahi]); }
+function convexHull(pts){
+  pts=pts.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]), lo=[], up=[];
+  for(const p of pts){ while(lo.length>=2 && cr(lo[lo.length-2],lo[lo.length-1],p)<=0) lo.pop(); lo.push(p); }
+  for(let i=pts.length-1;i>=0;i--){ const p=pts[i]; while(up.length>=2 && cr(up[up.length-2],up[up.length-1],p)<=0) up.pop(); up.push(p); }
+  lo.pop(); up.pop(); return lo.concat(up); }
+function diagPolyPts(a,b){            // convex hull of the two chosen faces' corners
+  const ba=cellBox(+a[0],+a[1]), bb=cellBox(+b[0],+b[1]);
+  return convexHull([[ba.x0,ba.y0],[ba.x1,ba.y0],[ba.x1,ba.y1],[ba.x0,ba.y1],
+                     [bb.x0,bb.y0],[bb.x1,bb.y0],[bb.x1,bb.y1],[bb.x0,bb.y1]]); }
 /* every painted face + diagonal as a CCW polygon */
 function glyphPolys(segs){ const m=M(),Xs=m.Xs,Ys=m.Ys,ps=[];
   for(const c of cellsOf(segs)){ const i=+c[1],j=+c[2];
@@ -385,13 +389,9 @@ function cellCorner(ci,cj,px,py,sign){   // the cell corner furthest along signÂ
   for(const p of pts){ const pr=(p[0]*px+p[1]*py)*sign; if(pr>bp){ bp=pr; best=p; } }
   return best;
 }
-function diagQuad(a,b){
-  const ca=cellCenter(+a[0],+a[1]), cb=cellCenter(+b[0],+b[1]);
-  let dx=cb.x-ca.x, dy=cb.y-ca.y, L=Math.hypot(dx,dy)||1; const px=-dy/L, py=dx/L;  // perpendicular
-  const Alo=cellCorner(+a[0],+a[1],px,py,-1), Ahi=cellCorner(+a[0],+a[1],px,py,1),
-        Blo=cellCorner(+b[0],+b[1],px,py,-1), Bhi=cellCorner(+b[0],+b[1],px,py,1);
-  return `M ${R(Alo[0])} ${R(Alo[1])} L ${R(Blo[0])} ${R(Blo[1])} L ${R(Bhi[0])} ${R(Bhi[1])} L ${R(Ahi[0])} ${R(Ahi[1])} Z`;
-}
+function diagQuad(a,b){ const h=diagPolyPts(a,b);
+  let d='M '+R(h[0][0])+' '+R(h[0][1])+' '; for(let i=1;i<h.length;i++) d+='L '+R(h[i][0])+' '+R(h[i][1])+' ';
+  return d+'Z'; }
 /* a straight diagonal stroke of thickness t from A to B (square ends) */
 function diagPath(ax,ay,bx,by,t){
   const dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy)||1, nx=-dy/L*t/2, ny=dx/L*t/2;
