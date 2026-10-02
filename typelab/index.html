@@ -216,8 +216,8 @@ function cellsOf(segs){ return segs.filter(c=>/^c\d\d$/.test(c)); }
 /* corner overrides per vertex "k"+vi+vj:
    "…c"+units = rounded at that radius · "…z" = forced straight (keeps any c as memory) */
 function cornerOverrides(segs){ const o={}; for(const s of segs){
-  let m=/^(k\d\d|p-?\d+_-?\d+)c(\d+)$/.exec(s); if(m){ (o[m[1]]=o[m[1]]||{}).val=+m[2]; continue; }
-  m=/^(k\d\d|p-?\d+_-?\d+)z$/.exec(s); if(m){ (o[m[1]]=o[m[1]]||{}).straight=true; } } return o; }
+  let m=/^(k\d\d(?:q\d)?|p-?\d+_-?\d+(?:q\d)?)c(\d+)$/.exec(s); if(m){ (o[m[1]]=o[m[1]]||{}).val=+m[2]; continue; }
+  m=/^(k\d\d(?:q\d)?|p-?\d+_-?\d+(?:q\d)?)z$/.exec(s); if(m){ (o[m[1]]=o[m[1]]||{}).straight=true; } } return o; }
 function grid5(segs){ const {NI,NJ}=gdims(), g=Array.from({length:NI},()=>Array(NJ).fill(false));
   for(const c of cellsOf(segs)){ const i=+c[1], j=+c[2]; if(i<NI&&j<NJ) g[i][j]=true; } return g; }
 
@@ -345,19 +345,31 @@ function roundLoops(loops, segs){
   let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
   loops.forEach(l=>{ if(areaOf(l)>0) l.forEach(p=>{ minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y); }); });
   const ov=cornerOverrides(segs); let d=''; const corners=[];
+  // pass 1 — geometry for every vertex; base id + the quadrant its inward bisector points to
+  const all=[], segsByLoop=[];
   for(const V of loops){ const hole=areaOf(V)<0, n=V.length, seg=[];
     for(let k=0;k<n;k++){ const P=V[(k-1+n)%n],C=V[k],N=V[(k+1)%n];
       const ix=C.x-P.x,iy=C.y-P.y,il=Math.hypot(ix,iy)||1, ox=N.x-C.x,oy=N.y-C.y,ol=Math.hypot(ox,oy)||1,
             ux=ix/il,uy=iy/il,wx=ox/ol,wy=oy/ol, cross=ux*wy-uy*wx, turnLeft=cross>0;
       const ext=(C.x<=minX+0.5||C.x>=maxX-0.5)&&(C.y<=minY+0.5||C.y>=maxY-0.5);
-      const id=vkey(C.x,C.y), defR = hole ? m.rI : ((turnLeft&&ext)?m.rO:0);
-      const o=ov[id]||{}, val=o.val!=null?o.val:defR, round=o.straight?false:(o.val!=null?true:defR>0.5);
-      const maxR=Math.min(il,ol);
-      const nx=-uy-wy, ny=ux+wx, nl=Math.hypot(nx,ny)||1, sgn=hole?-1:1,
-            off=Math.min(0.42*Math.min(il,ol), Math.min(m.sv,m.sh,m.sc)*0.7);
-      seg.push({C,ux,uy,wx,wy, r:round?Math.min(val,maxR):0, ol, turnLeft, fixed:o.val!=null,
-        hx:C.x+sgn*nx/nl*off, hy:C.y+sgn*ny/nl*off, id, round, val:Math.round(val), maxR, hole});
-    }
+      const nx=-uy-wy, ny=ux+wx, nl=Math.hypot(nx,ny)||1, sgn=hole?-1:1, bx=sgn*nx/nl, by=sgn*ny/nl;
+      const s={C,ux,uy,wx,wy,il,ol,turnLeft,hole, base:vkey(C.x,C.y), q:(bx>0?1:0)+(by>0?2:0), bx, by,
+        // default: every inner (concave) corner rounds into the counter at the inner
+        // radius — like the O's counter — whether the counter is closed or open;
+        // outer extreme corners round at the outer radius; other convex corners stay square
+        defR: hole ? m.rI : (turnLeft ? (ext?m.rO:0) : m.rI)};
+      seg.push(s); all.push(s); }
+    segsByLoop.push({seg,n}); }
+  // two corners on one vertex (a pinch) get distinct ids by quadrant, so each is its own handle
+  const cnt={}; all.forEach(s=>{ cnt[s.base]=(cnt[s.base]||0)+1; });
+  all.forEach(s=>{ s.id = cnt[s.base]>1 ? s.base+'q'+s.q : s.base; });
+  // pass 2 — overrides, radius, handle position
+  for(const s of all){ const o=ov[s.id]||{}, val=o.val!=null?o.val:s.defR;
+    s.round=o.straight?false:(o.val!=null?true:s.defR>0.5); s.fixed=o.val!=null;
+    s.maxR=Math.min(s.il,s.ol); s.r=s.round?Math.min(val,s.maxR):0; s.val=Math.round(val);
+    const off=Math.min(0.42*Math.min(s.il,s.ol), Math.min(m.sv,m.sh,m.sc)*0.7);
+    s.hx=s.C.x+s.bx*off; s.hy=s.C.y+s.by*off; }
+  for(const {seg,n} of segsByLoop){
     for(let k=0;k<n;k++){ const a=seg[k], b=seg[(k+1)%n], L=a.ol;
       if(a.r+b.r>L){ const ex=a.r+b.r-L;
         if(a.fixed&&!b.fixed) b.r=Math.max(0,b.r-ex);
