@@ -581,6 +581,27 @@ function pick(x, y) {
   }
   return best;
 }
+// On a phone there is no pointer to hover with, so the piece nearest the
+// middle of the screen plays the hovered one as the page scrolls: it gets the
+// bump and its name, written under it. Only a piece near the middle counts.
+const centred = { x: 0, y: 0, ry: 0 };
+function pickCentre() {
+  if (!(scrollY + innerHeight * 0.72 < view.mixTopPx)) return null;
+  let best = null, bestD = Infinity;
+  const cx = innerWidth / 2, cy = innerHeight * 0.42;
+  for (const it of items) {
+    if (!it.carved || it === logo) continue;
+    v3.copy(it.holder.position).project(camera);
+    const sx = (v3.x * 0.5 + 0.5) * innerWidth, sy = (-v3.y * 0.5 + 0.5) * innerHeight;
+    const d = Math.hypot(sx - cx, (sy - cy) * 1.6);
+    if (d < innerHeight * 0.3 && d < bestD) {
+      best = it; bestD = d;
+      centred.x = sx; centred.y = sy;
+      centred.ry = it.size.y * it.scale * (innerHeight / view.h) * 0.6;
+    }
+  }
+  return best;
+}
 canvas.addEventListener('pointerdown', (e) => {
   held = pick(e.clientX, e.clientY);
   if (!held) return;
@@ -654,13 +675,14 @@ function frame(now) {
 
   // What is under the pointer is worked out every frame, so it stays right
   // while the page scrolls or the pieces drift under a still pointer.
-  hovered = held || (pointerX >= 0 && !coarse ? pick(pointerX, pointerY) : null);
+  hovered = held || (coarse ? pickCentre() : pointerX >= 0 ? pick(pointerX, pointerY) : null);
   canvas.style.cursor = held ? 'grabbing' : hovered ? 'grab' : '';
   const label = hovered && hovered !== logo && !held ? hovered.piece.title : '';
   tip.hidden = !label;
   if (label) {
     tip.textContent = label;
-    tip.style.transform = `translate(${pointerX + 14}px, ${pointerY + 14}px)`;
+    if (coarse) tip.style.transform = `translate(calc(${centred.x}px - 50%), ${centred.y + centred.ry + 10}px)`;
+    else tip.style.transform = `translate(${pointerX + 14}px, ${pointerY + 14}px)`;
   }
 
   const present = pointerX >= 0 && !coarse;
