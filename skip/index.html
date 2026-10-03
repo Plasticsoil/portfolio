@@ -58,7 +58,7 @@
   #story p.short { display: none; }
   @media (pointer: coarse) {
     body { overflow: hidden; }
-    #story { max-height: 36vh; font-size: 11px; line-height: 1.55; column-gap: 12px; }
+    #story { max-height: 30vh; font-size: 11px; line-height: 1.55; column-gap: 12px; }
     #story p.long { display: none; }
     #story p.short { display: block; }
     #modes { font-size: 12.5px; gap: 1.1em; }
@@ -133,8 +133,8 @@
 <div id="story" lang="en">
   <p class="long">Before the cities had names, the Oum cut stone for the Sarrath, who ruled the long valley of the Idra. They had come down from the hills as guests in a dry year, and stayed until no one remembered they had ever been free. When the Sarrath counted them and found them too many, the quarries were deepened and the days made longer, and every third child born to the Oum was given to the river. One girl, Yssa, was set afloat in a clay jar and pulled out downstream by a daughter of the governor, who raised her in the white house above the works. Grown, she struck a foreman who was beating an old cutter, and fled to the salt plain. There, years later, a stone spoke to her in the heat without cracking, and told her to go back and ask for her people.</p>
   <p class="long">The Sarrath laughed, and the valley was visited ten times. The Idra ran thick and red as clay. Its frogs left the water and filled the ovens. Dust turned to biting flies; beasts came down out of the hills; the herds lay down and did not rise; skin blistered; ice fell burning; a cloud of wings ate what was left; and for three days the dark could be held in the hand. Before the tenth visit Yssa told the Oum to rub white quarry dust on their doorposts. That night something walked the streets and stopped at every house, and wherever it found the white mark it skipped the door. By morning the Sarrath opened the gates themselves. The Oum left with their tools and their unbaked bread, and the salt plain parted to let them cross. They have been called the Skipped ever since.</p>
-  <p class="short">Before the cities had names, the Oum cut stone for the Sarrath, who ruled the valley of the Idra. They had come down from the hills as guests in a dry year and stayed until no one remembered they had been free. When the Sarrath found them too many, every third child born to the Oum was given to the river. One girl, Yssa, was set afloat in a clay jar and pulled out downstream by the governor's daughter. Grown, she struck a foreman who was beating an old cutter and fled to the salt plain, where a stone spoke to her and told her to go back and ask for her people.</p>
-  <p class="short">The Sarrath laughed, and the valley was visited ten times: the river ran red, frogs filled the ovens, dust turned to flies, the herds lay down, skin blistered, ice fell burning, a cloud of wings ate what was left, and for three days the dark could be held in the hand. Before the tenth visit Yssa told the Oum to rub white quarry dust on their doorposts. That night something walked the streets, and wherever it found the white mark it skipped the door. By morning the gates stood open. The Oum left with their tools and their unbaked bread, and they have been called the Skipped ever since.</p>
+  <p class="short">Before the cities had names, the Oum cut stone for the Sarrath, who ruled the valley of the Idra. They had come as guests in a dry year and stayed until no one remembered they had been free. When the Sarrath found them too many, every third child born to the Oum was given to the river. One girl, Yssa, was pulled out downstream and raised in the governor's house. Grown, she fled to the salt plain, where a stone spoke to her and told her to go back and ask for her people.</p>
+  <p class="short">The Sarrath laughed, and the valley was visited ten times: the river ran red, dust turned to flies, the herds lay down, ice fell burning, and for three days the dark could be held in the hand. Before the tenth visit Yssa told the Oum to rub white quarry dust on their doorposts. That night something walked the streets, and wherever it found the white mark it skipped the door. By morning the gates stood open. The Oum left, and they have been called the Skipped ever since.</p>
 </div>
 <p id="tip" hidden></p>
 <div id="box" hidden><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -200,6 +200,6 @@
     document.fonts.ready.then(() => { even(); new ResizeObserver(even).observe(story); addEventListener('resize', even); });
   }
 </script>
-<script type="module" src="js/05_main.js"></script>
+<script type="module" src="js/05_main.js?v=3"></script>
 </body>
 </html>

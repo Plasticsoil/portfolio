@@ -7,7 +7,8 @@ import * as THREE from 'three';
 import { LOGO, STUDIES } from './02_sculptures.js';
 import { createStone, createPoints, createLines, createStroke, createHull, createFill } from './04_stone.js';
 
-const coarse = matchMedia('(pointer: coarse)').matches;
+// a touch screen: the phone's own word for it, or failing that, touch points and a narrow screen
+const coarse = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0 && Math.min(innerWidth, innerHeight) < 900);
 
 // The material, locked (Yam, 2026-10-02). There is no panel for these any
 // more; change a value here and reload. `carve: true` values shape the
@@ -353,7 +354,9 @@ function layoutMap(w, h) {
 
   const n = studies.length + 1;
   const side = Math.ceil(Math.sqrt(n));           // cells per side
-  const cell = view.w * 0.78;                       // one piece per screen, roughly
+  // the cell is narrower than the screen, so the neighbours always peek in
+  // at the sides: the hint that there is more to pan to
+  const cell = view.w * 0.55;
   const centre = Math.floor(side / 2);
   const worldSize = (it) => THREE.MathUtils.clamp(((it.piece.real || 1.75) / 1.75) ** 0.4, 0.5, 1.45);
   let k = 0;
@@ -365,7 +368,7 @@ function layoutMap(w, h) {
     // way on every visit
     const jx = (it.seed[6] - 0.5) * cell * 0.3, jy = (it.seed[7] - 0.5) * cell * 0.3;
     it.home.set((col - centre) * cell + jx, (centre - row) * cell + jy, 0);
-    it.scale = cell * 0.5 * worldSize(it) / Math.max(it.size.x, it.size.y, it.size.z);
+    it.scale = cell * 0.6 * worldSize(it) / Math.max(it.size.x, it.size.y, it.size.z);
     it.drift = cell * 0.04;
   });
   map.half = centre * cell + cell * 0.35;           // how far the finger can go from the middle
@@ -401,7 +404,10 @@ if (coarse) {
     const dx = (e.clientX - map.lastX) * k, dy = (e.clientY - map.lastY) * k;
     const now = performance.now(), dt = Math.max(1, now - map.lastT) / 1000;
     map.x -= dx; map.y += dy;
-    map.vx = -dx / dt; map.vy = dy / dt;
+    // the glide speed, smoothed over the last few moves and capped
+    const cap = view.w * 3;
+    map.vx = THREE.MathUtils.clamp(map.vx * 0.5 - dx / dt * 0.5, -cap, cap);
+    map.vy = THREE.MathUtils.clamp(map.vy * 0.5 + dy / dt * 0.5, -cap, cap);
     map.lastX = e.clientX; map.lastY = e.clientY; map.lastT = now;
   });
   const up = () => { map.dragging = false; };
@@ -750,7 +756,7 @@ function frame(now) {
     // leave the field
     if (!map.dragging) {
       map.x += map.vx * dt; map.y += map.vy * dt;
-      const damp = Math.exp(-dt * 4);
+      const damp = Math.exp(-dt * 5);
       map.vx *= damp; map.vy *= damp;
     }
     map.x = THREE.MathUtils.clamp(map.x, -map.half, map.half);
@@ -919,7 +925,7 @@ layout();
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function loadEverything() {
   const todo = [logo, ...shuffled].filter((it) => it.piece.baked);
-  const near = (it) => it === logo || (Math.abs(it.home.y - camera.position.y) < view.h * 1.3 && Math.abs(it.home.x - camera.position.x) < view.w * 1.3);
+  const near = (it) => it === logo || (Math.abs(it.home.y - camera.position.y) < view.h * 1.3 && Math.abs(it.home.x - camera.position.x) < view.w * 2.2);
   let idle = 0;
   while (todo.length) {
     let i = todo.findIndex(near);
