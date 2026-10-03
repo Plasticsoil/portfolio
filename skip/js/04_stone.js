@@ -193,8 +193,13 @@ export function createPoints() {
     transparent: true,
     vertexShader: /* glsl */ `
       uniform float uTime, uSpread, uPx, uDensity, uReveal, uMagnet, uReach, uScatter;
-      uniform float uGather, uShuffle, uShuffleAmt, uPulse;
+      uniform float uShiftT, uShiftSize, uShuffle;
       uniform vec3 uRayDir, uGatherPoint;
+      // turn v about the axis by the angle (Rodrigues)
+      vec3 spin(vec3 v, vec3 axis, float ang) {
+        float c = cos(ang), s = sin(ang);
+        return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c);
+      }
       varying float vTone;
       vec3 hash3(vec3 p) {
         p = fract(p * vec3(0.1031, 0.1030, 0.0973));
@@ -211,15 +216,33 @@ export function createPoints() {
         // bringing it back to 0 is dust settling into the shape of the piece
         p += dir * uScatter * (0.25 + 1.5 * a.y * a.y);
         vec4 world = modelMatrix * vec4(p, 1.0);
-        // the shape-shift: on a click the grains rush into one point under
-        // the pointer (uGather), churn there with new positions dealt by the
-        // click's seed (uShuffle, uShuffleAmt), and are then let go to settle
-        // back onto the shape through uScatter
-        if (uGather > 0.0) {
-          vec3 hd = hash3(position * 17.9 + uShuffle) - 0.5;
-          float hr = hash3(position * 7.1 + uShuffle * 1.7).x;
-          vec3 churn = normalize(hd) * hr * hr * uShuffleAmt;    // a soft ball, dense at its heart
-          world.xyz = mix(world.xyz, uGatherPoint + churn, uGather);
+        // The shape-shift (uShiftT is the time since the click, below zero
+        // when there is none). Every grain keeps its own time: the ones near
+        // the pointer leave first and the far ones follow, each spiralling in
+        // to a soft churning ball under the pointer; then they are let go one
+        // by one, fly out past their place and ease back onto it.
+        float pulse = 0.0;
+        if (uShiftT >= 0.0) {
+          vec3 h = hash3(position * 17.9 + uShuffle), h2 = hash3(position * 7.1 + uShuffle * 1.7);
+          vec3 off = world.xyz - uGatherPoint;
+          float d = length(off) / max(uShiftSize, 1e-4);
+          vec3 axis = normalize(cameraPosition - uGatherPoint);
+          // in: starts between 0 and 0.7s, by nearness and chance, takes 0.6s
+          float delay = 0.05 + 0.4 * smoothstep(0.0, 1.0, d) + 0.25 * h.x;
+          float g = clamp((uShiftT - delay) / 0.6, 0.0, 1.0);
+          g = g * g * (3.0 - 2.0 * g);
+          // the churning ball: each grain on its own small orbit, slowly turning
+          vec3 ball = spin(normalize(h2 - 0.5), axis, uShiftT * (1.5 + 2.0 * h2.z)) * h2.x * h2.x * uShiftSize * 0.1;
+          vec3 inward = uGatherPoint + spin(off, axis, g * (0.8 + 1.4 * h.y)) * (1.0 - g) + ball * g;
+          // out: let go between 1.3 and 2.1s, 0.9s to settle, overshooting
+          // along the grain's own direction on the way
+          float rel = 1.3 + 0.5 * h.z + 0.3 * d;
+          float u = clamp((uShiftT - rel) / 0.9, 0.0, 1.0);
+          float back = 1.0 - pow(1.0 - u, 3.0);
+          vec3 burst = dir * sin(3.14159 * u) * uShiftSize * (0.12 + 0.25 * h2.y);
+          world.xyz = mix(inward, world.xyz, back) + burst;
+          // held grains flicker and swell a little
+          pulse = g * (1.0 - back) * (0.6 + 0.6 * sin(uShiftT * 18.0 + h.z * 6.283));
         }
         // the magnet: how far this grain is from the line of the pointer, and
         // which way is straight away from it
@@ -239,7 +262,7 @@ export function createPoints() {
         float edge = 1.0 - abs(dot(normalize(normalMatrix * normal), normalize(-mv.xyz)));
         edge *= edge;
         if (b.z > uDensity * mix(0.3, 3.2, edge)) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-        gl_PointSize = uPx * (1.0 + uPulse * (0.5 + a.x));
+        gl_PointSize = uPx * (1.0 + pulse);
         // Grains far from the shell are fainter, so the haze fades out.
         vTone = (0.2 + 0.12 * b.x) * mix(0.7, 1.5, edge) * (1.0 - 0.8 * smoothstep(0.0, 0.5, away)) * uReveal;
       }`,
@@ -264,11 +287,10 @@ export function createPoints() {
       uScatter: { value: 0 },
       uReach: { value: 1 },
       uRayDir: { value: new THREE.Vector3(0, 0, -1) },
-      uGather: { value: 0 },
-      uGatherPoint: { value: new THREE.Vector3() },
+      uShiftT: { value: -1 },
+      uShiftSize: { value: 1 },
       uShuffle: { value: 0 },
-      uShuffleAmt: { value: 0 },
-      uPulse: { value: 0 },
+      uGatherPoint: { value: new THREE.Vector3() },
       uMix: { value: 1 },
       uShowL: { value: 1 },
       uShowR: { value: 1 },
