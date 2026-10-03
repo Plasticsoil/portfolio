@@ -253,6 +253,8 @@ function layout() {
   camera.position.z = dist;
   camera.updateProjectionMatrix();
 
+  if (coarse) { layoutMap(w, h); return; }
+
   // First screen: the logo, with the tops of the first row showing at the
   // bottom edge, as an invitation to scroll.
   const heroH = view.h * (wide ? 0.64 : 0.5);
@@ -328,6 +330,84 @@ function layout() {
   }
 }
 new ResizeObserver(layout).observe(canvas);
+
+// --- the map (touch screens) --------------------------------------------------
+// On a phone the collection is not a page to scroll but a square field, larger
+// than the screen, that the finger pans in any direction: the logo in the
+// middle, the pieces around it on a loose grid, each about as wide as the
+// screen is. The page itself does not scroll; there is no Mix section here.
+const map = { x: 0, y: 0, vx: 0, vy: 0, half: 0, dragging: false, lastX: 0, lastY: 0, lastT: 0 };
+function layoutMap(w, h) {
+  const LOGO_SCALE = 0.65;
+  const lw = (logo.carved ? logo.size.x : 6.4) * LOGO_SCALE, lh = (logo.carved ? logo.size.y : 2.8) * LOGO_SCALE;
+  // the logo is a screen's width less a margin; the cell of the map is set
+  // from that, so the pieces around it come out big
+  const dist = Math.max(lw / 0.82 / (2 * TAN * camera.aspect), lh / 0.3 / (2 * TAN));
+  view.h = 2 * dist * TAN;
+  view.w = view.h * camera.aspect;
+  camera.position.z = dist;
+  camera.updateProjectionMatrix();
+  logo.scale = LOGO_SCALE;
+  logo.drift = lh * 0.05;
+  logo.home.set(0, 0, 0);
+
+  const n = studies.length + 1;
+  const side = Math.ceil(Math.sqrt(n));           // cells per side
+  const cell = view.w * 0.78;                       // one piece per screen, roughly
+  const centre = Math.floor(side / 2);
+  const worldSize = (it) => THREE.MathUtils.clamp(((it.piece.real || 1.75) / 1.75) ** 0.4, 0.5, 1.45);
+  let k = 0;
+  shuffled.forEach((it) => {
+    let col = k % side, row = Math.floor(k / side);
+    if (col === centre && row === centre) { k++; col = k % side; row = Math.floor(k / side); }   // the logo's cell
+    k++;
+    // a loose grid: every piece a little off its cell's centre, the same
+    // way on every visit
+    const jx = (it.seed[6] - 0.5) * cell * 0.3, jy = (it.seed[7] - 0.5) * cell * 0.3;
+    it.home.set((col - centre) * cell + jx, (centre - row) * cell + jy, 0);
+    it.scale = cell * 0.5 * worldSize(it) / Math.max(it.size.x, it.size.y, it.size.z);
+    it.drift = cell * 0.04;
+  });
+  map.half = centre * cell + cell * 0.35;           // how far the finger can go from the middle
+  // the first view: the logo in the upper part of the screen, above the story
+  if (!map.placed) { map.placed = true; map.y = -view.h * 0.14; }
+  // the rest of the page is out of the way: mix stage far below, no scroll
+  const mixIt = mixes[0];
+  stage.position.set(0, -1000, 0);
+  mixIt.home.set(0, -1000, 0);
+  mixIt.scale = 0.001;
+  viewsUi.hidden = true;
+  mixUi.hidden = true;
+  view.mixTopPx = 1e9;
+  view.scrollSpan = 0;
+  spacer.style.height = '100vh';
+  const pxPerUnit = h / view.h;
+  for (const it of items) {
+    it.points.uniforms.uPx.value = 1.3 * renderer.getPixelRatio();
+    const spacing = (it === logo ? 0.02 : it.piece.baked ? 0.03 : MIX_CELL) * it.scale * pxPerUnit;
+    it.points.uniforms.uDensity.value = Math.min(1, GRAINS_PER_PX * spacing * spacing);
+  }
+}
+if (coarse) {
+  canvas.style.touchAction = 'none';
+  canvas.addEventListener('pointerdown', (e) => {
+    map.dragging = true; map.vx = map.vy = 0;
+    map.lastX = e.clientX; map.lastY = e.clientY; map.lastT = performance.now();
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!map.dragging) return;
+    const k = view.h / canvas.clientHeight;          // scene units per pixel
+    const dx = (e.clientX - map.lastX) * k, dy = (e.clientY - map.lastY) * k;
+    const now = performance.now(), dt = Math.max(1, now - map.lastT) / 1000;
+    map.x -= dx; map.y += dy;
+    map.vx = -dx / dt; map.vy = dy / dt;
+    map.lastX = e.clientX; map.lastY = e.clientY; map.lastT = now;
+  });
+  const up = () => { map.dragging = false; };
+  canvas.addEventListener('pointerup', up);
+  canvas.addEventListener('pointercancel', up);
+}
 
 // --- carving -----------------------------------------------------------------
 // One piece at a time, logo first. Changing a carve setting starts the queue
@@ -586,7 +666,6 @@ function pick(x, y) {
 // bump and its name, written under it. Only a piece near the middle counts.
 const centred = { x: 0, y: 0, ry: 0 };
 function pickCentre() {
-  if (!(scrollY + innerHeight * 0.72 < view.mixTopPx)) return null;
   let best = null, bestD = Infinity;
   const cx = innerWidth / 2, cy = innerHeight * 0.42;
   for (const it of items) {
@@ -603,6 +682,7 @@ function pickCentre() {
   return best;
 }
 canvas.addEventListener('pointerdown', (e) => {
+  if (coarse) return;                         // on the map the finger pans, nothing is grabbed
   held = pick(e.clientX, e.clientY);
   if (!held) return;
   canvas.setPointerCapture(e.pointerId);
@@ -665,9 +745,23 @@ function frame(now) {
   modes.classList.toggle('away', away);
   storyUi.classList.toggle('away', away);
 
-  // Scrolling moves the camera down the page.
-  const maxScroll = document.documentElement.scrollHeight - innerHeight;
-  camera.position.y = maxScroll > 0 ? -(scrollY / maxScroll) * view.scrollSpan : 0;
+  if (coarse) {
+    // the finger pans the map; let go and it glides to a stop, and it cannot
+    // leave the field
+    if (!map.dragging) {
+      map.x += map.vx * dt; map.y += map.vy * dt;
+      const damp = Math.exp(-dt * 4);
+      map.vx *= damp; map.vy *= damp;
+    }
+    map.x = THREE.MathUtils.clamp(map.x, -map.half, map.half);
+    map.y = THREE.MathUtils.clamp(map.y, -map.half, map.half);
+    camera.position.x = map.x;
+    camera.position.y = map.y;
+  } else {
+    // Scrolling moves the camera down the page.
+    const maxScroll = document.documentElement.scrollHeight - innerHeight;
+    camera.position.y = maxScroll > 0 ? -(scrollY / maxScroll) * view.scrollSpan : 0;
+  }
 
   const turn = Math.max(0, Math.min(1, (now - wipeStart) / 1000 / TRANSITION)), wiping = turn < 1;
   const mix = wiping ? ease(turn) : 1;
@@ -825,7 +919,7 @@ layout();
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function loadEverything() {
   const todo = [logo, ...shuffled].filter((it) => it.piece.baked);
-  const near = (it) => it === logo || Math.abs(it.home.y - camera.position.y) < view.h * 1.3;
+  const near = (it) => it === logo || (Math.abs(it.home.y - camera.position.y) < view.h * 1.3 && Math.abs(it.home.x - camera.position.x) < view.w * 1.3);
   let idle = 0;
   while (todo.length) {
     let i = todo.findIndex(near);

@@ -309,13 +309,14 @@ const model22 = { id: 'model-22', title: 'Moon', real: 2.4, baked: 'models/model
 const model23 = { id: 'model-23', title: 'Loop', real: 0.9, baked: 'models/model-23.bin' };
 const model24 = { id: 'model-24', title: 'Winged horse', real: 2.4, baked: 'models/model-24.bin' };
 const model25 = { id: 'model-25', title: 'Scarab', real: 0.6, baked: 'models/model-25.bin' };
+const model27 = { id: 'model-27', title: 'Amphora', real: 1.1, baked: 'models/model-27.bin' };
 // The word at the top of the page is a model too (04_Models/06_sam3d_logo.glb,
 // baked with --logo). The version built in code is kept in the archive.
 const logoModel = { id: 'logo', title: 'Skip', baked: 'models/logo.bin' };
 export const LOGO = logoModel;
 
 // The grid, in order.
-export const STUDIES = [model25, model24, model23, model22, model20, model19, model18, model17, model16, model15, model13, model12, model11, model10, model09, model08, model07, model06, model05, model02];
+export const STUDIES = [model27, model25, model24, model23, model22, model20, model19, model18, model17, model16, model15, model13, model12, model11, model10, model09, model08, model07, model06, model05, model02];
 // Archive: built earlier, not shown and not carved. Move one into STUDIES to
 // bring it back.
 export const ARCHIVE = [model14, model01, model03, model04, amphora, pot, ewer, logo, horse, jug, ram, horned, ring, totem, arch, knot, spiral, cairn];
