@@ -333,11 +333,11 @@ function layout() {
 new ResizeObserver(layout).observe(canvas);
 
 // --- the map (touch screens) --------------------------------------------------
-// On a phone the collection is not a page to scroll but a square field, larger
-// than the screen, that the finger pans in any direction: the logo in the
-// middle, the pieces around it on a loose grid, each about as wide as the
-// screen is. The page itself does not scroll; there is no Mix section here.
-const map = { x: 0, y: 0, vx: 0, vy: 0, half: 0, dragging: false, lastX: 0, lastY: 0, lastT: 0 };
+// On a phone the collection is not a page to scroll but a field, wider than
+// the screen, that the finger pans in any direction: the logo at the top, the
+// pieces under it on a loose grid four across, and the Mix stage at the
+// bottom. The page itself does not scroll.
+const map = { x: 0, y: 0, vx: 0, vy: 0, halfX: 0, top: 0, bottom: 0, stageY: 0, stageH: 1, dragging: false, lastX: 0, lastY: 0, lastT: 0 };
 function layoutMap(w, h) {
   const LOGO_SCALE = 0.65;
   const lw = (logo.carved ? logo.size.x : 6.4) * LOGO_SCALE, lh = (logo.carved ? logo.size.y : 2.8) * LOGO_SCALE;
@@ -352,35 +352,42 @@ function layoutMap(w, h) {
   logo.drift = lh * 0.05;
   logo.home.set(0, 0, 0);
 
-  const n = studies.length + 1;
-  const side = Math.ceil(Math.sqrt(n));           // cells per side
-  // the cell is narrower than the screen, so the neighbours always peek in
-  // at the sides: the hint that there is more to pan to
+  // The logo at the top, and under it the field of pieces: four to a row,
+  // a loose grid wider than the screen. The cell is narrower than the screen,
+  // so neighbours always peek in at the sides, the hint that there is more.
   const cell = view.w * 0.55;
-  const centre = Math.floor(side / 2);
+  const cols = 4, rows = Math.ceil(studies.length / cols);
+  const topY = view.h * 0.5;                        // the top edge of the field
+  logo.home.set(0, topY - view.h * 0.3, 0);
+  const firstRow = topY - view.h * 0.62 - cell * 0.5;
   const worldSize = (it) => THREE.MathUtils.clamp(((it.piece.real || 1.75) / 1.75) ** 0.4, 0.5, 1.45);
-  let k = 0;
-  shuffled.forEach((it) => {
-    let col = k % side, row = Math.floor(k / side);
-    if (col === centre && row === centre) { k++; col = k % side; row = Math.floor(k / side); }   // the logo's cell
-    k++;
-    // a loose grid: every piece a little off its cell's centre, the same
-    // way on every visit
+  shuffled.forEach((it, k) => {
+    const col = k % cols, row = Math.floor(k / cols);
+    // a loose grid: every piece a little off its cell's centre, the same way on every visit
     const jx = (it.seed[6] - 0.5) * cell * 0.3, jy = (it.seed[7] - 0.5) * cell * 0.3;
-    it.home.set((col - centre) * cell + jx, (centre - row) * cell + jy, 0);
+    it.home.set((col - (cols - 1) / 2) * cell + jx, firstRow - row * cell + jy, 0);
     it.scale = cell * 0.6 * worldSize(it) / Math.max(it.size.x, it.size.y, it.size.z);
     it.drift = cell * 0.04;
   });
-  map.half = centre * cell + cell * 0.35;           // how far the finger can go from the middle
-  // the first view: the logo in the upper part of the screen, above the story
-  if (!map.placed) { map.placed = true; map.y = -view.h * 0.14; }
-  // the rest of the page is out of the way: mix stage far below, no scroll
+  // Under the last row, set apart: the Mix stage, as on the large screen,
+  // with its controls on a line beneath it (they follow the stage as the map
+  // moves; see the frame loop).
+  const stageW = view.w * 0.86, stageH = stageW;
+  const stageY = firstRow - (rows - 1) * cell - cell * 0.5 - view.h * 0.12 - stageH / 2;
+  stage.position.set(0, stageY, 0);
+  stage.scale.set(stageW, stageH, 1);
   const mixIt = mixes[0];
-  stage.position.set(0, -1000, 0);
-  mixIt.home.set(0, -1000, 0);
-  mixIt.scale = 0.001;
+  mixIt.home.set(0, stageY, 0);
+  mixIt.scale = stageH * 0.56 / Math.max(mixIt.size.x, mixIt.size.y, mixIt.size.z);
+  mixIt.drift = stageH * 0.02;
+  map.stageY = stageY; map.stageH = stageH;
   viewsUi.hidden = true;
-  mixUi.hidden = true;
+  mixUi.hidden = false;
+  // how far the finger can go: sideways to the outer columns, down past the stage
+  map.halfX = (cols - 1) / 2 * cell;
+  map.top = 0;
+  map.bottom = stageY + stageH / 2 - view.h * 0.38;   // at the end, the stage sits high on the screen
+  if (!map.placed) { map.placed = true; map.x = 0; map.y = 0; }
   view.mixTopPx = 1e9;
   view.scrollSpan = 0;
   spacer.style.height = '100vh';
@@ -747,9 +754,11 @@ function frame(now) {
   const t = now / 1000;
 
   // The tags and the story step aside once the Mix stage is well into view.
-  const away = scrollY + innerHeight * 0.72 > view.mixTopPx;
-  modes.classList.toggle('away', away);
-  storyUi.classList.toggle('away', away);
+  if (!coarse) {
+    const away = scrollY + innerHeight * 0.72 > view.mixTopPx;
+    modes.classList.toggle('away', away);
+    storyUi.classList.toggle('away', away);
+  }
 
   if (coarse) {
     // the finger pans the map; let go and it glides to a stop, and it cannot
@@ -759,10 +768,18 @@ function frame(now) {
       const damp = Math.exp(-dt * 5);
       map.vx *= damp; map.vy *= damp;
     }
-    map.x = THREE.MathUtils.clamp(map.x, -map.half, map.half);
-    map.y = THREE.MathUtils.clamp(map.y, -map.half, map.half);
+    map.x = THREE.MathUtils.clamp(map.x, -map.halfX, map.halfX);
+    map.y = THREE.MathUtils.clamp(map.y, map.bottom, map.top);
     camera.position.x = map.x;
     camera.position.y = map.y;
+    // the Mix controls hang under the stage wherever it is on screen
+    const stageBottom = (0.5 - (map.stageY - map.stageH / 2 - map.y) / view.h) * innerHeight;
+    mixUi.style.top = `${stageBottom + 18}px`;
+    mixUi.style.visibility = stageBottom < innerHeight + 60 && stageBottom > -60 ? '' : 'hidden';
+    // the words and the story step aside once the stage is well into view
+    const stageTop = (0.5 - (map.stageY + map.stageH / 2 - map.y) / view.h) * innerHeight;
+    modes.classList.toggle('away', stageTop < innerHeight * 0.55);
+    storyUi.classList.toggle('away', stageTop < innerHeight * 0.55);
   } else {
     // Scrolling moves the camera down the page.
     const maxScroll = document.documentElement.scrollHeight - innerHeight;
