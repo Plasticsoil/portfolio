@@ -90,17 +90,24 @@
   #mix input:focus-visible { outline: 1px solid var(--pink); outline-offset: 3px; }
   @media (max-width: 560px) { #mix { gap: 14px; } #mix label { gap: 6px; } }
   /* The readout in the corner of the Mix stage: what went in, and how. */
-  #spec { position: fixed; z-index: 2; margin: 0; display: grid; grid-template-columns: auto auto auto auto; column-gap: 14px; row-gap: 0; align-items: baseline;
+  #spec { position: fixed; z-index: 2; margin: 0; display: grid; grid-template-columns: auto auto auto; column-gap: 16px; row-gap: 0; align-items: baseline;
     font: 300 11.5px/1.7 "Archivo", var(--sans); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; color: var(--muted); white-space: nowrap; pointer-events: none; }
-  #spec b { grid-column: 1 / -1; font-weight: 300; color: var(--ink); display: flex; justify-content: space-between; gap: 18px; }
-  #spec b:first-child { border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-bottom: 4px; }
-  #spec b:last-child { border-top: 1px solid var(--line); padding-top: 4px; margin-top: 4px; }
-  #spec b em { font-style: normal; color: var(--muted); }
-  #spec i { font-style: normal; color: #6b6964; }
-  #spec span { color: var(--ink); }
-  #spec span:nth-of-type(4n+1) { color: var(--muted); }
+  #spec b { grid-column: 1 / -1; font-weight: 300; border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-bottom: 5px; }
   @media (max-width: 1100px) { #spec { display: none; } }
   #tip { position: fixed; left: 0; top: 0; margin: 0; padding: 3px 8px; background: #000; border: 1px solid var(--line); color: var(--ink); pointer-events: none; white-space: nowrap; }
+
+  /* The sea: the last screen of the page. The story, in its two columns,
+     parts from the middle as the screen scrolls up: a float shaped as a
+     triangle sits at the inner edge of each column, and its width (--part,
+     set from the scroll) pushes every line further aside than the one above. */
+  #sea { position: absolute; z-index: 2; left: 0; right: 0; height: 100vh; display: flex; align-items: center; justify-content: center; pointer-events: none; --part: 0; }
+  #sea[hidden] { display: none; }
+  #sea .cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 0; width: min(1180px, 92vw); font: 300 clamp(12px, 1.05vw, 15px)/1.7 "Archivo", var(--sans); color: var(--muted); mix-blend-mode: difference; }
+  #sea p { margin: 0; text-align: justify; hyphens: auto; }
+  #sea p::before { content: ""; float: right; width: calc(var(--part) * 78%); height: 30em; shape-outside: polygon(100% 0, 100% 100%, 0 100%); }
+  #sea p + p::before { float: left; shape-outside: polygon(0 0, 100% 100%, 0 100%); }
+  #sea p:first-child { padding-right: 18px; }
+  #sea p + p { padding-left: 18px; }
 
   /* "/ portfolio": the way back to yamliv.net, top left, as on the other
      pages of the site. */
@@ -147,6 +154,10 @@
   <p class="short">The valley was struck ten times. Before the last, the Oum marked their doors with white quarry dust, and what walked that night skipped them. The Skipped, ever since.</p>
 </div>
 <p id="tip" hidden></p>
+<section id="sea" aria-label="The story" hidden><div class="cols">
+  <p>Before the cities had names, the Oum cut stone for the Sarrath, who ruled the long valley of the Idra. They had come down from the hills as guests in a dry year, and stayed until no one remembered they had ever been free. When the Sarrath counted them and found them too many, the quarries were deepened and the days made longer, and every third child born to the Oum was given to the river. One girl, Yssa, was set afloat in a clay jar and pulled out downstream by a daughter of the governor, who raised her in the white house above the works. Grown, she struck a foreman who was beating an old cutter, and fled to the salt plain. There, years later, a stone spoke to her in the heat without cracking, and told her to go back and ask for her people.</p>
+  <p>The Sarrath laughed, and the valley was visited ten times. The Idra ran thick and red as clay. Its frogs left the water and filled the ovens. Dust turned to biting flies; beasts came down out of the hills; the herds lay down and did not rise; skin blistered; ice fell burning; a cloud of wings ate what was left; and for three days the dark could be held in the hand. Before the tenth visit Yssa told the Oum to rub white quarry dust on their doorposts. That night something walked the streets and stopped at every house, and wherever it found the white mark it skipped the door. By morning the Sarrath opened the gates themselves. The Oum left with their tools and their unbaked bread, and the salt plain parted to let them cross. They have been called the Skipped ever since.</p>
+</div></section>
 <div id="spec" hidden></div>
 <div id="box" hidden><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 <div id="views" role="group" aria-label="Views of the mixed piece"></div>

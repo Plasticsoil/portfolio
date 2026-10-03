@@ -219,7 +219,7 @@ const GRAINS_PER_PX = 0.04;
 const view = { w: 1, h: 1, scrollSpan: 0 };
 // a new order on every visit
 const shuffled = studies.map((it) => [Math.random(), it]).sort((a, b) => a[0] - b[0]).map((p) => p[1]);
-const spec = document.getElementById('spec');
+const spec = document.getElementById('spec'), sea = document.getElementById('sea');
 const mixUi = document.getElementById('mix'), viewsUi = document.getElementById('views'), storyUi = document.getElementById('story');
 const MIX_CELL = 0.045;
 // The stage of the Mix section: a hairline frame and a fainter grid inside it,
@@ -326,7 +326,13 @@ function layout() {
   viewsUi.hidden = w / 2 - stagePx.w / 2 - cell < 70;      // no room beside the stage on narrow screens
   if (Math.abs(cell - viewsCell) > 1) { viewsCell = cell; drawViews(); }
 
-  const total = heroH + mixTop + stageH + rowH * 0.55;
+  // After the stage: one more screen, where the story parts in two (see the
+  // frame loop). Not on phones, whose page does not scroll.
+  const seaTop = heroH + mixTop + stageH + rowH * 0.55;
+  const total = seaTop + (coarse ? 0 : view.h * 1.0);
+  sea.hidden = coarse;
+  sea.style.top = `${(seaTop / view.h) * h}px`;
+  view.seaTopPx = (seaTop / view.h) * h;
   view.mixTopPx = ((heroH + mixTop) / view.h) * h;
   view.scrollSpan = Math.max(0, total - view.h);
   spacer.style.height = coarse ? '100vh' : `${(total / view.h) * 100}vh`;
@@ -583,10 +589,8 @@ function mixArrived(m) {
     const title = (id) => items.find((it) => it.piece.id === id).piece.title.toLowerCase();
     const deg = (d) => `${Math.round(Math.acos(Math.max(-1, Math.min(1, d[1]))) * 180 / Math.PI)}°`;
     const pct = (p) => `${Math.round(p.from * 100)}${p.to !== p.from ? '–' + Math.round(p.to * 100) : ''}%`;
-    spec.innerHTML = `<b>mix ${String(mixSeed).padStart(4, '0')} <em>cell ${MIX_CELL}</em></b>`
-      + `<i>part</i><i>cut</i><i>at</i><i>fit</i>`
-      + m.spec.map((p, k) => `<span>${String(k + 1).padStart(2, '0')} ${title(p.id)}</span><span>${deg(p.dir)}</span><span>${pct(p)}</span><span>×${p.k.toFixed(2)}</span>`).join('')
-      + `<b>join y ${m.joinY >= 0 ? '+' : ''}${m.joinY.toFixed(2)} <em>melt ${(+mixMelt.value).toFixed(2)}</em></b>`;
+    spec.innerHTML = `<b>mix ${String(mixSeed).padStart(4, '0')}</b>`
+      + m.spec.map((p) => `<span>${title(p.id)}</span><span>${deg(p.dir)}</span><span>${pct(p)}</span>`).join('');
     // A new mix arrives as dust: a loose cloud of grains that settles onto
     // the shape, and the stone then sets through it. Only for a fresh draw
     // (Mix), not while a slider is being dragged.
@@ -745,6 +749,11 @@ function frame(now) {
     const away = scrollY + innerHeight * 0.72 > view.mixTopPx;
     modes.classList.toggle('away', away);
     storyUi.classList.toggle('away', away);
+    // the sea: as the last screen scrolls up, the two columns of the story
+    // part from the middle, each line further than the one above, a
+    // triangle of black opening between them
+    const p = THREE.MathUtils.clamp((scrollY + innerHeight - view.seaTopPx - innerHeight * 0.3) / (innerHeight * 0.68), 0, 1);
+    sea.style.setProperty('--part', (p * p * (3 - 2 * p)).toFixed(4));
   }
 
   if (coarse) {
