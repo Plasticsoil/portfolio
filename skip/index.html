@@ -58,6 +58,8 @@
   #story { --part: 0; max-height: 46vh; }
   #story p::before { content: ""; float: right; width: calc(var(--part) * 92%); height: var(--fh, 30em); shape-outside: polygon(0 0, 100% 0, 100% 100%); }
   #story p + p::before { float: left; shape-outside: polygon(0 0, 100% 0, 0 100%); }
+  /* no slope at all until the parting begins (even an empty float would hold the paragraph tall) */
+  #story:not(.parting) p::before { display: none; }
   /* while parting the lines are ragged against the slope, not justified */
   #story.parting p { text-align: left; }
   #story.parting p + p { text-align: right; }
