@@ -248,7 +248,7 @@ function layout() {
   // seen through the phone's narrow window: the finger pans it in every
   // direction (see the map code below). `aspect` is the shape the layout is
   // made for, `W` its width; on a desktop both are simply the window's.
-  const aspect = coarse ? Math.max(camera.aspect, 2.2) : camera.aspect;
+  const aspect = coarse ? Math.max(camera.aspect, 1.9) : camera.aspect;
   const wide = aspect >= 1;
 
   // The logo is small in its frame on purpose: the air around it matters.
@@ -276,7 +276,7 @@ function layout() {
   const cols = wide ? 3 : 2;
   // on a phone the columns are further apart and the pieces smaller in them:
   // more air, the way a wide canvas breathes
-  const colW = W * (coarse ? 0.36 : wide ? 0.26 : 0.44), rowH = colW, LIFT = 0.38, FILL = coarse ? 0.26 : 0.46;
+  const colW = W * (coarse ? 0.31 : wide ? 0.26 : 0.44), rowH = colW, LIFT = 0.38, FILL = coarse ? 0.38 : 0.46;
   // and on the phone every piece also strays from its cell, so the grid reads
   // as a scatter rather than rows
   const STRAY = coarse ? 0.4 : 0;
@@ -817,7 +817,16 @@ function frame(now) {
     it.points.uniforms.uRayDir.value.copy(rayDir);
     it.points.uniforms.uMagnet.value = magnet;
     it.points.uniforms.uReach.value = view.h * 0.085;
-    it.hover += ((it === hovered && !isLogo ? 1 : 0) - it.hover) * (1 - Math.exp(-dt * 12));
+    // on a phone the hover is a field around the middle of the screen: a piece
+    // swells gradually as it is panned towards the centre, not with a snap
+    let want = it === hovered && !isLogo ? 1 : 0;
+    if (coarse && !isLogo) {
+      v3.copy(it.holder.position).project(camera);
+      const sx = (v3.x * 0.5 + 0.5) * innerWidth, sy = (-v3.y * 0.5 + 0.5) * innerHeight;
+      const d = Math.hypot(sx - pointerX, sy - pointerY) / (innerWidth * 0.5);
+      want = 1 - THREE.MathUtils.smoothstep(d, 0.15, 1.1);
+    }
+    it.hover += (want - it.hover) * (1 - Math.exp(-dt * (coarse ? 6 : 12)));
     it.holder.scale.setScalar(it.scale * (1 + HOVER_BUMP * it.hover));
 
     // What the hand did: keeps a little momentum, then eases back to rest.
