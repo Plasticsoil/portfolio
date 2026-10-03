@@ -219,7 +219,7 @@ const GRAINS_PER_PX = 0.04;
 const view = { w: 1, h: 1, scrollSpan: 0 };
 // a new order on every visit
 const shuffled = studies.map((it) => [Math.random(), it]).sort((a, b) => a[0] - b[0]).map((p) => p[1]);
-const spec = document.getElementById('spec'), sea = document.getElementById('sea');
+const spec = document.getElementById('spec'), makeUi = document.getElementById('make');
 const mixUi = document.getElementById('mix'), viewsUi = document.getElementById('views'), storyUi = document.getElementById('story');
 const MIX_CELL = 0.045;
 // The stage of the Mix section: a hairline frame and a fainter grid inside it,
@@ -305,7 +305,7 @@ function layout() {
   // Then the Mix section: a framed stage with a faint grid behind it, set apart
   // from the collection, one mixed piece in its middle, and its controls on a
   // line underneath.
-  const mixTop = (rows + LIFT + 0.6) * rowH;             // below the top of the grid, in scene units
+  const mixTop = (rows + LIFT + 0.6) * rowH + view.h * 1.2;   // below the top of the grid, in scene units: well off the page
   const stageW = Math.min(W * (wide ? 0.5 : 0.86), view.h * 0.9), stageH = stageW * (wide ? 0.72 : 1);
   const stageY = top - heroH - mixTop - stageH / 2;
   stage.position.set(0, stageY, 0);
@@ -314,26 +314,23 @@ function layout() {
   mixIt.home.set(0, stageY, 0);
   mixIt.scale = stageH * 0.56 / Math.max(mixIt.size.x, mixIt.size.y, mixIt.size.z);
   mixIt.drift = stageH * 0.02;
-  mixUi.style.top = `${((heroH + mixTop + stageH) / view.h) * h + 18}px`;
-  // the four views: a column of squares against the left side of the stage,
-  // together exactly as tall as it is
-  const stagePx = { w: (stageW / view.h) * h, h: (stageH / view.h) * h, top: ((heroH + mixTop) / view.h) * h };
-  const cell = stagePx.h / VIEWS.length;
-  viewsUi.style.top = `${stagePx.top}px`;
-  viewsUi.style.left = `${w / 2 - stagePx.w / 2 - cell}px`;
+  // the four views beside the stage: a column of squares, together exactly as
+  // tall as the stage; the controls and the views are placed every frame by
+  // projecting the stage (see placeMixUi), since the stage is reached by a
+  // camera move, not by the page scrolling
+  view.stage = { x: stageW / 2, top: stageY + stageH / 2, bottom: stageY - stageH / 2, y: stageY };
+  const cell = (stageH / view.h) * h / VIEWS.length;
   viewsUi.style.width = `${cell}px`;
-  viewsUi.style.height = `${stagePx.h}px`;
-  viewsUi.hidden = w / 2 - stagePx.w / 2 - cell < 70;      // no room beside the stage on narrow screens
+  viewsUi.style.height = `${(stageH / view.h) * h}px`;
+  view.viewsRoom = w / 2 - (stageW / view.h) * h / 2 - cell >= 70;      // no room beside the stage on narrow screens
   if (Math.abs(cell - viewsCell) > 1) { viewsCell = cell; drawViews(); }
 
-  // After the stage: one more screen, where the story parts in two (see the
-  // frame loop). Not on phones, whose page does not scroll.
-  const seaTop = heroH + mixTop + stageH + rowH * 0.55;
-  const total = seaTop + (coarse ? 0 : view.h * 1.0);
-  sea.hidden = coarse;
-  sea.style.top = `${(seaTop / view.h) * h}px`;
-  view.seaTopPx = (seaTop / view.h) * h;
-  view.mixTopPx = ((heroH + mixTop) / view.h) * h;
+  // The page ends a little after the last row; as that end comes up the
+  // story parts (see the frame loop). The Mix stage is off the page: the word
+  // at the bottom right takes the camera there.
+  const gridEnd = heroH + (rows + LIFT + 0.5) * rowH;
+  view.gridEndY = top - gridEnd;
+  const total = gridEnd + view.h * 0.6;
   view.scrollSpan = Math.max(0, total - view.h);
   spacer.style.height = coarse ? '100vh' : `${(total / view.h) * 100}vh`;
   if (coarse) {
@@ -341,9 +338,6 @@ function layout() {
     map.halfX = Math.max(0, (W - view.w) / 2);
     map.top = 0;
     map.bottom = -view.scrollSpan;
-    map.stageY = stageY; map.stageH = stageH;
-    viewsUi.hidden = true;
-    mixUi.hidden = false;
   }
 
   // One rule for how crowded the particles look, whatever the piece: the same
@@ -736,6 +730,27 @@ function applyStroke() {
   }
 }
 
+// The Mix interface follows the stage on screen: the controls under it, the
+// views beside it, the readout at its top right corner. Shown only while making.
+function placeMixUi() {
+  const on = makeBlend > 0.02;
+  mixUi.hidden = !on; spec.hidden = !on || !spec.textContent;
+  viewsUi.hidden = !on || !view.viewsRoom || coarse;
+  if (!on) return;
+  const px = (x, y) => { v3.set(x, y, 0).project(camera); return [(v3.x * 0.5 + 0.5) * innerWidth, (-v3.y * 0.5 + 0.5) * innerHeight]; };
+  const [lx, ty] = px(-view.stage.x, view.stage.top), [rx, by] = px(view.stage.x, view.stage.bottom);
+  mixUi.style.top = `${by + 18}px`;
+  viewsUi.style.top = `${ty}px`;
+  viewsUi.style.left = `${lx - viewsCell}px`;
+  spec.style.left = `${rx + 14}px`;
+  spec.style.top = `${ty}px`;
+}
+let making = false, makeBlend = 0;
+makeUi.addEventListener('click', () => {
+  making = !making;
+  document.documentElement.style.overflow = making && !coarse ? 'hidden' : '';
+});
+
 // --- loop ----------------------------------------------------------------------
 const m4 = new THREE.Matrix4();
 let last = performance.now();
@@ -744,17 +759,14 @@ function frame(now) {
   last = now;
   const t = now / 1000;
 
-  // The tags and the story step aside once the Mix stage is well into view.
-  if (!coarse) {
-    const away = scrollY + innerHeight * 0.72 > view.mixTopPx;
-    modes.classList.toggle('away', away);
-    storyUi.classList.toggle('away', away);
-    // the sea: as the last screen scrolls up, the two columns of the story
-    // part from the middle, each line further than the one above, a
-    // triangle of black opening between them
-    const p = THREE.MathUtils.clamp((scrollY + innerHeight - view.seaTopPx - innerHeight * 0.3) / (innerHeight * 0.68), 0, 1);
-    sea.style.setProperty('--part', (p * p * (3 - 2 * p)).toFixed(4));
-  }
+  // Making: the word at the bottom right takes the camera off the page to
+  // the Mix stage and back; the words and the story step aside meanwhile.
+  makeBlend += ((making ? 1 : 0) - makeBlend) * (1 - Math.exp(-dt * 3.2));
+  if (makeBlend < 0.001 && !making) makeBlend = 0;
+  const away = makeBlend > 0.3;
+  modes.classList.toggle('away', away);
+  storyUi.classList.toggle('away', away);
+  makeUi.setAttribute('aria-pressed', making ? 'true' : 'false');
 
   if (coarse) {
     // the finger pans the map; let go and it glides to a stop, and it cannot
@@ -766,32 +778,27 @@ function frame(now) {
     }
     map.x = THREE.MathUtils.clamp(map.x, -map.halfX, map.halfX);
     map.y = THREE.MathUtils.clamp(map.y, map.bottom, map.top);
-    camera.position.x = map.x;
+    camera.position.x = map.x * (1 - makeBlend);
     camera.position.y = map.y;
-    // the Mix controls hang under the stage wherever it is on screen
-    const stageBottom = (0.5 - (map.stageY - map.stageH / 2 - map.y) / view.h) * innerHeight;
-    mixUi.style.top = `${stageBottom + 18}px`;
-    mixUi.style.visibility = stageBottom < innerHeight + 60 && stageBottom > -60 ? '' : 'hidden';
-    // the words and the story step aside once the stage is well into view
-    const stageTop = (0.5 - (map.stageY + map.stageH / 2 - map.y) / view.h) * innerHeight;
-    modes.classList.toggle('away', stageTop < innerHeight * 0.55);
-    storyUi.classList.toggle('away', stageTop < innerHeight * 0.55);
   } else {
     // Scrolling moves the camera down the page.
     const maxScroll = document.documentElement.scrollHeight - innerHeight;
     camera.position.y = maxScroll > 0 ? -(scrollY / maxScroll) * view.scrollSpan : 0;
   }
+  // the parting: as the end of the grid comes up from below, the two columns
+  // of the story part from the middle, each line further than the one above,
+  // a triangle of black opening between them
+  {
+    const camBottom = camera.position.y - view.h / 2;
+    const p = THREE.MathUtils.clamp((view.gridEndY - camBottom + view.h * 0.12) / (view.h * 0.5), 0, 1);
+    storyUi.style.setProperty('--part', (p * p * (3 - 2 * p)).toFixed(4));
+  }
+  camera.position.y += (view.stage.y - camera.position.y) * ease(makeBlend);
+  placeMixUi();
 
   const turn = Math.max(0, Math.min(1, (now - wipeStart) / 1000 / TRANSITION)), wiping = turn < 1;
   const mix = wiping ? ease(turn) : 1;
   const old = wiping ? fromMode : mode;
-
-  // The readout sits just inside the top right corner of the Mix stage.
-  v3.set(stage.scale.x / 2, stage.position.y + stage.scale.y / 2, 0).project(camera);
-  const sx = (v3.x * 0.5 + 0.5) * innerWidth, sy = (-v3.y * 0.5 + 0.5) * innerHeight;
-  spec.style.left = `${sx + 14}px`;
-  spec.style.top = `${sy}px`;
-  spec.hidden = !spec.textContent || sy > innerHeight + 40 || sy < -200;
 
   // What is under the pointer is worked out every frame, so it stays right
   // while the page scrolls or the pieces drift under a still pointer.

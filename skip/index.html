@@ -47,10 +47,17 @@
      the white stone and stays light over the black, and can always be read.
      A few lines of script at the end of the page keep the two columns the
      same height. */
-  #story { position: fixed; z-index: 3; left: 10px; right: 10px; bottom: 9px; max-height: 20vh; overflow: hidden;
+  #story { position: fixed; z-index: 3; left: 10px; right: 10px; bottom: 9px; overflow: hidden;
     display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; align-items: end;
     font: 300 clamp(10px, 0.8vw, 12.5px)/1.6 "Archivo", var(--sans); color: #fff; opacity: 0.5; mix-blend-mode: difference; pointer-events: none; transition: opacity 0.4s; }
   #story p { margin: 0; text-align: justify; hyphens: auto; text-wrap: pretty; }
+  /* The parting: a float shaped as a triangle sits at the inner edge of each
+     column, and its width (--part, set from the scroll) pushes every line
+     further aside than the one above, a triangle of black opening between
+     the two columns. */
+  #story { --part: 0; max-height: 46vh; }
+  #story p::before { content: ""; float: right; width: calc(var(--part) * 80%); height: 30em; shape-outside: polygon(100% 0, 100% 100%, 0 100%); }
+  #story p + p::before { float: left; shape-outside: polygon(0 0, 100% 100%, 0 100%); }
   @media (max-width: 720px) { #story { max-height: 34vh; column-gap: 10px; font-size: 9.5px; } }
   /* Touch screens: the collection is a map to pan, not a page to scroll. The
      story is a shorter telling, in readable type; the view words are bigger
@@ -65,7 +72,7 @@
   }
 
   /* The three views beside the Mix stage: a column of framed squares. */
-  #views { position: absolute; display: flex; flex-direction: column; }
+  #views { position: fixed; display: flex; flex-direction: column; }
   #views button { flex: 1; padding: 0; border: 1px solid #1d1c1a; margin-bottom: -1px; }
   #views button:last-child { margin-bottom: 0; }
   #views button:hover, #views button[aria-pressed="true"] { border-color: var(--muted); position: relative; }
@@ -79,7 +86,7 @@
   #box i:nth-child(6) { left: 0; top: 100%; }   #box i:nth-child(7) { left: 50%; top: 100%; }   #box i:nth-child(8) { left: 100%; top: 100%; }
 
   /* The Mix controls sit in the page, on a line under the framed stage. */
-  #mix { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 28px; color: var(--muted); white-space: nowrap; }
+  #mix { position: fixed; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 28px; color: var(--muted); white-space: nowrap; }
   #mix-go { color: var(--ink); border-color: var(--line); padding: 6px 18px; }
   #mix label { display: flex; align-items: center; gap: 12px; }
   #mix input { width: clamp(90px, 14vw, 180px); height: 12px; margin: 0; background: none; -webkit-appearance: none; appearance: none; cursor: pointer; }
@@ -95,19 +102,6 @@
   #spec b { grid-column: 1 / -1; font-weight: 300; border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-bottom: 5px; }
   @media (max-width: 1100px) { #spec { display: none; } }
   #tip { position: fixed; left: 0; top: 0; margin: 0; padding: 3px 8px; background: #000; border: 1px solid var(--line); color: var(--ink); pointer-events: none; white-space: nowrap; }
-
-  /* The sea: the last screen of the page. The story, in its two columns,
-     parts from the middle as the screen scrolls up: a float shaped as a
-     triangle sits at the inner edge of each column, and its width (--part,
-     set from the scroll) pushes every line further aside than the one above. */
-  #sea { position: absolute; z-index: 2; left: 0; right: 0; height: 100vh; display: flex; align-items: center; justify-content: center; pointer-events: none; --part: 0; }
-  #sea[hidden] { display: none; }
-  #sea .cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 0; width: min(1180px, 92vw); font: 300 clamp(12px, 1.05vw, 15px)/1.7 "Archivo", var(--sans); color: var(--muted); mix-blend-mode: difference; }
-  #sea p { margin: 0; text-align: justify; hyphens: auto; }
-  #sea p::before { content: ""; float: right; width: calc(var(--part) * 78%); height: 30em; shape-outside: polygon(100% 0, 100% 100%, 0 100%); }
-  #sea p + p::before { float: left; shape-outside: polygon(0 0, 100% 100%, 0 100%); }
-  #sea p:first-child { padding-right: 18px; }
-  #sea p + p { padding-left: 18px; }
 
   /* "/ portfolio": the way back to yamliv.net, top left, as on the other
      pages of the site. */
@@ -135,6 +129,12 @@
   #modes button, #modes button:hover { font: inherit; color: inherit; border: 0; padding: 0; white-space: nowrap; }
   #modes button[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
   #modes.away, #story.away { opacity: 0; pointer-events: none; }
+  /* The word at the bottom right, the mirror of the view words: it takes the
+     page to the Mix stage and back. Underlined while there. */
+  #make { position: fixed; z-index: 3; right: 10px; bottom: 130px; font: 300 clamp(10px, 0.8vw, 12.5px)/1.6 "Archivo", var(--sans); color: #fff; opacity: 0.5; mix-blend-mode: difference; border: 0; padding: 0; }
+  #make:hover { color: #fff; }
+  #make[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  @media (pointer: coarse) { #make { font-size: 10.5px; } }
 
 </style>
 </head>
@@ -145,6 +145,7 @@
 <div id="spacer"><div id="grain" aria-hidden="true"></div></div>
 
 <div id="modes" role="group" aria-label="View mode"></div>
+<button id="make" aria-pressed="false">Mutant</button>
 
 <p id="status">Loading</p>
 <div id="story" lang="en">
@@ -154,10 +155,6 @@
   <p class="short">The valley was struck ten times. Before the last, the Oum marked their doors with white quarry dust, and what walked that night skipped them. The Skipped, ever since.</p>
 </div>
 <p id="tip" hidden></p>
-<section id="sea" aria-label="The story" hidden><div class="cols">
-  <p>Before the cities had names, the Oum cut stone for the Sarrath, who ruled the long valley of the Idra. They had come down from the hills as guests in a dry year, and stayed until no one remembered they had ever been free. When the Sarrath counted them and found them too many, the quarries were deepened and the days made longer, and every third child born to the Oum was given to the river. One girl, Yssa, was set afloat in a clay jar and pulled out downstream by a daughter of the governor, who raised her in the white house above the works. Grown, she struck a foreman who was beating an old cutter, and fled to the salt plain. There, years later, a stone spoke to her in the heat without cracking, and told her to go back and ask for her people.</p>
-  <p>The Sarrath laughed, and the valley was visited ten times. The Idra ran thick and red as clay. Its frogs left the water and filled the ovens. Dust turned to biting flies; beasts came down out of the hills; the herds lay down and did not rise; skin blistered; ice fell burning; a cloud of wings ate what was left; and for three days the dark could be held in the hand. Before the tenth visit Yssa told the Oum to rub white quarry dust on their doorposts. That night something walked the streets and stopped at every house, and wherever it found the white mark it skipped the door. By morning the Sarrath opened the gates themselves. The Oum left with their tools and their unbaked bread, and the salt plain parted to let them cross. They have been called the Skipped ever since.</p>
-</div></section>
 <div id="spec" hidden></div>
 <div id="box" hidden><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 <div id="views" role="group" aria-label="Views of the mixed piece"></div>
@@ -217,7 +214,7 @@
       cols[0].style.wordSpacing = best ? best.a.ws : '';
       cols[1].style.wordSpacing = best ? best.b.ws : '';
       // the view-mode tags sit right above the text
-      document.getElementById('modes').style.bottom = `${9 + story.offsetHeight + 6}px`;
+      document.getElementById('modes').style.bottom = document.getElementById('make').style.bottom = `${9 + story.offsetHeight + 6}px`;
     };
     document.fonts.ready.then(() => { even(); new ResizeObserver(even).observe(story); addEventListener('resize', even); });
   }
