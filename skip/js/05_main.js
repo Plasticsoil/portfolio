@@ -805,8 +805,10 @@ function frame(now) {
   // a triangle of black opening between them
   {
     const camBottom = camera.position.y - view.h / 2;
-    const p = THREE.MathUtils.clamp((view.gridEndY - camBottom + view.h * 0.12) / (view.h * 0.5), 0, 1);
+    // it begins while the last row is still on screen and is complete at the page's end
+    const p = THREE.MathUtils.clamp((view.gridEndY - camBottom + view.h * 0.45) / (view.h * 1.0), 0, 1);
     storyUi.style.setProperty('--part', (p * p * (3 - 2 * p)).toFixed(4));
+    storyUi.classList.toggle('parting', p > 0.02);
   }
   camera.position.y += (view.stage.y - camera.position.y) * ease(makeBlend);
   placeMixUi();

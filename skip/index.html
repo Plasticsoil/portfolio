@@ -47,7 +47,7 @@
      the white stone and stays light over the black, and can always be read.
      A few lines of script at the end of the page keep the two columns the
      same height. */
-  #story { position: fixed; z-index: 3; left: 10px; right: 10px; bottom: 9px; overflow: hidden;
+  #story { position: fixed; z-index: 3; left: 10px; right: 10px; bottom: 4px; overflow: hidden;
     display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; align-items: end;
     font: 300 clamp(10px, 0.8vw, 12.5px)/1.6 "Archivo", var(--sans); color: #fff; opacity: 0.5; mix-blend-mode: difference; pointer-events: none; transition: opacity 0.4s; }
   #story p { margin: 0; text-align: justify; hyphens: auto; text-wrap: pretty; }
@@ -56,8 +56,11 @@
      further aside than the one above, a triangle of black opening between
      the two columns. */
   #story { --part: 0; max-height: 46vh; }
-  #story p::before { content: ""; float: right; width: calc(var(--part) * 80%); height: 30em; shape-outside: polygon(100% 0, 100% 100%, 0 100%); }
-  #story p + p::before { float: left; shape-outside: polygon(0 0, 100% 100%, 0 100%); }
+  #story p::before { content: ""; float: right; width: calc(var(--part) * 92%); height: 30em; shape-outside: polygon(0 0, 100% 0, 100% 100%); }
+  #story p + p::before { float: left; shape-outside: polygon(0 0, 100% 0, 0 100%); }
+  /* while parting the lines are ragged against the slope, not justified */
+  #story.parting p { text-align: left; }
+  #story.parting p + p { text-align: right; }
   @media (max-width: 720px) { #story { max-height: 34vh; column-gap: 10px; font-size: 9.5px; } }
   /* Touch screens: the collection is a map to pan, not a page to scroll. The
      story is a shorter telling, in readable type; the view words are bigger
