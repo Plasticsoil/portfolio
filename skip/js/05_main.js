@@ -539,7 +539,7 @@ function drawViews() {
 }
 const fieldIds = [];
 const MIX_DIRS = [[0, 1, 0], [0, 1, 0], [0, -1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]];
-let mixSeed = 1, mixGen = 0, mixPending = [], mixBusy = false, mixTimer = 0, mixFresh = true;
+let mixSeed = 1, mixGen = 0, mixPending = [], mixBusy = false, mixFresh = true, mixDragging = false;
 
 function recipeFor(slot) {
   const r = (k) => rnd(mixSeed * 7.3 + slot * 3.1, k);
@@ -570,27 +570,46 @@ function mixNext() {
   const recipe = recipeFor(slot);
   const title = (id) => items.find((it) => it.piece.id === id).piece.title;
   mixes[slot].piece.title = `${title(recipe.a)} x ${title(recipe.b)} x ${title(recipe.c)}`;
-  // the readout in the corner of the stage: what went in, cut along which axis
-  const axis = (d) => (d[0] ? (d[0] > 0 ? '+x' : '-x') : d[1] ? (d[1] > 0 ? '+y' : '-y') : d[2] > 0 ? '+z' : '-z');
-  const row = (tag, id, d) => `<i>${tag}</i><span>${title(id).toLowerCase()}</span><span>${id}</span><span>${axis(d)}</span>`;
-  spec.innerHTML = `<b>mix ${String(mixSeed).padStart(4, '0')}</b>`
-    + row('a', recipe.a, recipe.dirs[0]) + row('b', recipe.b, recipe.dirs[1]) + row('c', recipe.c, recipe.dirs[2])
-    + `<b>cut ${recipe.cut >= 0 ? '+' : ''}${recipe.cut.toFixed(2)} &nbsp; melt ${recipe.melt.toFixed(2)} &nbsp; cell ${MIX_CELL}</b>`;
-  worker.postMessage({ type: 'mix', gen: mixGen, slot, recipe, params: { ...carveParams(), cell: MIX_CELL, wireEdge: 0.44 } });
+  // while a slider is moving the mix is carved coarse and fast, so the change
+  // can be watched step by step; the fine carve follows when it stops
+  const rough = mixDragging;
+  worker.postMessage({ type: 'mix', gen: mixGen, slot, recipe, rough, params: { ...carveParams(), cell: rough ? MIX_CELL * 2 : MIX_CELL, wireEdge: 0.44 } });
 }
 function mixArrived(m) {
   if (m.gen === mixGen) {
     install(mixes[m.slot], m);
     drawViews();
+    // the readout beside the stage: what the carve actually did
+    const title = (id) => items.find((it) => it.piece.id === id).piece.title.toLowerCase();
+    const deg = (d) => `${Math.round(Math.acos(Math.max(-1, Math.min(1, d[1]))) * 180 / Math.PI)}°`;
+    const pct = (p) => `${Math.round(p.from * 100)}${p.to !== p.from ? '–' + Math.round(p.to * 100) : ''}%`;
+    spec.innerHTML = `<b>mix ${String(mixSeed).padStart(4, '0')}</b>`
+      + m.spec.map((p) => `<span>${title(p.id)}</span><span>${deg(p.dir)}</span><span>${pct(p)}</span><span>×${p.k.toFixed(2)}</span>`).join('')
+      + `<b>join ${m.joinY.toFixed(2)}</b>`;
     // A new mix arrives as dust: a loose cloud of grains that settles onto
     // the shape, and the stone then sets through it. Only for a fresh draw
     // (Mix), not while a slider is being dragged.
-    if (mixFresh) { mixes[m.slot].arrive = performance.now(); mixFresh = false; }
+    if (mixFresh) {
+      // the same shape-shift as a click in the Particles view, joined at the
+      // moment the grains are a churning ball in the middle of the stage, so
+      // the new piece bursts out of it and settles; the stone sets after
+      const it = mixes[m.slot], now = performance.now();
+      it.arrive = now;
+      it.shift = now - 900;
+      it.points.uniforms.uShuffle.value = Math.random() * 100;
+      it.points.uniforms.uGatherPoint.value.copy(it.home);
+      mixFresh = false;
+    }
   }
   mixNext();
 }
 document.getElementById('mix-go').addEventListener('click', () => { mixSeed++; held_view = -1; markView(); mixFresh = true; remix(); });
-for (const el of [mixCut, mixMelt]) el.addEventListener('input', () => { clearTimeout(mixTimer); mixTimer = setTimeout(remix, 180); });
+for (const el of [mixCut, mixMelt]) {
+  // every move re-carves (coarse, queued behind the one in progress, so the
+  // piece changes step by step under the finger); letting go carves it fine
+  el.addEventListener('input', () => { mixDragging = true; remix(); });
+  el.addEventListener('change', () => { mixDragging = false; remix(); });
+}
 
 // The small distance fields of the baked pieces, fetched once everything
 // above is on screen, then the first mixes are grown.
@@ -619,7 +638,7 @@ const tip = document.getElementById('tip');
 const box = document.getElementById('box');
 const corner = new THREE.Vector3();
 const HOVER_BUMP = 0.15;
-const ARRIVE_MS = 1500;
+const ARRIVE_MS = 2400;
 // The pointer as a magnet for the particles: the line from the eye through
 // the pointer, eased so the grains follow smoothly, and how strongly it acts.
 const rayDir = new THREE.Vector3(0, 0, -1), rayTo = new THREE.Vector3();
@@ -748,8 +767,8 @@ function frame(now) {
   // The readout sits just inside the top right corner of the Mix stage.
   v3.set(stage.scale.x / 2, stage.position.y + stage.scale.y / 2, 0).project(camera);
   const sx = (v3.x * 0.5 + 0.5) * innerWidth, sy = (-v3.y * 0.5 + 0.5) * innerHeight;
-  spec.style.right = `${innerWidth - sx + 10}px`;
-  spec.style.top = `${sy + 8}px`;
+  spec.style.left = `${sx + 14}px`;
+  spec.style.top = `${sy}px`;
   spec.hidden = !spec.textContent || sy > innerHeight + 40 || sy < -200;
 
   // What is under the pointer is worked out every frame, so it stays right
@@ -861,7 +880,7 @@ function frame(now) {
     it.stone.uniforms.uReveal.value = it.points.uniforms.uReveal.value = it.reveal;
     // the arrival of a new mix: dust first, settling, then the piece itself
     const arriving = it.arrive ? Math.min(1, (now - it.arrive) / ARRIVE_MS) : 1;
-    let scatter = arriving < 1 ? (1 - arriving) ** 2 * 1.6 : 0;
+    let scatter = arriving < 1 && !it.shift ? (1 - arriving) ** 2 * 1.6 : 0;
     // the shape-shift: the shader keeps every grain's own timing, it only
     // needs the clock and the size of the piece
     const pu = it.points.uniforms;

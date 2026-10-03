@@ -90,11 +90,11 @@
   #mix input:focus-visible { outline: 1px solid var(--pink); outline-offset: 3px; }
   @media (max-width: 560px) { #mix { gap: 14px; } #mix label { gap: 6px; } }
   /* The readout in the corner of the Mix stage: what went in, and how. */
-  #spec { position: fixed; z-index: 2; margin: 0; display: grid; grid-template-columns: auto auto auto auto; column-gap: 9px; row-gap: 1px; align-items: baseline;
+  #spec { position: fixed; z-index: 2; margin: 0; display: grid; grid-template-columns: auto auto auto auto; column-gap: 9px; row-gap: 1px; align-items: baseline; max-width: 150px;
     font: 300 10px/1.5 "Archivo", var(--sans); color: var(--muted); white-space: nowrap; pointer-events: none; }
   #spec b { grid-column: 1 / -1; font-weight: 300; color: var(--ink); }
   #spec b:last-child { margin-top: 3px; color: var(--muted); }
-  #spec i { font-style: normal; color: var(--ink); }
+  @media (max-width: 1100px) { #spec { display: none; } }
   #tip { position: fixed; left: 0; top: 0; margin: 0; padding: 3px 8px; background: #000; border: 1px solid var(--line); color: var(--ink); pointer-events: none; white-space: nowrap; }
 
   /* "/ portfolio": the way back to yamliv.net, top left, as on the other

@@ -368,7 +368,13 @@ function mixPiece(r) {
       for (let a = 0; a < 3; a++) { if (v[a] < min[a]) min[a] = v[a]; if (v[a] > max[a]) max[a] = v[a]; }
     }
   }
-  return { id: 'mix', field: { sdf, min: min.map((v) => v - 0.15), max: max.map((v) => v + 0.15), eps: FH } };
+  // what was done, for the readout beside the stage: each part's cut
+  // direction, where along its length it was cut, and how much it was scaled
+  // to fit the join
+  const spec = [[A, f1, f1], [B, f1, f2], [C, f2, f2]].map(([P, s0, s1], i) => ({
+    id: [r.a, r.b, r.c][i], dir: P.u, from: s0, to: s1, k: P.k, size: P.size * P.k,
+  }));
+  return { id: 'mix', field: { sdf, min: min.map((v) => v - 0.15), max: max.map((v) => v + 0.15), eps: FH }, spec, joinY: y2 };
 }
 
 // Keeps the main body of a carved mesh and drops whatever floats free of it.
@@ -399,9 +405,10 @@ export { mixPiece, addField, keepMain };
 if (typeof self !== 'undefined') self.onmessage = (e) => {
   if (e.data.type === 'field') { addField(e.data.id, e.data.data); return; }
   if (e.data.type === 'mix') {
-    const m = keepMain(carve(mixPiece(e.data.recipe), e.data.params));
+    const piece = mixPiece(e.data.recipe);
+    const m = keepMain(carve(piece, e.data.params));
     const low = m.low = wireMesh(m.position, m.index, e.data.params.wireEdge);
-    m.kind = 'mix'; m.gen = e.data.gen; m.slot = e.data.slot;
+    m.kind = 'mix'; m.gen = e.data.gen; m.slot = e.data.slot; m.spec = piece.spec; m.joinY = piece.joinY; m.rough = e.data.rough;
     self.postMessage(m, [m.position.buffer, m.normal.buffer, m.ao.buffer, m.shadeP.buffer, m.shadeN.buffer, m.index.buffer, low.position.buffer, low.edges.buffer]);
     return;
   }
