@@ -248,13 +248,15 @@ function layout() {
   // seen through the phone's narrow window: the finger pans it in every
   // direction (see the map code below). `aspect` is the shape the layout is
   // made for, `W` its width; on a desktop both are simply the window's.
-  const aspect = coarse ? Math.max(camera.aspect, 1.5) : camera.aspect;
+  const aspect = coarse ? Math.max(camera.aspect, 1.9) : camera.aspect;
   const wide = aspect >= 1;
 
   // The logo is small in its frame on purpose: the air around it matters.
   const LOGO_SCALE = 0.65;
   const lw = (logo.carved ? logo.size.x : 6.4) * LOGO_SCALE, lh = (logo.carved ? logo.size.y : 2.8) * LOGO_SCALE;
-  const dist = Math.max(lw / (wide ? 0.52 : 0.72) / (2 * TAN * aspect), lh / 0.32 / (2 * TAN));
+  // on a phone the logo takes most of the window's width, no more
+  const dist = coarse ? lw / 0.84 / (2 * TAN * camera.aspect)
+    : Math.max(lw / (wide ? 0.52 : 0.72) / (2 * TAN * aspect), lh / 0.32 / (2 * TAN));
   view.h = 2 * dist * TAN;
   view.w = view.h * camera.aspect;
   const W = view.h * aspect;
@@ -272,7 +274,9 @@ function layout() {
   // middle column lifted by a good third of a step, so no two neighbours sit
   // side by side. Nothing is placed outside these columns.
   const cols = wide ? 3 : 2;
-  const colW = W * (wide ? 0.26 : 0.44), rowH = colW, LIFT = 0.38;
+  // on a phone the columns are further apart and the pieces smaller in them:
+  // more air, the way a wide canvas breathes
+  const colW = W * (coarse ? 0.3 : wide ? 0.26 : 0.44), rowH = colW, LIFT = 0.38, FILL = coarse ? 0.34 : 0.46;
   const rows = Math.ceil(studies.length / cols);
   // The logo sits in the middle of the empty black above the grid: halfway
   // between the top of the screen and the top of the highest piece.
@@ -292,7 +296,7 @@ function layout() {
     );
     // measured by its longest side in any direction, so a piece that is deep
     // front to back does not come out larger than it should as it turns
-    it.scale = colW * 0.46 * worldSize(it) / Math.max(it.size.x, it.size.y, it.size.z);
+    it.scale = colW * FILL * worldSize(it) / Math.max(it.size.x, it.size.y, it.size.z);
     it.drift = colW * 0.05;
   });
   // Then the Mix section: a framed stage with a faint grid behind it, set apart
