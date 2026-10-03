@@ -248,7 +248,7 @@ function layout() {
   // seen through the phone's narrow window: the finger pans it in every
   // direction (see the map code below). `aspect` is the shape the layout is
   // made for, `W` its width; on a desktop both are simply the window's.
-  const aspect = coarse ? Math.max(camera.aspect, 1.9) : camera.aspect;
+  const aspect = coarse ? Math.max(camera.aspect, 2.2) : camera.aspect;
   const wide = aspect >= 1;
 
   // The logo is small in its frame on purpose: the air around it matters.
@@ -276,7 +276,10 @@ function layout() {
   const cols = wide ? 3 : 2;
   // on a phone the columns are further apart and the pieces smaller in them:
   // more air, the way a wide canvas breathes
-  const colW = W * (coarse ? 0.3 : wide ? 0.26 : 0.44), rowH = colW, LIFT = 0.38, FILL = coarse ? 0.34 : 0.46;
+  const colW = W * (coarse ? 0.36 : wide ? 0.26 : 0.44), rowH = colW, LIFT = 0.38, FILL = coarse ? 0.26 : 0.46;
+  // and on the phone every piece also strays from its cell, so the grid reads
+  // as a scatter rather than rows
+  const STRAY = coarse ? 0.4 : 0;
   const rows = Math.ceil(studies.length / cols);
   // The logo sits in the middle of the empty black above the grid: halfway
   // between the top of the screen and the top of the highest piece.
@@ -290,8 +293,8 @@ function layout() {
   shuffled.forEach((it, i) => {
     const col = i % cols, row = Math.floor(i / cols);
     it.home.set(
-      (col - (cols - 1) / 2) * colW,
-      top - heroH - rowH * (row + 0.5 + LIFT) + (col % 2 ? rowH * LIFT : 0),
+      (col - (cols - 1) / 2) * colW + (it.seed[6] - 0.5) * colW * STRAY,
+      top - heroH - rowH * (row + 0.5 + LIFT) + (col % 2 ? rowH * LIFT : 0) + (it.seed[7] - 0.5) * rowH * STRAY,
       0,
     );
     // measured by its longest side in any direction, so a piece that is deep
@@ -636,26 +639,6 @@ function pick(x, y) {
   }
   return best;
 }
-// On a phone there is no pointer to hover with, so the piece nearest the
-// middle of the screen plays the hovered one as the page scrolls: it gets the
-// bump and its name, written under it. Only a piece near the middle counts.
-const centred = { x: 0, y: 0, ry: 0 };
-function pickCentre() {
-  let best = null, bestD = Infinity;
-  const cx = innerWidth / 2, cy = innerHeight * 0.42;
-  for (const it of items) {
-    if (!it.carved || it === logo) continue;
-    v3.copy(it.holder.position).project(camera);
-    const sx = (v3.x * 0.5 + 0.5) * innerWidth, sy = (-v3.y * 0.5 + 0.5) * innerHeight;
-    const d = Math.hypot(sx - cx, (sy - cy) * 1.6);
-    if (d < innerHeight * 0.3 && d < bestD) {
-      best = it; bestD = d;
-      centred.x = sx; centred.y = sy;
-      centred.ry = it.size.y * it.scale * (innerHeight / view.h) * 0.6;
-    }
-  }
-  return best;
-}
 canvas.addEventListener('pointerdown', (e) => {
   if (coarse) return;                         // on the map the finger pans, nothing is grabbed
   held = pick(e.clientX, e.clientY);
@@ -771,17 +754,25 @@ function frame(now) {
 
   // What is under the pointer is worked out every frame, so it stays right
   // while the page scrolls or the pieces drift under a still pointer.
-  hovered = held || (coarse ? pickCentre() : pointerX >= 0 ? pick(pointerX, pointerY) : null);
+  // On a phone the middle of the screen stands in for the pointer: whatever
+  // the finger pans into it reacts as if hovered (bump, name, magnet, box).
+  if (coarse) { pointerX = innerWidth / 2; pointerY = innerHeight * 0.45; }
+  hovered = held || (pointerX >= 0 ? pick(pointerX, pointerY) : null);
   canvas.style.cursor = held ? 'grabbing' : hovered ? 'grab' : '';
   const label = hovered && hovered !== logo && !held ? hovered.piece.title : '';
   tip.hidden = !label;
   if (label) {
     tip.textContent = label;
-    if (coarse) tip.style.transform = `translate(calc(${centred.x}px - 50%), ${centred.y + centred.ry + 10}px)`;
-    else tip.style.transform = `translate(${pointerX + 14}px, ${pointerY + 14}px)`;
+    if (coarse) {
+      // the name sits under the piece, centred
+      v3.copy(hovered.holder.position).project(camera);
+      const sx = (v3.x * 0.5 + 0.5) * innerWidth, sy = (-v3.y * 0.5 + 0.5) * innerHeight;
+      const ry = hovered.size.y * hovered.scale * (innerHeight / view.h) * 0.6;
+      tip.style.transform = `translate(calc(${sx}px - 50%), ${sy + ry + 10}px)`;
+    } else tip.style.transform = `translate(${pointerX + 14}px, ${pointerY + 14}px)`;
   }
 
-  const present = pointerX >= 0 && !coarse;
+  const present = pointerX >= 0;
   if (present) {
     rayTo.set((pointerX / innerWidth) * 2 - 1, 1 - (pointerY / innerHeight) * 2, 0.5).unproject(camera).sub(camera.position).normalize();
     rayDir.lerp(rayTo, 1 - Math.exp(-dt * 9)).normalize();
