@@ -190,7 +190,9 @@ function M(){
   const iw=Math.max(W-2*sv,2), ih=Math.max(cap-2*sh,2);
   const rI=Math.min(iw,ih)/2*G.cornerIn;
   const sc=Math.max(4,Math.min(G.sc, (yM-sh)*2/3-1));      // centre stroke (small); big = 3×
-  const Xs=[sb, sb+sv, xC-sv/2, xC+sv/2, sb+W-sv, sb+W];   // 6 vertical guides → 5 columns
+  // 7 vertical guides → 6 columns. The centre column is split in two at xC so
+  // an M or W can land its diagonals on a half-width step at the middle.
+  const Xs=[sb, sb+sv, xC-sv/2, xC, xC+sv/2, sb+W-sv, sb+W];
   // horizontal guides → rows. The middle splits into three equal bands
   // (lower flank · inner · upper flank): paint the inner alone for the small
   // centre stroke, or all three for the big one (3×). Two extra lines sit at
@@ -283,15 +285,34 @@ function convexHull(pts){
   for(const p of pts){ while(lo.length>=2 && cr(lo[lo.length-2],lo[lo.length-1],p)<=0) lo.pop(); lo.push(p); }
   for(let i=pts.length-1;i>=0;i--){ const p=pts[i]; while(up.length>=2 && cr(up[up.length-2],up[up.length-1],p)<=0) up.pop(); up.push(p); }
   lo.pop(); up.pop(); return lo.concat(up); }
-function diagPolyPts(a,b){            // convex hull of the two chosen faces' corners
+function diagHullPts(a,b){            // legacy: convex hull of the two cells' corners
   const ba=cellBox(+a[0],+a[1]), bb=cellBox(+b[0],+b[1]);
   return convexHull([[ba.x0,ba.y0],[ba.x1,ba.y0],[ba.x1,ba.y1],[ba.x0,ba.y1],
                      [bb.x0,bb.y0],[bb.x1,bb.y0],[bb.x1,bb.y1],[bb.x0,bb.y1]]); }
+/* a diagonal is drawn edge to edge: it leaves one cell through a chosen edge
+   (T/R/B/L) and arrives at another cell through a chosen edge. The two edges'
+   four endpoints are the four points of the band - nothing is guessed. */
+const DIAG_RE=/^x(\d\d)([TRBL])(\d\d)([TRBL])$/, DIAG_OLD_RE=/^x\d{4}$/;
+function isDiag(s){ return DIAG_RE.test(s)||DIAG_OLD_RE.test(s); }
+function edgePts(cell,e){ const b=cellBox(+cell[0],+cell[1]);
+  return e==='T'?[[b.x0,b.y1],[b.x1,b.y1]] : e==='B'?[[b.x0,b.y0],[b.x1,b.y0]]
+       : e==='L'?[[b.x0,b.y0],[b.x0,b.y1]] : [[b.x1,b.y0],[b.x1,b.y1]]; }
+function nearestEdge(cell,p){ const b=cellBox(+cell[0],+cell[1]);
+  const d={T:b.y1-p.y, B:p.y-b.y0, L:p.x-b.x0, R:b.x1-p.x};
+  return Object.keys(d).reduce((k,q)=>d[q]<d[k]?q:k,'T'); }
+function diagEdgePts(a,eA,b,eB){
+  const [A1,A2]=edgePts(a,eA), [B1,B2]=edgePts(b,eB), D=(p,q)=>Math.hypot(p[0]-q[0],p[1]-q[1]);
+  // pair the endpoints so the two long sides do not cross each other
+  return D(A1,B1)+D(A2,B2) <= D(A1,B2)+D(A2,B1) ? [A1,A2,B2,B1] : [A1,A2,B1,B2]; }
+function diagPolyPts(seg){ let m=DIAG_RE.exec(seg);
+  if(m) return diagEdgePts(m[1],m[2],m[3],m[4]);
+  return diagHullPts(seg.slice(1,3),seg.slice(3,5)); }
+function polyArea(pts){ let a=0; for(let i=0;i<pts.length;i++){ const p=pts[i],q=pts[(i+1)%pts.length]; a+=p[0]*q[1]-q[0]*p[1]; } return a/2; }
 /* every painted face + diagonal as a CCW polygon */
 function glyphPolys(segs){ const m=M(),Xs=m.Xs,Ys=m.Ys,ps=[];
   for(const c of cellsOf(segs)){ const i=+c[1],j=+c[2];
     ps.push([[Xs[i],Ys[j]],[Xs[i+1],Ys[j]],[Xs[i+1],Ys[j+1]],[Xs[i],Ys[j+1]]]); }
-  for(const s of segs) if(/^x\d{4}$/.test(s)) ps.push(diagPolyPts(s.slice(1,3),s.slice(3,5)));
+  for(const s of segs) if(isDiag(s)){ const q=diagPolyPts(s); if(Math.abs(polyArea(q))>1) ps.push(q); }
   return ps; }
 /* union of the polygons → boundary loops ([{x,y}], outer CCW / holes CW) */
 function unionLoops(polys){
@@ -393,20 +414,14 @@ function roundLoops(loops, segs){
 /* the letter outline: cells+diagonals unioned when a diagonal is present,
    otherwise the fast grid trace. Every vertex gets a roundable corner. */
 function outlinePath(segs){
-  const hasDiag=segs.some(s=>/^x\d{4}$/.test(s));
+  const hasDiag=segs.some(isDiag);
   const loops = hasDiag ? unionLoops(glyphPolys(segs).map(ccwPoly)).map(simplifyPts) : gridLoops(segs);
   return roundLoops(loops, segs);
 }
 /* a face-to-face diagonal = a parallelogram connecting the two faces' corner
    points. For each cell take its two corners that are extreme across the
    diagonal; the four points form the parallelogram. */
-function cellCorner(ci,cj,px,py,sign){   // the cell corner furthest along sign·perpendicular
-  const b=cellBox(ci,cj), pts=[[b.x0,b.y0],[b.x1,b.y0],[b.x1,b.y1],[b.x0,b.y1]];
-  let best=pts[0], bp=-Infinity;
-  for(const p of pts){ const pr=(p[0]*px+p[1]*py)*sign; if(pr>bp){ bp=pr; best=p; } }
-  return best;
-}
-function diagQuad(a,b){ const h=diagPolyPts(a,b);
+function diagQuad(seg){ const h=diagPolyPts(seg);
   let d='M '+R(h[0][0])+' '+R(h[0][1])+' '; for(let i=1;i<h.length;i++) d+='L '+R(h[i][0])+' '+R(h[i][1])+' ';
   return d+'Z'; }
 /* a straight diagonal stroke of thickness t from A to B (square ends) */
@@ -423,7 +438,7 @@ function cellCenter(i,j){ const b=cellBox(i,j); return {x:(b.x0+b.x1)/2, y:(b.y0
 function cellSize(i,j){ const b=cellBox(i,j); return {w:b.x1-b.x0, h:b.y1-b.y0}; }
 function sameSize(a,b){ const p=cellSize(+a[0],+a[1]), q=cellSize(+b[0],+b[1]);
   return Math.abs(p.w-q.w)<0.5 && Math.abs(p.h-q.h)<0.5; }
-function diagId(a,b){ return a<b ? 'x'+a+b : 'x'+b+a; }   // normalised so A-B == B-A
+function diagId(a,eA,b,eB){ return (a+eA)<(b+eB) ? 'x'+a+eA+b+eB : 'x'+b+eB+a+eA; }   // normalised so A-B == B-A
 /* one surface: cells and diagonals are unioned into a single rounded outline */
 function paint(segs, ink, op){
   const o=op==null?1:op;
@@ -470,7 +485,7 @@ function hits(){
   // existing diagonals get a thin hit along their stroke so you can click one to remove it
   const E=diagEnds(), dt=Math.max(GRID.sd,44);
   for(const seg of segsOf(cur)){
-    if(/^x\d{4}$/.test(seg)) s+=`<path class="hit" d="${diagQuad(seg.slice(1,3),seg.slice(3,5))}" data-seg="${seg}"/>`;
+    if(isDiag(seg)) s+=`<path class="hit" d="${diagQuad(seg)}" data-seg="${seg}"/>`;
     else if(E[seg]) s+=`<path class="hit" d="${diagPath(E[seg][0],E[seg][1],m.xC,m.yM,dt)}" data-seg="${seg}"/>`;
   }
   // a handle just inside every corner — tap to toggle round/straight, drag to set its radius.
@@ -524,14 +539,15 @@ function renderDrag(){
     return;
   }
   if(ddrag && ddrag.src && ddrag.moved){
-    const a=cellCenter(+ddrag.src[0],+ddrag.src[1]), t=ddrag.target, ok=t&&t!==ddrag.src;
+    const t=ddrag.target, ok=t&&t!==ddrag.src&&ddrag.eB;
+    const edgeLine=(cell,e,w,o)=>{ const [p,q]=edgePts(cell,e);
+      return `<line x1="${R(p[0])}" y1="${R(p[1])}" x2="${R(q[0])}" y2="${R(q[1])}" stroke="${acc}" stroke-width="${w}" stroke-linecap="round" opacity="${o}"/>`; };
     let out='';
-    if(ok) out+=`<path d="${diagQuad(ddrag.src,t)}" fill="${acc}" opacity=".5"/>`;   // the real band
-    else { const end=ddrag.p||a; out+=`<line x1="${R(a.x)}" y1="${R(a.y)}" x2="${R(end.x)}" y2="${R(end.y)}" stroke="${key}" stroke-width="10" stroke-linecap="round" opacity=".45"/>`; }
-    const ba=cellBox(+ddrag.src[0],+ddrag.src[1]);
-    out+=`<rect x="${R(ba.x0)}" y="${R(ba.y0)}" width="${R(ba.x1-ba.x0)}" height="${R(ba.y1-ba.y0)}" fill="none" stroke="${acc}" stroke-width="5" opacity=".7"/>`;
-    if(t){ const b=cellBox(+t[0],+t[1]);
-      out+=`<rect x="${R(b.x0)}" y="${R(b.y0)}" width="${R(b.x1-b.x0)}" height="${R(b.y1-b.y0)}" fill="none" stroke="${acc}" stroke-width="5" opacity=".7"/>`; }
+    if(ok) out+=`<path d="${diagQuad(diagId(ddrag.src,ddrag.eA,t,ddrag.eB))}" fill="${acc}" opacity=".5"/>`;   // the real band
+    else { const [p,q]=edgePts(ddrag.src,ddrag.eA), a={x:(p[0]+q[0])/2,y:(p[1]+q[1])/2}, end=ddrag.p||a;
+      out+=`<line x1="${R(a.x)}" y1="${R(a.y)}" x2="${R(end.x)}" y2="${R(end.y)}" stroke="${key}" stroke-width="10" stroke-linecap="round" opacity=".45"/>`; }
+    out+=edgeLine(ddrag.src,ddrag.eA,12,.9);                   // the edge it leaves through
+    if(ok) out+=edgeLine(t,ddrag.eB,12,.9);                    // the edge it arrives at
     el.innerHTML=out; return;
   }
   el.innerHTML='';
@@ -664,7 +680,8 @@ document.addEventListener('pointerdown',e=>{
   const h=e.target.closest && e.target.closest('.hit'); if(!h)return;
   const seg=h.dataset.seg;
   if(/^c\d\d$/.test(seg)){ e.preventDefault();          // a cell → maybe paint, maybe start a diagonal
-    ddrag={src:seg.slice(1), seg, moved:false, target:null, pid:e.pointerId, sx:e.clientX, sy:e.clientY};
+    const p0=toFont(e), src=seg.slice(1);
+    ddrag={src, seg, eA:p0?nearestEdge(src,p0):'R', eB:null, moved:false, target:null, pid:e.pointerId, sx:e.clientX, sy:e.clientY};
     try{ $('#heroWrap').setPointerCapture(e.pointerId); }catch(_){} }
 });
 document.addEventListener('pointermove',e=>{
@@ -682,6 +699,7 @@ document.addEventListener('pointermove',e=>{
     if(!ddrag.moved && Math.hypot(e.clientX-ddrag.sx, e.clientY-ddrag.sy)<11) return;  // ignore tap jitter
     const p=toFont(e); if(!p)return; ddrag.p=p; ddrag.moved=true;
     const t=cellAtFont(p); ddrag.target = (t&&t!==ddrag.src)?t:null;
+    ddrag.eB = ddrag.target ? nearestEdge(ddrag.target,p) : null;   // the edge it arrives through
     renderDrag();
   }
 });
@@ -696,7 +714,7 @@ document.addEventListener('pointerup',e=>{
         const s0=segsOf(cur), k=s0.indexOf(d.seg); if(k<0) s0.push(d.seg); else s0.splice(k,1);   // undo the first tap's flip
         GLYPHS[cur]=s0; fillLine(d.seg, !e.shiftKey); }
       else { lastTap={seg:d.seg,t:now}; toggle(d.seg); } }                  // tap → paint the cell
-    else if(d.target && d.target!==d.src) toggle(diagId(d.src,d.target));    // drag → diagonal (any two cells)
+    else if(d.target && d.target!==d.src && d.eB) toggle(diagId(d.src,d.eA,d.target,d.eB));    // drag → edge-to-edge diagonal
     else renderDrag(); }
 });
 $('#cornerField').addEventListener('input',e=>{ if(!activeCorner)return; const v=parseFloat(e.target.value); if(!isNaN(v)) setCornerRadius(activeCorner,v); });
@@ -730,17 +748,28 @@ $('#themeSeg').addEventListener('click',e=>{ const b=e.target.closest('button');
 
 /* bank (db + localStorage) */
 const GKEYS=['W','Hh','sv','sh','sc','sd','corner','cornerIn','joint','sb'];
-const LS='typelab-skel-v1';
+const LS='typelab-skel-v1', BANK_V=2;
 let localGridLoaded=false;
+/* v1 → v2: the centre column was split in two at xC, so cell/vertex column
+   indices from 3 up moved one to the right and an old centre cell is now two. */
+function migrateSegs(segs){ const out=[], mi=i=>i>=3?i+1:i;
+  for(const t of segs){
+    let m;
+    if((m=/^c(\d)(\d)$/.exec(t))){ const i=+m[1]; if(i===2){ out.push('c2'+m[2],'c3'+m[2]); } else out.push('c'+mi(i)+m[2]); }
+    else if((m=/^k(\d)(\d)(.*)$/.exec(t))) out.push('k'+mi(+m[1])+m[2]+m[3]);
+    else if((m=/^x(\d)(\d)(\d)(\d)$/.exec(t))) out.push('x'+mi(+m[1])+m[2]+mi(+m[3])+m[4]);
+    else out.push(t); }
+  return out; }
+function migrateMap(glyphs,v){ if(v===BANK_V) return glyphs; const o={}; for(const L in glyphs) o[L]=migrateSegs(glyphs[L]); return o; }
 function gridObj(){ const o={}; GKEYS.forEach(k=>o[k]=GRID[k]); return o; }
 /* only the grid, the typed word, and the SAVED bank persist — unsaved
    painting is scratch and vanishes on refresh (that's what she wants). */
 function bankGlyphs(){ const o={}; Object.keys(saved).forEach(L=>{ if(saved[L]&&GLYPHS[L]) o[L]=GLYPHS[L]; }); return o; }
-function persistLocal(){ try{ const L=$('#line'); localStorage.setItem(LS,JSON.stringify({grid:gridObj(),glyphs:bankGlyphs(),saved,line:L?L.value:'',cur})); }catch(e){} }
+function persistLocal(){ try{ const L=$('#line'); localStorage.setItem(LS,JSON.stringify({v:BANK_V,grid:gridObj(),glyphs:bankGlyphs(),saved,line:L?L.value:'',cur})); }catch(e){} }
 function loadLocal(){ try{ const raw=localStorage.getItem(LS); if(!raw) return false;
   const j=JSON.parse(raw);
   if(j.grid){ Object.assign(GRID,j.grid); localGridLoaded=true; }
-  if(j.glyphs) Object.assign(GLYPHS,j.glyphs);   // only saved letters were stored
+  if(j.glyphs) Object.assign(GLYPHS,migrateMap(j.glyphs,j.v));   // only saved letters were stored
   if(j.saved) saved=j.saved;
   if(j.cur) cur=j.cur;
   const L=$('#line'); if(L && j.line!=null) L.value=j.line;
@@ -752,7 +781,7 @@ async function saveCur(){
   setTimeout(()=>{ btn.classList.remove('done'); btn.innerHTML=t; },1300);
   if(dbNS){ try{
     await dbNS.doc('project/grid').set(Object.assign(gridObj(),{savedAt:Date.now()}));
-    await dbNS.collection('glyphs').doc(cur).set({letter:cur, segs:segsOf(cur), savedAt:Date.now()});
+    await dbNS.collection('glyphs').doc(cur).set({letter:cur, segs:segsOf(cur), v:BANK_V, savedAt:Date.now()});
   }catch(e){} }
 }
 $('#save').addEventListener('click',saveCur);
@@ -778,7 +807,7 @@ async function initBank(){
   const bank = (!had || !Object.keys(saved).length) ? await loadBankFile() : null;
   if(bank && bank.glyphs){
     if(!localGridLoaded && bank.grid) Object.assign(GRID, bank.grid);
-    for(const L in bank.glyphs){ GLYPHS[L]=bank.glyphs[L]; saved[L]=true; }
+    const bg=migrateMap(bank.glyphs,bank.v); for(const L in bg){ GLYPHS[L]=bg[L]; saved[L]=true; }
   } else if(!had) GLYPHS.O=borderCells();
   syncGrid(); renderPicker(); render();
   if(!(window.claude&&claude.use)) return;
@@ -789,7 +818,7 @@ async function initBank(){
   try{ dbNS.collection('glyphs').onSnapshot(snap=>{
     if(!snap.docs.length) return;                      // nothing in the db → keep what we have
     const s={}; snap.docs.forEach(doc=>{ const d=doc.data()||{}; const L=d.letter||doc.id;
-      if(Array.isArray(d.segs)){ if(d.segs.length){ GLYPHS[L]=d.segs; s[L]=true; } else delete GLYPHS[L]; } });
+      if(Array.isArray(d.segs)){ if(d.segs.length){ GLYPHS[L]=d.v===BANK_V?d.segs:migrateSegs(d.segs); s[L]=true; } else delete GLYPHS[L]; } });
     saved=s; persistLocal(); renderPicker(); render();
   }, ()=>{}); }catch(e){}
 }
