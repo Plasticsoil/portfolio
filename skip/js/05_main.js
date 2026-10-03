@@ -220,6 +220,7 @@ const view = { w: 1, h: 1, scrollSpan: 0 };
 // a new order on every visit
 const shuffled = studies.map((it) => [Math.random(), it]).sort((a, b) => a[0] - b[0]).map((p) => p[1]);
 const spec = document.getElementById('spec'), makeUi = document.getElementById('make');
+const range = document.createRange();
 const mixUi = document.getElementById('mix'), viewsUi = document.getElementById('views'), storyUi = document.getElementById('story');
 const MIX_CELL = 0.045;
 // The stage of the Mix section: a hairline frame and a fainter grid inside it,
@@ -809,6 +810,18 @@ function frame(now) {
     const p = THREE.MathUtils.clamp((view.gridEndY - camBottom + view.h * 0.45) / (view.h * 1.0), 0, 1);
     storyUi.style.setProperty('--part', (p * p * (3 - 2 * p)).toFixed(4));
     storyUi.classList.toggle('parting', p > 0.02);
+    // the slope is exactly as tall as the text it shapes (measured, since the
+    // paragraph would otherwise grow to hold the float and the lines would
+    // float up the screen); the block then stays at the bottom
+    if (p > 0.02) for (const el of storyUi.children) {
+      if (getComputedStyle(el).display === 'none') continue;
+      range.selectNodeContents(el);
+      const r = range.getBoundingClientRect();
+      if (r.height > 0) el.style.setProperty('--fh', `${Math.ceil(r.height)}px`);
+    }
+    // the words stay right above the text as it grows
+    const above = `${4 + storyUi.offsetHeight + 6}px`;
+    if (modes.style.bottom !== above) modes.style.bottom = makeUi.style.bottom = above;
   }
   camera.position.y += (view.stage.y - camera.position.y) * ease(makeBlend);
   placeMixUi();

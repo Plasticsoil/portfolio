@@ -56,7 +56,7 @@
      further aside than the one above, a triangle of black opening between
      the two columns. */
   #story { --part: 0; max-height: 46vh; }
-  #story p::before { content: ""; float: right; width: calc(var(--part) * 92%); height: 30em; shape-outside: polygon(0 0, 100% 0, 100% 100%); }
+  #story p::before { content: ""; float: right; width: calc(var(--part) * 92%); height: var(--fh, 30em); shape-outside: polygon(0 0, 100% 0, 100% 100%); }
   #story p + p::before { float: left; shape-outside: polygon(0 0, 100% 0, 0 100%); }
   /* while parting the lines are ragged against the slope, not justified */
   #story.parting p { text-align: left; }
@@ -225,7 +225,7 @@
       cols[0].style.wordSpacing = best ? best.a.ws : '';
       cols[1].style.wordSpacing = best ? best.b.ws : '';
       // the view-mode tags sit right above the text
-      document.getElementById('modes').style.bottom = document.getElementById('make').style.bottom = `${9 + story.offsetHeight + 6}px`;
+      document.getElementById("modes").style.bottom = document.getElementById("make").style.bottom = `${4 + story.offsetHeight + 6}px`;
     };
     document.fonts.ready.then(() => { even(); new ResizeObserver(even).observe(story); addEventListener('resize', even); });
   }
