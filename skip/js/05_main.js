@@ -244,18 +244,22 @@ function layout() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
-  const wide = camera.aspect >= 1;
+  // On a touch screen the page is laid out exactly as on a wide screen and
+  // seen through the phone's narrow window: the finger pans it in every
+  // direction (see the map code below). `aspect` is the shape the layout is
+  // made for, `W` its width; on a desktop both are simply the window's.
+  const aspect = coarse ? Math.max(camera.aspect, 1.5) : camera.aspect;
+  const wide = aspect >= 1;
 
   // The logo is small in its frame on purpose: the air around it matters.
   const LOGO_SCALE = 0.65;
   const lw = (logo.carved ? logo.size.x : 6.4) * LOGO_SCALE, lh = (logo.carved ? logo.size.y : 2.8) * LOGO_SCALE;
-  const dist = Math.max(lw / (wide ? 0.52 : 0.72) / (2 * TAN * camera.aspect), lh / 0.32 / (2 * TAN));
+  const dist = Math.max(lw / (wide ? 0.52 : 0.72) / (2 * TAN * aspect), lh / 0.32 / (2 * TAN));
   view.h = 2 * dist * TAN;
   view.w = view.h * camera.aspect;
+  const W = view.h * aspect;
   camera.position.z = dist;
   camera.updateProjectionMatrix();
-
-  if (coarse) { layoutMap(w, h); return; }
 
   // First screen: the logo, with the tops of the first row showing at the
   // bottom edge, as an invitation to scroll.
@@ -268,7 +272,7 @@ function layout() {
   // middle column lifted by a good third of a step, so no two neighbours sit
   // side by side. Nothing is placed outside these columns.
   const cols = wide ? 3 : 2;
-  const colW = view.w * (wide ? 0.26 : 0.44), rowH = colW, LIFT = 0.38;
+  const colW = W * (wide ? 0.26 : 0.44), rowH = colW, LIFT = 0.38;
   const rows = Math.ceil(studies.length / cols);
   // The logo sits in the middle of the empty black above the grid: halfway
   // between the top of the screen and the top of the highest piece.
@@ -295,7 +299,7 @@ function layout() {
   // from the collection, one mixed piece in its middle, and its controls on a
   // line underneath.
   const mixTop = (rows + LIFT + 0.6) * rowH;             // below the top of the grid, in scene units
-  const stageW = Math.min(view.w * (wide ? 0.5 : 0.86), view.h * 0.9), stageH = stageW * (wide ? 0.72 : 1);
+  const stageW = Math.min(W * (wide ? 0.5 : 0.86), view.h * 0.9), stageH = stageW * (wide ? 0.72 : 1);
   const stageY = top - heroH - mixTop - stageH / 2;
   stage.position.set(0, stageY, 0);
   stage.scale.set(stageW, stageH, 1);
@@ -318,7 +322,16 @@ function layout() {
   const total = heroH + mixTop + stageH + rowH * 0.55;
   view.mixTopPx = ((heroH + mixTop) / view.h) * h;
   view.scrollSpan = Math.max(0, total - view.h);
-  spacer.style.height = `${(total / view.h) * 100}vh`;
+  spacer.style.height = coarse ? '100vh' : `${(total / view.h) * 100}vh`;
+  if (coarse) {
+    // the window can travel sideways to the edges of the wide layout and down to its end
+    map.halfX = Math.max(0, (W - view.w) / 2);
+    map.top = 0;
+    map.bottom = -view.scrollSpan;
+    map.stageY = stageY; map.stageH = stageH;
+    viewsUi.hidden = true;
+    mixUi.hidden = false;
+  }
 
   // One rule for how crowded the particles look, whatever the piece: the same
   // number of grains per area of screen. A piece that is drawn small, or was
@@ -334,71 +347,9 @@ function layout() {
 new ResizeObserver(layout).observe(canvas);
 
 // --- the map (touch screens) --------------------------------------------------
-// On a phone the collection is not a page to scroll but a field, wider than
-// the screen, that the finger pans in any direction: the logo at the top, the
-// pieces under it on a loose grid four across, and the Mix stage at the
-// bottom. The page itself does not scroll.
+// The finger pans the wide layout through the narrow window, in any direction,
+// with a glide after letting go; the bounds are set in layout().
 const map = { x: 0, y: 0, vx: 0, vy: 0, halfX: 0, top: 0, bottom: 0, stageY: 0, stageH: 1, dragging: false, lastX: 0, lastY: 0, lastT: 0 };
-function layoutMap(w, h) {
-  const LOGO_SCALE = 0.65;
-  const lw = (logo.carved ? logo.size.x : 6.4) * LOGO_SCALE, lh = (logo.carved ? logo.size.y : 2.8) * LOGO_SCALE;
-  // the logo is a screen's width less a margin; the cell of the map is set
-  // from that, so the pieces around it come out big
-  const dist = Math.max(lw / 0.82 / (2 * TAN * camera.aspect), lh / 0.3 / (2 * TAN));
-  view.h = 2 * dist * TAN;
-  view.w = view.h * camera.aspect;
-  camera.position.z = dist;
-  camera.updateProjectionMatrix();
-  logo.scale = LOGO_SCALE;
-  logo.drift = lh * 0.05;
-  logo.home.set(0, 0, 0);
-
-  // The logo at the top, and under it the field of pieces: four to a row,
-  // a loose grid wider than the screen. The cell is narrower than the screen,
-  // so neighbours always peek in at the sides, the hint that there is more.
-  const cell = view.w * 0.55;
-  const cols = 4, rows = Math.ceil(studies.length / cols);
-  const topY = view.h * 0.5;                        // the top edge of the field
-  logo.home.set(0, topY - view.h * 0.3, 0);
-  const firstRow = topY - view.h * 0.62 - cell * 0.5;
-  const worldSize = (it) => THREE.MathUtils.clamp(((it.piece.real || 1.75) / 1.75) ** 0.4, 0.5, 1.45);
-  shuffled.forEach((it, k) => {
-    const col = k % cols, row = Math.floor(k / cols);
-    // a loose grid: every piece a little off its cell's centre, the same way on every visit
-    const jx = (it.seed[6] - 0.5) * cell * 0.3, jy = (it.seed[7] - 0.5) * cell * 0.3;
-    it.home.set((col - (cols - 1) / 2) * cell + jx, firstRow - row * cell + jy, 0);
-    it.scale = cell * 0.6 * worldSize(it) / Math.max(it.size.x, it.size.y, it.size.z);
-    it.drift = cell * 0.04;
-  });
-  // Under the last row, set apart: the Mix stage, as on the large screen,
-  // with its controls on a line beneath it (they follow the stage as the map
-  // moves; see the frame loop).
-  const stageW = view.w * 0.86, stageH = stageW;
-  const stageY = firstRow - (rows - 1) * cell - cell * 0.5 - view.h * 0.12 - stageH / 2;
-  stage.position.set(0, stageY, 0);
-  stage.scale.set(stageW, stageH, 1);
-  const mixIt = mixes[0];
-  mixIt.home.set(0, stageY, 0);
-  mixIt.scale = stageH * 0.56 / Math.max(mixIt.size.x, mixIt.size.y, mixIt.size.z);
-  mixIt.drift = stageH * 0.02;
-  map.stageY = stageY; map.stageH = stageH;
-  viewsUi.hidden = true;
-  mixUi.hidden = false;
-  // how far the finger can go: sideways to the outer columns, down past the stage
-  map.halfX = (cols - 1) / 2 * cell;
-  map.top = 0;
-  map.bottom = stageY + stageH / 2 - view.h * 0.38;   // at the end, the stage sits high on the screen
-  if (!map.placed) { map.placed = true; map.x = 0; map.y = 0; }
-  view.mixTopPx = 1e9;
-  view.scrollSpan = 0;
-  spacer.style.height = '100vh';
-  const pxPerUnit = h / view.h;
-  for (const it of items) {
-    it.points.uniforms.uPx.value = 1.3 * renderer.getPixelRatio();
-    const spacing = (it === logo ? 0.02 : it.piece.baked ? 0.03 : MIX_CELL) * it.scale * pxPerUnit;
-    it.points.uniforms.uDensity.value = Math.min(1, GRAINS_PER_PX * spacing * spacing);
-  }
-}
 if (coarse) {
   canvas.style.touchAction = 'none';
   canvas.addEventListener('pointerdown', (e) => {
