@@ -539,7 +539,7 @@ function drawViews() {
 }
 const fieldIds = [];
 const MIX_DIRS = [[0, 1, 0], [0, 1, 0], [0, -1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]];
-let mixSeed = 1, mixGen = 0, mixPending = [], mixBusy = false, mixFresh = true, mixDragging = false;
+let mixSeed = 1, mixGen = 0, mixPending = [], mixBusy = false, mixFresh = true, mixDragging = false, viewsTimer = 0;
 
 function recipeFor(slot) {
   const r = (k) => rnd(mixSeed * 7.3 + slot * 3.1, k);
@@ -583,9 +583,10 @@ function mixArrived(m) {
     const title = (id) => items.find((it) => it.piece.id === id).piece.title.toLowerCase();
     const deg = (d) => `${Math.round(Math.acos(Math.max(-1, Math.min(1, d[1]))) * 180 / Math.PI)}°`;
     const pct = (p) => `${Math.round(p.from * 100)}${p.to !== p.from ? '–' + Math.round(p.to * 100) : ''}%`;
-    spec.innerHTML = `<b>mix ${String(mixSeed).padStart(4, '0')}</b>`
-      + m.spec.map((p) => `<span>${title(p.id)}</span><span>${deg(p.dir)}</span><span>${pct(p)}</span><span>×${p.k.toFixed(2)}</span>`).join('')
-      + `<b>join ${m.joinY.toFixed(2)}</b>`;
+    spec.innerHTML = `<b>mix ${String(mixSeed).padStart(4, '0')} <em>cell ${MIX_CELL}</em></b>`
+      + `<i>part</i><i>cut</i><i>at</i><i>fit</i>`
+      + m.spec.map((p, k) => `<span>${String(k + 1).padStart(2, '0')} ${title(p.id)}</span><span>${deg(p.dir)}</span><span>${pct(p)}</span><span>×${p.k.toFixed(2)}</span>`).join('')
+      + `<b>join y ${m.joinY >= 0 ? '+' : ''}${m.joinY.toFixed(2)} <em>melt ${(+mixMelt.value).toFixed(2)}</em></b>`;
     // A new mix arrives as dust: a loose cloud of grains that settles onto
     // the shape, and the stone then sets through it. Only for a fresh draw
     // (Mix), not while a slider is being dragged.
@@ -595,10 +596,19 @@ function mixArrived(m) {
       // the new piece bursts out of it and settles; the stone sets after
       const it = mixes[m.slot], now = performance.now();
       it.arrive = now;
-      it.shift = now - 900;
+      it.shift = now - 300 / ARRIVE_RATE;
+      it.shiftRate = ARRIVE_RATE;
       it.points.uniforms.uShuffle.value = Math.random() * 100;
       it.points.uniforms.uGatherPoint.value.copy(it.home);
       mixFresh = false;
+      // the three views stay dark until the piece has settled, then come up
+      // one after the other
+      const cells = [...viewsUi.children];
+      for (const b of cells) { b.style.transition = 'none'; b.style.opacity = '0'; }
+      clearTimeout(viewsTimer);
+      viewsTimer = setTimeout(() => {
+        cells.forEach((b, k) => { b.style.transition = `opacity 1.1s ease ${k * 0.45}s`; b.style.opacity = '1'; });
+      }, ARRIVE_MS - 400);
     }
   }
   mixNext();
@@ -638,7 +648,9 @@ const tip = document.getElementById('tip');
 const box = document.getElementById('box');
 const corner = new THREE.Vector3();
 const HOVER_BUMP = 0.15;
-const ARRIVE_MS = 2400;
+// a new mix takes this long to arrive: the shape-shift at a slower pace, the
+// stone setting through the dust only once the grains have come to rest
+const ARRIVE_MS = 5200, ARRIVE_RATE = 0.6;
 // The pointer as a magnet for the particles: the line from the eye through
 // the pointer, eased so the grains follow smoothly, and how strongly it acts.
 const rayDir = new THREE.Vector3(0, 0, -1), rayTo = new THREE.Vector3();
@@ -666,6 +678,7 @@ canvas.addEventListener('pointerdown', (e) => {
   // point under the pointer, churns, and bursts back out into the piece
   if (mode === 'points' && performance.now() - wipeStart > TRANSITION * 1000 && !held.shift) {
     held.shift = performance.now();
+    held.shiftRate = 1;
     held.points.uniforms.uShuffle.value = Math.random() * 100;
     // the point under the pointer, at the depth of the piece
     v3.set((e.clientX / innerWidth) * 2 - 1, 1 - (e.clientY / innerHeight) * 2, 0.5).unproject(camera).sub(camera.position).normalize();
@@ -885,13 +898,13 @@ function frame(now) {
     // needs the clock and the size of the piece
     const pu = it.points.uniforms;
     if (it.shift) {
-      const ts = (now - it.shift) / 1000;
+      const ts = (now - it.shift) / 1000 * (it.shiftRate || 1);
       if (ts > 3.2) { it.shift = 0; pu.uShiftT.value = -1; }
       else { pu.uShiftT.value = ts; pu.uShiftSize.value = Math.max(it.size.x, it.size.y, it.size.z) * it.scale * 0.5; }
     }
     pu.uScatter.value = scatter;
     if (arriving < 1 && !wiping) {
-      const settle = ease(Math.max(0, (arriving - 0.45) / 0.55));     // the piece sets during the second half
+      const settle = ease(Math.max(0, (arriving - 0.62) / 0.38));     // the piece sets once the dust has come to rest
       const L = it.layers, own = LAYER_OF[mode];
       L.points.visible = true;
       L.points.material.uniforms.uShowR.value = 1;
