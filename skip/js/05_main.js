@@ -219,6 +219,7 @@ const GRAINS_PER_PX = 0.04;
 const view = { w: 1, h: 1, scrollSpan: 0 };
 // a new order on every visit
 const shuffled = studies.map((it) => [Math.random(), it]).sort((a, b) => a[0] - b[0]).map((p) => p[1]);
+const spec = document.getElementById('spec');
 const mixUi = document.getElementById('mix'), viewsUi = document.getElementById('views'), storyUi = document.getElementById('story');
 const MIX_CELL = 0.045;
 // The stage of the Mix section: a hairline frame and a fainter grid inside it,
@@ -611,6 +612,12 @@ function mixNext() {
   const recipe = recipeFor(slot);
   const title = (id) => items.find((it) => it.piece.id === id).piece.title;
   mixes[slot].piece.title = `${title(recipe.a)} x ${title(recipe.b)} x ${title(recipe.c)}`;
+  // the readout in the corner of the stage: what went in, cut along which axis
+  const axis = (d) => (d[0] ? (d[0] > 0 ? '+x' : '-x') : d[1] ? (d[1] > 0 ? '+y' : '-y') : d[2] > 0 ? '+z' : '-z');
+  const row = (tag, id, d) => `<i>${tag}</i><span>${title(id).toLowerCase()}</span><span>${id}</span><span>${axis(d)}</span>`;
+  spec.innerHTML = `<b>mix ${String(mixSeed).padStart(4, '0')}</b>`
+    + row('a', recipe.a, recipe.dirs[0]) + row('b', recipe.b, recipe.dirs[1]) + row('c', recipe.c, recipe.dirs[2])
+    + `<b>cut ${recipe.cut >= 0 ? '+' : ''}${recipe.cut.toFixed(2)} &nbsp; melt ${recipe.melt.toFixed(2)} &nbsp; cell ${MIX_CELL}</b>`;
   worker.postMessage({ type: 'mix', gen: mixGen, slot, recipe, params: { ...carveParams(), cell: MIX_CELL, wireEdge: 0.44 } });
 }
 function mixArrived(m) {
@@ -698,6 +705,16 @@ canvas.addEventListener('pointerdown', (e) => {
   if (coarse) return;                         // on the map the finger pans, nothing is grabbed
   held = pick(e.clientX, e.clientY);
   if (!held) return;
+  // in the Particles view a click is a shape-shift: the dust rushes into the
+  // point under the pointer, churns, and bursts back out into the piece
+  if (mode === 'points' && performance.now() - wipeStart > TRANSITION * 1000 && !held.shift) {
+    held.shift = performance.now();
+    held.points.uniforms.uShuffle.value = Math.random() * 100;
+    // the point under the pointer, at the depth of the piece
+    v3.set((e.clientX / innerWidth) * 2 - 1, 1 - (e.clientY / innerHeight) * 2, 0.5).unproject(camera).sub(camera.position).normalize();
+    const t = (held.holder.position.z - camera.position.z) / v3.z;
+    held.points.uniforms.uGatherPoint.value.copy(camera.position).addScaledVector(v3, t);
+  }
   canvas.setPointerCapture(e.pointerId);
   lastX = e.clientX; lastY = e.clientY;
 });
@@ -789,6 +806,13 @@ function frame(now) {
   const turn = Math.max(0, Math.min(1, (now - wipeStart) / 1000 / TRANSITION)), wiping = turn < 1;
   const mix = wiping ? ease(turn) : 1;
   const old = wiping ? fromMode : mode;
+
+  // The readout sits just inside the top right corner of the Mix stage.
+  v3.set(stage.scale.x / 2, stage.position.y + stage.scale.y / 2, 0).project(camera);
+  const sx = (v3.x * 0.5 + 0.5) * innerWidth, sy = (-v3.y * 0.5 + 0.5) * innerHeight;
+  spec.style.right = `${innerWidth - sx + 10}px`;
+  spec.style.top = `${sy + 8}px`;
+  spec.hidden = !spec.textContent || sy > innerHeight + 40 || sy < -200;
 
   // What is under the pointer is worked out every frame, so it stays right
   // while the page scrolls or the pieces drift under a still pointer.
@@ -891,7 +915,33 @@ function frame(now) {
     it.stone.uniforms.uReveal.value = it.points.uniforms.uReveal.value = it.reveal;
     // the arrival of a new mix: dust first, settling, then the piece itself
     const arriving = it.arrive ? Math.min(1, (now - it.arrive) / ARRIVE_MS) : 1;
-    it.points.uniforms.uScatter.value = arriving < 1 ? (1 - arriving) ** 2 * 1.6 : 0;
+    let scatter = arriving < 1 ? (1 - arriving) ** 2 * 1.6 : 0;
+    // the shape-shift, in three beats: gather (0.35s), churn (0.25s), rebuild (0.8s)
+    const pu = it.points.uniforms;
+    if (it.shift) {
+      const ts = (now - it.shift) / 1000;
+      const size = Math.max(it.size.x, it.size.y, it.size.z) * it.scale;
+      if (ts < 0.35) {
+        const g = ts / 0.35;
+        pu.uGather.value = g * g * g;
+        pu.uShuffleAmt.value = size * 0.08; pu.uPulse.value = 0;
+      } else if (ts < 0.6) {
+        const c = (ts - 0.35) / 0.25, bump = Math.sin(Math.PI * c);
+        pu.uGather.value = 1;
+        pu.uShuffleAmt.value = size * (0.08 + 0.22 * bump);
+        pu.uPulse.value = 1.2 * bump;
+      } else if (ts < 1.4) {
+        const u = (ts - 0.6) / 0.8;
+        pu.uGather.value = 1 - ease(Math.min(1, u * 2.2));
+        pu.uShuffleAmt.value = size * 0.08;
+        pu.uPulse.value = 0;
+        scatter = Math.max(scatter, 1.2 * (1 - u) ** 2);
+      } else {
+        it.shift = 0;
+        pu.uGather.value = 0; pu.uShuffleAmt.value = 0; pu.uPulse.value = 0;
+      }
+    }
+    pu.uScatter.value = scatter;
     if (arriving < 1 && !wiping) {
       const settle = ease(Math.max(0, (arriving - 0.45) / 0.55));     // the piece sets during the second half
       const L = it.layers, own = LAYER_OF[mode];

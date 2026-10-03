@@ -193,7 +193,8 @@ export function createPoints() {
     transparent: true,
     vertexShader: /* glsl */ `
       uniform float uTime, uSpread, uPx, uDensity, uReveal, uMagnet, uReach, uScatter;
-      uniform vec3 uRayDir;
+      uniform float uGather, uShuffle, uShuffleAmt, uPulse;
+      uniform vec3 uRayDir, uGatherPoint;
       varying float vTone;
       vec3 hash3(vec3 p) {
         p = fract(p * vec3(0.1031, 0.1030, 0.0973));
@@ -210,6 +211,16 @@ export function createPoints() {
         // bringing it back to 0 is dust settling into the shape of the piece
         p += dir * uScatter * (0.25 + 1.5 * a.y * a.y);
         vec4 world = modelMatrix * vec4(p, 1.0);
+        // the shape-shift: on a click the grains rush into one point under
+        // the pointer (uGather), churn there with new positions dealt by the
+        // click's seed (uShuffle, uShuffleAmt), and are then let go to settle
+        // back onto the shape through uScatter
+        if (uGather > 0.0) {
+          vec3 hd = hash3(position * 17.9 + uShuffle) - 0.5;
+          float hr = hash3(position * 7.1 + uShuffle * 1.7).x;
+          vec3 churn = normalize(hd) * hr * hr * uShuffleAmt;    // a soft ball, dense at its heart
+          world.xyz = mix(world.xyz, uGatherPoint + churn, uGather);
+        }
         // the magnet: how far this grain is from the line of the pointer, and
         // which way is straight away from it
         vec3 rel = world.xyz - cameraPosition;
@@ -228,7 +239,7 @@ export function createPoints() {
         float edge = 1.0 - abs(dot(normalize(normalMatrix * normal), normalize(-mv.xyz)));
         edge *= edge;
         if (b.z > uDensity * mix(0.3, 3.2, edge)) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-        gl_PointSize = uPx;
+        gl_PointSize = uPx * (1.0 + uPulse * (0.5 + a.x));
         // Grains far from the shell are fainter, so the haze fades out.
         vTone = (0.2 + 0.12 * b.x) * mix(0.7, 1.5, edge) * (1.0 - 0.8 * smoothstep(0.0, 0.5, away)) * uReveal;
       }`,
@@ -253,6 +264,11 @@ export function createPoints() {
       uScatter: { value: 0 },
       uReach: { value: 1 },
       uRayDir: { value: new THREE.Vector3(0, 0, -1) },
+      uGather: { value: 0 },
+      uGatherPoint: { value: new THREE.Vector3() },
+      uShuffle: { value: 0 },
+      uShuffleAmt: { value: 0 },
+      uPulse: { value: 0 },
       uMix: { value: 1 },
       uShowL: { value: 1 },
       uShowR: { value: 1 },

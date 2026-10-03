@@ -89,6 +89,12 @@
   #mix input::-moz-range-thumb { width: 6px; height: 6px; background: #000; border: 1px solid var(--ink); border-radius: 0; }
   #mix input:focus-visible { outline: 1px solid var(--pink); outline-offset: 3px; }
   @media (max-width: 560px) { #mix { gap: 14px; } #mix label { gap: 6px; } }
+  /* The readout in the corner of the Mix stage: what went in, and how. */
+  #spec { position: fixed; z-index: 2; margin: 0; display: grid; grid-template-columns: auto auto auto auto; column-gap: 9px; row-gap: 1px; align-items: baseline;
+    font: 300 10px/1.5 "Archivo", var(--sans); color: var(--muted); white-space: nowrap; pointer-events: none; }
+  #spec b { grid-column: 1 / -1; font-weight: 300; color: var(--ink); }
+  #spec b:last-child { margin-top: 3px; color: var(--muted); }
+  #spec i { font-style: normal; color: var(--ink); }
   #tip { position: fixed; left: 0; top: 0; margin: 0; padding: 3px 8px; background: #000; border: 1px solid var(--line); color: var(--ink); pointer-events: none; white-space: nowrap; }
 
   /* "/ portfolio": the way back to yamliv.net, top left, as on the other
@@ -108,13 +114,12 @@
 
   /* View modes: one plain line just above the left column of the story, in
      the same type, weight and tone as the story itself: "View:" and the three
-     words, the current one underlined. No frames. (A line of script at the
+     words, the current one underlined. No frames, no label. (A line of script at the
      end of the page keeps it sitting right above the text.) Space steps
      through the modes in order. Line and story fade away when the Mix section
      comes into view. */
   #modes { position: fixed; z-index: 3; left: 10px; bottom: 130px; display: flex; gap: 0.9em; align-items: baseline;
     font: 300 clamp(10px, 0.8vw, 12.5px)/1.6 "Archivo", var(--sans); color: #fff; opacity: 0.5; mix-blend-mode: difference; transition: opacity 0.4s; }
-  #modes::before { content: "View:"; }
   #modes button, #modes button:hover { font: inherit; color: inherit; border: 0; padding: 0; white-space: nowrap; }
   #modes button[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
   #modes.away, #story.away { opacity: 0; pointer-events: none; }
@@ -137,6 +142,7 @@
   <p class="short">The Sarrath laughed, and the valley was visited ten times: the river ran red, dust turned to flies, the herds lay down, ice fell burning, and for three days the dark could be held in the hand. Before the tenth visit Yssa told the Oum to rub white quarry dust on their doorposts. That night something walked the streets, and wherever it found the white mark it skipped the door. By morning the gates stood open. The Oum left, and they have been called the Skipped ever since.</p>
 </div>
 <p id="tip" hidden></p>
+<div id="spec" hidden></div>
 <div id="box" hidden><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 <div id="views" role="group" aria-label="Views of the mixed piece"></div>
 <div id="mix">
