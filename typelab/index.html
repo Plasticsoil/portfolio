@@ -770,9 +770,16 @@ async function resetAll(){
 }
 $('#reset').addEventListener('click',resetAll);
 
+/* bank.json — the committed, permanent copy of the alphabet (next to this page) */
+async function loadBankFile(){ try{ const r=await fetch('bank.json',{cache:'no-store'}); return r.ok ? await r.json() : null; }catch(e){ return null; } }
 async function initBank(){
   const had=loadLocal();
-  if(!had) GLYPHS.O=borderCells();     // first ever visit → seed the demo O
+  // an empty bank (fresh device, or wiped) is seeded from bank.json; failing that, the demo O
+  const bank = (!had || !Object.keys(saved).length) ? await loadBankFile() : null;
+  if(bank && bank.glyphs){
+    if(!localGridLoaded && bank.grid) Object.assign(GRID, bank.grid);
+    for(const L in bank.glyphs){ GLYPHS[L]=bank.glyphs[L]; saved[L]=true; }
+  } else if(!had) GLYPHS.O=borderCells();
   syncGrid(); renderPicker(); render();
   if(!(window.claude&&claude.use)) return;
   try{ dbNS=await claude.use('db'); }catch(e){ dbNS=null; }
@@ -780,6 +787,7 @@ async function initBank(){
   try{ const gd=await dbNS.doc('project/grid').get();
     if(gd.exists && !userTouched && !localGridLoaded){ Object.assign(GRID,gd.data()); if(GRID.W==null)GRID.W=600; syncGrid(); render(); } }catch(e){}
   try{ dbNS.collection('glyphs').onSnapshot(snap=>{
+    if(!snap.docs.length) return;                      // nothing in the db → keep what we have
     const s={}; snap.docs.forEach(doc=>{ const d=doc.data()||{}; const L=d.letter||doc.id;
       if(Array.isArray(d.segs)){ if(d.segs.length){ GLYPHS[L]=d.segs; s[L]=true; } else delete GLYPHS[L]; } });
     saved=s; persistLocal(); renderPicker(); render();
