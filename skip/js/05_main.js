@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { LOGO, STUDIES } from './02_sculptures.js';
-import { createStone, createPoints, createLines } from './04_stone.js';
+import { createStone, createPoints, createLines, createStroke, createHull, createFill } from './04_stone.js';
 
 const coarse = matchMedia('(pointer: coarse)').matches;
 
@@ -42,14 +42,105 @@ const MODES = {
   stone: { label: 'Stone' },
   wire: { label: 'Wireframe' },
   points: { label: 'Particles' },
+  stroke: { label: 'Stroke' },
 };
 let mode = 'stone';
 let fromMode = 'stone', wipeStart = -1e9;
 const TRANSITION = 1.3;
 const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2);
-const LAYER_OF = { stone: 'stone', wire: 'lines', points: 'points' };
+const LAYER_OF = { stone: 'stone', wire: 'lines', points: 'points', stroke: 'stroke' };
 // The skeleton is a soft, see-through white rather than full white.
 const WIRE_WHITE = 0.5;
+// Stroke look — live-tunable from the widget, then locked to these values.
+//   levels:   how many contour lines run over the form (long, connected lines
+//             where the surface has turned a set amount from the eye)
+//   facet:    how much the chiselled facets bend those lines (0 = smooth)
+//   linePx:   their width in pixels
+//   hatch:    how dark the hatching in the shade gets (0 = none); gap: how many
+//             hatch lines run around the form
+//   minAngle: on top of them, mesh creases sharper than this (degrees); 180 = none
+//   minChain: a chain of creases must add up to this length or it is a speck
+//   outline:  width of the silhouette outline, in pixels
+//   white / alpha: the lines' tone; fill: how solid the black fill is
+const STROKE = { levels: 0, facet: 0, linePx: 1.7, hatch: 1, gap: 6, minAngle: 102, minChain: 1.5, outline: 1.1, white: 0.62, alpha: 1, fill: 1 };
+
+// Every edge of a mesh, with how sharp a crease it is, its length, and the
+// length of the chain of creases it belongs to. Built once per piece; the
+// Stroke shader then picks lines by threshold, live.
+function buildStrokeGeometry(hi) {
+  const P = hi.getAttribute('position').array, I = hi.getIndex().array, nt = I.length / 3;
+  // face normals
+  const fn = new Float32Array(nt * 3);
+  for (let t = 0; t < nt; t++) {
+    const a = I[t * 3] * 3, b = I[t * 3 + 1] * 3, c = I[t * 3 + 2] * 3;
+    const ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2];
+    const vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2];
+    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const l = Math.hypot(nx, ny, nz) || 1;
+    fn[t * 3] = nx / l; fn[t * 3 + 1] = ny / l; fn[t * 3 + 2] = nz / l;
+  }
+  // edges -> the two faces on either side
+  const edges = new Map();
+  for (let t = 0; t < nt; t++) for (let k = 0; k < 3; k++) {
+    const a = I[t * 3 + k], b = I[t * 3 + (k + 1) % 3];
+    const key = a < b ? a * 4294967296 + b : b * 4294967296 + a;
+    const e = edges.get(key);
+    if (e) e.push(t); else edges.set(key, [t]);
+  }
+  const n = edges.size, pos = new Float32Array(n * 6), angle = new Float32Array(n * 2), len = new Float32Array(n * 2);
+  const va = new Uint32Array(n), vb = new Uint32Array(n);
+  let i = 0;
+  for (const [key, faces] of edges) {
+    const a = Math.floor(key / 4294967296), b = key % 4294967296;
+    let deg = 180;
+    if (faces.length >= 2) {
+      const f = faces[0] * 3, g = faces[1] * 3;
+      deg = Math.acos(Math.max(-1, Math.min(1, fn[f] * fn[g] + fn[f + 1] * fn[g + 1] + fn[f + 2] * fn[g + 2]))) * 180 / Math.PI;
+    }
+    const L = Math.hypot(P[a * 3] - P[b * 3], P[a * 3 + 1] - P[b * 3 + 1], P[a * 3 + 2] - P[b * 3 + 2]);
+    pos.set([P[a * 3], P[a * 3 + 1], P[a * 3 + 2], P[b * 3], P[b * 3 + 1], P[b * 3 + 2]], i * 6);
+    angle[i * 2] = angle[i * 2 + 1] = deg;
+    len[i * 2] = len[i * 2 + 1] = L;
+    va[i] = a; vb[i] = b;
+    i++;
+  }
+  // chains: creases (edges over 20 degrees) joined end to end; each edge
+  // learns the total length of its chain, so lonely specks can be dropped
+  const CREASE = 20, nv = P.length / 3, parent = new Int32Array(nv).map((_, k) => k);
+  const find = (v) => { while (parent[v] !== v) { parent[v] = parent[parent[v]]; v = parent[v]; } return v; };
+  for (let e = 0; e < n; e++) if (angle[e * 2] >= CREASE) parent[find(va[e])] = find(vb[e]);
+  const total = new Float32Array(nv);
+  for (let e = 0; e < n; e++) if (angle[e * 2] >= CREASE) total[find(va[e])] += len[e * 2];
+  const chain = new Float32Array(n * 2);
+  for (let e = 0; e < n; e++) chain[e * 2] = chain[e * 2 + 1] = angle[e * 2] >= CREASE ? total[find(va[e])] : 0;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('aAngle', new THREE.BufferAttribute(angle, 1));
+  g.setAttribute('aLen', new THREE.BufferAttribute(len, 1));
+  g.setAttribute('aChain', new THREE.BufferAttribute(chain, 1));
+  // the large form's normals: the mesh normals averaged over the neighbourhood
+  // many times, so the chiselled bumps vanish and only the body's turning
+  // remains. The Stroke view's lines follow these.
+  const N = hi.getAttribute('normal').array;
+  const nbr = new Int32Array(n * 2);
+  for (let e = 0; e < n; e++) { nbr[e * 2] = va[e]; nbr[e * 2 + 1] = vb[e]; }
+  let cur = new Float32Array(N), nxt = new Float32Array(nv * 3);
+  for (let it = 0; it < 24; it++) {
+    nxt.set(cur);
+    for (let e = 0; e < n; e++) {
+      const a = nbr[e * 2] * 3, b = nbr[e * 2 + 1] * 3;
+      nxt[a] += cur[b]; nxt[a + 1] += cur[b + 1]; nxt[a + 2] += cur[b + 2];
+      nxt[b] += cur[a]; nxt[b + 1] += cur[a + 1]; nxt[b + 2] += cur[a + 2];
+    }
+    for (let v = 0; v < nv * 3; v += 3) {
+      const l = Math.hypot(nxt[v], nxt[v + 1], nxt[v + 2]) || 1;
+      nxt[v] /= l; nxt[v + 1] /= l; nxt[v + 2] /= l;
+    }
+    [cur, nxt] = [nxt, cur];
+  }
+  hi.setAttribute('aSmooth', new THREE.BufferAttribute(cur, 3));
+  return g;
+}
 
 // --- scene -------------------------------------------------------------------
 const canvas = document.getElementById('stage');
@@ -77,9 +168,18 @@ function makeItem(piece, i) {
     // The bare skeleton: white quad outlines of the coarse mesh, nothing
     // filled in, so the far side shows through.
     lines: new THREE.LineSegments(undefined, createLines()),
+    // Stroke, in three passes: the outline (the piece inside out, pushed out
+    // a few pixels), a black fill of the front over it, and the crease lines
+    // on top. The fill hides the far side's lines and the inside of the hull.
+    hull: new THREE.Mesh(undefined, createHull()),
+    strokeMask: new THREE.Mesh(undefined, createFill()),
+    stroke: new THREE.LineSegments(undefined, createStroke()),
   };
   layers.lines.renderOrder = 1;
   layers.points.renderOrder = 2;
+  layers.hull.renderOrder = 0;
+  layers.strokeMask.renderOrder = 1;
+  layers.stroke.renderOrder = 3;
   body.add(...Object.values(layers));
   return {
     piece, holder, body, layers, stone, points,
@@ -298,9 +398,13 @@ function install(it, m) {
     .setIndex(new THREE.BufferAttribute(m.low.edges, 1));
 
   const L = it.layers;
-  for (const obj of [L.stone, L.lines]) obj.geometry.dispose();
-  L.stone.geometry = L.points.geometry = hi;
+  for (const obj of [L.stone, L.lines, L.stroke]) obj.geometry?.dispose();
+  L.stone.geometry = L.points.geometry = L.strokeMask.geometry = L.hull.geometry = hi;
   L.lines.geometry = lines;
+  // Every edge of the finished mesh, with its crease angle and chain length;
+  // the Stroke shader chooses among them live.
+  L.stroke.geometry = buildStrokeGeometry(hi);
+  applyStroke();
 
   const min = new THREE.Vector3().fromArray(m.min), max = new THREE.Vector3().fromArray(m.max);
   it.body.position.copy(min).add(max).multiplyScalar(-0.5);
@@ -516,6 +620,17 @@ addEventListener('keydown', (e) => {
 });
 applyMode();
 
+// The Stroke look is locked in STROKE; this pushes it into every piece's shaders.
+function applyStroke() {
+  for (const it of items) {
+    const u = it.layers.stroke.material.uniforms, f = it.layers.strokeMask.material.uniforms;
+    u.uMinAngle.value = STROKE.minAngle; u.uMinChain.value = STROKE.minChain;
+    f.uLevels.value = STROKE.levels; f.uFacet.value = STROKE.facet; f.uLinePx.value = STROKE.linePx;
+    f.uHatch.value = STROKE.hatch; f.uGap.value = STROKE.gap;
+    it.layers.hull.material.uniforms.uPx.value = STROKE.outline;
+  }
+}
+
 // --- loop ----------------------------------------------------------------------
 const m4 = new THREE.Matrix4();
 let last = performance.now();
@@ -613,13 +728,27 @@ function frame(now) {
     it.stone.uniforms.uRot.value.setFromMatrix4(m4.extractRotation(it.body.matrixWorld));
     it.points.uniforms.uTime.value = t + s[4] * 40;
 
-    for (const name of ['stone', 'lines', 'points']) {
+    for (const name of ['stone', 'lines', 'points', 'stroke', 'hull', 'strokeMask']) {
       const u = it.layers[name].material.uniforms;
       u.uMix.value = mix;
       u.uShowL.value = LAYER_OF[mode] === name ? 1 : 0;
       u.uShowR.value = LAYER_OF[old] === name ? 1 : 0;
       it.layers[name].visible = u.uShowL.value + u.uShowR.value > 0;
     }
+    // the outline and the fill belong to the stroke lines; the hull needs the
+    // screen size to keep its width in pixels
+    for (const name of ['hull', 'strokeMask']) {
+      const u = it.layers[name].material.uniforms;
+      u.uShowL.value = it.layers.stroke.material.uniforms.uShowL.value;
+      u.uShowR.value = it.layers.stroke.material.uniforms.uShowR.value;
+      it.layers[name].visible = it.layers.stroke.visible;
+    }
+    it.layers.hull.material.uniforms.uResolution.value.set(renderer.domElement.width, renderer.domElement.height);
+    it.layers.hull.material.uniforms.uWhite.value = it.reveal * STROKE.white;
+    it.layers.hull.material.uniforms.uAlpha.value = STROKE.alpha;
+    it.layers.strokeMask.material.uniforms.uAlpha.value = it.reveal * STROKE.fill;
+    it.layers.strokeMask.material.uniforms.uWhite.value = it.reveal * STROKE.white;
+    it.layers.strokeMask.material.uniforms.uRot.value.copy(it.stone.uniforms.uRot.value);
     it.stone.uniforms.uReveal.value = it.points.uniforms.uReveal.value = it.reveal;
     // the arrival of a new mix: dust first, settling, then the piece itself
     const arriving = it.arrive ? Math.min(1, (now - it.arrive) / ARRIVE_MS) : 1;
@@ -631,13 +760,16 @@ function frame(now) {
       L.points.material.uniforms.uShowR.value = 1;
       L.points.material.uniforms.uShowL.value = own === 'points' ? 1 : 0;
       L.points.material.uniforms.uMix.value = settle;
-      for (const name of ['stone', 'lines']) {
+      for (const name of ['stone', 'lines', 'stroke']) {
         const u = L[name].material.uniforms;
         u.uShowR.value = 0; u.uShowL.value = own === name ? 1 : 0; u.uMix.value = settle;
         L[name].visible = own === name && settle > 0;
       }
+      L.strokeMask.visible = L.stroke.visible;
     }
     it.layers.lines.material.uniforms.uWhite.value = it.reveal * WIRE_WHITE;
+    it.layers.stroke.material.uniforms.uWhite.value = it.reveal * STROKE.white;
+    it.layers.stroke.material.uniforms.uAlpha.value = STROKE.alpha;
   }
 
   // The transform box. Its size is fixed for each piece: wide and tall enough

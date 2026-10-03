@@ -287,3 +287,180 @@ export function createLines() {
     },
   });
 }
+
+// Stroke: a thin, even, grey-white contour of the piece's own edges — its
+// silhouette and the creases of its form, not just the outer outline. Unlike
+// the wireframe it does depth-test, so a companion depth-only pass of the solid
+// mesh (written just behind, by polygon offset) hides every line on the far
+// side: the fill stays empty but the back never shows through.
+// Stroke: the piece drawn as a line drawing. Every edge of the mesh carries
+// how sharp a crease it is (aAngle, degrees; the silhouette's own edges count
+// as 180), how long it is, and the total length of the chain of creases it
+// belongs to (aChain). The three thresholds are plain uniforms, so the drawing
+// can be tuned live, line by line, with no geometry rebuilt: uMinAngle keeps
+// only the creases sharp enough to read, uMinChain drops the specks (short,
+// lonely chains), uMinLen drops single tiny edges. Lines are one pixel wide.
+export function createStroke() {
+  return new THREE.ShaderMaterial({
+    depthTest: true,
+    depthWrite: false,
+    transparent: true,
+    vertexShader: /* glsl */ `
+      attribute float aAngle, aLen, aChain;
+      uniform float uMinAngle, uMinLen, uMinChain;
+      void main() {
+        if (aAngle < uMinAngle || uMinAngle >= 180.0 || aLen < uMinLen || aChain < uMinChain) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: /* glsl */ `
+      precision highp float;
+      ${WIPE}
+      uniform float uWhite, uAlpha;
+      void main() {
+        float show = wipeShow();
+        if (show <= 0.0) discard;
+        gl_FragColor = vec4(vec3(uWhite), show * uAlpha);
+      }`,
+    uniforms: {
+      uMix: { value: 1 },
+      uShowL: { value: 1 },
+      uShowR: { value: 1 },
+      uWhite: { value: 0.72 },
+      uAlpha: { value: 1 },
+      uMinAngle: { value: 24 },
+      uMinLen: { value: 0 },
+      uMinChain: { value: 0.2 },
+    },
+  });
+}
+
+// The outline of the Stroke view: the piece drawn again, inside out, every
+// vertex pushed outward on screen by uPx pixels, so a band of even width shows
+// around the silhouette once the black fill is drawn over the front. Even in
+// pixels whatever the piece's size or distance.
+export function createHull() {
+  return new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthTest: true,
+    depthWrite: true,
+    transparent: true,
+    vertexShader: /* glsl */ `
+      uniform float uPx;
+      uniform vec2 uResolution;
+      void main() {
+        vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        vec3 n = normalize((projectionMatrix * modelViewMatrix * vec4(normal, 0.0)).xyz);
+        vec2 dir = normalize(n.xy + vec2(1e-6, 0.0));
+        clip.xy += dir * uPx * 2.0 / uResolution * clip.w;
+        gl_Position = clip;
+      }`,
+    fragmentShader: /* glsl */ `
+      precision highp float;
+      ${WIPE}
+      uniform float uWhite, uAlpha;
+      void main() {
+        float show = wipeShow();
+        if (show <= 0.0) discard;
+        gl_FragColor = vec4(vec3(uWhite), show * uAlpha);
+      }`,
+    uniforms: {
+      uMix: { value: 1 },
+      uShowL: { value: 1 },
+      uShowR: { value: 1 },
+      uWhite: { value: 0.72 },
+      uAlpha: { value: 1 },
+      uPx: { value: 1.5 },
+      uResolution: { value: new THREE.Vector2(1, 1) },
+    },
+  });
+}
+
+// The black fill of the Stroke view, and the drawing's long lines. The front of
+// the piece is painted the colour of the page (hiding the far side's lines and
+// the inside of the outline), and over it run contour lines: the places where
+// the surface turns a set amount away from the eye. Those are level lines of
+// one smooth quantity, so they are long and connected by nature, follow the
+// form like a topographic map, and never break into specks. uLevels is how
+// many of them there are; uFacet lets the chiselled facets bend them a little.
+// Where the form turns away from a fixed light, hatching fills the shade, and
+// it follows the form: the lines run down the surface the way the normal tilts
+// (meridians, uGap of them around the form), crossed where it is darkest by
+// finer contour lines. uHatch is how dark the shade gets.
+// Width is held to uLinePx pixels whatever the size of the piece.
+export function createFill() {
+  return new THREE.ShaderMaterial({
+    depthTest: true,
+    depthWrite: true,
+    transparent: true,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1,
+    vertexShader: /* glsl */ `
+      attribute vec3 aSmooth;
+      varying vec3 vObj, vNormal, vWorld;
+      void main() {
+        vObj = position; vNormal = aSmooth;
+        vec4 w = modelMatrix * vec4(position, 1.0);
+        vWorld = w.xyz;
+        gl_Position = projectionMatrix * viewMatrix * w;
+      }`,
+    fragmentShader: /* glsl */ `
+      precision highp float;
+      ${WIPE}
+      uniform mat3 uRot;
+      uniform float uAlpha, uWhite, uLevels, uFacet, uLinePx, uHatch, uGap;
+      varying vec3 vObj, vNormal, vWorld;
+      void main() {
+        float show = wipeShow();
+        if (show <= 0.0) discard;
+        vec3 smoothN = normalize(vNormal);
+        vec3 flatN = normalize(cross(dFdx(vObj), dFdy(vObj)));
+        if (dot(flatN, smoothN) < 0.0) flatN = -flatN;
+        vec3 N = normalize(uRot * normalize(mix(smoothN, flatN, uFacet)));
+        vec3 V = normalize(cameraPosition - vWorld);
+        // how far the surface has turned from facing the eye: 0 facing, 1 edge-on
+        float f = 1.0 - max(dot(N, V), 0.0);
+        float line = 0.0;
+        if (uLevels > 0.5) {
+          float t = f * uLevels;                       // levels at every 1/uLevels
+          float d = abs(fract(t) - 0.5);               // distance to the nearest level, in level units
+          float w = fwidth(t) * uLinePx;               // one line = uLinePx pixels
+          line = smoothstep(w, 0.0, 0.5 - d);
+          // the very first level (f near 0, the part facing the eye) is skipped
+          if (t < 0.5) line = 0.0;
+        }
+        if (uHatch > 0.001) {
+          vec3 L = normalize(vec3(-0.45, 0.8, 0.4));
+          float dark = smoothstep(0.35, 0.95, 1.0 - dot(N, L)) * uHatch;
+          // meridians: lines of equal tilt direction, running from the facing
+          // point out to the silhouette
+          vec3 Nv = (viewMatrix * vec4(N, 0.0)).xyz;
+          float ang = atan(Nv.y, Nv.x) / 6.2831853;
+          float s = ang * uGap;
+          float hd = abs(fract(s) - 0.5);
+          float hw = fwidth(s) * uLinePx * 0.8;
+          float hatch = smoothstep(hw, 0.0, 0.5 - hd) * smoothstep(0.03, 0.15, f);
+          // crossing them where it is darkest: contour lines at twice the density
+          float t2 = f * max(uLevels, 1.0) * 2.0 + 0.5;
+          float d2 = abs(fract(t2) - 0.5);
+          float w2 = fwidth(t2) * uLinePx * 0.8;
+          float hatch2 = smoothstep(w2, 0.0, 0.5 - d2) * smoothstep(0.6, 1.0, dark);
+          line = max(line, max(hatch * smoothstep(0.0, 0.5, dark), hatch2));
+        }
+        gl_FragColor = vec4(vec3(uWhite * line), show * max(uAlpha, line));
+      }`,
+    uniforms: {
+      uMix: { value: 1 },
+      uShowL: { value: 1 },
+      uShowR: { value: 1 },
+      uAlpha: { value: 1 },
+      uWhite: { value: 0.72 },
+      uLevels: { value: 4 },
+      uFacet: { value: 0.15 },
+      uLinePx: { value: 1.2 },
+      uHatch: { value: 0 },
+      uGap: { value: 24 },
+      uRot: { value: new THREE.Matrix3() },
+    },
+  });
+}
