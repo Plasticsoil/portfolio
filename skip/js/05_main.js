@@ -276,7 +276,9 @@ function layout() {
   const cols = wide ? 3 : 2;
   // on a phone the columns are further apart and the pieces smaller in them:
   // more air, the way a wide canvas breathes
-  const colW = W * (coarse ? 0.31 : wide ? 0.26 : 0.44), rowH = colW, LIFT = 0.38, FILL = coarse ? 0.38 : 0.46;
+  // on a phone each piece is most of the window and the rows are nearly a
+  // screen apart: roughly one piece per screen, in theory
+  const colW = W * (coarse ? 0.31 : wide ? 0.26 : 0.44), rowH = coarse ? colW * 1.4 : colW, LIFT = 0.38, FILL = coarse ? 0.56 : 0.46;
   // and on the phone every piece also strays from its cell, so the grid reads
   // as a scatter rather than rows
   const STRAY = coarse ? 0.4 : 0;
@@ -289,7 +291,7 @@ function layout() {
   // larger still. The true ratios are far too wide to show (a tree is thirty
   // hands), so they are compressed: enough to feel right, never so much that
   // the small pieces disappear.
-  const worldSize = (it) => THREE.MathUtils.clamp(((it.piece.real || 1.75) / 1.75) ** 0.4, 0.5, 1.45);
+  const worldSize = (it) => THREE.MathUtils.clamp(((it.piece.real || 1.75) / 1.75) ** 0.4, 0.5, coarse ? 1.15 : 1.45);
   shuffled.forEach((it, i) => {
     const col = i % cols, row = Math.floor(i / cols);
     it.home.set(
