@@ -734,22 +734,37 @@ function applyStroke() {
 // views beside it, the readout at its top right corner. Shown only while making.
 function placeMixUi() {
   const on = makeBlend > 0.02;
-  mixUi.hidden = !on; spec.hidden = !on || !spec.textContent;
+  mixUi.hidden = !on; spec.hidden = !on || !spec.textContent; tab.hidden = !on;
   viewsUi.hidden = !on || !view.viewsRoom || coarse;
   if (!on) return;
   const px = (x, y) => { v3.set(x, y, 0).project(camera); return [(v3.x * 0.5 + 0.5) * innerWidth, (-v3.y * 0.5 + 0.5) * innerHeight]; };
   const [lx, ty] = px(-view.stage.x, view.stage.top), [rx, by] = px(view.stage.x, view.stage.bottom);
   mixUi.style.top = `${by + 18}px`;
+  tab.style.left = `${lx}px`;
+  tab.style.top = `${ty}px`;
   viewsUi.style.top = `${ty}px`;
   viewsUi.style.left = `${lx - viewsCell}px`;
   spec.style.left = `${rx + 14}px`;
   spec.style.top = `${ty}px`;
 }
-let making = false, makeBlend = 0;
-makeUi.addEventListener('click', () => {
-  making = !making;
-  document.documentElement.style.overflow = making && !coarse ? 'hidden' : '';
-});
+// Making opens like a tab: the screen dips to black, the stage is there when
+// it comes back, and the gallery is exactly where it was when the tab closes.
+// The word at the bottom right or Esc closes it.
+let making = false, makeBlend = 0, veilTimer = 0;
+const veil = document.getElementById('veil'), tab = document.getElementById('tab');
+function setMaking(on) {
+  if (on === making) return;
+  veil.classList.add('on');
+  clearTimeout(veilTimer);
+  veilTimer = setTimeout(() => {
+    making = on; makeBlend = on ? 1 : 0;
+    document.documentElement.style.overflow = on && !coarse ? 'hidden' : '';
+    placeMixUi();
+    requestAnimationFrame(() => veil.classList.remove('on'));
+  }, 380);
+}
+makeUi.addEventListener('click', () => setMaking(!making));
+addEventListener('keydown', (e) => { if (e.key === 'Escape') setMaking(false); });
 
 // --- loop ----------------------------------------------------------------------
 const m4 = new THREE.Matrix4();
@@ -761,9 +776,7 @@ function frame(now) {
 
   // Making: the word at the bottom right takes the camera off the page to
   // the Mix stage and back; the words and the story step aside meanwhile.
-  makeBlend += ((making ? 1 : 0) - makeBlend) * (1 - Math.exp(-dt * 3.2));
-  if (makeBlend < 0.001 && !making) makeBlend = 0;
-  const away = makeBlend > 0.3;
+  const away = making;
   modes.classList.toggle('away', away);
   storyUi.classList.toggle('away', away);
   makeUi.setAttribute('aria-pressed', making ? 'true' : 'false');
