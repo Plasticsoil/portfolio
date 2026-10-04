@@ -193,6 +193,7 @@ function M(){
   // 7 vertical guides → 6 columns. The centre column is split in two at xC so
   // an M or W can land its diagonals on a half-width step at the middle.
   const Xs=[sb, sb+sv, xC-sv/2, xC, xC+sv/2, sb+W-sv, sb+W];
+  for(let i=1;i<Xs.length;i++) if(Xs[i]<Xs[i-1]+1) Xs[i]=Xs[i-1];   // touching guides merge
   // horizontal guides → rows. The middle splits into three equal bands
   // (lower flank · inner · upper flank): paint the inner alone for the small
   // centre stroke, or all three for the big one (3×). Two extra lines sit at
@@ -221,7 +222,11 @@ function cornerOverrides(segs){ const o={}; for(const s of segs){
   let m=/^(k\d\d(?:q\d)?|p-?\d+_-?\d+(?:q\d)?)c(\d+)$/.exec(s); if(m){ (o[m[1]]=o[m[1]]||{}).val=+m[2]; continue; }
   m=/^(k\d\d(?:q\d)?|p-?\d+_-?\d+(?:q\d)?)z$/.exec(s); if(m){ (o[m[1]]=o[m[1]]||{}).straight=true; } } return o; }
 function grid5(segs){ const {NI,NJ}=gdims(), g=Array.from({length:NI},()=>Array(NJ).fill(false));
-  for(const c of cellsOf(segs)){ const i=+c[1], j=+c[2]; if(i<NI&&j<NJ) g[i][j]=true; } return g; }
+  for(const c of cellsOf(segs)){ const i=+c[1], j=+c[2]; if(i<NI&&j<NJ) g[i][j]=true; }
+  // a zero-width column (two guides that merged) has no ink of its own: it is painted
+  // when either neighbour is, so the two never leave a seam between them
+  const Xs=M().Xs; for(let i=0;i<NI;i++) if(Xs[i+1]-Xs[i]<0.5) for(let j=0;j<NJ;j++) g[i][j]=!!((i>0&&g[i-1][j])||(i<NI-1&&g[i+1][j]));
+  return g; }
 
 /* trace the union of painted cells into ordered closed loops of grid
    vertices. Each boundary half-edge is oriented so the painted region is
@@ -344,7 +349,7 @@ function unionLoops(polys){
   return loops; }
 /* grid-traced loops as {x,y} (used when there are no diagonals) */
 function gridLoops(segs){ const m=M(),Xs=m.Xs,Ys=m.Ys;
-  return traceLoops(grid5(segs)).map(simplify).map(l=>l.map(p=>({x:Xs[p.vi],y:Ys[p.vj]}))).filter(l=>l.length>=3); }
+  return traceLoops(grid5(segs)).map(simplify).map(l=>simplifyPts(l.map(p=>({x:Xs[p.vi],y:Ys[p.vj]})))).filter(l=>l.length>=3); }
 /* clean a float loop: drop duplicate points and collinear runs */
 function simplifyPts(loop){ const pts=[];
   for(const p of loop){ const q=pts[pts.length-1]; if(!q||Math.hypot(p.x-q.x,p.y-q.y)>0.4) pts.push(p); }
@@ -379,7 +384,10 @@ function roundLoops(loops, segs){
       // right-angle corners are the grid's own (a counter, an arch, a notch);
       // a diagonal junction is acute/obtuse and must not auto-round
       const perp=Math.abs(ux*wx+uy*wy)<0.15;
-      const s={C,ux,uy,wx,wy,il,ol,turnLeft,hole, base:vkey(C.x,C.y), q:(bx>0?1:0)+(by>0?2:0), bx, by,
+      // interior angle θ between the two edges; a fillet of radius r touches each edge
+      // at distance r/tan(θ/2) from the vertex (= r only for a right angle)
+      const cosT=Math.max(-0.9999,Math.min(0.9999,-(ux*wx+uy*wy))), tanH=Math.max(0.02,Math.sqrt((1-cosT)/(1+cosT)));
+      const s={C,ux,uy,wx,wy,il,ol,turnLeft,hole,tanH, base:vkey(C.x,C.y), q:(bx>0?1:0)+(by>0?2:0), bx, by,
         // default: a right-angle inner (concave) corner rounds into the counter at the
         // inner radius — like the O's counter — closed or open; an outer extreme corner
         // rounds at the outer radius; everything else (incl. diagonal junctions) stays square
@@ -392,18 +400,20 @@ function roundLoops(loops, segs){
   // pass 2 — overrides, radius, handle position
   for(const s of all){ const o=ov[s.id]||{}, val=o.val!=null?o.val:s.defR;
     s.round=o.straight?false:(o.val!=null?true:s.defR>0.5); s.fixed=o.val!=null;
-    s.maxR=Math.min(s.il,s.ol); s.r=s.round?Math.min(val,s.maxR):0; s.val=Math.round(val);
+    s.maxR=Math.min(s.il,s.ol)*s.tanH; s.r=s.round?Math.min(val,s.maxR):0; s.val=Math.round(val);
+    s.t=s.r/s.tanH;                                   // tangent length along each edge
     const off=Math.min(0.42*Math.min(s.il,s.ol), Math.min(m.sv,m.sh,m.sc)*0.7);
     s.hx=s.C.x+s.bx*off; s.hy=s.C.y+s.by*off; }
   for(const {seg,n} of segsByLoop){
-    for(let k=0;k<n;k++){ const a=seg[k], b=seg[(k+1)%n], L=a.ol;
-      if(a.r+b.r>L){ const ex=a.r+b.r-L;
-        if(a.fixed&&!b.fixed) b.r=Math.max(0,b.r-ex);
-        else if(b.fixed&&!a.fixed) a.r=Math.max(0,a.r-ex);
-        else { const f=L/(a.r+b.r); a.r*=f; b.r*=f; } } }
+    for(let k=0;k<n;k++){ const a=seg[k], b=seg[(k+1)%n], L=a.ol;   // two fillets share an edge
+      if(a.t+b.t>L){ const ex=a.t+b.t-L;
+        if(a.fixed&&!b.fixed) b.t=Math.max(0,b.t-ex);
+        else if(b.fixed&&!a.fixed) a.t=Math.max(0,a.t-ex);
+        else { const f=L/(a.t+b.t); a.t*=f; b.t*=f; } } }
+    for(const s of seg) s.r=s.t*s.tanH;                // the radius the arc is actually drawn with
     for(const s of seg) corners.push({x:s.hx,y:s.hy,cx:s.C.x,cy:s.C.y,id:s.id,round:s.round,val:s.val,maxR:s.maxR,hole:s.hole});
-    const A=k=>({x:seg[k].C.x-seg[k].ux*seg[k].r, y:seg[k].C.y-seg[k].uy*seg[k].r});
-    const B=k=>({x:seg[k].C.x+seg[k].wx*seg[k].r, y:seg[k].C.y+seg[k].wy*seg[k].r});
+    const A=k=>({x:seg[k].C.x-seg[k].ux*seg[k].t, y:seg[k].C.y-seg[k].uy*seg[k].t});
+    const B=k=>({x:seg[k].C.x+seg[k].wx*seg[k].t, y:seg[k].C.y+seg[k].wy*seg[k].t});
     let dd='M '+R(B(0).x)+' '+R(B(0).y)+' ';
     for(let k=1;k<=n;k++){ const kk=k%n, s=seg[kk], a=A(kk), b=B(kk);
       dd+='L '+R(a.x)+' '+R(a.y)+' ';
