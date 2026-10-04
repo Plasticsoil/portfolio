@@ -47,7 +47,7 @@
      the white stone and stays light over the black, and can always be read.
      A few lines of script at the end of the page keep the two columns the
      same height. */
-  #story { position: fixed; z-index: 3; left: 10px; right: 10px; bottom: 4px; overflow: hidden;
+  #story { position: fixed; z-index: 3; left: 10px; right: 10px; bottom: 22px; overflow: hidden;
     display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; align-items: end;
     font: 300 clamp(10px, 0.8vw, 12.5px)/1.6 "Archivo", var(--sans); color: #fff; opacity: 0.5; mix-blend-mode: difference; pointer-events: none; transition: opacity 0.4s; }
   #story p { margin: 0; text-align: justify; hyphens: auto; text-wrap: pretty; }
@@ -92,7 +92,7 @@
 
   /* The Mix controls sit in the page, on a line under the framed stage. */
   #mix { position: fixed; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 28px; color: var(--muted); white-space: nowrap; }
-  #mix-go { color: var(--ink); border-color: var(--line); padding: 6px 18px; }
+  #mix-go { font: 300 12px/1.6 "Archivo", var(--sans); }
   #mix label { display: flex; align-items: center; gap: 12px; }
   #mix input { width: clamp(90px, 14vw, 180px); height: 12px; margin: 0; background: none; -webkit-appearance: none; appearance: none; cursor: pointer; }
   #mix input::-webkit-slider-runnable-track { height: 1px; background: var(--line); }
@@ -130,22 +130,27 @@
      through the modes in order. Line and story fade away when the Mix section
      comes into view. */
   #modes { position: fixed; z-index: 3; left: 10px; bottom: 130px; display: flex; gap: 0.9em; align-items: baseline;
-    font: 300 clamp(10px, 0.8vw, 12.5px)/1.6 "Archivo", var(--sans); color: #fff; opacity: 0.5; mix-blend-mode: difference; transition: opacity 0.4s; }
-  #modes button, #modes button:hover { font: inherit; color: inherit; border: 0; padding: 0; white-space: nowrap; }
-  #modes button[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+    font: 300 clamp(10px, 0.8vw, 12.5px)/1.6 "Archivo", var(--sans); color: #fff; mix-blend-mode: difference; transition: opacity 0.4s; }
+  #modes button, #modes button:hover, #make, #make:hover, #mix-go, #mix-go:hover, #tab { font: inherit; color: #fff; opacity: 0.5; border: 0; padding: 0; white-space: nowrap;
+    text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; transition: opacity 0.25s; }
+  #modes button:hover, #make:hover, #mix-go:hover, #tab:hover { opacity: 0.8; }
+  #modes button[aria-pressed="true"], #make[aria-pressed="true"] { opacity: 1; }
   #modes.away, #story.away { opacity: 0; pointer-events: none; }
+  /* with the parting the view words step down into a column, each one a
+     line lower and a little further in than the one above, following the slope */
+  #modes.parting { flex-direction: column; align-items: flex-start; gap: 0; }
+  #modes.parting button { transform: translateX(calc(var(--part, 0) * var(--k) * 1.4em)); }
   /* The word at the bottom right, the mirror of the view words: it takes the
      page to the Mix stage and back. Underlined while there. */
-  #make { position: fixed; z-index: 3; right: 10px; bottom: 130px; font: 300 clamp(10px, 0.8vw, 12.5px)/1.6 "Archivo", var(--sans); color: #fff; opacity: 0.5; mix-blend-mode: difference; border: 0; padding: 0; }
-  #make:hover { color: #fff; }
-  #make[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  #make { position: fixed; z-index: 3; right: 10px; bottom: 130px; font: 300 clamp(10px, 0.8vw, 12.5px)/1.6 "Archivo", var(--sans); mix-blend-mode: difference; }
   @media (pointer: coarse) { #make { font-size: 10.5px; } }
   /* The dip to black when the Mutant tab opens or closes, and the tab's label
      on the top left corner of the stage frame. */
   #veil { position: fixed; z-index: 6; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 0.38s ease; }
   #veil.on { opacity: 1; }
-  #tab { position: fixed; z-index: 2; margin: 0; transform: translateY(-100%); padding: 4px 12px 3px; border: 1px solid var(--line); border-bottom: 0;
-    font: 300 11px/1.5 "Archivo", var(--sans); letter-spacing: 0.04em; color: var(--muted); pointer-events: none; }
+  #tab { position: fixed; z-index: 3; margin: 0; transform: translateY(-100%); padding: 4px 0 6px;
+    font: 300 11.5px/1.5 "Archivo", var(--sans); background: none; cursor: pointer; }
+  #tab:focus-visible { outline: 1px solid var(--pink); outline-offset: 3px; }
 
 </style>
 </head>
@@ -158,7 +163,7 @@
 <div id="modes" role="group" aria-label="View mode"></div>
 <button id="make" aria-pressed="false">Mutant</button>
 <div id="veil" aria-hidden="true"></div>
-<p id="tab" hidden>mutant</p>
+<button id="tab" hidden aria-label="Close">mutant &nbsp;×</button>
 
 <p id="status">Loading</p>
 <div id="story" lang="en">
@@ -227,11 +232,12 @@
       cols[0].style.wordSpacing = best ? best.a.ws : '';
       cols[1].style.wordSpacing = best ? best.b.ws : '';
       // the view-mode tags sit right above the text
-      document.getElementById("modes").style.bottom = document.getElementById("make").style.bottom = `${4 + story.offsetHeight + 6}px`;
+      document.getElementById("modes").style.bottom = document.getElementById("make").style.bottom = `${22 + story.offsetHeight + 6}px`;
     };
     document.fonts.ready.then(() => { even(); new ResizeObserver(even).observe(story); addEventListener('resize', even); });
   }
 </script>
 <script type="module" src="js/05_main.js?v=3"></script>
+<script defer src="/shared/line.js"></script>
 </body>
 </html>

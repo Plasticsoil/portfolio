@@ -2217,5 +2217,6 @@ const DEFAULTS=JSON.parse(JSON.stringify(params));
 document.addEventListener('click',e=>{ if(!e.target.closest('.dropdown')) document.querySelectorAll('.dd-pop.open').forEach(p=>p.classList.remove('open')); });
 seedColorPresets(); seedPresets(); buildControls(); wireTimeline(); wireExport(); wireSettings(); applyColors(); regenMarkers(); render(); updateTime(); pushState();
 </script>
+<script defer src="/shared/line.js"></script>
 </body>
 </html>

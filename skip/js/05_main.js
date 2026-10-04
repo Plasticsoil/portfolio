@@ -233,7 +233,7 @@ const stage = new THREE.Group();
   const grid = [], N = 12, M = 8;
   for (let i = 1; i < N; i++) grid.push(i / N - 0.5, -0.5, 0, i / N - 0.5, 0.5, 0);
   for (let j = 1; j < M; j++) grid.push(-0.5, j / M - 0.5, 0, 0.5, j / M - 0.5, 0);
-  stage.add(lines(grid, 0x090909), lines([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0, -0.5, 0.5, 0, -0.5, -0.5, 0], 0x1d1c1a));
+  stage.add(lines(grid, 0x141311), lines([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0, -0.5, 0.5, 0, -0.5, -0.5, 0], 0x1d1c1a));
   // drawn first and in the plane of the page (not set back in depth), so the
   // views column and the controls can be lined up with it exactly
   stage.traverse((o) => { o.renderOrder = -1; });
@@ -332,8 +332,11 @@ function layout() {
   // story parts (see the frame loop). The Mix stage is off the page: the word
   // at the bottom right takes the camera there.
   const gridEnd = heroH + (rows + LIFT + 0.5) * rowH;
-  view.gridEndY = top - gridEnd;
   const total = gridEnd + view.h * 0.6;
+  // the parting of the story runs from the fourth row of pieces coming into
+  // view to the end of the page (by the bottom edge of the screen)
+  view.partStartY = top - heroH - rowH * (3 + LIFT);
+  view.partEndY = top - total;
   view.scrollSpan = Math.max(0, total - view.h);
   spacer.style.height = coarse ? '100vh' : `${(total / view.h) * 100}vh`;
   if (coarse) {
@@ -614,7 +617,15 @@ function mixArrived(m) {
   }
   mixNext();
 }
-document.getElementById('mix-go').addEventListener('click', () => { mixSeed++; held_view = -1; markView(); mixFresh = true; remix(); });
+document.getElementById('mix-go').addEventListener('click', () => {
+  mixSeed++; held_view = -1; markView(); mixFresh = true;
+  // the piece on the stage comes apart first: it turns to dust and the dust
+  // is blown off; the new one arrives into the emptiness
+  const it = mixes[0];
+  if (it.carved && !it.vanish) it.vanish = performance.now();
+  remix();
+});
+const VANISH_MS = 1100;
 for (const el of [mixCut, mixMelt]) {
   // every move re-carves (coarse, queued behind the one in progress, so the
   // piece changes step by step under the finger); letting go carves it fine
@@ -707,6 +718,7 @@ const modes = document.getElementById('modes');
 Object.entries(MODES).forEach(([key, m], i) => {
   const b = document.createElement('button');
   b.dataset.mode = key;
+  b.style.setProperty('--k', i);
   b.textContent = m.label;
   b.title = `${m.label} (${i + 1})`;
   b.addEventListener('click', () => setMode(key));
@@ -768,6 +780,7 @@ function setMaking(on) {
 }
 makeUi.addEventListener('click', () => setMaking(!making));
 addEventListener('keydown', (e) => { if (e.key === 'Escape') setMaking(false); });
+tab.addEventListener('click', () => setMaking(false));
 
 // --- loop ----------------------------------------------------------------------
 const m4 = new THREE.Matrix4();
@@ -806,10 +819,11 @@ function frame(now) {
   // a triangle of black opening between them
   {
     const camBottom = camera.position.y - view.h / 2;
-    // it begins while the last row is still on screen and is complete at the page's end
-    const p = THREE.MathUtils.clamp((view.gridEndY - camBottom + view.h * 0.45) / (view.h * 1.0), 0, 1);
+    const p = THREE.MathUtils.clamp((view.partStartY - camBottom) / (view.partStartY - view.partEndY), 0, 1);
     storyUi.style.setProperty('--part', (p * p * (3 - 2 * p)).toFixed(4));
     storyUi.classList.toggle('parting', p > 0.02);
+    modes.classList.toggle('parting', p > 0.02);
+    modes.style.setProperty('--part', storyUi.style.getPropertyValue('--part'));
     // the slope is exactly as tall as the text it shapes (measured, since the
     // paragraph would otherwise grow to hold the float and the lines would
     // float up the screen); the block then stays at the bottom
@@ -820,7 +834,7 @@ function frame(now) {
       if (r.height > 0) el.style.setProperty('--fh', `${Math.ceil(r.height)}px`);
     }
     // the words stay right above the text as it grows
-    const above = `${4 + storyUi.offsetHeight + 6}px`;
+    const above = `${22 + storyUi.offsetHeight + 6}px`;
     if (modes.style.bottom !== above) modes.style.bottom = makeUi.style.bottom = above;
   }
   camera.position.y += (view.stage.y - camera.position.y) * ease(makeBlend);
@@ -948,7 +962,12 @@ function frame(now) {
     it.stone.uniforms.uReveal.value = it.points.uniforms.uReveal.value = it.reveal;
     // the arrival of a new mix: dust first, settling, then the piece itself
     const arriving = it.arrive ? Math.min(1, (now - it.arrive) / ARRIVE_MS) : 1;
+    // vanishing: the stone loosens into dust (first half) and the dust is
+    // blown away (second half); kept until the next piece arrives
+    const vanishing = it.vanish && !(it.arrive > it.vanish) ? Math.min(1, (now - it.vanish) / VANISH_MS) : -1;
+    if (it.arrive > it.vanish) it.vanish = 0;
     let scatter = arriving < 1 && !it.shift ? (1 - arriving) ** 2 * 1.6 : 0;
+    if (vanishing >= 0) scatter = Math.max(scatter, ease(Math.max(0, (vanishing - 0.3) / 0.7)) * 2.2);
     // the shape-shift: the shader keeps every grain's own timing, it only
     // needs the clock and the size of the piece
     const pu = it.points.uniforms;
@@ -958,8 +977,10 @@ function frame(now) {
       else { pu.uShiftT.value = ts; pu.uShiftSize.value = Math.max(it.size.x, it.size.y, it.size.z) * it.scale * 0.5; }
     }
     pu.uScatter.value = scatter;
-    if (arriving < 1 && !wiping) {
-      const settle = ease(Math.max(0, (arriving - 0.62) / 0.38));     // the piece sets once the dust has come to rest
+    if ((arriving < 1 || vanishing >= 0) && !wiping) {
+      const settle = vanishing >= 0
+        ? 1 - ease(Math.min(1, vanishing / 0.45))                      // the piece loosens into dust
+        : ease(Math.max(0, (arriving - 0.62) / 0.38));                 // the piece sets once the dust has come to rest
       const L = it.layers, own = LAYER_OF[mode];
       L.points.visible = true;
       L.points.material.uniforms.uShowR.value = 1;
