@@ -136,10 +136,10 @@
   #modes button:hover, #make:hover, #mix-go:hover, #tab:hover { opacity: 0.8; }
   #modes button[aria-pressed="true"], #make[aria-pressed="true"] { opacity: 1; }
   #modes.away, #story.away { opacity: 0; pointer-events: none; }
-  /* with the parting the view words step down into a column, each one a
-     line lower and a little further in than the one above, following the slope */
+  /* with the parting the view words step down into a column, one under the
+     other, flush against the left edge like the text under them */
   #modes.parting { flex-direction: column; align-items: flex-start; gap: 0; }
-  #modes.parting button { transform: translateX(calc(var(--part, 0) * var(--k) * 1.4em)); }
+  #make { text-align: right; }
   /* The word at the bottom right, the mirror of the view words: it takes the
      page to the Mix stage and back. Underlined while there. */
   #make { position: fixed; z-index: 3; right: 10px; bottom: 130px; font: 300 clamp(10px, 0.8vw, 12.5px)/1.6 "Archivo", var(--sans); mix-blend-mode: difference; }
