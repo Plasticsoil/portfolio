@@ -924,8 +924,14 @@ function frame(now) {
       const pace = (0.07 + s[3] * 0.09) * 1.7;
       const turnAt = t * pace + (studies.includes(it) ? studies.indexOf(it) / studies.length : s[7]) * 6.2832;
       const facing = turnAt - 0.88 * Math.sin(turnAt);
+      // The tilt follows the place on the screen: a piece high up shows a
+      // little of its underside, one in the middle is seen straight on, one
+      // low down shows its top, as if all of them were looked at from the
+      // middle of the screen. They keep turning about their own height.
+      v3.copy(it.holder.position).project(camera);
+      const look = THREE.MathUtils.clamp(-v3.y, -1, 1) * 0.55;
       it.holder.rotation.set(
-        tr.pitch + (s[6] - 0.5) * 0.5 + Math.sin(t * f + s[7] * 6.28) * 0.08,
+        tr.pitch + look + (s[6] - 0.5) * 0.12 + Math.sin(t * f + s[7] * 6.28) * 0.08,
         tr.yaw + facing,
         (s[5] - 0.5) * 0.4,
         'ZXY',
