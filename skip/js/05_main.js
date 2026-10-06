@@ -709,7 +709,8 @@ canvas.addEventListener('pointermove', (e) => {
   lastX = e.clientX; lastY = e.clientY;
 });
 const release = () => { held = null; };
-canvas.addEventListener('pointerleave', () => { pointerX = pointerY = -1; });
+// leaving the canvas for the name label does not count as leaving
+canvas.addEventListener('pointerleave', (e) => { if (e.relatedTarget !== tip) pointerX = pointerY = -1; });
 canvas.addEventListener('pointerup', release);
 canvas.addEventListener('pointercancel', release);
 
@@ -783,7 +784,7 @@ makeUi.addEventListener('click', () => setMaking(!making));
 // The pop-up: the arrow beside a hovered piece opens it alone, zoomed in to
 // fill the screen, the way the Mutant tab opens; the cross or Esc closes it.
 let focused = null;
-const openUi = document.getElementById('open'), shut = document.getElementById('shut');
+const shut = document.getElementById('shut');
 function setFocus(it) {
   if (it === focused) return;
   veil.classList.add('on');
@@ -796,7 +797,12 @@ function setFocus(it) {
     requestAnimationFrame(() => veil.classList.remove('on'));
   }, 380);
 }
-openUi.addEventListener('click', () => { if (hovered && hovered !== logo) setFocus(hovered); });
+// the name label beside a piece is the way in: it holds still while the
+// pointer is on it, and a click opens that piece
+let tipHeld = false;
+tip.addEventListener('pointerenter', () => { tipHeld = true; });
+tip.addEventListener('pointerleave', () => { tipHeld = false; });
+tip.addEventListener('click', () => { if (hovered && hovered !== logo) { tipHeld = false; setFocus(hovered); } });
 shut.addEventListener('click', () => setFocus(null));
 addEventListener('keydown', (e) => { if (e.key === 'Escape') { setMaking(false); setFocus(null); } });
 tab.addEventListener('click', () => setMaking(false));
@@ -811,10 +817,11 @@ function frame(now) {
 
   // Making: the word at the bottom right takes the camera off the page to
   // the Mix stage and back; the words and the story step aside meanwhile.
-  const away = making;
+  const away = making || !!focused;
   modes.classList.toggle('away', away);
   storyUi.classList.toggle('away', away);
   makeUi.setAttribute('aria-pressed', making ? 'true' : 'false');
+  makeUi.classList.toggle('away', !!focused);
 
   if (coarse) {
     // the finger pans the map; let go and it glides to a stop, and it cannot
@@ -870,22 +877,11 @@ function frame(now) {
   // the finger pans into it reacts as if hovered (bump, name, magnet, box).
   if (coarse) { pointerX = innerWidth / 2; pointerY = innerHeight * 0.45; }
   hovered = focused || held || (pointerX >= 0 ? pick(pointerX, pointerY) : null);
-  // the arrow that opens the pop-up sits at the top right of the hovered
-  // piece (inside its hover area, so it stays while the pointer goes to it)
-  const arrowFor = !focused && !making && hovered && hovered !== logo ? hovered : null;
-  openUi.hidden = !arrowFor;
-  if (arrowFor) {
-    v3.copy(arrowFor.holder.position).project(camera);
-    const pxU = innerHeight / view.h;
-    const sx = (v3.x * 0.5 + 0.5) * innerWidth + arrowFor.size.x * arrowFor.scale * pxU * 0.55 * 0.6;
-    const sy = (-v3.y * 0.5 + 0.5) * innerHeight - arrowFor.size.y * arrowFor.scale * pxU * 0.6 * 0.6;
-    openUi.style.transform = `translate(${sx}px, ${sy}px)`;
-  }
   canvas.style.cursor = held ? 'grabbing' : hovered ? 'grab' : '';
   const label = hovered && hovered !== logo && !held && !focused ? hovered.piece.title : '';
   tip.hidden = !label;
-  if (label) {
-    tip.textContent = label;
+  if (label && !tipHeld) {
+    tip.innerHTML = `${label} <i>&#8599;</i>`;
     if (coarse) {
       // the name sits under the piece, centred
       v3.copy(hovered.holder.position).project(camera);
@@ -962,7 +958,7 @@ function frame(now) {
       // low down shows its top, as if all of them were looked at from the
       // middle of the screen. They keep turning about their own height.
       v3.copy(it.holder.position).project(camera);
-      const look = THREE.MathUtils.clamp(-v3.y, -1, 1) * 0.55;
+      const look = THREE.MathUtils.clamp(-v3.y, -1, 1) * 0.95;
       it.holder.rotation.set(
         tr.pitch + look + (s[6] - 0.5) * 0.12 + Math.sin(t * f + s[7] * 6.28) * 0.08,
         tr.yaw + facing,

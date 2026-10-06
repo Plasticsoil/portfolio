@@ -106,7 +106,10 @@
     font: 300 11.5px/1.7 "Archivo", var(--sans); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; color: var(--muted); white-space: nowrap; pointer-events: none; }
   #spec b { grid-column: 1 / -1; font-weight: 300; border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-bottom: 5px; }
   @media (max-width: 1100px) { #spec { display: none; } }
-  #tip { position: fixed; left: 0; top: 0; margin: 0; padding: 3px 8px; background: #000; border: 1px solid var(--line); color: var(--ink); pointer-events: none; white-space: nowrap; }
+  #tip { position: fixed; left: 0; top: 0; margin: 0; padding: 3px 8px; background: #000; border: 1px solid var(--line); color: var(--ink); white-space: nowrap; cursor: pointer; }
+  #tip i { font-style: normal; color: var(--muted); margin-left: 2px; }
+  #tip:hover { border-color: var(--muted); }
+  #tip:hover i { color: var(--ink); }
 
   /* "/ portfolio": the way back to yamliv.net, top left, as on the other
      pages of the site. */
@@ -135,7 +138,7 @@
     text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; transition: opacity 0.25s; }
   #modes button:hover, #make:hover, #mix-go:hover, #tab:hover { opacity: 0.8; }
   #modes button[aria-pressed="true"], #make[aria-pressed="true"] { opacity: 1; }
-  #modes.away, #story.away { opacity: 0; pointer-events: none; }
+  #modes.away, #story.away, #make.away { opacity: 0; pointer-events: none; }
   /* with the parting the view words step down into a column, one under the
      other, flush against the left edge like the text under them */
   #modes.parting { flex-direction: column; align-items: flex-start; gap: 0; }
@@ -148,9 +151,9 @@
      on the top left corner of the stage frame. */
   /* The arrow beside a hovered piece opens it in the pop-up; the cross at the
      top right closes it. Both are plain glyphs in the site's quiet style. */
-  #open { position: fixed; z-index: 3; left: 0; top: 0; margin: -14px 0 0 -14px; width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); background: #000;
-    font: 300 15px/26px "Archivo", var(--sans); color: var(--ink); text-align: center; cursor: pointer; }
-  #open:hover { border-color: var(--muted); }
+  /* The name label beside a hovered piece is also the way into the pop-up:
+     it can be clicked, and shows a small arrow for it. The cross at the top
+     right closes the pop-up. */
   #shut { position: fixed; z-index: 3; top: clamp(20px, 4vw, 36px); right: clamp(20px, 4vw, 36px); margin: 0; padding: 0; border: 0; background: none;
     font: 300 22px/1 "Archivo", var(--sans); color: rgba(248, 246, 243, 0.7); cursor: pointer; }
   #shut:hover { color: var(--ink); }
@@ -171,7 +174,6 @@
 <div id="modes" role="group" aria-label="View mode"></div>
 <button id="make" aria-pressed="false">Mutant</button>
 <div id="veil" aria-hidden="true"></div>
-<button id="open" hidden aria-label="Open">&#8599;</button>
 <button id="shut" hidden aria-label="Close">&times;</button>
 <button id="tab" hidden aria-label="Close">mutant &nbsp;×</button>
 
