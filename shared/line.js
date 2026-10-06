@@ -1,5 +1,6 @@
 /* ══════════════════════════════════════════════════════════════
-   THE LINE — one quiet line at the very bottom of every page.
+   THE LINE — one quiet line at the very bottom of every page,
+   and THE DOT — the site's cursor: a small, solid white circle.
 
    Fixed to the bottom edge, under everything: the copyright on the
    left, the credit on the right. Blended by difference, so it reads
@@ -29,6 +30,33 @@
   var style = document.createElement('style');
   style.textContent = css;
   document.head.appendChild(style);
+
+  /* The cursor. A small solid white dot follows the pointer in place of the
+     system arrow, blended by difference so it stays visible on the cream
+     pages too. Pages with the older bracket cursor keep its tooltips but
+     drop the brackets, so the dot is the one cursor everywhere. Not on
+     touch screens, which have no pointer to replace. */
+  if (!window.matchMedia('(hover: none)').matches) {
+    var dotCss =
+      'html, html * { cursor: none !important; }' +
+      '#site-dot { position: fixed; z-index: 100000; left: 0; top: 0; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;' +
+      ' background: #fff; mix-blend-mode: difference; pointer-events: none; opacity: 0; transition: opacity 0.2s, width 0.15s, height 0.15s, margin 0.15s; }' +
+      '#site-dot.down { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; }' +
+      '#cursor-idle { display: none !important; }';
+    var dotStyle = document.createElement('style');
+    dotStyle.textContent = dotCss;
+    document.head.appendChild(dotStyle);
+    var dot = document.createElement('div');
+    dot.id = 'site-dot';
+    document.body.appendChild(dot);
+    document.addEventListener('mousemove', function (e) {
+      dot.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px)';
+      dot.style.opacity = '1';
+    }, { passive: true });
+    document.addEventListener('mouseleave', function () { dot.style.opacity = '0'; });
+    document.addEventListener('mousedown', function () { dot.classList.add('down'); });
+    document.addEventListener('mouseup', function () { dot.classList.remove('down'); });
+  }
 
   var line = document.createElement('p');
   line.id = 'site-line';

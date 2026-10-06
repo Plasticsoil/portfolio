@@ -779,7 +779,26 @@ function setMaking(on) {
   }, 380);
 }
 makeUi.addEventListener('click', () => setMaking(!making));
-addEventListener('keydown', (e) => { if (e.key === 'Escape') setMaking(false); });
+
+// The pop-up: the arrow beside a hovered piece opens it alone, zoomed in to
+// fill the screen, the way the Mutant tab opens; the cross or Esc closes it.
+let focused = null;
+const openUi = document.getElementById('open'), shut = document.getElementById('shut');
+function setFocus(it) {
+  if (it === focused) return;
+  veil.classList.add('on');
+  clearTimeout(veilTimer);
+  veilTimer = setTimeout(() => {
+    focused = it;
+    for (const o of items) o.holder.visible = o.carved && (!focused || o === focused);
+    document.documentElement.style.overflow = focused && !coarse ? 'hidden' : '';
+    shut.hidden = !focused;
+    requestAnimationFrame(() => veil.classList.remove('on'));
+  }, 380);
+}
+openUi.addEventListener('click', () => { if (hovered && hovered !== logo) setFocus(hovered); });
+shut.addEventListener('click', () => setFocus(null));
+addEventListener('keydown', (e) => { if (e.key === 'Escape') { setMaking(false); setFocus(null); } });
 tab.addEventListener('click', () => setMaking(false));
 
 // --- loop ----------------------------------------------------------------------
@@ -838,6 +857,7 @@ function frame(now) {
     if (modes.style.bottom !== above) modes.style.bottom = makeUi.style.bottom = above;
   }
   camera.position.y += (view.stage.y - camera.position.y) * ease(makeBlend);
+  if (focused) { camera.position.x = focused.home.x; camera.position.y = focused.home.y; }
   placeMixUi();
 
   const turn = Math.max(0, Math.min(1, (now - wipeStart) / 1000 / TRANSITION)), wiping = turn < 1;
@@ -849,9 +869,20 @@ function frame(now) {
   // On a phone the middle of the screen stands in for the pointer: whatever
   // the finger pans into it reacts as if hovered (bump, name, magnet, box).
   if (coarse) { pointerX = innerWidth / 2; pointerY = innerHeight * 0.45; }
-  hovered = held || (pointerX >= 0 ? pick(pointerX, pointerY) : null);
+  hovered = focused || held || (pointerX >= 0 ? pick(pointerX, pointerY) : null);
+  // the arrow that opens the pop-up sits at the top right of the hovered
+  // piece (inside its hover area, so it stays while the pointer goes to it)
+  const arrowFor = !focused && !making && hovered && hovered !== logo ? hovered : null;
+  openUi.hidden = !arrowFor;
+  if (arrowFor) {
+    v3.copy(arrowFor.holder.position).project(camera);
+    const pxU = innerHeight / view.h;
+    const sx = (v3.x * 0.5 + 0.5) * innerWidth + arrowFor.size.x * arrowFor.scale * pxU * 0.55 * 0.6;
+    const sy = (-v3.y * 0.5 + 0.5) * innerHeight - arrowFor.size.y * arrowFor.scale * pxU * 0.6 * 0.6;
+    openUi.style.transform = `translate(${sx}px, ${sy}px)`;
+  }
   canvas.style.cursor = held ? 'grabbing' : hovered ? 'grab' : '';
-  const label = hovered && hovered !== logo && !held ? hovered.piece.title : '';
+  const label = hovered && hovered !== logo && !held && !focused ? hovered.piece.title : '';
   tip.hidden = !label;
   if (label) {
     tip.textContent = label;
@@ -887,7 +918,9 @@ function frame(now) {
       want = 1 - THREE.MathUtils.smoothstep(d, 0.15, 1.1);
     }
     it.hover += (want - it.hover) * (1 - Math.exp(-dt * (coarse ? 6 : 12)));
-    it.holder.scale.setScalar(it.scale * (1 + HOVER_BUMP * it.hover));
+    // in the pop-up the piece fills most of the screen's height
+    const zoom = it === focused ? view.h * 0.62 / (Math.max(it.size.x, it.size.y) * it.scale) : 1;
+    it.holder.scale.setScalar(it.scale * (1 + HOVER_BUMP * it.hover) * zoom);
 
     // What the hand did: keeps a little momentum, then eases back to rest.
     if (it !== held) {

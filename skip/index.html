@@ -146,6 +146,14 @@
   @media (pointer: coarse) { #make { font-size: 10.5px; } }
   /* The dip to black when the Mutant tab opens or closes, and the tab's label
      on the top left corner of the stage frame. */
+  /* The arrow beside a hovered piece opens it in the pop-up; the cross at the
+     top right closes it. Both are plain glyphs in the site's quiet style. */
+  #open { position: fixed; z-index: 3; left: 0; top: 0; margin: -14px 0 0 -14px; width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); background: #000;
+    font: 300 15px/26px "Archivo", var(--sans); color: var(--ink); text-align: center; cursor: pointer; }
+  #open:hover { border-color: var(--muted); }
+  #shut { position: fixed; z-index: 3; top: clamp(20px, 4vw, 36px); right: clamp(20px, 4vw, 36px); margin: 0; padding: 0; border: 0; background: none;
+    font: 300 22px/1 "Archivo", var(--sans); color: rgba(248, 246, 243, 0.7); cursor: pointer; }
+  #shut:hover { color: var(--ink); }
   #veil { position: fixed; z-index: 6; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 0.38s ease; }
   #veil.on { opacity: 1; }
   #tab { position: fixed; z-index: 3; margin: 0; transform: translateY(-100%); padding: 4px 0 6px;
@@ -163,6 +171,8 @@
 <div id="modes" role="group" aria-label="View mode"></div>
 <button id="make" aria-pressed="false">Mutant</button>
 <div id="veil" aria-hidden="true"></div>
+<button id="open" hidden aria-label="Open">&#8599;</button>
+<button id="shut" hidden aria-label="Close">&times;</button>
 <button id="tab" hidden aria-label="Close">mutant &nbsp;×</button>
 
 <p id="status">Loading</p>
