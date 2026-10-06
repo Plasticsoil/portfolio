@@ -799,7 +799,7 @@ function setFocus(it) {
 }
 // the name label beside a piece is the way in: it holds still while the
 // pointer is on it, and a click opens that piece
-let tipHeld = false;
+let tipHeld = false, tipFor = null;
 tip.addEventListener('pointerenter', () => { tipHeld = true; });
 tip.addEventListener('pointerleave', () => { tipHeld = false; });
 tip.addEventListener('click', () => { if (hovered && hovered !== logo) { tipHeld = false; setFocus(hovered); } });
@@ -876,10 +876,13 @@ function frame(now) {
   // On a phone the middle of the screen stands in for the pointer: whatever
   // the finger pans into it reacts as if hovered (bump, name, magnet, box).
   if (coarse) { pointerX = innerWidth / 2; pointerY = innerHeight * 0.45; }
-  hovered = focused || held || (pointerX >= 0 ? pick(pointerX, pointerY) : null);
+  // while the pointer is on the name label the piece stays hovered, whatever
+  // the label's position says
+  hovered = focused || held || (tipHeld && tipFor) || (pointerX >= 0 ? pick(pointerX, pointerY) : null);
   canvas.style.cursor = held ? 'grabbing' : hovered ? 'grab' : '';
   const label = hovered && hovered !== logo && !held && !focused ? hovered.piece.title : '';
   tip.hidden = !label;
+  if (!label) tipFor = null;
   if (label && !tipHeld) {
     tip.innerHTML = `${label} <i>&#8599;</i>`;
     if (coarse) {
@@ -888,7 +891,12 @@ function frame(now) {
       const sx = (v3.x * 0.5 + 0.5) * innerWidth, sy = (-v3.y * 0.5 + 0.5) * innerHeight;
       const ry = hovered.size.y * hovered.scale * (innerHeight / view.h) * 0.6;
       tip.style.transform = `translate(calc(${sx}px - 50%), ${sy + ry + 10}px)`;
-    } else tip.style.transform = `translate(${pointerX + 14}px, ${pointerY + 14}px)`;
+    } else if (hovered !== tipFor) {
+      // placed once, where the pointer first met the piece, and left there:
+      // a label that kept following the pointer could never be reached
+      tip.style.transform = `translate(${pointerX + 14}px, ${pointerY + 14}px)`;
+    }
+    tipFor = hovered;
   }
 
   const present = pointerX >= 0;
