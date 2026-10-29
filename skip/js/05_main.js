@@ -417,6 +417,7 @@ function next() {
 worker.onmessage = (e) => {
   const m = e.data;
   if (m.kind === 'mix') { mixArrived(m); return; }
+  if (m.kind === 'fine') { fineArrived(m); return; }
   if (m.job !== job) return;
   install(items.find((it) => it.piece.id === m.id), m);
   carveMs += m.ms;
@@ -441,7 +442,7 @@ async function loadBaked(it, fetched) {
   });
 }
 
-function install(it, m) {
+function install(it, m, keep) {
   const hi = new THREE.BufferGeometry();
   // Baked files store normals and shading as bytes; `packed` tells three.js
   // to read them back as -1..1 and 0..1.
@@ -456,7 +457,7 @@ function install(it, m) {
     .setIndex(new THREE.BufferAttribute(m.low.edges, 1));
 
   const L = it.layers;
-  for (const obj of [L.stone, L.lines, L.stroke]) obj.geometry?.dispose();
+  if (!keep) for (const obj of [L.stone, L.lines, L.stroke]) obj.geometry?.dispose();
   L.stone.geometry = L.points.geometry = L.strokeMask.geometry = L.hull.geometry = hi;
   L.lines.geometry = lines;
   // Every edge of the finished mesh, with its crease angle and chain length;
@@ -785,12 +786,38 @@ makeUi.addEventListener('click', () => setMaking(!making));
 // fill the screen, the way the Mutant tab opens; the cross or Esc closes it.
 let focused = null;
 const shut = document.getElementById('shut');
+// In the pop-up the piece is seen four times closer, so it is carved again
+// from its field at a finer cell with smaller facets, and the stone's grain
+// is scaled to match; the everyday mesh is kept and put back on closing.
+let fineGen = 0;
+function fineArrived(m) {
+  if (m.gen !== fineGen || !focused || focused.piece.id !== m.id) return;
+  const it = focused, L = it.layers;
+  it.stash = { hi: L.stone.geometry, lines: L.lines.geometry, stroke: L.stroke.geometry, size: it.size.clone(), body: it.body.position.clone() };
+  install(it, m, true);
+  // the wire cage of the everyday mesh is kept if the fine carve gave none
+  if (!m.low.position.length) L.lines.geometry = it.stash.lines;
+}
+function unfine(it) {
+  const st = it.stash; if (!st) return;
+  const L = it.layers;
+  for (const obj of [L.stone, L.lines, L.stroke]) obj.geometry?.dispose();
+  L.stone.geometry = L.points.geometry = L.strokeMask.geometry = L.hull.geometry = st.hi;
+  L.lines.geometry = st.lines; L.stroke.geometry = st.stroke;
+  it.size.copy(st.size); it.body.position.copy(st.body);
+  it.stash = null;
+}
 function setFocus(it) {
   if (it === focused) return;
   veil.classList.add('on');
   clearTimeout(veilTimer);
   veilTimer = setTimeout(() => {
+    if (focused) unfine(focused);
     focused = it;
+    if (it && it.piece.baked && fieldIds.includes(it.piece.id)) {
+      const base = carveParams();
+      worker.postMessage({ type: 'fine', id: it.piece.id, gen: ++fineGen, params: { ...base, cell: 0.016, facetSize: base.facetSize * 0.45, wireEdge: 0.44 } });
+    }
     for (const o of items) o.holder.visible = o.carved && (!focused || o === focused);
     document.documentElement.style.overflow = focused && !coarse ? 'hidden' : '';
     shut.hidden = !focused;
@@ -925,6 +952,7 @@ function frame(now) {
     // in the pop-up the piece fills most of the screen's height
     const zoom = it === focused ? view.h * 0.62 / (Math.max(it.size.x, it.size.y) * it.scale) : 1;
     it.holder.scale.setScalar(it.scale * (1 + HOVER_BUMP * it.hover) * zoom);
+    it.stone.uniforms.uDetail.value = zoom;
 
     // What the hand did: keeps a little momentum, then eases back to rest.
     if (it !== held) {

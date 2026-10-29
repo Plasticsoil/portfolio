@@ -48,7 +48,7 @@ precision highp float;
 uniform mat3 uRot;
 uniform vec3 uKeyDir;
 uniform vec3 uTint;
-uniform float uFlat, uMicro, uMicroScale, uPits, uAo, uRim, uExposure, uReveal, uShadow;
+uniform float uFlat, uMicro, uMicroScale, uPits, uAo, uRim, uExposure, uReveal, uShadow, uDetail;
 ${WIPE}
 varying vec3 vShadeP, vShadeN;
 varying vec3 vObj;
@@ -102,8 +102,11 @@ void main() {
 
   // 3. micro: a cell pattern tilts the normal chip by chip, and a finer noise
   // on top gives the tooth of the stone when you look closely.
-  vec4 cell = cells(vObj * uMicroScale);
-  vec3 fine = vec3(vnoise(vObj * uMicroScale * 3.7), vnoise(vObj * uMicroScale * 3.7 + 19.0), vnoise(vObj * uMicroScale * 3.7 + 41.0)) - 0.5;
+  // uDetail: how much closer the piece is seen than usual; the grain is
+  // scaled with it so pores and mottling keep their size on the screen
+  vec3 q = vObj * uDetail;
+  vec4 cell = cells(q * uMicroScale);
+  vec3 fine = vec3(vnoise(q * uMicroScale * 3.7), vnoise(q * uMicroScale * 3.7 + 19.0), vnoise(q * uMicroScale * 3.7 + 41.0)) - 0.5;
   n = normalize(n + (cell.xyz - 0.5) * uMicro + fine * uMicro * 0.9);
   float pit = step(cell.z, uPits * 0.07) * smoothstep(0.18 + 0.3 * cell.x, 0.05, cell.w);
 
@@ -124,8 +127,8 @@ void main() {
 
   // 4. mottling
   vec3 albedo = uTint;
-  albedo *= 0.88 + 0.22 * fbm(vObj * 2.3);
-  albedo = mix(albedo, albedo * vec3(0.93, 0.88, 0.8), smoothstep(0.45, 0.8, fbm(vObj * 0.8 + 11.0)) * 0.5);
+  albedo *= 0.88 + 0.22 * fbm(q * 2.3);
+  albedo = mix(albedo, albedo * vec3(0.93, 0.88, 0.8), smoothstep(0.45, 0.8, fbm(q * 0.8 + 11.0)) * 0.5);
   albedo *= 0.93 + 0.14 * cell.y;
   albedo *= 0.94 + 0.12 * (fine.x + 0.5);
   albedo *= mix(0.72, 1.0, ao);
@@ -164,6 +167,7 @@ export function createStone() {
       uFlat: { value: 0.85 },
       uMicro: { value: 0.3 },
       uMicroScale: { value: 38 },
+      uDetail: { value: 1 },
       uPits: { value: 0.5 },
       uAo: { value: 1 },
       uRim: { value: 0.35 },

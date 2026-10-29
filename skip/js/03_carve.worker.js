@@ -404,6 +404,19 @@ export { mixPiece, addField, keepMain };
 
 if (typeof self !== 'undefined') self.onmessage = (e) => {
   if (e.data.type === 'field') { addField(e.data.id, e.data.data); return; }
+  if (e.data.type === 'fine') {
+    // one baked piece carved again from its field, finer, for the pop-up
+    const f = fields.get(e.data.id);
+    if (!f) return;
+    const p = f.inside, min = [9, 9, 9], max = [-9, -9, -9];
+    for (let i = 0; i < p.length; i += 3) for (let a = 0; a < 3; a++) { if (p[i + a] < min[a]) min[a] = p[i + a]; if (p[i + a] > max[a]) max[a] = p[i + a]; }
+    const piece = { id: e.data.id, field: { sdf: (x, y, z) => sample(f, x, y, z), min: min.map((v) => v - 0.15), max: max.map((v) => v + 0.15), eps: FH } };
+    const m = keepMain(carve(piece, e.data.params));
+    const low = m.low = wireMesh(m.position, m.index, e.data.params.wireEdge);
+    m.kind = 'fine'; m.id = e.data.id; m.gen = e.data.gen;
+    self.postMessage(m, [m.position.buffer, m.normal.buffer, m.ao.buffer, m.shadeP.buffer, m.shadeN.buffer, m.index.buffer, low.position.buffer, low.edges.buffer]);
+    return;
+  }
   if (e.data.type === 'mix') {
     const piece = mixPiece(e.data.recipe);
     const m = keepMain(carve(piece, e.data.params));
