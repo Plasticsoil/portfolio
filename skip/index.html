@@ -251,5 +251,15 @@
 </script>
 <script type="module" src="js/05_main.js?v=3"></script>
 <script defer src="/shared/line.js"></script>
+<script defer src="js/06_dot.js"></script>
+<script>
+  // Capture harness: only ever loads with ?capture in the URL, so the live
+  // site is untouched. See js/zz_capture.js.
+  if (new URLSearchParams(location.search).has('capture')) {
+    const s = document.createElement('script');
+    s.type = 'module'; s.src = 'js/zz_capture.js?v=1';
+    document.body.appendChild(s);
+  }
+</script>
 </body>
 </html>
