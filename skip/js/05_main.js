@@ -6,8 +6,8 @@
 import * as THREE from 'three';
 // The ?v= on every script is stamped by 03_Tools/deploy.sh on each deploy, so
 // a browser never runs this file with a cached older copy of another.
-import { LOGO, STUDIES } from './02_sculptures.js?v=202610291305';
-import { createStone, createPoints, createLines, createStroke, createHull, createFill } from './04_stone.js?v=202610291305';
+import { LOGO, STUDIES } from './02_sculptures.js?v=202610291315';
+import { createStone, createPoints, createLines, createStroke, createHull, createFill } from './04_stone.js?v=202610291315';
 
 // a touch screen: the phone's own word for it, or failing that, touch points and a narrow screen
 const coarse = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0 && Math.min(innerWidth, innerHeight) < 900);
@@ -392,7 +392,7 @@ if (coarse) {
 // --- carving -----------------------------------------------------------------
 // One piece at a time, logo first. Changing a carve setting starts the queue
 // again from the top.
-const worker = new Worker(new URL('./03_carve.worker.js?v=202610291305', import.meta.url), { type: 'module' });
+const worker = new Worker(new URL('./03_carve.worker.js?v=202610291315', import.meta.url), { type: 'module' });
 const status = document.getElementById('status');
 let job = 0, queue = [], carveMs = 0, prepared = false;
 
@@ -679,7 +679,8 @@ function pick(x, y) {
     v3.copy(it.holder.position).project(camera);
     const sx = (v3.x * 0.5 + 0.5) * innerWidth, sy = (-v3.y * 0.5 + 0.5) * innerHeight;
     const pxPerUnit = innerHeight / view.h;
-    const rx = it.size.x * it.scale * pxPerUnit * 0.55, ry = it.size.y * it.scale * pxPerUnit * 0.6;
+    const keep = it === hovered ? 1.8 : 1;          // a hovered piece holds on over a wider area
+    const rx = it.size.x * it.scale * pxPerUnit * 0.55 * keep, ry = it.size.y * it.scale * pxPerUnit * 0.6 * keep;
     const d = ((x - sx) / rx) ** 2 + ((y - sy) / ry) ** 2;
     if (d < 1 && d < bestD) { best = it; bestD = d; }
   }
@@ -915,17 +916,12 @@ function frame(now) {
   if (!label) tipFor = null;
   if (label && !tipHeld) {
     tip.innerHTML = `${label} <i>&#8599;</i>`;
-    if (coarse) {
-      // the name sits under the piece, centred
-      v3.copy(hovered.holder.position).project(camera);
-      const sx = (v3.x * 0.5 + 0.5) * innerWidth, sy = (-v3.y * 0.5 + 0.5) * innerHeight;
-      const ry = hovered.size.y * hovered.scale * (innerHeight / view.h) * 0.6;
-      tip.style.transform = `translate(calc(${sx}px - 50%), ${sy + ry + 10}px)`;
-    } else if (hovered !== tipFor) {
-      // placed once, where the pointer first met the piece, and left there:
-      // a label that kept following the pointer could never be reached
-      tip.style.transform = `translate(${pointerX + 14}px, ${pointerY + 14}px)`;
-    }
+    // the name sits under the piece, centred, and moves with it; it never
+    // follows the pointer, so the pointer can always reach it
+    v3.copy(hovered.holder.position).project(camera);
+    const sx = (v3.x * 0.5 + 0.5) * innerWidth, sy = (-v3.y * 0.5 + 0.5) * innerHeight;
+    const ry = hovered.size.y * hovered.scale * (innerHeight / view.h) * 0.6;
+    tip.style.transform = `translate(calc(${sx}px - 50%), ${sy + ry + 10}px)`;
     tipFor = hovered;
   }
 
@@ -953,7 +949,7 @@ function frame(now) {
     }
     it.hover += (want - it.hover) * (1 - Math.exp(-dt * (coarse ? 6 : 12)));
     // in the pop-up the piece fills most of the screen's height
-    const zoom = it === focused ? view.h * 0.62 / (Math.max(it.size.x, it.size.y) * it.scale) : 1;
+    const zoom = it === focused ? view.h * 0.44 / (Math.max(it.size.x, it.size.y) * it.scale) : 1;
     it.holder.scale.setScalar(it.scale * (1 + HOVER_BUMP * it.hover) * zoom);
     it.stone.uniforms.uDetail.value = zoom;
 

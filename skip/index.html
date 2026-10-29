@@ -255,15 +255,15 @@
     document.fonts.ready.then(() => { even(); new ResizeObserver(even).observe(story); addEventListener('resize', even); });
   }
 </script>
-<script type="module" src="js/05_main.js?v=202610291305"></script>
-<script defer src="/shared/line.js?v=202610291305"></script>
-<script defer src="js/06_dot.js?v=202610291305"></script>
+<script type="module" src="js/05_main.js?v=202610291315"></script>
+<script defer src="/shared/line.js?v=202610291315"></script>
+<script defer src="js/06_dot.js?v=202610291315"></script>
 <script>
   // Capture harness: only ever loads with ?capture in the URL, so the live
   // site is untouched. See js/zz_capture.js.
   if (new URLSearchParams(location.search).has('capture')) {
     const s = document.createElement('script');
-    s.type = 'module'; s.src = 'js/zz_capture.js?v=202610291305';
+    s.type = 'module'; s.src = 'js/zz_capture.js?v=202610291315';
     document.body.appendChild(s);
   }
 </script>
