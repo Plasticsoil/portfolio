@@ -147,6 +147,11 @@
      page to the Mix stage and back. Underlined while there. */
   #make { position: fixed; z-index: 3; right: 10px; bottom: 130px; font: 300 clamp(10px, 0.8vw, 12.5px)/1.6 "Archivo", var(--sans); mix-blend-mode: difference; }
   @media (pointer: coarse) { #make { font-size: 10.5px; } }
+  /* "More soon": two words in the empty space at the end, surfacing as the
+     story finishes parting. */
+  #soon { position: fixed; z-index: 3; left: 0; right: 0; top: 44%; margin: 0; text-align: center;
+    font: 300 clamp(11px, 0.9vw, 14px)/1.6 "Archivo", var(--sans); letter-spacing: 0.08em; color: #fff; opacity: 0; mix-blend-mode: difference; pointer-events: none; transition: opacity 0.3s; }
+
   /* The dip to black when the Mutant tab opens or closes, and the tab's label
      on the top left corner of the stage frame. */
   /* The arrow beside a hovered piece opens it in the pop-up; the cross at the
@@ -174,6 +179,7 @@
 <div id="modes" role="group" aria-label="View mode"></div>
 <button id="make" aria-pressed="false">Mutant</button>
 <div id="veil" aria-hidden="true"></div>
+<p id="soon">More soon</p>
 <button id="shut" hidden aria-label="Close">&times;</button>
 <button id="tab" hidden aria-label="Close">mutant &nbsp;×</button>
 

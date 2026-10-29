@@ -219,7 +219,7 @@ const GRAINS_PER_PX = 0.04;
 const view = { w: 1, h: 1, scrollSpan: 0 };
 // a new order on every visit
 const shuffled = studies.map((it) => [Math.random(), it]).sort((a, b) => a[0] - b[0]).map((p) => p[1]);
-const spec = document.getElementById('spec'), makeUi = document.getElementById('make');
+const spec = document.getElementById('spec'), makeUi = document.getElementById('make'), soon = document.getElementById('soon');
 const range = document.createRange();
 const mixUi = document.getElementById('mix'), viewsUi = document.getElementById('views'), storyUi = document.getElementById('story');
 const MIX_CELL = 0.045;
@@ -875,6 +875,7 @@ function frame(now) {
     const p = THREE.MathUtils.clamp((view.partStartY - camBottom) / (view.partStartY - view.partEndY), 0, 1);
     storyUi.style.setProperty('--part', (p * p * (3 - 2 * p)).toFixed(4));
     storyUi.classList.toggle('parting', p > 0.02);
+    soon.style.opacity = making || focused ? 0 : THREE.MathUtils.smoothstep(p, 0.8, 1) * 0.5;
     modes.classList.toggle('parting', p > 0.02);
     modes.style.setProperty('--part', storyUi.style.getPropertyValue('--part'));
     // the slope is exactly as tall as the text it shapes (measured, since the
