@@ -19,3 +19,7 @@
 
 /skip/
   Cache-Control: public, max-age=60, must-revalidate
+
+# The shared scripts change under the same names too.
+/shared/*
+  Cache-Control: public, max-age=60, must-revalidate
