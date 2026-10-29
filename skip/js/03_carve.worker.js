@@ -6,8 +6,8 @@
 // cell cuts one flat facet. Neighbouring planes never quite meet, and those
 // small steps are the chipped edges. Cell size is the facet-scale dial.
 
-import { compile } from './01_sdf.js';
-import { byId } from './02_sculptures.js';
+import { compile } from './01_sdf.js?v=202610291305';
+import { byId } from './02_sculptures.js?v=202610291305';
 
 function hash(i, j, k, s) {
   let h = (Math.imul(i, 374761393) + Math.imul(j, 668265263) + Math.imul(k, 1440662683) + Math.imul(s, 1274126177)) | 0;

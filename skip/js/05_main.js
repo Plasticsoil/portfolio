@@ -4,8 +4,10 @@
 // fixed: it never follows the pointer.
 
 import * as THREE from 'three';
-import { LOGO, STUDIES } from './02_sculptures.js';
-import { createStone, createPoints, createLines, createStroke, createHull, createFill } from './04_stone.js';
+// The ?v= on every script is stamped by 03_Tools/deploy.sh on each deploy, so
+// a browser never runs this file with a cached older copy of another.
+import { LOGO, STUDIES } from './02_sculptures.js?v=202610291305';
+import { createStone, createPoints, createLines, createStroke, createHull, createFill } from './04_stone.js?v=202610291305';
 
 // a touch screen: the phone's own word for it, or failing that, touch points and a narrow screen
 const coarse = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0 && Math.min(innerWidth, innerHeight) < 900);
@@ -390,7 +392,7 @@ if (coarse) {
 // --- carving -----------------------------------------------------------------
 // One piece at a time, logo first. Changing a carve setting starts the queue
 // again from the top.
-const worker = new Worker(new URL('./03_carve.worker.js', import.meta.url), { type: 'module' });
+const worker = new Worker(new URL('./03_carve.worker.js?v=202610291305', import.meta.url), { type: 'module' });
 const status = document.getElementById('status');
 let job = 0, queue = [], carveMs = 0, prepared = false;
 
